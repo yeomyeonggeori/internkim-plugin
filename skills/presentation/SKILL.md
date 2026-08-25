@@ -1,6 +1,7 @@
 ---
 name: presentation
 description: Generate HTML-first presentation slides and attach requested HTML, PDF, or PPTX files. Also validates existing .pptx files. Use for decks, presentations, pitch decks, research summaries, stakeholder reports, PowerPoint, Google Slides, Keynote, 발표자료, 파워포인트, 피피티.
+compatibility: Requires python3, uv, node with a Playwright browser for slide rendering, and network access on first run to install python-pptx and the renderer.
 ---
 
 
@@ -13,8 +14,8 @@ Create a useful, visually strong deck and attach accepted output. HTML-first mea
 ## Workflow
 
 1. Decide the output format, slide count, audience, and story spine before writing. Pick one deck archetype and make each slide's job, claim, proof, and visual structure clear.
-2. Resolve revisions from the latest compatible artifact in recent same-conversation posts. Older PDF or Markdown files are supporting material. For an existing deck, work only in `artifacts/<deck-slug>/`, keep the same slug, and use `restore_source.py` when the controller-free source must be recovered. Treat `slides.html` as the canonical controller-free source; make targeted `file_edit` changes and never reconstruct an existing deck with whole-file `file_write`.
-3. For a new deck, use the `file_write` tool directly to create the complete `slides.html`; Do not use `capability.invoke`, shell heredocs, or echo. Add `DESIGN.md`, `deck-brief.md`, and `required-visible-text.txt` immediately so they must not delay the primary source file.
+2. Resolve revisions from the latest compatible artifact in recent same-conversation posts. Older PDF or Markdown files are supporting material. For an existing deck, work only in `artifacts/<deck-slug>/`, keep the same slug, and use `restore_source.py` when the controller-free source must be recovered. Treat `slides.html` as the canonical controller-free source; edit it in place with targeted changes and never rewrite an existing deck whole.
+3. For a new deck, write the complete `slides.html` as a file in one step; do not assemble it through shell heredocs or echo. Add `DESIGN.md`, `deck-brief.md`, and `required-visible-text.txt` immediately so they must not delay the primary source file.
 4. Put `data-visual-system` on the body and `data-slide-role` on every slide. Use the requested language, a complete HTML document, visible source facts, and spoken notes. Preserve the design-source marker, requested slide count, source-fact ledger intent.
 5. Build from the persistent artifact workspace with the bundled script. The command shape is:
 
@@ -28,9 +29,9 @@ Create a useful, visually strong deck and attach accepted output. HTML-first mea
    {"command": "FORMATS=pptx <skill>/scripts/build.sh", "workingDirectoryPath": "artifacts/<deck-slug>"}
    ```
 
-   With no `FORMATS`, it creates `build/<deck-slug>.html` plus review evidence. Use `FORMATS=pptx` only for the final conversion, then use `file_deliver` for `artifacts/<deck-slug>/build/<deck-slug>.html` or `artifacts/<deck-slug>/build/<deck-slug>.pptx`. Do not call `terminal_run` with an `arguments` array alone.
-6. Inspect `slide-review.json`, contact sheets, `fit-review-XX.md`, and rendered image evidence. Check `needsDesignRevision`, `qualityGatePassed`, `visualQualityScore`, `visualEvidenceReliable`, expected visible text, and design warnings. revise `slides.html` with targeted `file_edit` while the score improves. A clean export is not acceptance. Remaining review notes are not a delivery blocker after the required review loop. Do not spend delivery budget creating or attaching internal review-decision files.
-7. Attach accepted outputs with the `files` array when delivering multiple files. Report the format and any remaining visual uncertainty honestly.
+   With no `FORMATS`, it creates `build/<deck-slug>.html` plus review evidence. Use `FORMATS=pptx` only for the final conversion, then deliver `artifacts/<deck-slug>/build/<deck-slug>.html` or `artifacts/<deck-slug>/build/<deck-slug>.pptx`. Run the script as one shell command line from that working directory.
+6. Inspect `slide-review.json`, contact sheets, `fit-review-XX.md`, and rendered image evidence. Check `needsDesignRevision`, `qualityGatePassed`, `visualQualityScore`, `visualEvidenceReliable`, expected visible text, and design warnings. revise `slides.html` with targeted edits while the score improves. A clean export is not acceptance. Remaining review notes are not a delivery blocker after the required review loop. Do not spend delivery budget creating or attaching internal review-decision files.
+7. Attach every accepted output when more than one file is delivered. Report the format and any remaining visual uncertainty honestly.
 
 ## Design contract
 

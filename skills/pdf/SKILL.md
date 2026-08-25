@@ -1,6 +1,7 @@
 ---
 name: pdf
-description: Work with existing PDF files (read, extract, merge, split, edit with pypdf) and build layout-critical PDFs with fpdf2 when precise visual placement is the point. For content-first reports, memos, and documents — including PDF deliverables — use the document skill, which authors markdown and exports docx or pdf. Do not use for standardized company letterhead forms (견적서, 청구서, 발주서, 품의서, 증명서, quotation, invoice, purchase order, certificate) — the paperwork skill owns those layouts.
+description: Work with existing PDF files (read, extract, merge, split, edit with pypdf) and build layout-critical PDFs with fpdf2 when precise visual placement is the point. When the words matter more than where they sit — a report, a memo, a document that happens to ship as PDF — write the content as markdown and export it instead of placing it by hand. Do not lay out a standardized company letterhead form (견적서, 청구서, 발주서, 품의서, 증명서, quotation, invoice, purchase order, certificate) — fill the issuer's own template so the layout stays theirs.
+compatibility: Requires python3, uv, network access on first run to install fpdf2 and pypdf, and a Korean-capable TTF or TTC font for CJK output.
 ---
 
 
@@ -8,7 +9,7 @@ In every terminal command below, `<skill>` is this skill's own directory — the
 
 # PDF
 
-Read, extract, merge, split, lightly edit, or create layout-critical PDFs in `~/documents`, then validate and deliver only accepted final files. For content-first reports and memos, use the document skill; for standardized letterhead forms and contracts, use paperwork.
+Read, extract, merge, split, lightly edit, or create layout-critical PDFs in `~/documents`, then validate and deliver only accepted final files. Reach for this skill when placement carries meaning. When it does not, write the content and export it; when the layout belongs to someone else's letterhead or contract template, fill that template rather than redrawing it.
 
 ## Workflow
 
