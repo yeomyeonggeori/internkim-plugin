@@ -2,6 +2,8 @@
 name: calculator
 description: Calculate explicit arithmetic expressions exactly when the user asks a direct arithmetic question or provides an expression.
 compatibility: Requires python3 and the ability to run a bundled script.
+metadata:
+  kim.intern.tool-references: "terminal_run"
 ---
 
 
