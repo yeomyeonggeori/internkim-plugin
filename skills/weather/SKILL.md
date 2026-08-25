@@ -16,7 +16,7 @@ Use the bundled Open-Meteo script to retrieve weather. The script resolves the l
 1. Identify the location from the user's request.
 2. Identify the requested date.
 3. Ask one concise question if the location or date is missing or ambiguous.
-4. Run the script with `terminal_run`.
+4. Run the script.
 5. Summarize the returned JSON naturally in the user's language.
 
 Use this command shape:
@@ -50,4 +50,4 @@ For Korean requests, use `--language ko`. For English requests, use `--language 
 - If `status` is `out_of_range`, say this skill supports today and available forecast dates only.
 - If `status` is `unavailable`, say the weather source could not be reached and no usable cache was available.
 
-Do not claim weather was retrieved until `terminal_run` returns successful JSON.
+Do not claim weather was retrieved until the script returns successful JSON.

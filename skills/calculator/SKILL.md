@@ -18,7 +18,7 @@ For simple greetings or non-numeric explanations, answer directly without this s
 ## Workflow
 
 1. Extract the exact arithmetic expression from the request.
-2. Run the evaluator with `terminal_run`:
+2. Run the evaluator:
 
 ```json
 {
