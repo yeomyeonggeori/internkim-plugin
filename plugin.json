@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "internkim",
-  "version": "0.1.0",
-  "description": "Spreadsheet, presentation, PDF, calculation, and weather skills from the InternKim agent, packaged to run on any Agent Plugins client.",
+  "version": "0.2.0",
+  "description": "Spreadsheet, presentation, PDF, calculation, weather, and workspace API skills from the InternKim agent, packaged to run on any Agent Plugins client.",
   "license": "Apache-2.0",
   "repository": "https://github.com/yeomyeonggeori/internkim-plugin",
   "keywords": [
@@ -11,6 +11,9 @@
     "pdf",
     "korean",
     "office",
-    "weather"
+    "weather",
+    "api",
+    "tasks",
+    "calendar"
   ]
 }
