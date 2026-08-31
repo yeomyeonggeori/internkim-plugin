@@ -43,7 +43,7 @@ fi
 
 NEW_NAME="$OLD_NAME-$(date -u +%Y%m%dT%H%M%SZ)"
 
-MINTED="$(call POST "$OLD_TOKEN" /tokens "{\"name\":\"$NEW_NAME\"}")"
+MINTED="$(call POST "$OLD_TOKEN" /token "{\"name\":\"$NEW_NAME\"}")"
 NEW_TOKEN="$(printf '%s' "$MINTED" | sed -n 's/.*"token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
 case "$NEW_TOKEN" in
 	ik_*) ;;
@@ -61,7 +61,7 @@ else
 	printf '%s' "$NEW_TOKEN" | secret-tool store --label='internkim API token' service "$SERVICE" account "$ACCOUNT"
 fi
 
-REVOKED="$(call DELETE "$NEW_TOKEN" "/tokens?name=$OLD_NAME" "")"
+REVOKED="$(call DELETE "$NEW_TOKEN" "/token?name=$OLD_NAME" "")"
 case "$REVOKED" in
 	*forgotten*) ;;
 	*) echo "stored the new token, but the old one is still live: $REVOKED" >&2; exit 1 ;;
