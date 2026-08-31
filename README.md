@@ -48,7 +48,13 @@ so a tool added or renamed there needs no change here.
 | Linux | Run and verified in a Debian container: libsecret through `secret-tool`, profile line appended to `~/.bashrc`. It needs a D-Bus session and an unlocked keyring, and says so rather than passing libsecret's own wording along when it finds neither |
 | Windows | Not supported. The script is `sh` and neither store is there; set `INTERNKIM_TOKEN` however the machine keeps secrets |
 
-Two things the script does not solve. On macOS it passes the token to `security`
+`scripts/rotate_token.sh <name>` replaces a token that has been seen. It mints
+the successor with the token it is replacing, checks the new one answers, stores
+it, and only then revokes the old one, so a failure anywhere leaves the working
+token in place. The new token goes from the API into the secret store without
+being printed.
+
+Two things the setup script does not solve. On macOS it passes the token to `security`
 as an argument, which is visible in `ps` for as long as that call runs; the
 manual page says as much about `-w`. And a shell profile is read by interactive
 shells, so an agent started by systemd or a launcher sees nothing: give those the

@@ -21,6 +21,8 @@ A personal access token is issued from the signed-in account settings in the int
 
 `INTERNKIM_API_URL` overrides the address for a self-hosted company. It defaults to `https://api.intern.kim/v1`.
 
+`scripts/rotate_token.sh <name>` replaces the stored token with a fresh one and revokes the old, going from the API into the secret store without passing through the terminal or this conversation. Run with no name it lists the names to choose from. Suggest it when a token has been seen by anyone, and do not read the new one back.
+
 ## Workflow
 
 1. List what this token may call:
