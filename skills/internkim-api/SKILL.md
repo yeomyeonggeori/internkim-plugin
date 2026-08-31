@@ -1,7 +1,7 @@
 ---
 name: internkim-api
 description: Read and change a company's internkim workspace over its public API — tasks and todos, calendar events, people, messages, hosted sites, documents. Use for 업무, 할 일, 일정, 캘린더, 사람, 메시지, 사이트, task, todo, schedule, or any request to look something up in internkim or record it there.
-compatibility: Requires python3, network access to the internkim API, and a personal API key in INTERNKIM_TOKEN.
+compatibility: Requires python3, network access to the internkim API, and a personal access token in INTERNKIM_TOKEN.
 metadata:
   kim.intern.tool-references: "shell"
 ---
@@ -11,17 +11,19 @@ In every terminal command below, `<skill>` is this skill's own directory — the
 
 # internkim API
 
-One script reaches every tool the caller's key may use. The catalog and the input schemas come from the API itself, so this file names no tool and copies no schema. Ask the API what it offers, then call it.
+One script reaches every tool the caller's token may use. The catalog and the input schemas come from the API itself, so this file names no tool and copies no schema. Ask the API what it offers, then call it.
 
 ## Credentials
 
-The script reads, in order: `INTERNKIM_TOKEN`, the file named by `INTERNKIM_TOKEN_FILE`, then `token` in `~/.internkim/api.json`. The base URL defaults to `https://api.intern.kim/v1` and is overridden by `--base-url`, `INTERNKIM_API_URL`, or `baseURL` in that same file.
+The script reads one thing: `INTERNKIM_TOKEN`. Where that comes from is the host's business, not this skill's.
 
-A key is issued from the signed-in account settings in the internkim web app. When the script reports no token, ask the user for one rather than guessing an address.
+A personal access token is issued from the signed-in account settings in the internkim web app. `scripts/store_token.sh` puts one in this computer's own secret store — macOS Keychain, or libsecret on Linux — and teaches the shell profile to read it back, so no file here holds the token. When the script reports no token, say so and let the user run that script; never ask them to paste a token into the conversation.
+
+`INTERNKIM_API_URL` overrides the address for a self-hosted company. It defaults to `https://api.intern.kim/v1`.
 
 ## Workflow
 
-1. List what this key may call:
+1. List what this token may call:
 
 ```json
 {
@@ -65,9 +67,9 @@ Skip step 2 only when a schema from step 1 or an earlier call in this same conve
 The script prints the API's own JSON. Read `outcome` first:
 
 - `succeeded` — the work happened. `result` holds it, and `effects` names each record created, changed, or deleted.
-- `failed` — the work did not happen. `message` says why, in words meant for a person; relay it rather than retrying the same input. Exit status is 2.
+- `failed` — the work did not happen. `message` says why, in words meant for a person; relay it rather than retrying the same input.
 
-A transport or credential problem prints `{"status": "error", "message": ...}` and exits 1. That is this script speaking, not the API.
+A transport or credential problem prints `{"status": "error", "message": ...}` and exits non-zero. That is this script speaking, not the API.
 
 Do not tell the user something was recorded until an answer with `outcome: succeeded` says so.
 
