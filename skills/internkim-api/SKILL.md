@@ -17,7 +17,7 @@ One script reaches every tool the caller's token may use. The catalog and the in
 
 The script reads one thing: `INTERNKIM_TOKEN`. Where that comes from is the host's business, not this skill's.
 
-A personal access token is issued from the signed-in account settings in the internkim web app. `scripts/store_token.sh` puts one in this computer's own secret store — macOS Keychain, or libsecret on Linux — and teaches the shell profile to read it back, so no file here holds the token. When the script reports no token, say so and let the user run that script; never ask them to paste a token into the conversation.
+A personal access token is issued from the signed-in account settings in the internkim web app. `scripts/store_token.sh` puts one in this computer's own secret store and teaches the shell profile to read it back, so no file here holds the token. It covers macOS and Linux desktops; anywhere else the user sets the variable themselves. When the script reports no token, say so and let the user run that script; never ask them to paste a token into the conversation.
 
 `INTERNKIM_API_URL` overrides the address for a self-hosted company. It defaults to `https://api.intern.kim/v1`.
 

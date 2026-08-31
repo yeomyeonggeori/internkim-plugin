@@ -23,7 +23,11 @@ if command -v security >/dev/null 2>&1; then
 	security add-generic-password -U -s "$SERVICE" -a "$ACCOUNT" -w "$TOKEN"
 	READ_COMMAND="security find-generic-password -s $SERVICE -a $ACCOUNT -w"
 elif command -v secret-tool >/dev/null 2>&1; then
-	printf '%s' "$TOKEN" | secret-tool store --label='internkim API token' service "$SERVICE" account "$ACCOUNT"
+	if ! printf '%s' "$TOKEN" | secret-tool store --label='internkim API token' service "$SERVICE" account "$ACCOUNT"; then
+		echo "secret-tool could not reach a keyring. It needs a D-Bus session with an unlocked" >&2
+		echo "keyring, which a headless machine has none of. Set INTERNKIM_TOKEN yourself there." >&2
+		exit 1
+	fi
 	READ_COMMAND="secret-tool lookup service $SERVICE account $ACCOUNT"
 else
 	echo "no secret store found: this script knows macOS security and libsecret secret-tool" >&2
