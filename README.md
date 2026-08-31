@@ -23,10 +23,24 @@ A host that already has a prepared interpreter can point the skills at it with
 `BLUECLAW_BUILTIN_SKILLS_PYTHON`, and at a shared package cache with
 `BLUECLAW_DEPENDENCY_CACHE`. Neither is required.
 
-`internkim-api` also needs a personal API key in `INTERNKIM_TOKEN`, issued from
-the account settings of the internkim web app. It names no tool of its own: it
-reads the catalog and the input schemas from the API at run time, so a tool
-added or renamed there needs no change here.
+`internkim-api` also needs a personal access token in `INTERNKIM_TOKEN`, issued
+from the account settings of the internkim web app. Run its setup script once:
+
+```bash
+sh skills/internkim-api/scripts/store_token.sh
+```
+
+It reads the token from a hidden prompt, puts it in this computer's own secret
+store — macOS Keychain, or libsecret on Linux — and appends the line that reads
+it back to your shell profile:
+
+```bash
+export INTERNKIM_TOKEN="$(security find-generic-password -s internkim -a api -w)"
+```
+
+No file in this repository ever holds the token. The skill names no tool of its
+own either: it reads the catalog and the input schemas from the API at run time,
+so a tool added or renamed there needs no change here.
 
 ## Paths
 
