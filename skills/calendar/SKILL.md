@@ -8,11 +8,10 @@ metadata:
 
 # Workspace Calendar
 
-Call the typed calendar operations directly; their descriptors define fields and results. The Work calendar is exposed through CalDAV and ICS, so clients can subscribe or sync without making Google Calendar the default write path.
+Call the typed calendar operations directly; their descriptors define fields and results. The Work calendar is exposed through CalDAV and ICS, so clients can subscribe to it or sync it.
 
 ## Rules
 
-- Prefer Work calendar operations over Google Workspace operations for ordinary schedule requests.
 - Decide by the user's intent, not by the noun they used. Meetings, appointments, attendance blocks, visits, and time blocks are calendar events; deliverables, deadlines, todos, requests, handoffs, and completion targets are work.
 - For a deadline-driven deliverable with a due time, call `task_add` and also `event_add` for the deadline or reminder.
 - For completion of a task-like item, use `task_update`. Do not mark calendar events with `[완료]`.
