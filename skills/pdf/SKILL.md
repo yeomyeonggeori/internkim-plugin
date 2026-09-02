@@ -5,8 +5,6 @@ compatibility: Requires python3, uv, network access on first run to install fpdf
 ---
 
 
-In every terminal command below, `<skill>` is this skill's own directory — the one holding this `SKILL.md`.
-
 # PDF
 
 Read, extract, merge, split, lightly edit, or create layout-critical PDFs in `~/documents`, then validate and deliver only accepted final files. Reach for this skill when placement carries meaning. When it does not, write the content and export it; when the layout belongs to someone else's letterhead or contract template, fill that template rather than redrawing it.

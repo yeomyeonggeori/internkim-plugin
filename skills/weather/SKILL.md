@@ -5,8 +5,6 @@ compatibility: Requires python3 and network access to the Open-Meteo API.
 ---
 
 
-In every terminal command below, `<skill>` is this skill's own directory — the one holding this `SKILL.md`.
-
 # Weather
 
 Use the bundled Open-Meteo script to retrieve weather. The script resolves the location, fetches current and daily forecast data, and reuses shared cache entries across users.

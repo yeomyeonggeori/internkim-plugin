@@ -6,7 +6,7 @@ tool-references: browser_open browser_snapshot browser_screenshot browser_click 
 ---
 
 
-In every terminal command here and in `references/`, `<skill>` is this skill's own directory — the one holding this `SKILL.md`.
+In every terminal command under `references/`, `<skill>` is this skill's own directory — the one holding this `SKILL.md`.
 
 # Website
 

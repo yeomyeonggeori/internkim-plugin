@@ -5,8 +5,6 @@ compatibility: Requires python3, uv, and network access on first run to install 
 ---
 
 
-In every terminal command below, `<skill>` is this skill's own directory — the one holding this `SKILL.md`.
-
 # XLSX Spreadsheets
 
 Create or modify local workbook artifacts, validate the accepted result, and attach the final file. Treat supplied data as the source of truth: preserve names, products, people, dates, amounts, IDs, and units exactly; never invent prices, taxes, totals, contacts, or external context. Put source titles, projects, clients, events, and periods in visible worksheet cells, and use “Not provided” for missing values.

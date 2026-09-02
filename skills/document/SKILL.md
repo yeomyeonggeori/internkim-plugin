@@ -6,8 +6,6 @@ tool-references: read
 ---
 
 
-In every terminal command below, `<skill>` is this skill's own directory — the one holding this `SKILL.md`.
-
 # DOCX Documents
 
 Create or modify Word documents as local `.docx` files, then validate and attach the accepted final file. Treat supplied files and pasted data as the source of truth: preserve names, products, people, dates, amounts, IDs, and units exactly. Missing values use the user's-language equivalent of “Not provided”; never invent contacts, totals, vendors, or background.

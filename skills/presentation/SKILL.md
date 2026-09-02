@@ -5,8 +5,6 @@ compatibility: Requires python3, uv, node with a Playwright browser for slide re
 ---
 
 
-In every terminal command below, `<skill>` is this skill's own directory — the one holding this `SKILL.md`.
-
 # Presentation
 
 Create a useful, visually strong deck and attach accepted output. HTML-first means `slides.html` is the source of truth, `DESIGN.md` the design brief, and HTML is the layout surface and default deliverable; PPTX is image-backed by default. Keep supplied facts exact and do not invent current dates, people, values, or claims.

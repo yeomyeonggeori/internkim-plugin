@@ -1,7 +1,7 @@
 # internkim-plugin
 
 Skills from the [InternKim](https://intern.kim) agent, packaged as an
-[Agent Plugins](https://agent-plugins.org) 1.1.0 plugin so they run on any
+[Agent Plugins](https://agent-plugins.org) 1.0.0 plugin so they run on any
 conforming client.
 
 Six need only a shell and Python.
@@ -84,9 +84,10 @@ variable through the unit or the launcher instead.
 
 ## Paths
 
-Every terminal command in a `SKILL.md` writes `<skill>` where the skill's own
-directory belongs — the directory holding that `SKILL.md`. Nothing here names a
-host layout.
+Every terminal command writes `<skill>` where the skill's own directory belongs.
+A host substitutes the directory it installed the skill into before the model
+reads the instruction; a client that does not substitute should treat `<skill>`
+as the directory holding that `SKILL.md`. Nothing here names a host layout.
 
 ## Validation
 

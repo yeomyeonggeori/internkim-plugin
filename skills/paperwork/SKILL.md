@@ -6,7 +6,7 @@ tool-references: company_info_get company_info_set company_document_register com
 ---
 
 
-In every terminal command here and in `references/`, `<skill>` is this skill's own directory — the one holding this `SKILL.md`.
+In every terminal command under `references/`, `<skill>` is this skill's own directory — the one holding this `SKILL.md`.
 
 # Company Paperwork
 
