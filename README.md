@@ -30,7 +30,6 @@ declares what it calls in its own `tool-references`.
 | `paperwork` | Fills standardized company forms and contracts on letterhead |
 | `website` | Scaffolds, builds, previews and publishes a site |
 | `company-data` | Reads and records company profile, metrics and records |
-| `create-gws-file` | Creates Google Docs and Sheets, sends Gmail |
 | `web-search` | Searches the public web and fetches pages |
 
 ## Requirements
