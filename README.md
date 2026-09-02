@@ -4,6 +4,8 @@ Skills from the [InternKim](https://intern.kim) agent, packaged as an
 [Agent Plugins](https://agent-plugins.org) 1.1.0 plugin so they run on any
 conforming client.
 
+Six need only a shell and Python.
+
 | Skill | What it does |
 | --- | --- |
 | `pdf` | Builds and validates PDFs, including Korean typography |
@@ -13,11 +15,31 @@ conforming client.
 | `weather` | Reads Open-Meteo forecasts with a local cache |
 | `internkim-api` | Reads and changes a company's internkim workspace over its public API |
 
+Thirteen also need InternKim's tool server, which `internkim-api` reaches. Each
+declares what it calls in its own `tool-references`.
+
+| Skill | What it does |
+| --- | --- |
+| `internkim-task` | Adds, finds, updates and completes work items |
+| `calendar` | Adds, lists, changes and removes calendar events |
+| `scheduled-task` | Schedules work to run later or repeatedly |
+| `direct-message` | Sends and schedules direct messages |
+| `mattermost` | Reads, posts, edits and removes channel messages |
+| `mail` | Connects a mailbox, then reads, searches and sends mail |
+| `document` | Authors `.docx` and PDF from a Markdown source |
+| `paperwork` | Fills standardized company forms and contracts on letterhead |
+| `website` | Scaffolds, builds, previews and publishes a site |
+| `company-data` | Reads and records company profile, metrics and records |
+| `create-gws-file` | Creates Google Docs and Sheets, sends Gmail |
+| `web-search` | Searches the public web and fetches pages |
+| `skill-management` | Adds and removes the host's own skills |
+
 ## Requirements
 
-Python 3 and [uv](https://docs.astral.sh/uv/) on `PATH`. Each skill declares its
-own dependencies in `scripts/requirements.txt` and installs them into an
-environment it creates on first use, so nothing has to be prepared in advance.
+Python 3 and [uv](https://docs.astral.sh/uv/) on `PATH`. A skill that bundles
+scripts declares its own dependencies in `scripts/requirements.txt` and installs
+them into an environment it creates on first use, so nothing has to be prepared
+in advance. `website` also needs [Bun](https://bun.sh).
 
 A host that already has a prepared interpreter can point the skills at it with
 `BLUECLAW_BUILTIN_SKILLS_PYTHON`, and at a shared package cache with
@@ -72,7 +94,7 @@ host layout.
 skills-ref validate skills/<name>
 ```
 
-All six skills pass the [Agent Skills](https://agentskills.io/specification)
+Every skill passes the [Agent Skills](https://agentskills.io/specification)
 reference validator.
 
 ## License
