@@ -2,10 +2,10 @@
 name: presentation
 description: Generate HTML-first presentation slides and attach requested HTML, PDF, or PPTX files. Also validates existing .pptx files. Use for decks, presentations, pitch decks, research summaries, stakeholder reports, PowerPoint, Google Slides, Keynote, 발표자료, 파워포인트, 피피티.
 compatibility: Requires python3, uv, node with a Playwright browser for slide rendering, and network access on first run to install python-pptx and the renderer.
+metadata:
+  kim.intern.tool-references: "shell"
 ---
 
-
-In every terminal command below, `<skill>` is this skill's own directory — the one holding this `SKILL.md`.
 
 # Presentation
 

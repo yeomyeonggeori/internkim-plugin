@@ -7,8 +7,6 @@ metadata:
 ---
 
 
-In every terminal command below, `<skill>` is this skill's own directory — the one holding this `SKILL.md`.
-
 # Calculator
 
 Use the bundled deterministic evaluator for precise results, large numbers, and multi-step arithmetic. Do not compute non-trivial arithmetic by hand.

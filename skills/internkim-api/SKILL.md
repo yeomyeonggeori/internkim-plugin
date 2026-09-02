@@ -7,8 +7,6 @@ metadata:
 ---
 
 
-In every terminal command below, `<skill>` is this skill's own directory — the one holding this `SKILL.md`.
-
 # internkim API
 
 One script reaches every tool the caller's token may use. The catalog and the input schemas come from the API itself, so this file names no tool and copies no schema. Ask the API what it offers, then call it.

@@ -1,0 +1,260 @@
+@import "tailwindcss";
+
+:root {
+	--background: #ffffff;
+	--foreground: #111111;
+	--card: #ffffff;
+	--card-foreground: #111111;
+	--popover: #ffffff;
+	--popover-foreground: #111111;
+	--primary: #111111;
+	--primary-foreground: #ffffff;
+	--secondary: #f4f4f5;
+	--secondary-foreground: #111111;
+	--muted: #f7f7f8;
+	--muted-foreground: #6b7280;
+	--accent: #111111;
+	--accent-foreground: #ffffff;
+	--destructive: #b42318;
+	--destructive-foreground: #ffffff;
+	--border: #e5e7eb;
+	--input: #d1d5db;
+	--ring: #111111;
+	--radius: 0.5rem;
+	--font-heading: "에이투지체", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+	--font-body: "에이투지체", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+	--hero-background: var(--background);
+	--hero-foreground: var(--foreground);
+	--hero-muted: var(--muted-foreground);
+	--shadow-card: 0 1px 2px rgb(0 0 0 / 0.04);
+	--shadow-card-hover: 0 12px 32px -12px rgb(0 0 0 / 0.18);
+	--motion-duration: 0.55s;
+	font-family: var(--font-body);
+	color: var(--foreground);
+	background: var(--background);
+}
+
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: var(--radius);
+	--radius-lg: calc(var(--radius) + 4px);
+	--font-heading: var(--font-heading);
+	--font-body: var(--font-body);
+}
+
+* {
+	box-sizing: border-box;
+	border-color: var(--border);
+}
+
+body {
+	margin: 0;
+	min-width: 320px;
+	min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	font-family: var(--font-heading);
+	text-wrap: balance;
+}
+
+p {
+	text-wrap: pretty;
+}
+
+button,
+input,
+textarea,
+select {
+	font: inherit;
+}
+
+.site-header {
+	position: sticky;
+	top: 0;
+	z-index: 40;
+	background: color-mix(in srgb, var(--background) 86%, transparent);
+	backdrop-filter: blur(12px);
+	border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.full-bleed {
+	width: 100vw;
+	margin-left: calc(50% - 50vw);
+	margin-right: calc(50% - 50vw);
+}
+
+.hero-band {
+	position: relative;
+	overflow: hidden;
+	background: var(--hero-background);
+	color: var(--hero-foreground);
+}
+
+.hero-band[class*="backdrop-"] {
+	background: color-mix(in srgb, var(--primary) 6%, var(--hero-background));
+}
+
+.hero-band > * {
+	position: relative;
+	z-index: 1;
+}
+
+.hero-band .backdrop-canvas {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+}
+
+[class*="backdrop-"] {
+	position: relative;
+	overflow: hidden;
+}
+
+[class*="backdrop-"] > * {
+	position: relative;
+	z-index: 1;
+}
+
+[class*="backdrop-"]::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+}
+
+.backdrop-mesh::before {
+	background:
+		radial-gradient(at 18% 22%, color-mix(in srgb, var(--primary) 30%, transparent) 0, transparent 52%),
+		radial-gradient(at 82% 12%, color-mix(in srgb, var(--accent) 24%, transparent) 0, transparent 48%),
+		radial-gradient(at 72% 88%, color-mix(in srgb, var(--primary) 16%, transparent) 0, transparent 55%),
+		radial-gradient(at 12% 82%, color-mix(in srgb, var(--accent) 13%, transparent) 0, transparent 45%);
+}
+
+.backdrop-aurora::before {
+	background:
+		radial-gradient(42% 55% at 25% 30%, color-mix(in srgb, var(--accent) 38%, transparent) 0, transparent 100%),
+		radial-gradient(50% 60% at 75% 25%, color-mix(in srgb, var(--primary) 30%, transparent) 0, transparent 100%),
+		radial-gradient(55% 65% at 60% 85%, color-mix(in srgb, var(--accent) 22%, transparent) 0, transparent 100%);
+	filter: blur(48px) saturate(1.15);
+	transform: scale(1.2);
+}
+
+.backdrop-grain::before {
+	background-image:
+		radial-gradient(at 22% 28%, color-mix(in srgb, var(--primary) 34%, transparent) 0, transparent 62%),
+		radial-gradient(at 82% 78%, color-mix(in srgb, var(--accent) 22%, transparent) 0, transparent 55%),
+		url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+	opacity: 0.55;
+}
+
+.backdrop-grid::before {
+	background-image:
+		radial-gradient(at 75% 20%, color-mix(in srgb, var(--primary) 16%, transparent) 0, transparent 55%),
+		linear-gradient(color-mix(in srgb, var(--foreground) 10%, transparent) 1px, transparent 1px),
+		linear-gradient(90deg, color-mix(in srgb, var(--foreground) 10%, transparent) 1px, transparent 1px);
+	background-size: auto, 36px 36px, 36px 36px;
+	mask-image: radial-gradient(85% 95% at 35% 35%, #000 0, transparent 100%);
+}
+
+.backdrop-dots::before {
+	background-image:
+		radial-gradient(at 25% 25%, color-mix(in srgb, var(--accent) 14%, transparent) 0, transparent 50%),
+		radial-gradient(circle, color-mix(in srgb, var(--foreground) 20%, transparent) 1.2px, transparent 1.6px);
+	background-size: auto, 26px 26px;
+	mask-image: radial-gradient(85% 95% at 70% 30%, #000 0, transparent 100%);
+}
+
+.hero-band .hero-muted {
+	color: var(--hero-muted);
+}
+
+.hero-band .hero-cta {
+	background: var(--hero-foreground);
+	color: var(--hero-background);
+}
+
+.hero-band .hero-cta:hover {
+	background: color-mix(in srgb, var(--hero-foreground) 88%, var(--hero-background));
+}
+
+.surface-card {
+	background: var(--card);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow-card);
+	transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.surface-card:hover {
+	box-shadow: var(--shadow-card-hover);
+	transform: translateY(-2px);
+}
+
+.item-index {
+	font-family: var(--font-heading);
+	font-size: 0.8rem;
+	font-weight: 600;
+	letter-spacing: 0.12em;
+	color: color-mix(in srgb, var(--accent) 72%, var(--muted-foreground));
+}
+
+.prose-lede {
+	font-size: 1.1875rem;
+	line-height: 1.75;
+	color: var(--foreground);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	main section {
+		animation: section-rise var(--motion-duration) cubic-bezier(0.22, 1, 0.36, 1) both;
+	}
+
+	main section:nth-child(2) {
+		animation-delay: 0.06s;
+	}
+
+	main section:nth-child(3) {
+		animation-delay: 0.12s;
+	}
+}
+
+@keyframes section-rise {
+	from {
+		opacity: 0;
+		transform: translateY(14px);
+	}
+
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}

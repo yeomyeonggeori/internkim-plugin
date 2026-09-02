@@ -2,10 +2,10 @@
 name: spreadsheet
 description: Create, read, edit, clean, calculate, format, and attach spreadsheet files. Use for .xlsx, .xlsm, .csv, .tsv, Excel, tables, formulas, charts, spreadsheet cleanup, 엑셀, 스프레드시트, 시트, 표, or 계산표 requests. Do not use when the primary deliverable is a Word document, PDF, slide deck, database pipeline, or Google Sheets file.
 compatibility: Requires python3, uv, and network access on first run to install openpyxl.
+metadata:
+  kim.intern.tool-references: "shell"
 ---
 
-
-In every terminal command below, `<skill>` is this skill's own directory — the one holding this `SKILL.md`.
 
 # XLSX Spreadsheets
 
