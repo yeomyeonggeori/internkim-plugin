@@ -2,7 +2,8 @@
 name: web-search
 description: Search the public web or fetch a specific URL when the user's request needs external or current information that is not already available in the conversation, an attachment, or another skill. Use for news, prices, schedules, documentation, or any fact you cannot already answer from provided context.
 compatibility: Requires InternKim's tool server.
-tool-references: web_search web_fetch
+metadata:
+  kim.intern.tool-references: "web_search web_fetch"
 ---
 
 # Web Search

@@ -2,7 +2,8 @@
 name: direct-message
 description: Send or schedule direct messages to approved workspace people through message.send.
 compatibility: Requires InternKim's tool server.
-tool-references: message_send schedule_create
+metadata:
+  kim.intern.tool-references: "message_send schedule_create"
 ---
 
 # Direct Message

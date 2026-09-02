@@ -2,7 +2,8 @@
 name: mail
 description: Read, search, send, and manage email through the connected mail provider. Use for email, inbox, Gmail, 메일, 이메일, 받은편지함, or sending a message by email.
 compatibility: Requires InternKim's tool server with a connected mail account.
-tool-references: mail_connection_status mail_connection_start mail_message_list mail_message_search mail_message_read mail_message_send
+metadata:
+  kim.intern.tool-references: "mail_connection_status mail_connection_start mail_message_list mail_message_search mail_message_read mail_message_send"
 ---
 
 # Mail

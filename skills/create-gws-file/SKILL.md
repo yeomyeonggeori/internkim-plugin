@@ -2,7 +2,8 @@
 name: create-gws-file
 description: Create Google Docs, Sheets, or Gmail messages through typed Google Workspace capability operations when those optional operations are available. Use document, spreadsheet, mail, or presentation for local artifacts or when the Google operations are unavailable.
 compatibility: Requires InternKim's tool server with a connected Google account.
-tool-references: google_docs_create google_sheets_create google_gmail_send
+metadata:
+  kim.intern.tool-references: "google_docs_create google_sheets_create google_gmail_send"
 ---
 
 # Google Workspace Files

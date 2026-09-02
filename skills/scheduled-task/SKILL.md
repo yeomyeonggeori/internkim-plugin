@@ -2,7 +2,8 @@
 name: scheduled-task
 description: Create, update, or cancel scheduled, recurring, and finite repeated reminders, messages, reports, and follow-up tasks when the user asks to schedule, remind, repeat, change, cancel, or stop them.
 compatibility: Requires a host that can schedule agent work.
-tool-references: schedule_create schedule_update schedule_cancel
+metadata:
+  kim.intern.tool-references: "schedule_create schedule_update schedule_cancel"
 ---
 
 # Scheduled Task

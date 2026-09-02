@@ -2,7 +2,8 @@
 name: calendar
 description: Read or write the workspace calendar with calendar capability operations. Use this whenever the user asks to add, find, update, cancel, delete, or check meetings, schedules, 일정, 캘린더, 미팅, 회의, 약속, or reminders, even if they do not explicitly say "calendar."
 compatibility: Requires InternKim's tool server.
-tool-references: event_add event_list event_update event_delete
+metadata:
+  kim.intern.tool-references: "event_add event_list event_update event_delete"
 ---
 
 # Workspace Calendar

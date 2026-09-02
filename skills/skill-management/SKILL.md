@@ -2,7 +2,8 @@
 name: skill-management
 description: Create, add, update, or remove user-managed Blueclaw skills. Use for requests about making a new skill, writing SKILL.md, adding a skill, deleting a skill, removing a skill, or managing skills.
 compatibility: Requires a host that can install and remove its own skills.
-tool-references: skill_add skill_remove
+metadata:
+  kim.intern.tool-references: "skill_add skill_remove"
 ---
 
 # Skill Management

@@ -2,7 +2,8 @@
 name: website
 description: Create, inspect, edit, preview, publish, or take down dependency-light websites, web apps, prototypes, landing pages, dashboards, and demos.
 compatibility: Requires bun, python3, a terminal, and InternKim's tool server.
-tool-references: browser_open browser_snapshot browser_screenshot browser_click artifact_review site_serve site_list site_unserve
+metadata:
+  kim.intern.tool-references: "browser_open browser_snapshot browser_screenshot browser_click artifact_review site_serve site_list site_unserve"
 ---
 
 

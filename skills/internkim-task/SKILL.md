@@ -2,7 +2,8 @@
 name: internkim-task
 description: Add, find, update, or complete weekly work items when the user asks to add, record, request, find, change, or complete work, todos, 업무, deadlines, or task notes.
 compatibility: Requires InternKim's tool server.
-tool-references: task_add task_list task_update task_delete person_list
+metadata:
+  kim.intern.tool-references: "task_add task_list task_update task_delete person_list"
 ---
 
 # 업무 관리

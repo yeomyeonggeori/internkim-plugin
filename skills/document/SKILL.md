@@ -2,7 +2,8 @@
 name: document
 description: Create, read, edit, and attach text documents — .docx by default, PDF on request — authored from a markdown source of truth. Use for Word documents, reports, memos, letters, templates, tracked changes review, comments, document cleanup, 워드, 문서, 보고서, 메모, 서식, PDF 보고서, or docx requests. Do not use for spreadsheets, slide decks, or manipulating existing PDF files. For standardized company forms and contracts (견적서, 품의서, 증명서, 근로계약서, NDA, quotation, invoice, certificate, contract) follow the paperwork skill, which reuses these scripts with its own document specs.
 compatibility: Requires python3, a terminal, and InternKim's tool server.
-tool-references: read
+metadata:
+  kim.intern.tool-references: "read"
 ---
 
 

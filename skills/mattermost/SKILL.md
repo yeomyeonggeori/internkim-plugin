@@ -2,7 +2,8 @@
 name: mattermost
 description: Read, search, post, update, and delete Mattermost messages, manage channels, and inspect approved workspace conversations. Use for Mattermost, chat, 채팅, 메시지, channel, or team requests, and for leaving, editing, or removing a visible note in the current conversation (대화/스레드에 메모·노트 남기기, posted with message_send).
 compatibility: Requires InternKim's tool server.
-tool-references: message_context message_search message_send message_update message_delete channel_update
+metadata:
+  kim.intern.tool-references: "message_context message_search message_send message_update message_delete channel_update"
 ---
 
 # Mattermost

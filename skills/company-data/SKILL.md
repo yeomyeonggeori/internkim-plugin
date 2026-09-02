@@ -2,7 +2,8 @@
 name: company-data
 description: Record and look up company master data — metrics time series (연매출, 영업이익, MAU, 직원 수), history and assets (연혁, 투자 유치, 제품 출시, 특허, 인증, 수상, 레퍼런스), and the company document ledger. Use for 매출 기록, 지표 기록, 연혁 추가, 투자 이력, 회사 정보 수정, 우리가 보낸 계약서/견적서 조회, revenue record, funding history, company timeline requests. Do not use for creating documents — the paperwork skill owns document generation.
 compatibility: Requires InternKim's tool server.
-tool-references: company_info_get company_info_set company_metric_list company_metric_record company_record_list company_record_add company_record_update company_record_delete company_document_list company_document_search company_document_register
+metadata:
+  kim.intern.tool-references: "company_info_get company_info_set company_metric_list company_metric_record company_record_list company_record_add company_record_update company_record_delete company_document_list company_document_search company_document_register"
 ---
 
 # Company Data
