@@ -46,7 +46,10 @@ A host that already has a prepared interpreter can point the skills at it with
 `BLUECLAW_DEPENDENCY_CACHE`. Neither is required.
 
 `internkim-api` also needs a personal access token in `INTERNKIM_TOKEN`, issued
-from the account settings of the internkim web app. Run its setup script once:
+from the account settings of the internkim web app. Its frontmatter `metadata`
+says so machine-readably under `kim.intern.requires-environment`, so a host with
+no token to give can leave the skill out of its agent's prompt instead of
+offering one whose first call fails. Run its setup script once:
 
 ```bash
 sh skills/internkim-api/scripts/store_token.sh
