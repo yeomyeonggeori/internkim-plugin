@@ -4,6 +4,7 @@ description: Read and change a company's internkim workspace over its public API
 compatibility: Requires python3, network access to the internkim API, and a personal access token in INTERNKIM_TOKEN.
 metadata:
   kim.intern.tool-references: "shell"
+  kim.intern.requires-environment: "INTERNKIM_TOKEN"
 ---
 
 
