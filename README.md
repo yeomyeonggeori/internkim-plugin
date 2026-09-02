@@ -15,7 +15,7 @@ Six need only a shell and Python.
 | `weather` | Reads Open-Meteo forecasts with a local cache |
 | `internkim-api` | Reads and changes a company's internkim workspace over its public API |
 
-Thirteen also need InternKim's tool server, which `internkim-api` reaches. Each
+Twelve also need InternKim's tool server, which `internkim-api` reaches. Each
 declares what it calls in its own `tool-references`.
 
 | Skill | What it does |
@@ -24,7 +24,7 @@ declares what it calls in its own `tool-references`.
 | `calendar` | Adds, lists, changes and removes calendar events |
 | `scheduled-task` | Schedules work to run later or repeatedly |
 | `direct-message` | Sends and schedules direct messages |
-| `mattermost` | Reads, posts, edits and removes channel messages |
+| `messages` | Reads, posts, edits and removes conversation messages |
 | `mail` | Connects a mailbox, then reads, searches and sends mail |
 | `document` | Authors `.docx` and PDF from a Markdown source |
 | `paperwork` | Fills standardized company forms and contracts on letterhead |
@@ -32,7 +32,6 @@ declares what it calls in its own `tool-references`.
 | `company-data` | Reads and records company profile, metrics and records |
 | `create-gws-file` | Creates Google Docs and Sheets, sends Gmail |
 | `web-search` | Searches the public web and fetches pages |
-| `skill-management` | Adds and removes the host's own skills |
 
 ## Requirements
 
