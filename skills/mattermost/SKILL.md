@@ -18,7 +18,6 @@ Call the typed Mattermost operations directly; descriptors define exact fields a
 ## Write and manage
 
 - Use `message_send` for a new message and `message_update` only with an observed message ID. Do not duplicate a successful post.
-- Use `message_delete` only when the user explicitly requests deletion; approval is handled by the runtime.
 - Use `channel_update` for supported channel changes. Preserve existing names and membership unless the request says otherwise.
 
 ## Reporting
