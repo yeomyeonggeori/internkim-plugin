@@ -2,6 +2,8 @@
 name: weather
 description: Look up current and date-specific weather through Open-Meteo with shared caching. Use for weather, forecast, temperature, rain, umbrella, wind, 날씨, 기온, 비 와, 우산, 바람, 오늘 날씨, 내일 날씨, or a specific-date weather request.
 compatibility: Requires python3 and network access to the Open-Meteo API.
+metadata:
+  kim.intern.tool-references: "shell"
 ---
 
 

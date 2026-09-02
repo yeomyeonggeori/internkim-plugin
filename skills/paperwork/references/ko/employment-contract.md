@@ -59,7 +59,7 @@ filename: 근로계약서_<근로자명>_<YYYYMMDD>.docx
 
 ```json
 {
-  "command": "python3 <skill>/scripts/skill_runtime.py python <skill>/scripts/fill_template.py employment-contract context.json <storageDirectory>/<filename>.docx",
+  "command": "python3 SKILL_DIR/scripts/skill_runtime.py python SKILL_DIR/scripts/fill_template.py employment-contract context.json <storageDirectory>/<filename>.docx",
   "workingDirectoryPath": "tmp/employment-contract"
 }
 ```

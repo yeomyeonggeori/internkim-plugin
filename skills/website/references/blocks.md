@@ -17,7 +17,7 @@ Sourcing order:
 2. One command fetches a CC0/public-domain photo — search, license filter, download, and the reference path in one step:
 
    ```
-   python3 <skill>/scripts/fetch_image.py "pottery hands clay wheel" app/public/images/hero.jpg
+   python3 SKILL_DIR/scripts/fetch_image.py "pottery hands clay wheel" app/public/images/hero.jpg
    ```
 
    Query in simple English; the script prints the `/images/...` path to use. Prototype images are placeholders the user can later replace with real photos through a normal update request.

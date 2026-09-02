@@ -2,6 +2,8 @@
 name: pdf
 description: Work with existing PDF files (read, extract, merge, split, edit with pypdf) and build layout-critical PDFs with fpdf2 when precise visual placement is the point. When the words matter more than where they sit — a report, a memo, a document that happens to ship as PDF — write the content as markdown and export it instead of placing it by hand. Do not lay out a standardized company letterhead form (견적서, 청구서, 발주서, 품의서, 증명서, quotation, invoice, purchase order, certificate) — fill the issuer's own template so the layout stays theirs.
 compatibility: Requires python3, uv, network access on first run to install fpdf2 and pypdf, and a Korean-capable TTF or TTC font for CJK output.
+metadata:
+  kim.intern.tool-references: "shell"
 ---
 
 

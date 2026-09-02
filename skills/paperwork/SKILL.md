@@ -7,7 +7,7 @@ metadata:
 ---
 
 
-In every terminal command under `references/`, `<skill>` is this skill's own directory — the one holding this `SKILL.md`.
+Command blocks under `references/` write `SKILL_DIR` where this skill's own directory belongs; that directory is `<skill>`.
 
 # Company Paperwork
 

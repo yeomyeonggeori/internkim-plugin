@@ -46,7 +46,7 @@ filename: 오퍼레터_<후보자명>_<YYYYMMDD>.docx
 
 ```json
 {
-  "command": "python3 <skill>/scripts/skill_runtime.py python <skill>/scripts/fill_template.py offer-letter context.json <storageDirectory>/<filename>.docx",
+  "command": "python3 SKILL_DIR/scripts/skill_runtime.py python SKILL_DIR/scripts/fill_template.py offer-letter context.json <storageDirectory>/<filename>.docx",
   "workingDirectoryPath": "tmp/offer-letter"
 }
 ```
