@@ -219,9 +219,12 @@ def letterhead_detail_lines(profile):
     lines = []
     identity_parts = []
     legal_attributes = profile.get("legalAttributes")
-    if isinstance(legal_attributes, dict):
-        for label, value in list(legal_attributes.items())[:2]:
-            label, value = str(label).strip(), str(value).strip()
+    if isinstance(legal_attributes, list):
+        for attribute in legal_attributes[:2]:
+            if not isinstance(attribute, dict):
+                continue
+            label = str(attribute.get("label", "")).strip()
+            value = str(attribute.get("value", "")).strip()
             if label and value:
                 identity_parts.append(f"{label} {value}")
     legacy_registration = str(profile.get("registrationNumber", "")).strip()
