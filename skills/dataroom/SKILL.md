@@ -1,7 +1,7 @@
 ---
 name: dataroom
 description: Keep, file and search the company data room, the document archive behind every fact. Use for 데이터룸, 자료실, 문서 보관, 실사 자료, 증빙, 계약서 찾기, data room, due diligence, archive, evidence, "where is the document", filing a received contract or report, finding what a number rests on. Do not use to create documents (paperwork owns generation) or to record numbers (company-data owns metrics).
-compatibility: Requires python3 and a terminal; in internkim, the company document ledger tools.
+compatibility: Requires python3 and a terminal. In InternKim, also the tools of the internkim MCP server this plugin declares in mcp.json.
 metadata:
   kim.intern.tool-references: "company_info_get company_document_register company_document_update company_document_list company_document_search company_document_upload company_document_download shell"
 ---
@@ -11,13 +11,19 @@ Command blocks below write `SKILL_DIR` where this skill's own directory belongs.
 
 # Data Room
 
-A data room is the company's document archive, filed by domain, where a domain is a folder and a clearance. In internkim the document row is the truth and the tree is its export; standalone, the tree is the truth. `references/domains.md` lists the fourteen domains, their clearances and where a document goes when subject and clearance disagree. `scripts/dataroom.py` keeps a tree in shape and bootstraps its own dependencies through `skill_runtime.py`; never run `pip install` directly.
+A data room is the company's document archive, filed by domain, where a domain is a folder and a clearance. It lives in one of two places:
+
+- **In InternKim, the record is the data room.** Each document is a row at its domain's clearance, its files sit in the company's asset store, and the `internkim` MCP server's `company_document_*` tools reach both. The host holds no tree unless someone exported one.
+- **Standalone, a tree is the data room**, and its `company.json` and `INDEX.md` are the map.
+
+`references/domains.md` lists the fourteen domains, their clearances and where a document goes when subject and clearance disagree. `scripts/dataroom.py` keeps a tree in shape and bootstraps its own dependencies through `skill_runtime.py`; never run `pip install` directly.
 
 ## Finding
 
-1. Start from `company.json` and `INDEX.md`; they are the map. Never list the tree.
-2. Search with `company_document_search`, or in a tree with `python3 SKILL_DIR/scripts/dataroom.py search <dir> <query> [--path 03-finance/2026]`. Each hit is one line: path, id, date, title, summary. The summary carries the fact and its size; answer from it when it can.
-3. Read the sidecar `<file>.md` before the original, and the original only when the sidecar cannot answer. `company_document_download` with `documentHint`, or `storagePath` plus `fileName` for a derived part, answers a signed URL. An original goes to the requester alone, never onward.
+1. In InternKim, `company_document_list` with a `domain` shows what a domain holds, and `company_document_search` finds a document by what it says.
+2. In a tree, start from `company.json` and `INDEX.md`, then `python3 SKILL_DIR/scripts/dataroom.py search <dir> <query> [--path 03-finance/2026]`; never list the tree. Each hit is one line: path, id, date, title, summary.
+3. The summary carries the fact and its size; answer from it when it can.
+4. Read the sidecar `<file>.md` before the original, and the original only when the sidecar cannot answer. `company_document_download` with `documentHint`, or `storagePath` plus `fileName` for a derived part, answers a signed URL. An original goes to the requester alone, never onward.
 
 ## Filing
 
