@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "internkim": {
+      "type": "streamable-http",
+      "url": "https://api.intern.kim/v1/mcp"
+    }
+  }
+}
