@@ -4,7 +4,7 @@ Skills from the [InternKim](https://intern.kim) agent, packaged as an
 [Agent Plugins](https://agent-plugins.org) 1.0.0 plugin so they run on any
 conforming client.
 
-Six need only a shell and Python.
+Six run on their own with a shell and Python.
 
 | Skill | What it does |
 | --- | --- |
@@ -13,10 +13,10 @@ Six need only a shell and Python.
 | `presentation` | Builds HTML decks and exports PPTX |
 | `calculator` | Evaluates arithmetic exactly |
 | `weather` | Reads Open-Meteo forecasts with a local cache |
-| `internkim-api` | Reads and changes a company's internkim workspace over its public API |
+| `dataroom` | Files, checks and searches a company data room, locally or in the record |
 
-Twelve also need InternKim's tool server, which `internkim-api` reaches. Each
-declares what it calls in its own `tool-references`.
+Eleven call InternKim's tool server, the `internkim` server that `mcp.json`
+declares. Each names the tools it calls in its own `tool-references`.
 
 | Skill | What it does |
 | --- | --- |
@@ -43,45 +43,19 @@ A host that already has a prepared interpreter can point the skills at it with
 `BLUECLAW_BUILTIN_SKILLS_PYTHON`, and at a shared package cache with
 `BLUECLAW_DEPENDENCY_CACHE`. Neither is required.
 
-`internkim-api` also needs a personal access token in `INTERNKIM_TOKEN`, issued
-from the account settings of the internkim web app. Its frontmatter `metadata`
-says so machine-readably under `kim.intern.requires-environment`, so a host with
-no token to give can leave the skill out of its agent's prompt instead of
-offering one whose first call fails. Run its setup script once:
+## Tool server
 
-```bash
-sh skills/internkim-api/scripts/store_token.sh
-```
+`mcp.json` declares `https://api.intern.kim/v1/mcp`, a Streamable HTTP server
+that answers with the tools the signed-in member may use in their company. The
+plugin carries no credential. The server follows MCP authorization: a request
+without a token is answered `401` with a `WWW-Authenticate` header pointing at
+its protected resource metadata, and a client that implements it signs the
+member in through the browser and keeps the token itself.
 
-It reads the token from a hidden prompt, puts it in this computer's own secret
-store — macOS Keychain, or libsecret on Linux — and appends the line that reads
-it back to your shell profile:
-
-```bash
-export INTERNKIM_TOKEN="$(security find-generic-password -s internkim -a api -w)"
-```
-
-No file in this repository ever holds the token. The skill names no tool of its
-own either: it reads the catalog and the input schemas from the API at run time,
-so a tool added or renamed there needs no change here.
-
-| Platform | Setup script |
-| --- | --- |
-| macOS | Run and verified: Keychain through `security`, profile line appended to `~/.zshrc` |
-| Linux | Run and verified in a Debian container: libsecret through `secret-tool`, profile line appended to `~/.bashrc`. It needs a D-Bus session and an unlocked keyring, and says so rather than passing libsecret's own wording along when it finds neither |
-| Windows | Not supported. The script is `sh` and neither store is there; set `INTERNKIM_TOKEN` however the machine keeps secrets |
-
-`scripts/rotate_token.sh <name>` replaces a token that has been seen. It mints
-the successor with the token it is replacing, checks the new one answers, stores
-it, and only then revokes the old one, so a failure anywhere leaves the working
-token in place. The new token goes from the API into the secret store without
-being printed.
-
-Two things the setup script does not solve. On macOS it passes the token to `security`
-as an argument, which is visible in `ps` for as long as that call runs; the
-manual page says as much about `-w`. And a shell profile is read by interactive
-shells, so an agent started by systemd or a launcher sees nothing: give those the
-variable through the unit or the launcher instead.
+A client that does not implement MCP authorization can send a personal access
+token, issued from the account settings of the internkim web app, as
+`Authorization: Bearer ik_…`. Configure that in the client; this repository
+never holds one.
 
 ## Paths
 
