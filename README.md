@@ -57,6 +57,45 @@ token, issued from the account settings of the internkim web app, as
 `Authorization: Bearer ik_…`. Configure that in the client; this repository
 never holds one.
 
+## Claude Code
+
+Claude Code reads the generated `.claude-plugin/plugin.json` identity manifest
+and `.mcp.json` transport manifest. Validate a checkout with:
+
+```bash
+claude plugin validate .
+```
+
+To use a local checkout for a session, run `claude --plugin-dir /path/to/internkim-plugin`.
+The plugin keeps the same shared
+`skills/` directory and MCP server; it does not add a second skill copy.
+
+## Pi
+
+The generated root `package.json` carries Pi’s package metadata. Its `pi`
+section points at the shared `./skills` directory and the local extension at
+`./adapters/pi/index.ts`. From a checkout, install the package dependencies and
+run the adapter checks with:
+
+```bash
+bun install
+bun run check
+bun test tests/pi
+```
+
+From the project where you want to use it, run `pi install -l /path/to/internkim-plugin`.
+This records the local package in that project's `.pi/settings.json`. The extension registers
+`internkim_tools`, which lists the server catalog when called with `names: []`
+and loads requested tools by their exact canonical names. Loaded tools use the
+`internkim__<tool-name>` prefix. File, shell, and other native client tools
+remain owned by Pi; the extension only supplies the InternKim MCP tools.
+
+The extension uses the server URL in `mcp.json`. Set
+`INTERNKIM_MCP_URL` to override it, and set `INTERNKIM_MCP_BEARER_TOKEN` when
+the client supplies a bearer credential through the environment. This adapter
+does not perform browser sign-in or refresh tokens; supply a personal access
+token or a credential managed by the host running Pi.
+
 ## Paths
 
 Every terminal command writes `<skill>` where the skill's own directory belongs.

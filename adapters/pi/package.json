@@ -1,0 +1,18 @@
+{
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "bun test tests/pi",
+    "check": "tsc --noEmit",
+    "check:manifests": "python3 scripts/generate_client_manifests.py --check"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "typebox": "1.3.7"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "0.83.0",
+    "@types/bun": "1.3.14",
+    "typescript": "5.9.3"
+  }
+}

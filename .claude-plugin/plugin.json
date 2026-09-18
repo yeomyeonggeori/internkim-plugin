@@ -1,0 +1,18 @@
+{
+  "name": "internkim",
+  "version": "0.4.0",
+  "description": "Every skill from the InternKim agent, packaged to run on any Agent Plugins client, with InternKim's tool server declared for the workspace skills: office documents, calculation, weather, data room, tasks, calendar, messages, mail and sites.",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/yeomyeonggeori/internkim-plugin",
+  "keywords": [
+    "xlsx",
+    "pptx",
+    "pdf",
+    "korean",
+    "office",
+    "weather",
+    "tasks",
+    "calendar",
+    "mcp"
+  ]
+}

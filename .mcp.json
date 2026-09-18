@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "internkim": {
+      "type": "http",
+      "url": "https://api.intern.kim/v1/mcp"
+    }
+  }
+}
