@@ -57,6 +57,19 @@ token, issued from the account settings of the internkim web app, as
 `Authorization: Bearer ik_…`. Configure that in the client; this repository
 never holds one.
 
+## Loading it
+
+This repository holds nothing but the portable plugin: `plugin.json`,
+`skills/` and `mcp.json`. How a client reads that layout is the client's own
+affair, so no client-specific manifest or adapter code lives here.
+
+| Client | How it loads the plugin |
+| --- | --- |
+| Codex | Reads the root `plugin.json`, `skills/` and `mcp.json` natively (openai/codex#36544). |
+| Claude Code | Reads its own manifest format, so the InternKim host publishes a marketplace entry with `strict: false` that names `./skills` and `./mcp.json`: `claude plugin marketplace add yeomyeonggeori/internkim`, then `claude plugin install internkim@internkim`. |
+| Pi | Ships no MCP client. The community extensions `pi-agent-plugins` (an Agent Plugins 1.0.0 client) and `pi-mcp-adapter` load the layout: `pi install npm:pi-mcp-adapter`, `pi install npm:pi-agent-plugins`, then place a checkout under `.pi/plugins/`. |
+| Bluecollar | The ACP host passes the servers in `mcp.json` when it opens a session; the loop itself owns no tools. |
+
 ## Paths
 
 Every terminal command writes `<skill>` where the skill's own directory belongs.
