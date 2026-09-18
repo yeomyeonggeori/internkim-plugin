@@ -9,5 +9,5 @@
     "types": ["bun"],
     "allowImportingTsExtensions": true
   },
-  "include": ["adapters/pi/**/*.ts", "tests/pi/**/*.ts"]
+  "include": ["adapters/pi/**/*.ts", "tests/pi/**/*.ts", "evals/**/*.ts"]
 }

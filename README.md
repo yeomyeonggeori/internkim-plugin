@@ -96,6 +96,21 @@ the client supplies a bearer credential through the environment. This adapter
 does not perform browser sign-in or refresh tokens; supply a personal access
 token or a credential managed by the host running Pi.
 
+### Opt-in live MCP evaluation
+
+To exercise Pi's model loop, tool discovery, and schema-driven invocation
+against a harmless loopback fixture, set an explicit OpenRouter model and run:
+
+```bash
+OPENROUTER_API_KEY=... PI_EVAL_MODEL=... \
+  bun evals/pi-mcp-live.ts --evidence-dir /tmp/internkim-pi-evidence
+```
+
+The evaluation uses isolated temporary Pi state, limits tool calls and runtime,
+and writes the transcript, usage, and fixture call evidence to
+`<evidence-dir>/pi-mcp-live.json`. It is opt-in and makes no parity or
+performance claim about other models or environments.
+
 ## Paths
 
 Every terminal command writes `<skill>` where the skill's own directory belongs.
