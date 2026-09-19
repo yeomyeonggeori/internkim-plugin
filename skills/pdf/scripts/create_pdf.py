@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 
-from skill_runtime import ensure_requirements
+from skill_runtime import cache_home_path, ensure_requirements
 
 
 def load_specification(specification_path):
@@ -274,16 +274,13 @@ def is_embeddable_font(font_path):
     return "OS/2" in font and "cmap" in font
 
 
-def dependency_cache_font_paths():
-    dependency_cache = os.environ.get("BLUECLAW_DEPENDENCY_CACHE", "").strip()
-    if dependency_cache == "":
-        return []
-    fonts_directory = Path(dependency_cache) / "fonts"
+def cached_font_paths():
+    fonts_directory = cache_home_path(os.environ) / "fonts"
     return [fonts_directory / "NanumGothic.ttf", fonts_directory / "NotoSansKR-Regular.ttf"]
 
 
 def candidate_font_paths():
-    return dependency_cache_font_paths() + [
+    return cached_font_paths() + [
         Path("/usr/share/fonts/truetype/nanum/NanumGothic.ttf"),
         Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"),
         Path("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc"),

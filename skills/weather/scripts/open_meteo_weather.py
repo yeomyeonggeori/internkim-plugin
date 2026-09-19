@@ -116,7 +116,7 @@ def default_cache_directory():
     configured = os.environ.get("WEATHER_CACHE_DIR", "").strip()
     if configured != "":
         return configured
-    for environment_name in ("BLUECLAW_DEPENDENCY_CACHE", "XDG_CACHE_HOME", "TMPDIR"):
+    for environment_name in ("XDG_CACHE_HOME", "TMPDIR"):
         root = os.environ.get(environment_name, "").strip()
         if root != "":
             return str(Path(root) / DEFAULT_CACHE_RELATIVE_PATH)

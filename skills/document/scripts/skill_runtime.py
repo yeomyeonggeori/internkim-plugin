@@ -9,7 +9,7 @@ import sys
 
 BOOTSTRAP_READY_ENVIRONMENT_PREFIX = "INTERNKIM_SKILL_BOOTSTRAP_READY"
 BOOTSTRAP_DISABLE_ENVIRONMENT_PREFIX = "INTERNKIM_SKILL_BOOTSTRAP_DISABLE"
-BUILTIN_SKILLS_PYTHON_ENVIRONMENT = "BLUECLAW_BUILTIN_SKILLS_PYTHON"
+SKILL_CACHE_DIRECTORY_NAME = "internkim-skills"
 
 
 def ensure_requirements(skill_name):
@@ -20,11 +20,6 @@ def ensure_requirements(skill_name):
         return False
     if os.environ.get(bootstrap_ready_environment_variable(skill_name)) == "1":
         return True
-
-    prepared_python = prepared_python_path(requirements_path)
-    if prepared_python is not None:
-        reexecute_python(prepared_python, skill_name)
-        return False
 
     if python_satisfies_requirements(Path(sys.executable), requirements_path):
         return True
@@ -43,20 +38,6 @@ def ensure_requirements(skill_name):
 
     reexecute_python(python_path, skill_name)
     return False
-
-
-def prepared_python_path(requirements_path):
-    configured_python_path = os.environ.get(BUILTIN_SKILLS_PYTHON_ENVIRONMENT, "").strip()
-    if configured_python_path == "":
-        return None
-    python_path = Path(configured_python_path)
-    if not python_path.exists():
-        return None
-    if not python_satisfies_requirements(python_path, requirements_path):
-        return None
-    if is_current_python(python_path):
-        return None
-    return python_path
 
 
 def python_satisfies_requirements(python_path, requirements_path):
@@ -158,23 +139,25 @@ def uv_environment():
 
 
 def uv_cache_path(environment):
-    configured_cache = environment.get("UV_CACHE_DIR")
-    if configured_cache is not None and configured_cache.strip() != "":
+    configured_cache = environment.get("UV_CACHE_DIR", "").strip()
+    if configured_cache != "":
         return Path(configured_cache)
-    dependency_cache = environment.get("BLUECLAW_DEPENDENCY_CACHE")
-    if dependency_cache is not None and dependency_cache.strip() != "":
-        return Path(dependency_cache) / "uv"
-    root = environment.get("BLUECLAW_REQUESTER_TMP")
-    if root is None or root.strip() == "":
-        root = environment.get("TMPDIR", "/tmp")
-    return Path(root) / "internkim-skill-cache" / "uv"
+    return skill_cache_path(environment) / "uv"
 
 
 def dependency_environment_path(skill_name):
-    root = os.environ.get("BLUECLAW_REQUESTER_TMP")
-    if root is None or root.strip() == "":
-        root = str(Path.cwd())
-    return Path(root) / ".skill-env" / safe_name(skill_name)
+    return skill_cache_path(os.environ) / "environments" / safe_name(skill_name)
+
+
+def skill_cache_path(environment):
+    return cache_home_path(environment) / SKILL_CACHE_DIRECTORY_NAME
+
+
+def cache_home_path(environment):
+    configured_cache_home = environment.get("XDG_CACHE_HOME", "").strip()
+    if configured_cache_home != "":
+        return Path(configured_cache_home)
+    return Path.home() / ".cache"
 
 
 def is_current_python(python_path):

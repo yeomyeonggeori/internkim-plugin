@@ -39,9 +39,10 @@ scripts declares its own dependencies in `scripts/requirements.txt` and installs
 them into an environment it creates on first use, so nothing has to be prepared
 in advance. `website` also needs [Bun](https://bun.sh).
 
-A host that already has a prepared interpreter can point the skills at it with
-`BLUECLAW_BUILTIN_SKILLS_PYTHON`, and at a shared package cache with
-`BLUECLAW_DEPENDENCY_CACHE`. Neither is required.
+Those environments, the package cache and any host-supplied fonts live under
+`XDG_CACHE_HOME`, falling back to `~/.cache` when it is unset. A host with a
+shared package cache points `UV_CACHE_DIR` at it. Neither is required, and the
+skills read no variable named after the host that runs them.
 
 ## Tool server
 
@@ -81,10 +82,13 @@ as the directory holding that `SKILL.md`. Nothing here names a host layout.
 
 ```bash
 skills-ref validate skills/<name>
+python3 -m unittest discover -s tests
 ```
 
 Every skill passes the [Agent Skills](https://agentskills.io/specification)
-reference validator.
+reference validator. The unit tests hold the bundle to what it promises above:
+the six copies of `scripts/skill_runtime.py` stay one file, and nothing under
+`skills/` reads an environment variable named after a host.
 
 ## License
 
