@@ -5,7 +5,7 @@ import os
 import sys
 from pathlib import Path
 
-from skill_runtime import ensure_requirements
+from skill_runtime import cache_home_path, ensure_requirements
 from paperwork_design import (
     COLOR_BORDER,
     COLOR_HEADER_FILL,
@@ -127,14 +127,11 @@ def is_embeddable_font(font_path):
 
 
 def candidate_font_paths():
-    return dependency_cache_font_paths() + [Path(candidate) for candidate in FONT_CANDIDATE_PATHS_PDF]
+    return cached_font_paths() + [Path(candidate) for candidate in FONT_CANDIDATE_PATHS_PDF]
 
 
-def dependency_cache_font_paths():
-    dependency_cache = os.environ.get("BLUECLAW_DEPENDENCY_CACHE", "").strip()
-    if dependency_cache == "":
-        return []
-    fonts_directory = Path(dependency_cache) / "fonts"
+def cached_font_paths():
+    fonts_directory = cache_home_path(os.environ) / "fonts"
     return [fonts_directory / "NanumGothic.ttf", fonts_directory / "NotoSansKR-Regular.ttf"]
 
 

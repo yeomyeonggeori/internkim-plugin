@@ -4,7 +4,7 @@ import os
 import re
 from pathlib import Path
 
-from skill_runtime import ensure_requirements
+from skill_runtime import cache_home_path, ensure_requirements
 
 INLINE_PATTERN = re.compile(r"(\*\*.+?\*\*|\*.+?\*|`.+?`)")
 
@@ -146,18 +146,15 @@ def is_embeddable_font(font_path):
     return "OS/2" in font and "cmap" in font
 
 
-def dependency_cache_font_paths():
-    dependency_cache = os.environ.get("BLUECLAW_DEPENDENCY_CACHE", "").strip()
-    if dependency_cache == "":
-        return []
-    fonts_directory = Path(dependency_cache) / "fonts"
+def cached_font_paths():
+    fonts_directory = cache_home_path(os.environ) / "fonts"
     return [fonts_directory / "NanumGothic.ttf", fonts_directory / "NotoSansKR-Regular.ttf"]
 
 
 def resolve_pdf_font(font_path_argument):
     if font_path_argument:
         return Path(font_path_argument)
-    for candidate in dependency_cache_font_paths() + PDF_FONT_CANDIDATES:
+    for candidate in cached_font_paths() + PDF_FONT_CANDIDATES:
         if candidate.exists() and is_embeddable_font(candidate):
             return candidate
     return None
