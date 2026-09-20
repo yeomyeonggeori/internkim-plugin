@@ -94,7 +94,7 @@ def main():
         output_path.parent.mkdir(parents=True, exist_ok=True)
         template.save(str(output_path))
     except FileNotFoundError as missing_file:
-        print(f"paperwork template error: {missing_file}; write the context JSON with file_write first", file=sys.stderr)
+        print(f"paperwork template error: {missing_file}; write the context JSON with write first", file=sys.stderr)
         raise SystemExit(1)
     except PermissionError:
         print(f"paperwork template error: cannot write to {output_path} (permission denied); rerun the SAME command with the output changed to ~/documents/{output_path.parent.name}/{output_path.name}", file=sys.stderr)
