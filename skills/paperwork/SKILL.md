@@ -1,8 +1,9 @@
 ---
 name: paperwork
 description: Create standardized company business documents on letterhead. Use for 견적서, 거래명세서, 청구서, 발주서, 품의서, 지출결의서, 회의록, 주간업무보고, 출장보고서, 오퍼레터, 근로계약서, 재직증명서, 경력증명서, 휴가신청서, 비밀유지계약서, NDA, 업무협약서, MOU, 용역계약서, 위임장, 서식, 공문, ERP 서류, quotation, invoice, purchase order, offer letter, employment contract, certificate requests. Do not use for free-form reports, memos, essays, or slide decks — use the docx or presentation skill for those.
-compatibility: Requires python3, a terminal, and InternKim's tool server.
+compatibility: Requires python3, a terminal, InternKim's tool server, and a Korean-capable TTF or TTC font for its PDFs.
 metadata:
+  kim.intern.requires-any-file: "/usr/share/fonts/truetype/nanum/NanumGothic.ttf /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc /usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc /System/Library/Fonts/Supplemental/AppleGothic.ttf"
   kim.intern.tool-references: "company_info_get company_info_set company_document_register company_document_update company_document_list company_document_search"
 ---
 
