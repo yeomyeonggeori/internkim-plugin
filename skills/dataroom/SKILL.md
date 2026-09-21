@@ -3,7 +3,7 @@ name: dataroom
 description: Keep, file and search the company data room, the document archive behind every fact. Use for 데이터룸, 자료실, 문서 보관, 실사 자료, 증빙, 계약서 찾기, data room, due diligence, archive, evidence, "where is the document", filing a received contract or report, finding what a number rests on. Do not use to create documents (paperwork owns generation) or to record numbers (company-data owns metrics).
 compatibility: Requires python3 and a terminal. In InternKim, also the tools of the internkim MCP server this plugin declares in mcp.json.
 metadata:
-  kim.intern.tool-references: "company_info_get company_document_register company_document_update company_document_list company_document_search company_document_upload company_document_download shell"
+  kim.intern.tool-references: "company_info_get company_document_register company_document_update company_document_list company_document_search company_document_upload company_document_download bash"
 ---
 
 

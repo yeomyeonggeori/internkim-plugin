@@ -595,7 +595,7 @@ def main():
         document = load_document(os.path.expanduser(arguments.document_path))
         pdf = render_document(document)
     except FileNotFoundError:
-        print(f"paperwork renderer error: document JSON not found at {arguments.document_path}; write it with file_write first, following the spec's skeleton", file=sys.stderr)
+        print(f"paperwork renderer error: document JSON not found at {arguments.document_path}; write it with write first, following the spec's skeleton", file=sys.stderr)
         raise SystemExit(1)
     except PermissionError:
         print(f"paperwork renderer error: cannot write to {output_path} (permission denied); rerun the SAME command with the output changed to ~/documents/{output_path.parent.name}/{output_path.name}", file=sys.stderr)
