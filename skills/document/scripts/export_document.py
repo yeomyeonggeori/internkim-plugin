@@ -4,7 +4,7 @@ import os
 import re
 from pathlib import Path
 
-from skill_runtime import cache_home_path, ensure_requirements
+from skill_runtime import HANGUL_FONT_PATHS, cache_home_path, ensure_requirements
 
 INLINE_PATTERN = re.compile(r"(\*\*.+?\*\*|\*.+?\*|`.+?`)")
 
@@ -128,10 +128,7 @@ def render_markdown(document, markdown_text, point_class):
         add_inline_runs(paragraph, " ".join(paragraph_lines), point_class)
 
 
-PDF_FONT_CANDIDATES = [
-    Path("/usr/share/fonts/truetype/nanum/NanumGothic.ttf"),
-    Path("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc"),
-]
+PDF_FONT_CANDIDATES = [Path(candidate) for candidate in HANGUL_FONT_PATHS]
 
 
 def is_embeddable_font(font_path):
