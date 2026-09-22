@@ -4,7 +4,7 @@ description: Work with existing PDF files (read, extract, merge, split, edit wit
 compatibility: Requires python3, uv, network access on first run to install fpdf2 and pypdf, and a Korean-capable TTF or TTC font for CJK output.
 metadata:
   kim.intern.tool-references: "bash"
-  kim.intern.requires-any-file: "/usr/share/fonts/truetype/nanum/NanumGothic.ttf /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc /usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc /System/Library/Fonts/Supplemental/AppleGothic.ttf /System/Library/Fonts/AppleSDGothicNeo.ttc"
+  kim.intern.requires-any-file: "/usr/share/fonts/truetype/nanum/NanumGothic.ttf /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc /usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc /System/Library/Fonts/AppleSDGothicNeo.ttc"
 ---
 
 

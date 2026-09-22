@@ -1,3 +1,5 @@
+from skill_runtime import HANGUL_FONT_PATHS
+
 COLOR_INK = (0x1C, 0x24, 0x30)
 COLOR_MUTED = (0x6A, 0x72, 0x80)
 COLOR_RULE = (0x37, 0x41, 0x51)
@@ -5,13 +7,8 @@ COLOR_BORDER = (0x9C, 0xA3, 0xAF)
 COLOR_HEADER_FILL = (0xF3, 0xF4, 0xF6)
 
 FONT_KOREAN_DOCX = "맑은 고딕"
-FONT_CANDIDATE_PATHS_PDF = [
-    "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
-    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-    "/System/Library/Fonts/Supplemental/AppleGothic.ttf",
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-]
+LATIN_FALLBACK_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+FONT_CANDIDATE_PATHS_PDF = HANGUL_FONT_PATHS + [LATIN_FALLBACK_FONT_PATH]
 
 SIZE_TITLE = 18.0
 SIZE_CLAUSE_HEADING = 11.0

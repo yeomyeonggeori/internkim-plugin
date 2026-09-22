@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 
-from skill_runtime import cache_home_path, ensure_requirements
+from skill_runtime import HANGUL_FONT_PATHS, cache_home_path, ensure_requirements
 
 
 def load_specification(specification_path):
@@ -279,15 +279,12 @@ def cached_font_paths():
     return [fonts_directory / "NanumGothic.ttf", fonts_directory / "NotoSansKR-Regular.ttf"]
 
 
+LATIN_FALLBACK_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+
+
 def candidate_font_paths():
-    return cached_font_paths() + [
-        Path("/usr/share/fonts/truetype/nanum/NanumGothic.ttf"),
-        Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"),
-        Path("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc"),
-        Path("/System/Library/Fonts/Supplemental/AppleGothic.ttf"),
-        Path("/System/Library/Fonts/AppleSDGothicNeo.ttc"),
-        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
-    ]
+    host_paths = HANGUL_FONT_PATHS + [LATIN_FALLBACK_FONT_PATH]
+    return cached_font_paths() + [Path(candidate) for candidate in host_paths]
 
 
 def contains_non_latin_text(text):
