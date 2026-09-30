@@ -96,7 +96,9 @@ DECK_BRIEF_MISSING = IssueKind("DECK_BRIEF_MISSING", WARNING, "deck-brief.md is 
 REQUIRED_TEXT_LEDGER_MISSING = IssueKind("REQUIRED_TEXT_LEDGER_MISSING", WARNING, "required-visible-text.txt is absent, so source facts are not checked", "list the source facts in required-visible-text.txt")
 SLIDE_COUNT_MISMATCH = IssueKind("SLIDE_COUNT_MISMATCH", WARNING, "the slide count differs from deck-brief.md", "fix slides.html if the user asked for an exact count; otherwise update deck-brief.md")
 BROWSER_RENDER_UNAVAILABLE = IssueKind("BROWSER_RENDER_UNAVAILABLE", WARNING, "no browser rendered the deck", "say that the PDF and screenshots are missing, or deliver from a host with a browser")
-IMAGE_PPTX_UNAVAILABLE = IssueKind("IMAGE_PPTX_UNAVAILABLE", WARNING, "the PPTX holds native text slides because no slide images were rendered", "say the PPTX is the native fallback when delivering it")
+PPTX_WITHOUT_DESIGN = IssueKind("PPTX_WITHOUT_DESIGN", WARNING, "no browser rendered the deck, so the PPTX re-lays the slide text into stock layouts", "say the PPTX does not carry the deck's design, or build where a browser renders it")
+FONT_NOT_EMBEDDED = IssueKind("FONT_NOT_EMBEDDED", WARNING, "the PPTX names a font it could not embed, so the recipient sees a substitute unless that font is installed", "use Paperlogy, or tell the recipient which font to install")
+TEXT_KEPT_AS_PICTURE = IssueKind("TEXT_KEPT_AS_PICTURE", WARNING, "some slide text is drawn into the slide picture, so the recipient cannot edit it", "name that text when delivering; rotated, skewed, filtered, gradient-clipped and SVG text stays a picture")
 
 BUILD_ISSUE_KINDS = (
     SOURCE_NOT_HTML,
@@ -109,7 +111,9 @@ BUILD_ISSUE_KINDS = (
     REQUIRED_TEXT_LEDGER_MISSING,
     SLIDE_COUNT_MISMATCH,
     BROWSER_RENDER_UNAVAILABLE,
-    IMAGE_PPTX_UNAVAILABLE,
+    PPTX_WITHOUT_DESIGN,
+    FONT_NOT_EMBEDDED,
+    TEXT_KEPT_AS_PICTURE,
 )
 
 SLIDE_EMPTY = IssueKind("SLIDE_EMPTY", WARNING, "a slide has no text", "check that the slide exported")

@@ -1,28 +1,43 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+import html
 import zipfile
+
+from pptx_fonts import EmbeddedFont, embedded_font_list_xml, embedded_fonts, font_relationships_xml
+from truetype_font import TrueTypeFace, embedded_open_type
 
 
 PRESENTATION_WIDTH_EMU = 12192000
 PRESENTATION_HEIGHT_EMU = 6858000
 SLIDE_MASTER_RELATIONSHIP_ID = 2147483648
+DEFAULT_THEME_FONTS = ("Arial", "Apple SD Gothic Neo")
 
 
-def write_pptx_static_files(archive: zipfile.ZipFile, slide_count: int, noted_slides: tuple[int, ...]) -> None:
-    archive.writestr("[Content_Types].xml", content_types_xml(slide_count, noted_slides))
+@dataclass(frozen=True)
+class DeckFonts:
+    theme_fonts: tuple[str, str] = DEFAULT_THEME_FONTS
+    embedded_faces: tuple[TrueTypeFace, ...] = ()
+
+
+def write_pptx_static_files(archive: zipfile.ZipFile, slide_count: int, noted_slides: tuple[int, ...], deck_fonts: DeckFonts = DeckFonts()) -> None:
+    fonts = embedded_fonts(list(deck_fonts.embedded_faces), slide_count + 3)
+    archive.writestr("[Content_Types].xml", content_types_xml(slide_count, noted_slides, bool(fonts)))
     archive.writestr("_rels/.rels", package_relationships_xml())
     archive.writestr("docProps/core.xml", core_properties_xml())
     archive.writestr("docProps/app.xml", app_properties_xml(slide_count))
-    archive.writestr("ppt/presentation.xml", presentation_xml(slide_count, bool(noted_slides)))
-    archive.writestr("ppt/_rels/presentation.xml.rels", presentation_relationships_xml(slide_count, bool(noted_slides)))
+    archive.writestr("ppt/presentation.xml", presentation_xml(slide_count, bool(noted_slides), fonts))
+    archive.writestr("ppt/_rels/presentation.xml.rels", presentation_relationships_xml(slide_count, bool(noted_slides), fonts))
     archive.writestr("ppt/slideMasters/slideMaster1.xml", slide_master_xml())
     archive.writestr("ppt/slideMasters/_rels/slideMaster1.xml.rels", slide_master_relationships_xml())
     archive.writestr("ppt/slideLayouts/slideLayout1.xml", slide_layout_xml())
     archive.writestr("ppt/slideLayouts/_rels/slideLayout1.xml.rels", slide_layout_relationships_xml())
-    archive.writestr("ppt/theme/theme1.xml", theme_xml())
+    archive.writestr("ppt/theme/theme1.xml", theme_xml(*deck_fonts.theme_fonts))
+    for font in fonts:
+        archive.writestr(font.part_name, embedded_open_type(font.face))
 
 
-def content_types_xml(slide_count: int, noted_slides: tuple[int, ...]) -> str:
+def content_types_xml(slide_count: int, noted_slides: tuple[int, ...], has_fonts: bool = False) -> str:
     overrides = [
         '<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>',
         '<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>',
@@ -41,6 +56,7 @@ def content_types_xml(slide_count: int, noted_slides: tuple[int, ...]) -> str:
         '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
         '<Default Extension="xml" ContentType="application/xml"/>'
         '<Default Extension="png" ContentType="image/png"/>'
+        + ('<Default Extension="fntdata" ContentType="application/x-fontdata"/>' if has_fonts else "")
         + "".join(overrides)
         + "</Types>"
     )
@@ -69,7 +85,7 @@ def package_relationships_xml() -> str:
     )
 
 
-def presentation_relationships_xml(slide_count: int, has_notes: bool) -> str:
+def presentation_relationships_xml(slide_count: int, has_notes: bool, fonts: tuple[EmbeddedFont, ...] = ()) -> str:
     relationships = [
         '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>',
     ]
@@ -79,21 +95,23 @@ def presentation_relationships_xml(slide_count: int, has_notes: bool) -> str:
     )
     if has_notes:
         relationships.append(f'<Relationship Id="rId{slide_count + 2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster" Target="notesMasters/notesMaster1.xml"/>')
+    relationships.append(font_relationships_xml(fonts))
     return xml_document(f'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">{"".join(relationships)}</Relationships>')
 
 
-def presentation_xml(slide_count: int, has_notes: bool) -> str:
+def presentation_xml(slide_count: int, has_notes: bool, fonts: tuple[EmbeddedFont, ...] = ()) -> str:
     notes_master_ids = f'<p:notesMasterIdLst><p:notesMasterId r:id="rId{slide_count + 2}"/></p:notesMasterIdLst>' if has_notes else ""
     slide_ids = "".join(f'<p:sldId id="{255 + index}" r:id="rId{index + 1}"/>' for index in range(1, slide_count + 1))
     return xml_document(
         '<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
         'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
-        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-        f'<p:sldMasterIdLst><p:sldMasterId id="{SLIDE_MASTER_RELATIONSHIP_ID}" r:id="rId1"/></p:sldMasterIdLst>'
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"'
+        + (' embedTrueTypeFonts="1">' if fonts else ">")
+        + f'<p:sldMasterIdLst><p:sldMasterId id="{SLIDE_MASTER_RELATIONSHIP_ID}" r:id="rId1"/></p:sldMasterIdLst>'
         f"{notes_master_ids}<p:sldIdLst>{slide_ids}</p:sldIdLst>"
         f'<p:sldSz cx="{PRESENTATION_WIDTH_EMU}" cy="{PRESENTATION_HEIGHT_EMU}" type="wide"/>'
         '<p:notesSz cx="6858000" cy="9144000"/>'
-        "</p:presentation>"
+        f"{embedded_font_list_xml(fonts)}</p:presentation>"
     )
 
 
@@ -140,7 +158,8 @@ def slide_layout_xml() -> str:
     )
 
 
-def theme_xml() -> str:
+def theme_xml(latin_typeface: str = DEFAULT_THEME_FONTS[0], east_asian_typeface: str = DEFAULT_THEME_FONTS[1]) -> str:
+    typefaces = f'<a:latin typeface="{html.escape(latin_typeface)}"/><a:ea typeface="{html.escape(east_asian_typeface)}"/><a:cs typeface="{html.escape(latin_typeface)}"/>'
     return xml_document(
         '<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="internkim">'
         '<a:themeElements><a:clrScheme name="internkim">'
@@ -150,7 +169,7 @@ def theme_xml() -> str:
         '<a:accent3><a:srgbClr val="CBD5E1"/></a:accent3><a:accent4><a:srgbClr val="0F172A"/></a:accent4>'
         '<a:accent5><a:srgbClr val="475569"/></a:accent5><a:accent6><a:srgbClr val="E2E8F0"/></a:accent6>'
         '<a:hlink><a:srgbClr val="2563EB"/></a:hlink><a:folHlink><a:srgbClr val="7C3AED"/></a:folHlink>'
-        '</a:clrScheme><a:fontScheme name="internkim"><a:majorFont><a:latin typeface="Arial"/><a:ea typeface="Apple SD Gothic Neo"/></a:majorFont><a:minorFont><a:latin typeface="Arial"/><a:ea typeface="Apple SD Gothic Neo"/></a:minorFont></a:fontScheme>'
+        f'</a:clrScheme><a:fontScheme name="internkim"><a:majorFont>{typefaces}</a:majorFont><a:minorFont>{typefaces}</a:minorFont></a:fontScheme>'
         '<a:fmtScheme name="internkim"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst>'
         '<a:lnStyleLst><a:ln w="63500"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst>'
         '<a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme>'

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import pathlib
+import shutil
 import subprocess
 
 from office_result import INPUT_NOT_FOUND, OfficeFailure
+from editable_pptx import text_layers_path
 from geometry_checks import GEOMETRY_FILE_NAME
 from slide_images import rendered_slide_image_paths
 
@@ -61,6 +63,7 @@ def clear_stale_render_evidence(review_path: pathlib.Path, deck_name: str) -> No
     for stale_path in stale_paths:
         if stale_path.exists():
             stale_path.unlink()
+    shutil.rmtree(text_layers_path(review_path), ignore_errors=True)
 
 
 def write_render_source(review_path: pathlib.Path, render_source: str) -> None:
