@@ -228,6 +228,17 @@ class EditablePptxPackageTest(unittest.TestCase):
         self.assertEqual(rule_properties.find("a:xfrm/a:ext", NAMESPACES).get("cy"), "0")
         self.assertEqual(rule_properties.find("a:ln", NAMESPACES).get("w"), str(3 * EMU_PER_PIXEL))
 
+    def test_validate_counts_the_shapes_that_hold_content_and_not_the_rules_between_them(self):
+        rules = [{"geometry": "line", "from": {"x": 100, "y": 100 + row * 10}, "to": {"x": 900, "y": 100 + row * 10}, "line": {"color": "rgb(216, 212, 203)", "opacity": 1, "widthPx": 1}} for row in range(60)]
+        directory = Path(self.temporary_directory())
+        write_layers(directory / "review", [layout_block([layout_run("표 제목")], {"left": 100, "top": 20, "right": 900, "bottom": 70})], rules)
+        write_editable_pptx(read_text_layers(directory / "review", 1), [""], directory / "deck.pptx")
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "validate", str(directory / "deck.pptx")], capture_output=True, text=True)
+        envelope = json.loads(completed.stdout)
+        self.assertEqual(envelope["details"]["slides"][0]["shapeCount"], 62)
+        self.assertEqual(envelope["details"]["slides"][0]["contentShapeCount"], 2)
+        self.assertNotIn("TOO_MANY_SHAPES", [issue["code"] for issue in envelope["issues"]])
+
     def test_an_unknown_family_is_named_as_rendered_and_reported_unembedded(self):
         archive, written = self.write([layout_block([layout_run("Hello", fontFamily="Georgia")], {"left": 100, "top": 100, "right": 900, "bottom": 150})])
         self.assertEqual(written.unembedded_families, ("Georgia",))
