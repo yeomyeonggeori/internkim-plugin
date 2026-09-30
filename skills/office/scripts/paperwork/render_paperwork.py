@@ -4,6 +4,7 @@ from pathlib import Path
 
 from office_result import KOREAN_FONT_UNAVAILABLE, MISSING_FIELD, PERMISSION_DENIED, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
+from pdf_fonts import register_regular_and_bold
 from paperwork_definitions import CONTRACT_DOCUMENT, PAPERWORK_CONTENT_FIELDS, PAPERWORK_DOCUMENT
 from skill_runtime import cache_home_path
 from paperwork_design import (
@@ -129,7 +130,7 @@ def render_document(document):
     pdf = PaperworkPDF(orientation="P", unit="mm", format="A4")
     pdf.set_margins(PAGE_MARGIN_MILLIMETERS, PAGE_MARGIN_MILLIMETERS, PAGE_MARGIN_MILLIMETERS)
     pdf.set_auto_page_break(auto=True, margin=20)
-    pdf.add_font("Paperwork", fname=str(resolve_font(document)))
+    font_issues = register_regular_and_bold(pdf, "Paperwork", resolve_font(document))
     pdf.add_page()
 
     profile = document.get("profile", {})
@@ -142,15 +143,15 @@ def render_document(document):
     add_sections(pdf, document.get("sections", []))
     add_notes(pdf, document.get("notes", []))
     add_signature(pdf, document.get("signature"), profile)
-    return pdf
+    return pdf, font_issues
 
 
 def content_width(pdf):
     return pdf.w - pdf.l_margin - pdf.r_margin
 
 
-def set_body_font(pdf, size=10.0, color=INK_COLOR):
-    pdf.set_font("Paperwork", size=size)
+def set_body_font(pdf, size=10.0, color=INK_COLOR, is_bold=False):
+    pdf.set_font("Paperwork", "B" if is_bold else "", size=size)
     pdf.set_text_color(*color)
 
 
@@ -165,7 +166,7 @@ def add_letterhead(pdf, profile):
     logo_path = str(profile.get("logoPath", "")).strip()
     if logo_path and Path(logo_path).exists():
         pdf.image(logo_path, x=pdf.l_margin, y=top_y, h=LETTERHEAD_LOGO_HEIGHT)
-    set_body_font(pdf, size=SIZE_LETTERHEAD_NAME, color=HEADING_COLOR)
+    set_body_font(pdf, size=SIZE_LETTERHEAD_NAME, color=HEADING_COLOR, is_bold=True)
     pdf.set_y(top_y)
     pdf.cell(0, 5.5, company_display_name(profile), align="R", new_x="LMARGIN", new_y="NEXT")
     set_body_font(pdf, size=SIZE_LETTERHEAD_DETAIL, color=MUTED_COLOR)
@@ -229,7 +230,7 @@ def add_approval_line(pdf, labels):
 
 
 def add_title(pdf, document):
-    set_body_font(pdf, size=SIZE_TITLE + 3, color=HEADING_COLOR)
+    set_body_font(pdf, size=SIZE_TITLE + 3, color=HEADING_COLOR, is_bold=True)
     pdf.cell(0, 12, str(document["title"]).strip(), align="C", new_x="LMARGIN", new_y="NEXT")
     document_number = str(document.get("documentNumber", "")).strip()
     if document_number:
@@ -269,7 +270,7 @@ def add_meta_table(pdf, meta_rows):
         pdf.set_fill_color(*HEADER_FILL_COLOR)
         pdf.rect(pdf.l_margin, row_y, META_LABEL_WIDTH, row_height, style="DF")
         pdf.rect(pdf.l_margin + META_LABEL_WIDTH, row_y, value_width, row_height, style="D")
-        set_body_font(pdf, size=9, color=HEADING_COLOR)
+        set_body_font(pdf, size=9, color=HEADING_COLOR, is_bold=True)
         pdf.set_xy(pdf.l_margin, row_y)
         pdf.cell(META_LABEL_WIDTH, row_height, label, align="C")
         set_body_font(pdf, size=9)
@@ -319,7 +320,7 @@ def compute_column_widths(pdf, headers, rows):
 
 
 def add_table_row(pdf, column_widths, values, aligns, is_header):
-    set_body_font(pdf, size=9, color=HEADING_COLOR if is_header else INK_COLOR)
+    set_body_font(pdf, size=9, color=HEADING_COLOR if is_header else INK_COLOR, is_bold=is_header)
     texts = ["" if index >= len(values) or values[index] is None else str(values[index]) for index in range(len(column_widths))]
     wrapped_columns = [wrap_text_to_lines(pdf, text, width - TABLE_CELL_PADDING * 2) for text, width in zip(texts, column_widths)]
     row_line_count = max(len(lines) for lines in wrapped_columns)
@@ -341,7 +342,7 @@ def add_totals(pdf, totals):
         label = str(total_row.get("label", "")).strip()
         value = str(total_row.get("value", "")).strip()
         is_final_total = index == len(totals) - 1
-        set_body_font(pdf, size=11 if is_final_total else 9.5, color=HEADING_COLOR if is_final_total else INK_COLOR)
+        set_body_font(pdf, size=11 if is_final_total else 9.5, color=HEADING_COLOR if is_final_total else INK_COLOR, is_bold=is_final_total)
         pdf.cell(0, 7 if is_final_total else 5.5, f"{label}    {value}", align="R", new_x="LMARGIN", new_y="NEXT")
 
 
@@ -349,7 +350,7 @@ def add_sections(pdf, sections):
     for section in sections:
         title = str(section.get("title", "")).strip()
         if title:
-            set_body_font(pdf, size=11, color=HEADING_COLOR)
+            set_body_font(pdf, size=11, color=HEADING_COLOR, is_bold=True)
             write_multiline(pdf, 6.5, title)
             pdf.ln(0.5)
         set_body_font(pdf, size=9.5)
@@ -385,7 +386,7 @@ def add_signature(pdf, signature, profile):
     if not line_text:
         return
     seal_suffix = "  (인)"
-    set_body_font(pdf, size=12, color=HEADING_COLOR)
+    set_body_font(pdf, size=12, color=HEADING_COLOR, is_bold=True)
     full_line = line_text + seal_suffix
     line_y = pdf.get_y()
     pdf.cell(0, 8, full_line, align="C", new_x="LMARGIN", new_y="NEXT")
@@ -531,14 +532,14 @@ def main():
     output_path = Path(os.path.expanduser(arguments.output_path))
     document_path = os.path.expanduser(arguments.document_path)
     try:
-        write_output(document_path, output_path)
+        font_issues = write_output(document_path, output_path)
     except PermissionError as error:
         raise OfficeFailure(PERMISSION_DENIED.issue(
             f"cannot write to {output_path} (permission denied)",
             location=error.filename,
             suggestion=f"rerun the SAME command with the output changed to ~/documents/{output_path.parent.name}/{output_path.name}",
         )) from error
-    return Result(summary=f"rendered {output_path}", output_path=str(output_path))
+    return Result(summary=f"rendered {output_path}", output_path=str(output_path), issues=tuple(font_issues))
 
 
 def write_output(document_path, output_path):
@@ -546,10 +547,11 @@ def write_output(document_path, output_path):
         document = load_contract_document(document_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         generate_docx(document, output_path)
-        return
-    pdf = render_document(load_document(document_path))
+        return []
+    pdf, font_issues = render_document(load_document(document_path))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     pdf.output(str(output_path))
+    return font_issues
 
 
 if __name__ == "__main__":

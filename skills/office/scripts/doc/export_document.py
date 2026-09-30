@@ -5,6 +5,7 @@ from pathlib import Path
 from docx_markdown import markdown_document
 from markdown_blocks import parse_markdown
 from office_result import KOREAN_FONT_UNAVAILABLE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
+from pdf_fonts import register_regular_and_bold
 from pdf_markdown import MarkdownPdf
 from skill_runtime import HANGUL_FONT_PATHS, cache_home_path
 
@@ -34,11 +35,15 @@ def export_pdf(blocks: list, markdown_text: str, output_path: Path, source_direc
     if not has_font and any(ord(character) > 0x2000 for character in markdown_text):
         raise OfficeFailure(KOREAN_FONT_UNAVAILABLE.issue("non-Latin PDF text requires --font-path or an installed Korean-capable font"))
     renderer = MarkdownPdf(PDF_FONT_FAMILY if has_font else "Helvetica", font_size, source_directory)
-    if has_font:
-        for style in ("", "B", "I"):
-            renderer.pdf.add_font(PDF_FONT_FAMILY, style, str(font_path))
-    issues = [issue for block in blocks for issue in renderer.add_block(block)]
+    font_issues = register_document_fonts(renderer.pdf, font_path) if has_font else []
+    issues = font_issues + [issue for block in blocks for issue in renderer.add_block(block)]
     renderer.pdf.output(str(output_path))
+    return issues
+
+
+def register_document_fonts(pdf, font_path: Path) -> list[Issue]:
+    issues = register_regular_and_bold(pdf, PDF_FONT_FAMILY, font_path)
+    pdf.add_font(PDF_FONT_FAMILY, "I", str(font_path))
     return issues
 
 
