@@ -24,7 +24,9 @@ Create or modify local workbook artifacts, validate the accepted result, and att
 
 Use clear sheet names, readable widths, frozen header rows, professional number formats, and filters on every row-and-column table. Keep summary and detail views separate for budgets, operations, and finance. Use formulas when the workbook must stay interactive, preserve a visible source total when provided, and verify row-level formulas reference the same row.
 
-Treat `offRowFormulaCount` as a defect unless a formula intentionally references another sheet or aggregate range. When a heading shifts the table, inspect the generated formula references rather than assuming a helper repaired them. Preserve formulas, styles, sheet names, and macros during edits unless the user asks otherwise.
+Formulas are stored exactly as written, so write every reference for the row and column it lands in, counting any title or heading row you add. The scripts add no rows of their own: the spec `title` is document metadata only, and a title meant to be visible goes in a row or `heading` you write. CSV and `--row` values become numbers when they are plain integers or decimals and dates when they are `YYYY-MM-DD`; values such as `007`, `+82`, `1,500`, or more than 15 digits stay text.
+
+Treat `offRowFormulaCount` as a defect unless a formula intentionally references another sheet or aggregate range. Preserve formulas, styles, sheet names, and macros during edits unless the user asks otherwise.
 
 ## Editing and runtime
 

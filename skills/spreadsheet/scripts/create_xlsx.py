@@ -3,9 +3,9 @@ import argparse
 import csv
 import json
 import os
-import re
 from pathlib import Path
 
+from cell_values import typed_cell_value
 from skill_runtime import ensure_requirements
 
 
@@ -49,7 +49,6 @@ def create_workbook(specification):
     sheets = specification.get("sheets", [])
     if not isinstance(sheets, list) or not sheets:
         raise ValueError("sheets must be a non-empty array")
-    sheets = include_visible_workbook_title(sheets, workbook_title)
 
     for sheet_specification in sheets:
         worksheet = add_sheet(workbook, sheet_specification, get_column_letter)
@@ -76,33 +75,7 @@ def add_sheet(workbook, sheet_specification, get_column_letter):
         worksheet.freeze_panes = freeze_panes.strip()
     if sheet_specification.get("autoFilter", True) and worksheet.max_row > 0 and worksheet.max_column > 0:
         worksheet.auto_filter.ref = auto_filter_reference(worksheet, header_row, get_column_letter)
-    if sheet_specification.get("repairRowFormulas", True):
-        repair_row_formulas(worksheet, header_row)
     return worksheet
-
-
-def include_visible_workbook_title(sheets, workbook_title):
-    if not workbook_title or sheets_contain_text(sheets, workbook_title):
-        return sheets
-    copied_sheets = [dict(sheet) if isinstance(sheet, dict) else sheet for sheet in sheets]
-    first_sheet = copied_sheets[0]
-    if not isinstance(first_sheet, dict):
-        return sheets
-    heading = optional_text(first_sheet.get("heading"), "sheet.heading")
-    first_sheet["heading"] = f"{workbook_title} - {heading}" if heading else workbook_title
-    return copied_sheets
-
-
-def sheets_contain_text(sheets, text):
-    for sheet in sheets:
-        if not isinstance(sheet, dict):
-            continue
-        if text in optional_text(sheet.get("heading"), "sheet.heading"):
-            return True
-        for row in sheet.get("rows", []):
-            if isinstance(row, list) and any(text in str(value) for value in row if value is not None):
-                return True
-    return False
 
 
 def header_row_index(sheet_specification):
@@ -113,30 +86,6 @@ def auto_filter_reference(worksheet, header_row, get_column_letter):
     if worksheet.max_row < header_row:
         return worksheet.dimensions
     return f"A{header_row}:{get_column_letter(worksheet.max_column)}{worksheet.max_row}"
-
-
-def repair_row_formulas(worksheet, header_row):
-    for row in worksheet.iter_rows(min_row=header_row + 1):
-        for cell in row:
-            if not isinstance(cell.value, str) or not cell.value.startswith("="):
-                continue
-            if should_skip_row_formula_repair(cell.value):
-                continue
-            cell.value = rewrite_formula_to_cell_row(cell.value, cell.row)
-
-
-def should_skip_row_formula_repair(formula):
-    upper_formula = formula.upper()
-    if "!" in upper_formula:
-        return True
-    return any(function_name in upper_formula for function_name in ["SUM(", "AVERAGE(", "COUNT(", "MIN(", "MAX("])
-
-
-def rewrite_formula_to_cell_row(formula, row_number):
-    def replace_reference(match):
-        return f"{match.group(1)}{row_number}"
-
-    return re.sub(r"(?<![A-Z])(\$?[A-Z]{1,3})\$?[0-9]+", replace_reference, formula)
 
 
 def read_rows(sheet_specification):
@@ -157,7 +106,7 @@ def read_delimited_rows(sheet_specification):
     if delimiter == "\\t":
         delimiter = "\t"
     with open(csv_path, newline="", encoding="utf-8-sig") as delimited_file:
-        return list(csv.reader(delimited_file, delimiter=delimiter))
+        return [[typed_cell_value(text) for text in row] for row in csv.reader(delimited_file, delimiter=delimiter)]
 
 
 def apply_default_formatting(worksheet, sheet_specification, alignment_class, border_class, font_class, fill_class, side_class, get_column_letter):
@@ -222,7 +171,7 @@ def apply_column_number_formats(worksheet, sheet_specification):
 
 
 def parse_row(row_string):
-    return [cell.strip() for cell in row_string.split(",")]
+    return [typed_cell_value(cell.strip()) for cell in row_string.split(",")]
 
 
 def build_specification(arguments):
