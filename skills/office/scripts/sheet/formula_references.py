@@ -257,6 +257,16 @@ def formula_references(formula: str) -> list[str]:
     return [token.value for token in Tokenizer(formula).items if token.type == Token.OPERAND and token.subtype == Token.RANGE]
 
 
+def referenced_names(formula: str) -> list[str]:
+    return [reference for reference in formula_references(formula) if is_bare_name(reference)]
+
+
+def is_bare_name(reference: str) -> bool:
+    if "!" in reference or "[" in reference or ":" in reference:
+        return False
+    return parse_end(reference) is None
+
+
 def formula_has_error_operand(formula: str) -> bool:
     if not formula.startswith("="):
         return False
