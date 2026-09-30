@@ -4,9 +4,9 @@ Read, extract, merge, split, lightly edit, or create layout-critical PDFs in `~/
 
 ## Workflow
 
-1. For an earlier PDF, append a section page with `pdf edit`; preview a newly uploaded file before extraction.
-2. For a short source-backed PDF, use `pdf create`; use a spec, or a task-local script run through `office python`, only when tables or precise placement require it; `<skill>/scripts/office guide pdf` lists the spec fields. Reading, extracting, merging, and splitting use pypdf in a task-local script.
-3. Validate with `<skill>/scripts/office pdf validate ~/documents/<title>.pdf`: it checks page count, extractable text, required and forbidden facts, encryption, embedded fonts, and Korean-capable fonts. Revise missing text, overflow, glyph, or layout failures before delivery.
+1. For an earlier or uploaded PDF, run `<skill>/scripts/office pdf read <file>` first: text per page, page sizes, and which pages have no extractable text, which are scans. Append a section page with `pdf edit`.
+2. For a short source-backed PDF, use `pdf create`; use a spec, or a task-local script run through `office python`, only when tables or precise placement require it; `<skill>/scripts/office guide pdf` lists the spec fields. Merging and splitting use pypdf in a task-local script.
+3. Validate with `<skill>/scripts/office pdf validate ~/documents/<title>.pdf`: it checks page count, extractable text, required and forbidden facts, encryption, embedded fonts, and Korean-capable fonts. Revise missing text or font failures before delivery.
 
 Put source facts in extractable PDF text, not in images.
 
@@ -20,4 +20,4 @@ For ordinary edits, use `pdf edit` and save in place. For custom layout, write a
 
 ## Final check
 
-Reopen or validate the PDF, confirm all required source values are extractable, inspect page fit and Korean glyphs, then deliver the accepted output.
+Validate the PDF and confirm every required source value is extractable. Then run `<skill>/scripts/office pdf render <file>` and look at `contact-sheet.png`, and at any page it shows a problem on, in `page-NNN.png`: clipped cells, overflow, missing Korean glyphs, blank pages. `--pages 2,4-5` picks pages and `--scale 2` reads small text; the first 12 pages render by default. Deliver the accepted output.
