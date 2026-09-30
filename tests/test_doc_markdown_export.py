@@ -24,7 +24,7 @@ class MarkdownExportTest(unittest.TestCase):
         self.assertIn("https://example.com/about", relationships)
         self.assertIn("<w:hyperlink", document_xml)
         self.assertTrue(blocks[1].get("picture"))
-        self.assertEqual([block["style"] for block in blocks if block["kind"] == "listItem"], ["List Bullet", "List Bullet 2", "List Bullet 3", "List Bullet"])
+        self.assertEqual([block["text"] for block in blocks if block["kind"] == "listItem"], ["하나", "둘", "셋", "넷"])
 
 
 if __name__ == "__main__":
