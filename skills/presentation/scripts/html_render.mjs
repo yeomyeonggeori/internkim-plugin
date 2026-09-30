@@ -1,17 +1,15 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import fs from "node:fs/promises";
-import { accessSync, constants, createReadStream, existsSync, statSync } from "node:fs";
+import { accessSync, constants, createReadStream, statSync } from "node:fs";
 import http from "node:http";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 
 const slideWidth = 1600;
 const slideHeight = 900;
-const chromiumCommandTimeoutMilliseconds = 45000;
-const playwrightLaunchTimeoutMilliseconds = Number(process.env.INTERNKIM_PLAYWRIGHT_LAUNCH_TIMEOUT_MS || "15000");
+const browserStartTimeoutMilliseconds = 15000;
 
 function renderProgress(label) {
   process.stderr.write(`[render] ${label} ${Math.floor(Date.now() / 1000)}\n`);
@@ -35,78 +33,75 @@ async function main() {
   }
 
   const deck = { sourcePath, deckName, buildPath, reviewPath, enabledFormats, slideCount };
-  const moliPath = executableOnPath("moli");
+  const browser = installedDevToolsBrowser();
+  if (!browser) {
+    throw new Error("no browser that speaks the Chrome DevTools Protocol was found");
+  }
   try {
-    if (moliPath) {
-      await renderWithMoli(moliPath, deck);
-    } else {
-      await renderWithPlaywright(deck);
-    }
+    await renderWithDevToolsBrowser(browser, deck);
   } catch (error) {
-    renderProgress(`playwright_failed ${compactErrorMessage(error)}`);
+    renderProgress(`render_failed ${compactErrorMessage(error)}`);
     await removePreviousReviewFiles(reviewPath, deckName);
-    await renderWithChromiumCommand(sourcePath, deckName, buildPath, enabledFormats, slideCount);
+    throw error;
   }
 }
 
-async function renderWithMoli(moliPath, deck) {
-  const { chromium } = await import("playwright-core");
+const devToolsBrowsers = [
+  { program: "moli", argumentsFor: (port) => ["serve", "--layout", "--resource", "--port", String(port)] },
+  ...["google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"].map((program) => ({
+    program,
+    argumentsFor: (port, profilePath) => ["--headless=new", `--remote-debugging-port=${port}`, `--user-data-dir=${profilePath}`, "--no-first-run", "--no-default-browser-check", "--disable-gpu", "--no-sandbox"],
+  })),
+];
+
+function installedDevToolsBrowser() {
+  for (const browser of devToolsBrowsers) {
+    const executablePath = executablePathOf(browser.program);
+    if (executablePath) {
+      return { ...browser, executablePath };
+    }
+  }
+  return null;
+}
+
+function executablePathOf(program) {
+  const candidatePaths = path.isAbsolute(program)
+    ? [program]
+    : (process.env.PATH || "").split(path.delimiter).filter(Boolean).map((directoryPath) => path.join(directoryPath, program));
+  for (const candidatePath of candidatePaths) {
+    try {
+      accessSync(candidatePath, constants.X_OK);
+      return candidatePath;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+async function renderWithDevToolsBrowser(browser, deck) {
+  const { chromium: devToolsClient } = await import("playwright-core");
   const deckServer = await serveDirectory(path.dirname(deck.sourcePath));
-  const cdpPort = await unusedPort();
-  renderProgress("moli_start");
-  const moliProcess = spawn(moliPath, ["serve", "--layout", "--resource", "--port", String(cdpPort)], { stdio: ["ignore", "ignore", "inherit"] });
+  const profilePath = await fs.mkdtemp(path.join(os.tmpdir(), "presentation-browser-"));
+  const port = await unusedPort();
+  renderProgress(`browser_start ${path.basename(browser.program)}`);
+  const browserProcess = spawn(browser.executablePath, browser.argumentsFor(port, profilePath), { stdio: ["ignore", "ignore", "inherit"] });
   try {
-    await waitForCDP(cdpPort);
-    const browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`, { timeout: playwrightLaunchTimeoutMilliseconds });
+    await waitForDevTools(port);
+    const connection = await devToolsClient.connectOverCDP(`http://127.0.0.1:${port}`, { timeout: browserStartTimeoutMilliseconds });
     renderProgress("launched");
     try {
-      await renderDeck(browser, deck, deckServer.urlOf(path.basename(deck.sourcePath)), deckServer.origin);
+      await renderDeck(connection, deck, deckServer.urlOf(path.basename(deck.sourcePath)), deckServer.origin);
     } finally {
-      await browser.close().catch(() => {});
+      await connection.close().catch(() => {});
     }
   } finally {
-    moliProcess.kill("SIGTERM");
+    await stopBrowser(browserProcess);
     deckServer.close();
+    await fs.rm(profilePath, { recursive: true, force: true });
   }
 }
 
-async function renderWithPlaywright(deck) {
-  const { chromium } = await import("playwright-core");
-  renderProgress("launch_start");
-  const browser = await chromium.launch({
-    executablePath: chromiumExecutablePath(),
-    headless: true,
-    timeout: playwrightLaunchTimeoutMilliseconds,
-    args: [
-      "--disable-background-networking",
-      "--disable-background-timer-throttling",
-      "--disable-breakpad",
-      "--disable-client-side-phishing-detection",
-      "--disable-component-update",
-      "--disable-default-apps",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--disable-hang-monitor",
-      "--disable-ipc-flooding-protection",
-      "--disable-popup-blocking",
-      "--disable-prompt-on-repost",
-      "--disable-renderer-backgrounding",
-      "--disable-sync",
-      "--metrics-recording-only",
-      "--no-default-browser-check",
-      "--no-first-run",
-      "--no-sandbox",
-      "--password-store=basic",
-      "--use-mock-keychain",
-    ],
-  });
-  renderProgress("launched");
-  try {
-    await renderDeck(browser, deck, fileURL(deck.sourcePath), "file:");
-  } finally {
-    await browser.close();
-  }
-}
 
 async function renderDeck(browser, deck, sourceURL, allowedURLPrefix) {
   const page = await browser.newPage({ viewport: { width: slideWidth, height: slideHeight }, deviceScaleFactor: 1 });
@@ -150,6 +145,19 @@ async function renderDeck(browser, deck, sourceURL, allowedURLPrefix) {
     }
   }
   renderProgress("render_done");
+}
+
+async function stopBrowser(browserProcess) {
+  if (browserProcess.exitCode !== null) {
+    return;
+  }
+  const exited = new Promise((resolve) => browserProcess.once("exit", () => resolve(true)));
+  browserProcess.kill("SIGTERM");
+  const hasExited = await Promise.race([exited, new Promise((resolve) => setTimeout(() => resolve(false), 2000))]);
+  if (!hasExited) {
+    renderProgress("browser_killed");
+    browserProcess.kill("SIGKILL");
+  }
 }
 
 const contentTypes = {
@@ -213,8 +221,8 @@ function unusedPort() {
   });
 }
 
-async function waitForCDP(port) {
-  const deadline = Date.now() + playwrightLaunchTimeoutMilliseconds;
+async function waitForDevTools(port) {
+  const deadline = Date.now() + browserStartTimeoutMilliseconds;
   while (Date.now() < deadline) {
     const answer = await fetch(`http://127.0.0.1:${port}/json/version`).catch(() => null);
     if (answer?.ok) {
@@ -222,147 +230,21 @@ async function waitForCDP(port) {
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw new Error(`moli did not answer CDP on port ${port}`);
+  throw new Error(`the browser did not answer the DevTools Protocol on port ${port}`);
 }
 
-function executableOnPath(programName) {
-  for (const directoryPath of (process.env.PATH || "").split(path.delimiter).filter(Boolean)) {
-    const candidatePath = path.join(directoryPath, programName);
-    try {
-      accessSync(candidatePath, constants.X_OK);
-      return candidatePath;
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
 
-async function renderWithChromiumCommand(sourcePath, deckName, buildPath, enabledFormats, slideCount) {
-  renderProgress("chromium_command_start");
-  const browserPath = chromiumExecutablePath();
-  const profilePath = await fs.mkdtemp(path.join(os.tmpdir(), "internkim-chromium-"));
-  try {
-    if (enabledFormats.has("pdf")) {
-      await runChromium(browserPath, [
-        ...chromiumCommandArguments(profilePath),
-        `--print-to-pdf=${path.join(buildPath, `${deckName}.pdf`)}`,
-        "--no-pdf-header-footer",
-        "--print-to-pdf-no-header",
-        fileURL(sourcePath),
-      ]);
-    }
-    if (enabledFormats.has("pptx") || enabledFormats.has("review")) {
-      renderProgress(`screenshots ${slideCount}`);
-      for (let index = 1; index <= slideCount; index += 1) {
-        const imagePath = path.join(buildPath, "review", `${deckName}.${String(index).padStart(3, "0")}.png`);
-        await runChromium(browserPath, [
-          ...chromiumCommandArguments(profilePath),
-          `--window-size=${slideWidth},${slideHeight}`,
-          `--screenshot=${imagePath}`,
-          exportSlideURL(sourcePath, index),
-        ]);
-        await assertFileCreated(imagePath, `slide ${index} screenshot`);
-      }
-    }
-    renderProgress("render_done");
-  } finally {
-    await fs.rm(profilePath, { recursive: true, force: true });
-  }
-}
 
-function chromiumCommandArguments(profilePath) {
-  return [
-    "--headless",
-    "--no-sandbox",
-    "--disable-background-networking",
-    "--disable-background-timer-throttling",
-    "--disable-breakpad",
-    "--disable-client-side-phishing-detection",
-    "--disable-component-update",
-    "--disable-default-apps",
-    "--disable-dev-shm-usage",
-    "--disable-gpu",
-    "--disable-hang-monitor",
-    "--disable-ipc-flooding-protection",
-    "--disable-popup-blocking",
-    "--disable-prompt-on-repost",
-    "--disable-renderer-backgrounding",
-    "--disable-sync",
-    "--hide-scrollbars",
-    "--metrics-recording-only",
-    "--mute-audio",
-    "--no-default-browser-check",
-    "--no-first-run",
-    "--password-store=basic",
-    "--run-all-compositor-stages-before-draw",
-    "--use-mock-keychain",
-    "--virtual-time-budget=8000",
-    `--user-data-dir=${profilePath}`,
-  ];
-}
 
-async function runChromium(browserPath, argumentsList) {
-  const completedProcess = await runCommand(browserPath, argumentsList, chromiumCommandTimeoutMilliseconds);
-  if (completedProcess.exitCode !== 0) {
-    throw new Error(`chromium exited ${completedProcess.exitCode}: ${completedProcess.stderr.slice(-1200)}`);
-  }
-}
 
-function runCommand(command, argumentsList, timeoutMilliseconds) {
-  return new Promise((resolve, reject) => {
-    const childProcess = spawn(command, argumentsList, {
-      stdio: ["ignore", "pipe", "pipe"],
-      env: {
-        ...process.env,
-        DBUS_SESSION_BUS_ADDRESS: process.env.DBUS_SESSION_BUS_ADDRESS || "/dev/null",
-      },
-    });
-    let stdout = "";
-    let stderr = "";
-    const timeout = setTimeout(() => {
-      childProcess.kill("SIGKILL");
-      reject(new Error(`${path.basename(command)} timed out after ${timeoutMilliseconds}ms`));
-    }, timeoutMilliseconds);
-    childProcess.stdout.on("data", (chunk) => {
-      stdout += chunk.toString();
-    });
-    childProcess.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    childProcess.on("error", (error) => {
-      clearTimeout(timeout);
-      reject(error);
-    });
-    childProcess.on("close", (exitCode) => {
-      clearTimeout(timeout);
-      resolve({ exitCode, stdout, stderr });
-    });
-  });
-}
 
 async function countSlides(sourcePath) {
   const sourceText = await fs.readFile(sourcePath, "utf8");
   return Array.from(sourceText.matchAll(/<section\b/gi)).length;
 }
 
-function fileURL(sourcePath) {
-  return pathToFileURL(sourcePath).toString();
-}
 
-function exportSlideURL(sourcePath, slideIndex) {
-  const url = new URL(fileURL(sourcePath));
-  url.searchParams.set("internkim-export", "1");
-  url.hash = `slide-${slideIndex}`;
-  return url.toString();
-}
 
-async function assertFileCreated(filePath, label) {
-  const fileInfo = await fs.stat(filePath).catch(() => null);
-  if (!fileInfo || fileInfo.size === 0) {
-    throw new Error(`${label} was not created`);
-  }
-}
 
 function compactErrorMessage(error) {
   return String(error?.message || error).replace(/\s+/g, " ").slice(0, 180);
@@ -395,21 +277,6 @@ async function removePreviousReviewFiles(reviewPath, deckName) {
   }
 }
 
-function chromiumExecutablePath() {
-  const candidates = [
-    process.env.CHROME_PATH,
-    process.env.PUPPETEER_EXECUTABLE_PATH,
-    "/usr/bin/chromium",
-    "/usr/bin/chromium-browser",
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  ].filter(Boolean);
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) {
-      return candidate;
-    }
-  }
-  throw new Error("Chromium executable not found");
-}
 
 main().catch((error) => {
   console.error(error.stack || String(error));

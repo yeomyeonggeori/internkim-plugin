@@ -141,9 +141,6 @@ ensure_node_environment() {
   export NODE_PATH="${NODE_RUNTIME_ROOT}/node_modules${NODE_PATH:+:$NODE_PATH}"
 }
 
-export CHROME_PATH="${CHROME_PATH:-/usr/bin/chromium}"
-export PUPPETEER_EXECUTABLE_PATH="${PUPPETEER_EXECUTABLE_PATH:-$CHROME_PATH}"
-
 needs_node_environment() {
   local format_list=",${FORMATS},"
   case "$format_list" in
