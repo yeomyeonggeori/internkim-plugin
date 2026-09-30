@@ -122,4 +122,6 @@ a host.
 
 ## License
 
-[Apache-2.0](LICENSE).
+[Apache-2.0](LICENSE), except the Paperlogy fonts under
+`skills/presentation/assets/fonts/paperlogy/`, which are under the
+[SIL Open Font License 1.1](skills/presentation/assets/fonts/paperlogy/OFL-1.1.txt).
