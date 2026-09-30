@@ -24,6 +24,33 @@ HANGUL_FONT_PATHS = [
     "/System/Library/Fonts/AppleSDGothicNeo.ttc",
 ]
 
+# Debian's fonts-nanum installs NanumGothicBold.ttf beside NanumGothic.ttf and
+# fonts-noto-cjk installs NotoSansCJK-Bold.ttc beside the Regular one, so a bold
+# face is found by name next to its regular file. Apple SD Gothic Neo keeps all
+# weights in one collection, where face 6 is Bold.
+HANGUL_BOLD_COLLECTION_FACES = {
+    "/System/Library/Fonts/AppleSDGothicNeo.ttc": 6,
+}
+
+
+def find_bold_face(regular_font_path):
+    regular_path = Path(regular_font_path)
+    collection_face = HANGUL_BOLD_COLLECTION_FACES.get(str(regular_path))
+    if collection_face is not None and regular_path.exists():
+        return regular_path, collection_face
+    for bold_path in bold_sibling_paths(regular_path):
+        if bold_path.exists():
+            return bold_path, 0
+    return None
+
+
+def bold_sibling_paths(regular_path):
+    stem = regular_path.stem
+    bold_stems = [f"{stem}Bold", f"{stem}-Bold"]
+    if "Regular" in stem:
+        bold_stems.insert(0, stem.replace("Regular", "Bold"))
+    return [regular_path.with_name(bold_stem + regular_path.suffix) for bold_stem in bold_stems]
+
 
 def ensure_requirements(skill_name):
     requirements_path = Path(__file__).with_name("requirements.txt")
