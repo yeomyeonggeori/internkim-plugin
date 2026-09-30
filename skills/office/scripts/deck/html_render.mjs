@@ -6,11 +6,19 @@ import http from "node:http";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
+import { exportedListAttribute, exportedTextAttribute, extractTextLayout, hideExportedText, insertMarkerProbes, markerProbeAttribute, markerProbeHostId } from "./text_layout.mjs";
 
 const slideWidth = 1600;
 const slideHeight = 900;
 const browserStartTimeoutMilliseconds = 15000;
 const geometryFileName = "geometry.json";
+const textLayersDirectoryName = "pptx-layers";
+const exportedAttributes = { exportedTextAttribute, exportedListAttribute, markerProbeAttribute, markerProbeHostId };
+const slideIsolationStyle = [
+  "html, body { overflow: hidden !important; scrollbar-width: none; }",
+  "section:not([data-internkim-render-target]) { display: none !important; }",
+  "section[data-internkim-render-target] { position: fixed !important; left: 0 !important; top: 0 !important; margin: 0 !important; transform: none !important; visibility: visible !important; }",
+].join("\n");
 const geometryThresholds = { pixelTolerance: 4, overlapRatioMinimum: 0.12, aspectRatioTolerance: 0.05, textPreviewLength: 40 };
 
 function renderProgress(label) {
@@ -138,17 +146,44 @@ async function renderDeck(browser, deck, sourceURL, allowedURLPrefix) {
     });
   }
 
+  const layersPath = path.join(deck.reviewPath, textLayersDirectoryName);
+  const textLayout = deck.enabledFormats.has("pptx") ? await measureTextLayout(page) : null;
   if (deck.enabledFormats.has("pptx") || deck.enabledFormats.has("review")) {
-    const slides = await page.locator("section").all();
-    renderProgress(`screenshots ${slides.length}`);
-    for (let index = 0; index < slides.length; index += 1) {
-      await slides[index].screenshot({
-        path: path.join(deck.reviewPath, `${deck.deckName}.${String(index + 1).padStart(3, "0")}.png`),
-        animations: "disabled",
-      });
-    }
+    await page.addStyleTag({ content: slideIsolationStyle });
+    renderProgress(`screenshots ${deck.slideCount}`);
+    await screenshotEachSlide(page, deck.slideCount, (number) => path.join(deck.reviewPath, `${deck.deckName}.${number}.png`));
+  }
+  if (textLayout) {
+    await fs.mkdir(layersPath, { recursive: true });
+    await page.evaluate(hideExportedText, exportedAttributes);
+    await screenshotEachSlide(page, deck.slideCount, (number) => path.join(layersPath, `background.${number}.png`));
+    await fs.writeFile(path.join(layersPath, "layout.json"), `${JSON.stringify(textLayout, null, 2)}\n`);
+    renderProgress(`text_layers ${textLayout.slides.length}`);
   }
   renderProgress("render_done");
+}
+
+async function measureTextLayout(page) {
+  await page.evaluate(insertMarkerProbes, exportedAttributes);
+  await layOutByPainting(page);
+  return page.evaluate(extractTextLayout, exportedAttributes);
+}
+
+async function layOutByPainting(page) {
+  await page.screenshot({ clip: { x: 0, y: 0, width: 1, height: 1 } });
+}
+
+async function screenshotEachSlide(page, slideCount, filePathOf) {
+  for (let index = 0; index < slideCount; index += 1) {
+    await page.evaluate((target) => {
+      document.querySelectorAll("section").forEach((section, position) => section.toggleAttribute("data-internkim-render-target", position === target));
+    }, index);
+    await page.screenshot({
+      path: filePathOf(String(index + 1).padStart(3, "0")),
+      clip: { x: 0, y: 0, width: slideWidth, height: slideHeight },
+      animations: "disabled",
+    });
+  }
 }
 
 async function writeGeometry(page, deck) {
@@ -397,11 +432,12 @@ async function removePreviousReviewFiles(reviewPath, deckName) {
       entry.startsWith("contact-sheet-") ||
       entry.startsWith("fit-review") ||
       entry === geometryFileName ||
+      entry === textLayersDirectoryName ||
       entry === "slide-review.json" ||
       entry === "slide-review.md" ||
       entry === "render-source.txt"
     ) {
-      await fs.rm(path.join(reviewPath, entry), { force: true });
+      await fs.rm(path.join(reviewPath, entry), { force: true, recursive: true });
     }
   }
 }
