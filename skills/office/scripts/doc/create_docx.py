@@ -15,6 +15,7 @@ from docx.shared import Inches, Pt
 
 from doc_definitions import DOCUMENT_SPECIFICATION, TABLE_FILE
 from docx_defaults import apply_korean_defaults
+from docx_lists import add_list_paragraph, start_list
 from office_result import INVALID_ARGUMENTS, INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
 
@@ -23,7 +24,7 @@ DEFAULT_FONT_NAME = "맑은 고딕"
 DEFAULT_FONT_SIZE = 10.5
 DEFAULT_MARGIN_INCHES = 0.8
 SIZED_STYLE_NAMES = ["Normal", "Title", "Heading 1", "Heading 2", "Heading 3", "Heading 4"]
-LIST_STYLES = {"bullets": "List Bullet", "numbered": "List Number"}
+LIST_BLOCK_TYPES = ("bullets", "numbered")
 TABLE_WIDTH_INCHES = 6.6
 HEADER_FILL_COLOR = "EAF1F8"
 BORDER_COLOR = "B7C3D0"
@@ -122,13 +123,18 @@ def add_block(document: Document, block: dict) -> None:
         document.add_heading(block.get("text") or "", level=int(block.get("level") or 1))
     elif block_type == "paragraph":
         document.add_paragraph(block.get("text") or "")
-    elif block_type in LIST_STYLES:
-        for item in block.get("items") or []:
-            document.add_paragraph(item.strip(), style=LIST_STYLES[block_type])
+    elif block_type in LIST_BLOCK_TYPES:
+        add_list(document, block_type == "numbered", block.get("items") or [])
     elif block_type == "table":
         add_table(document, block)
     elif block_type == "pageBreak":
         document.add_page_break()
+
+
+def add_list(document: Document, is_numbered: bool, items: list[str]) -> None:
+    list_id = start_list(document, is_numbered)
+    for item in items:
+        add_list_paragraph(document, list_id, 0).add_run(item.strip())
 
 
 def add_table(document: Document, block: dict) -> None:

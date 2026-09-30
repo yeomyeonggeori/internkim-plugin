@@ -5,7 +5,7 @@ import argparse
 
 from docx import Document
 
-from create_docx import add_block, require_rectangular_tables
+from create_docx import add_block, add_list, require_rectangular_tables
 from doc_definitions import BLOCK_LIST
 from documents_folder import resolve_document_path
 from office_result import OfficeArgumentParser, Result, read_json_file, run_command
@@ -21,8 +21,8 @@ def main() -> Result:
         document.add_heading(heading_text, level=1)
     for paragraph_text in arguments.paragraph:
         document.add_paragraph(paragraph_text)
-    for bullet_text in arguments.bullet:
-        document.add_paragraph(bullet_text, style="List Bullet")
+    if arguments.bullet:
+        add_list(document, False, arguments.bullet)
     for block in blocks:
         add_block(document, block)
     document.save(document_path)

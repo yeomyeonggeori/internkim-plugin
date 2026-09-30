@@ -11,21 +11,24 @@ from docx.shared import Inches, Pt, RGBColor
 
 from doc_definitions import IMAGE_UNAVAILABLE
 from docx_defaults import apply_korean_defaults
+from docx_lists import add_list_paragraph, start_list
 from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, inline_segments, link_parts, local_image_problem
 from office_result import Issue
 
 
 MAXIMUM_IMAGE_WIDTH = Inches(6)
 LINK_COLOR = "0563C1"
-LIST_STYLE_DEPTH = 3
 
 
 def markdown_document(blocks: list, font_name: str, font_size: float, source_directory: Path) -> tuple[Document, list[Issue]]:
     document = Document()
     set_base_font(document, font_name, font_size)
     issues = []
+    list_ids: dict[bool, int] = {}
     for block in blocks:
-        issues.extend(add_block(document, block, source_directory))
+        if not isinstance(block, ListItem):
+            list_ids.clear()
+        issues.extend(add_block(document, block, source_directory, list_ids))
     return document, issues
 
 
@@ -35,13 +38,13 @@ def set_base_font(document: Document, font_name: str, font_size: float) -> None:
     apply_korean_defaults(document, font_name)
 
 
-def add_block(document: Document, block, source_directory: Path) -> list[Issue]:
+def add_block(document: Document, block, source_directory: Path, list_ids: dict[bool, int]) -> list[Issue]:
     if isinstance(block, Heading):
         document.add_heading(block.text, level=block.level)
     elif isinstance(block, Table):
         add_table(document, block.rows)
     elif isinstance(block, ListItem):
-        add_inline_runs(document.add_paragraph(style=list_style(block)), block.text)
+        add_inline_runs(add_list_item(document, block, list_ids), block.text)
     elif isinstance(block, Quote):
         add_quote(document, block.text)
     elif isinstance(block, Image):
@@ -51,10 +54,12 @@ def add_block(document: Document, block, source_directory: Path) -> list[Issue]:
     return []
 
 
-def list_style(item: ListItem) -> str:
-    base = "List Number" if item.is_numbered else "List Bullet"
-    depth = min(item.level, LIST_STYLE_DEPTH - 1)
-    return base if depth == 0 else f"{base} {depth + 1}"
+def add_list_item(document: Document, item: ListItem, list_ids: dict[bool, int]):
+    if item.level == 0 and list_ids and item.is_numbered not in list_ids:
+        list_ids.clear()
+    if item.is_numbered not in list_ids:
+        list_ids[item.is_numbered] = start_list(document, item.is_numbered)
+    return add_list_paragraph(document, list_ids[item.is_numbered], item.level)
 
 
 def add_table(document: Document, rows: list[list[str]]) -> None:

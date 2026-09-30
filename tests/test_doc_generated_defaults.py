@@ -53,5 +53,47 @@ class KoreanLanguageTest(GeneratedDocumentTest):
         self.assert_korean_defaults(self.exported("# 개요\n\n본문\n"))
 
 
+def list_paragraphs(document_path):
+    document = package_part(document_path, "word/document.xml")
+    return [
+        (int(re.search(r'<w:ilvl w:val="(\d+)"', properties).group(1)), int(re.search(r'<w:numId w:val="(\d+)"', properties).group(1)))
+        for properties in re.findall(r"<w:numPr>.*?</w:numPr>", document, re.S)
+    ]
+
+
+def number_format(document_path, number_id, level):
+    numbering = package_part(document_path, "word/numbering.xml")
+    abstract_id = re.search(rf'<w:num w:numId="{number_id}"[^>]*><w:abstractNumId w:val="(\d+)"', numbering).group(1)
+    definition = re.search(rf'<w:abstractNum [^>]*w:abstractNumId="{abstract_id}".*?</w:abstractNum>', numbering, re.S).group(0)
+    return re.search(rf'<w:lvl w:ilvl="{level}".*?<w:numFmt w:val="(\w+)"', definition, re.S).group(1)
+
+
+class ListLevelTest(GeneratedDocumentTest):
+    def test_exported_nested_lists_use_list_levels_and_each_numbered_list_restarts(self):
+        path = self.exported("- 하나\n  - 둘\n    - 셋\n- 넷\n\n문단\n\n1. 가\n   1. 나\n2. 다\n\n문단\n\n1. 라\n")
+        paragraphs = list_paragraphs(path)
+        self.assertEqual([level for level, _ in paragraphs], [0, 1, 2, 0, 0, 1, 0, 0])
+        bullet_list, first_numbered, second_numbered = paragraphs[0][1], paragraphs[4][1], paragraphs[7][1]
+        self.assertEqual({number for _, number in paragraphs[:4]}, {bullet_list})
+        self.assertEqual({number for _, number in paragraphs[4:7]}, {first_numbered})
+        self.assertNotEqual(first_numbered, second_numbered)
+        self.assertEqual([number_format(path, bullet_list, level) for level in range(3)], ["bullet"] * 3)
+        self.assertEqual([number_format(path, first_numbered, level) for level in range(3)], ["decimal", "lowerLetter", "lowerRoman"])
+        self.assertEqual(len(re.findall(r"<w:startOverride", package_part(path, "word/numbering.xml"))), 6)
+        self.assertNotRegex(package_part(path, "word/document.xml"), r'w:pStyle w:val="List(Bullet|Number)')
+
+    def test_created_lists_are_real_lists(self):
+        path = self.created([
+            {"type": "bullets", "items": ["하나", "둘"]},
+            {"type": "numbered", "items": ["가", "나"]},
+            {"type": "numbered", "items": ["다"]},
+        ])
+        paragraphs = list_paragraphs(path)
+        self.assertEqual([level for level, _ in paragraphs], [0] * 5)
+        self.assertEqual(len({number for _, number in paragraphs}), 3)
+        self.assertEqual(number_format(path, paragraphs[0][1], 0), "bullet")
+        self.assertEqual(number_format(path, paragraphs[2][1], 0), "decimal")
+
+
 if __name__ == "__main__":
     unittest.main()
