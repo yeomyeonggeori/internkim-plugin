@@ -1,3 +1,4 @@
+import html
 import pathlib
 import re
 
@@ -23,3 +24,16 @@ def remove_invisible_markup(text: str) -> str:
     text = re.sub(r"<style[^>]*>.*?</style>", " ", text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"<script[^>]*>.*?</script>", " ", text, flags=re.DOTALL | re.IGNORECASE)
     return re.sub(SPEAKER_NOTES_BLOCK_PATTERN, " ", text, flags=re.DOTALL | re.IGNORECASE)
+
+
+def slide_title(slide_source: str) -> str:
+    match = re.search(r"<(h[1-3])\b[^>]*>(.*?)</\1>", slide_source, flags=re.IGNORECASE | re.DOTALL)
+    if not match:
+        return ""
+    return single_line_text(match.group(2))
+
+
+def single_line_text(markup: str) -> str:
+    text = html.unescape(re.sub(r"<[^>]+>", "\n", markup))
+    lines = [re.sub(r"\s+", " ", line).strip() for line in text.splitlines()]
+    return " ".join(line for line in lines if line)
