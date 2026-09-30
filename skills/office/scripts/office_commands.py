@@ -35,6 +35,8 @@ COMMANDS = (
     Command("doc", "edit", "doc/edit_docx.py", "append blocks to a .docx"),
     Command("doc", "read", "doc/read_docx.py", "list a .docx's blocks, headers, footers and comments by index"),
     Command("doc", "apply", "doc/apply_docx.py", "apply a batch of edits to a .docx, all or none, with --dry-run"),
+    Command("doc", "merge", "doc/merge_docx.py", "fill a .docx template's {{ placeholders }} from a values file"),
+    Command("doc", "check", "doc/check_docx.py", "find placeholders left, broken cross-references, a stale contents list and missing East Asian fonts"),
     Command("doc", "validate", "doc/validate_docx.py", "check a .docx for required text, fonts and layout"),
     Command("pdf", "create", "pdf/create_pdf.py", "lay out a PDF from blocks or a JSON spec"),
     Command("pdf", "edit", "pdf/edit_pdf.py", "append a section page to a PDF"),
