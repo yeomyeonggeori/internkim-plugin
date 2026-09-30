@@ -1,7 +1,7 @@
 import html
 import re
 
-from slide_source import remove_invisible_markup, split_slide_sources
+from slide_source import remove_invisible_markup, slide_title, split_slide_sources
 
 
 PREVIEW_CHARACTER_LIMIT = 180
@@ -56,7 +56,7 @@ def preview_text(text: str) -> str:
 
 def inspect_slide_structure(slide_source: str) -> dict[str, object]:
     class_names = extract_class_names(slide_source)
-    title = first_heading_text(slide_source)
+    title = slide_title(slide_source)
     slide_role = extract_section_attribute(slide_source, "data-slide-role")
     visual_system = extract_section_attribute(slide_source, "data-visual-system")
     return {
@@ -102,16 +102,6 @@ def extract_section_attribute(slide_source: str, attribute_name: str) -> str:
     if not attribute_match:
         return ""
     return normalize_structure_text(html.unescape(attribute_match.group(2)))
-
-
-def first_heading_text(slide_source: str) -> str:
-    heading_texts = [
-        normalize_visible_text(html.unescape(convert_html_markup_to_text(match.group(2)))).replace("\n", " ")
-        for match in re.finditer(r"<(h[1-3])\b[^>]*>(.*?)</\1>", slide_source, flags=re.IGNORECASE | re.DOTALL)
-    ]
-    if not heading_texts:
-        return ""
-    return max(heading_texts, key=len)
 
 
 def normalize_structure_text(value: str) -> str:
