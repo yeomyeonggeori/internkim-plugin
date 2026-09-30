@@ -59,6 +59,13 @@ class OfficeEntryTest(unittest.TestCase):
                 referenced_names.add(words[0] if words[0] == "python" or not words[1] else " ".join(words))
         self.assertEqual(referenced_names - command_names, set())
 
+    def test_route_table_lists_every_command(self):
+        skill_text = (SKILLS_PATH / "office" / "SKILL.md").read_text(encoding="utf-8")
+        route_table = skill_text.split("## Route the work")[1].split("\n## ")[0]
+        listed_names = set(re.findall(r"`([a-z]+ [a-z]+)`", route_table))
+        command_names = {command.name for command in office_command_table()}
+        self.assertEqual(command_names ^ listed_names, set())
+
 
 class HostNeutralEnvironmentTest(unittest.TestCase):
     def test_no_skill_names_its_host(self):
