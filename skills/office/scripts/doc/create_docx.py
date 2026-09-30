@@ -6,7 +6,6 @@ import os
 from pathlib import Path
 
 from docx import Document
-from docx.enum.section import WD_ORIENT
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
@@ -14,7 +13,7 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Pt
 
 from doc_definitions import DOCUMENT_SPECIFICATION, TABLE_FILE
-from docx_defaults import apply_korean_defaults
+from docx_defaults import apply_korean_defaults, set_page, usable_width_inches
 from docx_lists import add_list_paragraph, start_list
 from office_result import INVALID_ARGUMENTS, INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
@@ -22,10 +21,8 @@ from office_schema import require_valid
 
 DEFAULT_FONT_NAME = "맑은 고딕"
 DEFAULT_FONT_SIZE = 10.5
-DEFAULT_MARGIN_INCHES = 0.8
 SIZED_STYLE_NAMES = ["Normal", "Title", "Heading 1", "Heading 2", "Heading 3", "Heading 4"]
 LIST_BLOCK_TYPES = ("bullets", "numbered")
-TABLE_WIDTH_INCHES = 6.6
 HEADER_FILL_COLOR = "EAF1F8"
 BORDER_COLOR = "B7C3D0"
 
@@ -78,7 +75,7 @@ def table_width_problems(rows: list[list], location: str) -> list[Issue]:
 
 def create_document(specification: dict) -> Document:
     document = Document()
-    set_page(document.sections[0], specification.get("page") or {})
+    set_document_page(document.sections[0], specification.get("page") or {})
     font_name = (specification.get("fontName") or DEFAULT_FONT_NAME).strip()
     set_text_sizes(document, float(specification.get("fontSize") or DEFAULT_FONT_SIZE))
     apply_korean_defaults(document, font_name)
@@ -88,16 +85,9 @@ def create_document(specification: dict) -> Document:
     return document
 
 
-def set_page(section, page: dict) -> None:
-    if page.get("orientation") == "landscape":
-        section.orientation = WD_ORIENT.LANDSCAPE
-        section.page_width, section.page_height = section.page_height, section.page_width
+def set_document_page(section, page: dict) -> None:
     margin_inches = page.get("marginInches")
-    margin = Inches(float(DEFAULT_MARGIN_INCHES if margin_inches is None else margin_inches))
-    section.top_margin = margin
-    section.right_margin = margin
-    section.bottom_margin = margin
-    section.left_margin = margin
+    set_page(section, None if margin_inches is None else float(margin_inches), page.get("orientation") == "landscape")
 
 
 def set_text_sizes(document: Document, font_size: float) -> None:
@@ -140,7 +130,7 @@ def add_list(document: Document, is_numbered: bool, items: list[str]) -> None:
 def add_table(document: Document, block: dict) -> None:
     rows = block["rows"]
     width = len(rows[0])
-    column_widths = read_column_widths(block, width)
+    column_widths = read_column_widths(block, width, usable_width_inches(document.sections[-1]))
     table = document.add_table(rows=0, cols=width)
     table.style = block.get("style") or "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -161,11 +151,11 @@ def fill_cell(cell, value: object, width_inches: float, is_header: bool) -> None
         shade_cell(cell, HEADER_FILL_COLOR)
 
 
-def read_column_widths(block: dict, width: int) -> list[float]:
+def read_column_widths(block: dict, width: int, table_width: float) -> list[float]:
     column_widths = block.get("columnWidthsInches")
     if isinstance(column_widths, list) and len(column_widths) == width:
         return [float(value) for value in column_widths]
-    return [TABLE_WIDTH_INCHES / width for _ in range(width)]
+    return [table_width / width for _ in range(width)]
 
 
 def set_cell_width(cell, width_inches: float) -> None:

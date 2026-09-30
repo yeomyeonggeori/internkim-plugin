@@ -95,5 +95,31 @@ class ListLevelTest(GeneratedDocumentTest):
         self.assertEqual(number_format(path, paragraphs[2][1], 0), "decimal")
 
 
+def page_setup(document_path):
+    document = package_part(document_path, "word/document.xml")
+    size = re.search(r"<w:pgSz ([^>]*)/>", document).group(1)
+    margins = re.search(r"<w:pgMar ([^>]*)/>", document).group(1)
+    return (
+        {name: int(value) for name, value in re.findall(r'w:(w|h)="(\d+)"', size)},
+        {name: int(value) for name, value in re.findall(r'w:(top|right|bottom|left)="(\d+)"', margins)},
+        "landscape" in size,
+    )
+
+
+class PageTest(GeneratedDocumentTest):
+    A4 = {"w": 11906, "h": 16838}
+    ONE_INCH = {"top": 1440, "right": 1440, "bottom": 1440, "left": 1440}
+
+    def test_created_page_is_a4_with_one_inch_margins(self):
+        self.assertEqual(page_setup(self.created()), (self.A4, self.ONE_INCH, False))
+
+    def test_exported_page_is_a4_with_one_inch_margins(self):
+        self.assertEqual(page_setup(self.exported("본문\n")), (self.A4, self.ONE_INCH, False))
+
+    def test_explicit_page_values_are_kept(self):
+        size, margins, is_landscape = page_setup(self.created(page={"orientation": "landscape", "marginInches": 0.5}))
+        self.assertEqual((size, set(margins.values()), is_landscape), ({"w": 16838, "h": 11906}, {720}, True))
+
+
 if __name__ == "__main__":
     unittest.main()
