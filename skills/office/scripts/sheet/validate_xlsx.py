@@ -5,7 +5,7 @@ from openpyxl import load_workbook
 
 from office_result import Issue, OfficeArgumentParser, Result, run_command
 from sheet_definitions import AUTO_FILTER_MISSING, BLANK_HEADER_CELLS, HEADER_NOT_FROZEN
-from sheet_styling import header_row_index
+from sheet_styling import MINIMUM_DATA_ROWS, MINIMUM_TABLE_COLUMNS, header_row_index, non_blank_count
 
 
 FORMULA_CELL_LIMIT = 50
@@ -35,12 +35,15 @@ def main() -> Result:
 def summarize_sheet(worksheet) -> dict:
     header_row = header_row_index(worksheet)
     header_values = [cell.value for cell in worksheet[header_row]] if worksheet.max_row >= header_row else []
+    data_rows = sum(1 for row in worksheet.iter_rows(min_row=header_row + 1) if non_blank_count(cell.value for cell in row) > 0)
     return {
         "title": worksheet.title,
         "rows": worksheet.max_row,
         "columns": worksheet.max_column,
         "freezePanes": str(worksheet.freeze_panes) if worksheet.freeze_panes else None,
         "autoFilter": bool(worksheet.auto_filter.ref),
+        "dataRows": data_rows,
+        "isDataTable": non_blank_count(header_values) >= MINIMUM_TABLE_COLUMNS and data_rows >= MINIMUM_DATA_ROWS,
         "blankHeaderCount": sum(1 for value in header_values if value is None or str(value).strip() == ""),
     }
 
@@ -52,9 +55,9 @@ def is_formula(value: object) -> bool:
 def sheet_issues(summary: dict) -> list[Issue]:
     title = summary["title"]
     issues = []
-    if not summary["freezePanes"]:
+    if summary["isDataTable"] and not summary["freezePanes"]:
         issues.append(HEADER_NOT_FROZEN.issue(f"{title}: header row is not frozen", title))
-    if not summary["autoFilter"]:
+    if summary["isDataTable"] and not summary["autoFilter"]:
         issues.append(AUTO_FILTER_MISSING.issue(f"{title}: auto filter is missing", title))
     if summary["blankHeaderCount"] > 0:
         issues.append(BLANK_HEADER_CELLS.issue(f"{title}: {summary['blankHeaderCount']} blank header cells", title))
