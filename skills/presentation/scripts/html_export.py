@@ -7,12 +7,13 @@ import subprocess
 import sys
 import time
 
-from browser_render import clear_stale_render_evidence, rendered_slide_image_paths, try_html_render, write_render_source
+from browser_render import clear_stale_render_evidence, try_html_render, write_render_source
 from design_tokens import read_design_tokens
 from image_pptx import write_image_backed_pptx
 from native_pptx import write_native_text_pptx
 from native_preview import write_native_review_images
 from resource_inlining import inject_vendored_paperlogy_fallback, inline_local_fonts, inline_local_images
+from slide_images import rendered_slide_image_paths
 from slide_model import SlideModel, create_slide_models, extract_notes, extract_slide_sources
 from slide_source import read_optional_text
 from slide_viewer import inject_screen_slide_viewer

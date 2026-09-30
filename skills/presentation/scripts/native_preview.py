@@ -16,6 +16,7 @@ from native_rendering import (
     timeline_lines,
     visible_card_count,
 )
+from slide_images import slide_image_filename
 from slide_model import SlideModel
 
 
@@ -47,7 +48,7 @@ def write_native_review_images(slide_models: list[SlideModel], design: dict[str,
         image = Image.new("RGB", (SLIDE_WIDTH, SLIDE_HEIGHT), hex_to_rgb("111827" if model.kind == "cover" else colors["background"]))
         draw = ImageDraw.Draw(image)
         draw_native_preview_slide(draw, model, colors, fonts)
-        image.save(review_path / f"{deck_name}.{model.index:03}.png")
+        image.save(review_path / slide_image_filename(deck_name, model.index))
     return True
 
 
