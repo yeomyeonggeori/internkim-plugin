@@ -11,12 +11,14 @@ BOOTSTRAP_READY_ENVIRONMENT_PREFIX = "INTERNKIM_SKILL_BOOTSTRAP_READY"
 BOOTSTRAP_DISABLE_ENVIRONMENT_PREFIX = "INTERNKIM_SKILL_BOOTSTRAP_DISABLE"
 SKILL_CACHE_DIRECTORY_NAME = "internkim-skills"
 
-# Debian's fonts-nanum installs the first, fonts-noto-cjk the second, and older
-# layouts the third; macOS carries the fourth. AppleGothic.ttf is deliberately
+# Debian's fonts-nanum installs the first, the internkim package carries the
+# second, fonts-noto-cjk installs the third, and older layouts the fourth; macOS
+# carries the fifth. AppleGothic.ttf is deliberately
 # absent: it is a legacy AAT face with no OS/2 table, so fpdf2's add_font raises
 # KeyError: 'OS/2' and a host holding only that font has no Korean font at all.
 HANGUL_FONT_PATHS = [
     "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+    "/usr/share/fonts/truetype/internkim/NanumGothic.ttf",
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
     "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
     "/System/Library/Fonts/AppleSDGothicNeo.ttc",
