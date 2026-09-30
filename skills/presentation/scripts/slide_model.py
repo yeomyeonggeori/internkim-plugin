@@ -122,30 +122,3 @@ def visible_text(source: str) -> str:
     lines = [re.sub(r"\s+", " ", html.unescape(line)).strip() for line in source.splitlines()]
     return "\n".join(line for line in lines if line)
 
-
-def read_design_tokens(path: pathlib.Path) -> dict[str, str]:
-    if not path.exists():
-        return {}
-    text = path.read_text(encoding="utf-8")
-    if not text.startswith("---"):
-        return {}
-    parts = text.split("---", 2)
-    if len(parts) < 3:
-        return {}
-    tokens = {}
-    section = ""
-    for raw_line in parts[1].splitlines():
-        line = raw_line.rstrip()
-        if not line.strip():
-            continue
-        if not line.startswith(" ") and line.endswith(":"):
-            section = line[:-1].strip()
-            continue
-        if not section or ":" not in line:
-            continue
-        key, value = line.split(":", 1)
-        key = key.strip()
-        value = value.strip().strip('"').strip("'")
-        if key and value:
-            tokens[section + "." + key] = value
-    return tokens
