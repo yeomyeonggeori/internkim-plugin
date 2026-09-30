@@ -125,6 +125,7 @@ def add_image(document: Document, image: Image, source_directory: Path) -> list[
         picture = document.add_picture(str(image_path))
     except (UnrecognizedImageError, OSError) as error:
         return [unavailable_image(document, image, f"could not be read ({error})")]
+    picture._inline.docPr.set("descr", image.alt)
     if picture.width > MAXIMUM_IMAGE_WIDTH:
         picture.height = int(picture.height * MAXIMUM_IMAGE_WIDTH / picture.width)
         picture.width = MAXIMUM_IMAGE_WIDTH
