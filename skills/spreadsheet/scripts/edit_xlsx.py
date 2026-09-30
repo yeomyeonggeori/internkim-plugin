@@ -6,6 +6,8 @@ import os
 
 from openpyxl import load_workbook
 
+from cell_values import typed_cell_value
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Append rows to an existing XLSX workbook in place.")
@@ -38,7 +40,7 @@ def load_rows_from_json(rows_path):
 
 
 def parse_row(row_string):
-    return [cell.strip() for cell in row_string.split(",")]
+    return [typed_cell_value(cell.strip()) for cell in row_string.split(",")]
 
 
 def resolve_worksheet(workbook, sheet_name):

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import json
-import re
 
 from skill_runtime import ensure_requirements
 
@@ -26,7 +25,6 @@ def summarize_workbook(workbook_path):
             "autoFilter": sheet_summary["autoFilter"],
             "blankHeaderCount": sheet_summary["blankHeaderCount"],
             "errorFormulaCount": sheet_summary["errorFormulaCount"],
-            "offRowFormulaCount": sheet_summary["offRowFormulaCount"],
         })
         warnings.extend(sheet_warnings(worksheet.title, sheet_summary))
         for row in worksheet.iter_rows():
@@ -48,13 +46,10 @@ def summarize_sheet(worksheet):
     header_values = [cell.value for cell in worksheet[header_row]] if worksheet.max_row >= header_row else []
     blank_header_count = sum(1 for value in header_values if value is None or str(value).strip() == "")
     error_formula_count = 0
-    off_row_formula_count = 0
     for row in worksheet.iter_rows():
         for cell in row:
             if isinstance(cell.value, str) and ("#REF!" in cell.value or "#VALUE!" in cell.value or "#DIV/0!" in cell.value):
                 error_formula_count += 1
-            if formula_uses_different_detail_row(cell):
-                off_row_formula_count += 1
     return {
         "headerRow": header_row,
         "titleRowDetected": header_row == 2,
@@ -62,7 +57,6 @@ def summarize_sheet(worksheet):
         "autoFilter": bool(worksheet.auto_filter.ref),
         "blankHeaderCount": blank_header_count,
         "errorFormulaCount": error_formula_count,
-        "offRowFormulaCount": off_row_formula_count,
     }
 
 
@@ -80,19 +74,6 @@ def non_blank_count(values):
     return sum(1 for value in values if value is not None and str(value).strip())
 
 
-def formula_uses_different_detail_row(cell):
-    if not isinstance(cell.value, str) or not cell.value.startswith("="):
-        return False
-    formula = cell.value.upper()
-    if "!" in formula:
-        return False
-    if any(function_name in formula for function_name in ["SUM(", "AVERAGE(", "COUNT(", "MIN(", "MAX("]):
-        return False
-    referenced_rows = [int(match.group(2)) for match in re.finditer(r"(?<![A-Z])([A-Z]{1,3})([0-9]+)", formula)]
-    if not referenced_rows:
-        return False
-    return any(row_number != cell.row for row_number in referenced_rows)
-
 
 def sheet_warnings(title, sheet_summary):
     warnings = []
@@ -104,8 +85,6 @@ def sheet_warnings(title, sheet_summary):
         warnings.append(f"{title}: {sheet_summary['blankHeaderCount']} blank header cells")
     if sheet_summary["errorFormulaCount"] > 0:
         warnings.append(f"{title}: {sheet_summary['errorFormulaCount']} formulas contain spreadsheet error markers")
-    if sheet_summary["offRowFormulaCount"] > 0:
-        warnings.append(f"{title}: {sheet_summary['offRowFormulaCount']} row-level formulas reference a different row")
     return warnings
 
 
