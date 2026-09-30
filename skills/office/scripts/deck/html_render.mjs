@@ -10,6 +10,8 @@ import path from "node:path";
 const slideWidth = 1600;
 const slideHeight = 900;
 const browserStartTimeoutMilliseconds = 15000;
+const geometryFileName = "geometry.json";
+const geometryThresholds = { pixelTolerance: 1, overlapRatioMinimum: 0.12, aspectRatioTolerance: 0.05, textPreviewLength: 40 };
 
 function renderProgress(label) {
   process.stderr.write(`[render] ${label} ${Math.floor(Date.now() / 1000)}\n`);
@@ -124,6 +126,8 @@ async function renderDeck(browser, deck, sourceURL, allowedURLPrefix) {
     throw new Error(`expected ${deck.slideCount} slides, rendered ${renderedSlideCount}`);
   }
 
+  await writeGeometry(page, deck);
+
   if (deck.enabledFormats.has("pdf")) {
     await page.pdf({
       path: path.join(deck.buildPath, `${deck.deckName}.pdf`),
@@ -145,6 +149,130 @@ async function renderDeck(browser, deck, sourceURL, allowedURLPrefix) {
     }
   }
   renderProgress("render_done");
+}
+
+async function writeGeometry(page, deck) {
+  const slides = await page.evaluate(measureSlideGeometry, geometryThresholds);
+  const geometry = { viewport: { width: slideWidth, height: slideHeight }, slides };
+  await fs.writeFile(path.join(deck.reviewPath, geometryFileName), `${JSON.stringify(geometry, null, 2)}\n`);
+  renderProgress(`geometry ${slides.length}`);
+}
+
+function measureSlideGeometry(thresholds) {
+  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength } = thresholds;
+
+  const isMeasurable = (element) => {
+    const style = getComputedStyle(element);
+    return style.display !== "none" && style.visibility !== "hidden" && !element.closest(".notes");
+  };
+
+  const describe = (element) => {
+    const identifier = element.id ? `#${element.id}` : "";
+    const classes = Array.from(element.classList).slice(0, 2).map((name) => `.${name}`).join("");
+    const text = (element.textContent || "").replace(/\s+/g, " ").trim().slice(0, textPreviewLength);
+    return { selector: `${element.tagName.toLowerCase()}${identifier}${classes}`, text };
+  };
+
+  const round = (value) => Math.round(value * 10) / 10;
+
+  const roundRatio = (value) => Math.round(value * 1000) / 1000;
+
+  const describeRect = (rect) => ({ left: round(rect.left), top: round(rect.top), right: round(rect.right), bottom: round(rect.bottom) });
+
+  const elementsOf = (section) => [section, ...Array.from(section.querySelectorAll("*")).filter(isMeasurable)];
+
+  const overflowingElements = (section) => {
+    const overflowing = elementsOf(section).filter((element) => {
+      if (element.clientWidth === 0 || element.clientHeight === 0) return false;
+      return element.scrollHeight > element.clientHeight + pixelTolerance || element.scrollWidth > element.clientWidth + pixelTolerance;
+    });
+    return overflowing.filter((element) => !overflowing.some((other) => other !== element && element.contains(other)));
+  };
+
+  const describeOverflow = (element) => ({
+    ...describe(element),
+    scrollWidth: element.scrollWidth,
+    clientWidth: element.clientWidth,
+    scrollHeight: element.scrollHeight,
+    clientHeight: element.clientHeight,
+  });
+
+  const isOutsideFrame = (rect, frame) =>
+    rect.width > 0 && rect.height > 0 &&
+    (rect.left < frame.left - pixelTolerance || rect.top < frame.top - pixelTolerance ||
+      rect.right > frame.right + pixelTolerance || rect.bottom > frame.bottom + pixelTolerance);
+
+  const elementsOutsideFrame = (section) => {
+    const frame = section.getBoundingClientRect();
+    const isOutside = (element) => isOutsideFrame(element.getBoundingClientRect(), frame);
+    return elementsOf(section)
+      .slice(1)
+      .filter((element) => isOutside(element) && !(element.parentElement !== section && isOutside(element.parentElement)));
+  };
+
+  const ownTextRects = (element) =>
+    Array.from(element.childNodes)
+      .filter((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim())
+      .flatMap((node) => {
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        return Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0);
+      });
+
+  const unionRect = (rects) => ({
+    left: Math.min(...rects.map((rect) => rect.left)),
+    top: Math.min(...rects.map((rect) => rect.top)),
+    right: Math.max(...rects.map((rect) => rect.right)),
+    bottom: Math.max(...rects.map((rect) => rect.bottom)),
+  });
+
+  const area = (rect) => Math.max(0, rect.right - rect.left) * Math.max(0, rect.bottom - rect.top);
+
+  const overlapRatio = (first, second) => {
+    const shared = area({
+      left: Math.max(first.left, second.left),
+      top: Math.max(first.top, second.top),
+      right: Math.min(first.right, second.right),
+      bottom: Math.min(first.bottom, second.bottom),
+    });
+    return shared / Math.min(area(first), area(second));
+  };
+
+  const overlappingText = (section) => {
+    const boxes = elementsOf(section)
+      .map((element) => ({ element, rects: ownTextRects(element) }))
+      .filter((box) => box.rects.length > 0)
+      .map((box) => ({ element: box.element, rect: unionRect(box.rects) }));
+    const overlaps = [];
+    boxes.forEach((first, index) => {
+      boxes.slice(index + 1).forEach((second) => {
+        if (first.element.contains(second.element) || second.element.contains(first.element)) return;
+        const ratio = overlapRatio(first.rect, second.rect);
+        if (ratio >= overlapRatioMinimum) {
+          overlaps.push({ first: describe(first.element), second: describe(second.element), ratio: roundRatio(ratio) });
+        }
+      });
+    });
+    return overlaps;
+  };
+
+  const distortedImages = (section) =>
+    Array.from(section.querySelectorAll("img"))
+      .filter((image) => isMeasurable(image) && image.naturalWidth > 0 && image.naturalHeight > 0 && getComputedStyle(image).objectFit === "fill")
+      .map((image) => {
+        const rect = image.getBoundingClientRect();
+        return { image, renderedRatio: rect.width / rect.height, naturalRatio: image.naturalWidth / image.naturalHeight };
+      })
+      .filter(({ renderedRatio, naturalRatio }) => Math.abs(renderedRatio / naturalRatio - 1) > aspectRatioTolerance)
+      .map(({ image, renderedRatio, naturalRatio }) => ({ ...describe(image), renderedRatio: roundRatio(renderedRatio), naturalRatio: roundRatio(naturalRatio) }));
+
+  return Array.from(document.querySelectorAll("section")).map((section, index) => ({
+    index: index + 1,
+    overflow: overflowingElements(section).map(describeOverflow),
+    outOfFrame: elementsOutsideFrame(section).map((element) => ({ ...describe(element), rect: describeRect(element.getBoundingClientRect()) })),
+    overlaps: overlappingText(section),
+    distortedImages: distortedImages(section),
+  }));
 }
 
 async function stopBrowser(browserProcess) {
@@ -268,6 +396,7 @@ async function removePreviousReviewFiles(reviewPath, deckName) {
       entry.startsWith(`${deckName}.`) ||
       entry.startsWith("contact-sheet-") ||
       entry.startsWith("fit-review") ||
+      entry === geometryFileName ||
       entry === "slide-review.json" ||
       entry === "slide-review.md" ||
       entry === "render-source.txt"

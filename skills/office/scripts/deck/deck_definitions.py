@@ -29,7 +29,11 @@ SAFE_MARGIN_INTRUSION = review_check("SAFE_MARGIN_INTRUSION", "content reaches i
 EDGE_CLIPPING = review_check("EDGE_CLIPPING", "content touches the slide edge", "keep content off the frame edge so nothing is clipped")
 SLIDE_TOO_SPARSE = review_check("SLIDE_TOO_SPARSE", "the slide is nearly empty", "give the slide enough content to justify it, or merge it")
 SLIDE_TOO_CROWDED = review_check("SLIDE_TOO_CROWDED", "the slide is visually crowded", "cut or split the content")
-TEXT_OVERFLOW_RISK = review_check("TEXT_OVERFLOW_RISK", "the slide text is long enough that it may not fit", "compare the contact sheet with the expected text in the fit review", label="textOverflowRisk")
+CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is larger than its box, so it is clipped or spills out", "enlarge the box, cut the content, or lower the type size")
+OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "move or resize the element so it sits inside the slide")
+TEXT_OVERLAP = review_check("TEXT_OVERLAP", "two pieces of text cover each other", "separate the two text blocks or shorten the one that spills")
+IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "set object-fit: cover or contain, or size the image to its ratio")
+GEOMETRY_NOT_MEASURED = review_check("GEOMETRY_NOT_MEASURED", "no browser measured element geometry, so overflow, overlap and stretched images were not checked", "rerun the build where a browser renders the deck, or say the layout was not measured")
 FRAME_FIT_RISK = review_check("FRAME_FIT_RISK", "content is close to the right or bottom frame edge", "check the contact sheet for clipped text", label="frameFitRisk")
 UNRELIABLE_VISUAL_EVIDENCE = review_check("UNRELIABLE_VISUAL_EVIDENCE", "review images did not come from a browser", "treat the previews as approximate and say so when delivering", label="unreliableVisualEvidenceWarning")
 
@@ -53,7 +57,7 @@ INCONSISTENT_FOOTER_BASELINE = review_check("INCONSISTENT_FOOTER_BASELINE", "the
 UNPINNED_FOOTER = review_check("UNPINNED_FOOTER", "the recurring footer is not pinned to the frame bottom", "give it margin-top: auto inside the flex column slide", "unpinnedFooterWarning", 10)
 MISSING_SPEAKER_NOTES = review_check("MISSING_SPEAKER_NOTES", "a slide has no speaker notes", 'add an <aside class="notes"> script to every slide', "missingSpeakerNotesWarning", 8)
 
-SLIDE_RENDER_CHECKS = (SLIDE_BLANK, SAFE_MARGIN_INTRUSION, EDGE_CLIPPING, SLIDE_TOO_SPARSE, SLIDE_TOO_CROWDED, TEXT_OVERFLOW_RISK, FRAME_FIT_RISK, UNRELIABLE_VISUAL_EVIDENCE)
+SLIDE_RENDER_CHECKS = (SLIDE_BLANK, SAFE_MARGIN_INTRUSION, EDGE_CLIPPING, SLIDE_TOO_SPARSE, SLIDE_TOO_CROWDED, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, IMAGE_DISTORTED, GEOMETRY_NOT_MEASURED, FRAME_FIT_RISK, UNRELIABLE_VISUAL_EVIDENCE)
 DESIGN_CHECKS = (
     WEAK_VISUAL_IDENTITY,
     MISSING_SLIDE_ROLE,

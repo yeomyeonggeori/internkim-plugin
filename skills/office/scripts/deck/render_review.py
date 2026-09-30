@@ -16,6 +16,7 @@ from design_tokens import read_design_tokens
 from design_warnings import annotate_design_revision_need, apply_deck_design_warnings, calculate_visual_quality_score, unique_design_warnings
 from office_result import INVALID_ARGUMENTS, Issue, OfficeFailure, Result, run_command
 from fit_review import DESIGN_REVIEW_PROMPT, attach_fit_review_metadata, create_fit_reviews
+from geometry_checks import apply_geometry_not_measured_warning, read_geometry
 from footer_warnings import apply_footer_baseline_warning, apply_unpinned_footer_warning
 from review_report import write_review_outputs
 from slide_images import rendered_slide_image_paths
@@ -37,6 +38,7 @@ REVIEW_DETAIL_FIELDS = (
     "renderSource",
     "slideCount",
     "renderedSlideCount",
+    "geometryMeasured",
 )
 
 
@@ -74,8 +76,9 @@ def build_review_report(source_path: pathlib.Path, deck_name: str, review_direct
     slide_count = max(len(split_slide_sources(source_text)), len(image_paths))
     source_context = inspect_source_context(source_text, design_document_text, slide_count)
     slide_texts = read_slide_texts(source_text, slide_count)
-    slides = review_slides(image_paths, design, slide_texts)
-    apply_deck_warnings(slides, slide_texts, source_text, source_context, render_source, required_text_ledger)
+    geometry = read_geometry(review_directory_path)
+    slides = review_slides(image_paths, design, slide_texts, geometry)
+    apply_deck_warnings(slides, slide_texts, source_text, source_context, render_source, required_text_ledger, geometry)
     design_warnings = unique_design_warnings(slides)
     issues = located_review_issues(slides)
     replace_warnings_with_messages(slides)
@@ -90,6 +93,7 @@ def build_review_report(source_path: pathlib.Path, deck_name: str, review_direct
         "deckName": deck_name,
         "slideCount": slide_count,
         "renderedSlideCount": len(image_paths),
+        "geometryMeasured": geometry is not None,
         "design": design,
         "designReviewPrompt": DESIGN_REVIEW_PROMPT,
         "contactSheets": attach_fit_review_metadata(contact_sheets, fit_reviews),
@@ -121,8 +125,10 @@ def apply_deck_warnings(
     source_context: dict[str, object],
     render_source: str,
     required_text_ledger: str,
+    geometry: list[dict[str, object]] | None,
 ) -> None:
     apply_deck_design_warnings(slides, source_context, render_source)
+    apply_geometry_not_measured_warning(slides, geometry)
     apply_language_mismatch_warning(slides, slide_texts)
     apply_unsourced_current_date_warning(slides, slide_texts, required_text_ledger)
     apply_emoji_icon_warning(slides, slide_texts)
