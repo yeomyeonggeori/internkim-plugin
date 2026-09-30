@@ -6,10 +6,10 @@ from pathlib import Path
 from docxtpl import DocxTemplate
 
 from office_result import MISSING_FIELD, PERMISSION_DENIED, WRONG_TYPE, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
-from paperwork_definitions import TEMPLATE_CONTEXTS
+from template_context import caller_fields, complete_context, non_empty_fields
+from template_fields import TEMPLATES_PATH, template_list_fields, template_names
 
 
-TEMPLATES_PATH = Path(__file__).resolve().parents[2] / "assets" / "templates"
 UNKNOWN_VALUE_GUIDANCE = 'fill EVERY field; use "미정" only when the requester truly did not provide the value'
 
 
@@ -32,9 +32,8 @@ def main() -> Result:
 
 
 def context_hint(template_name: str) -> str:
-    manifest = TEMPLATE_CONTEXTS[template_name]
-    fields = {field: "<값>" for field in manifest["required"]}
-    fields.update({field: ["<항목>"] for field in manifest["lists"]})
+    fields = {field: "<값>" for field in caller_fields(template_name)}
+    fields.update({field: ["<항목>"] for field in template_list_fields(template_name)})
     return f"context JSON for {template_name} must contain: {json.dumps(fields, ensure_ascii=False)}"
 
 
@@ -42,25 +41,23 @@ def load_context(template_name: str, context_path: str) -> dict:
     context = read_json_file(context_path)
     if not isinstance(context, dict):
         raise OfficeFailure(WRONG_TYPE.issue("context: expected an object", "context", suggestion=context_hint(template_name)))
-    manifest = TEMPLATE_CONTEXTS[template_name]
-    for field, default in manifest["defaults"].items():
-        context.setdefault(field, default)
-    problems = missing_value_problems(manifest, context, context_hint(template_name))
+    completed = complete_context(template_name, context)
+    problems = missing_value_problems(template_name, completed, context_hint(template_name))
     if problems:
         raise OfficeFailure(*problems)
-    return context
+    return completed
 
 
-def missing_value_problems(manifest: dict, context: dict, hint: str) -> list:
+def missing_value_problems(template_name: str, context: dict, hint: str) -> list:
     suggestion = f"{UNKNOWN_VALUE_GUIDANCE}. {hint}"
     missing_values = [
         MISSING_FIELD.issue(f"context.{field}: required field is missing", f"context.{field}", suggestion=suggestion)
-        for field in manifest["required"]
+        for field in non_empty_fields(template_name)
         if str(context.get(field, "")).strip() == ""
     ]
     missing_lists = [
         MISSING_FIELD.issue(f"context.{field}: must be a non-empty array", f"context.{field}", suggestion=suggestion)
-        for field in manifest["lists"]
+        for field in template_list_fields(template_name)
         if not isinstance(context.get(field), list) or not context[field]
     ]
     return missing_values + missing_lists
@@ -68,7 +65,7 @@ def missing_value_problems(manifest: dict, context: dict, hint: str) -> list:
 
 def parse_arguments():
     parser = OfficeArgumentParser(description="Fill a bundled standard-form DOCX template with a context JSON; office guide paperwork lists each template's fields.")
-    parser.add_argument("template_name", choices=sorted(TEMPLATE_CONTEXTS), help="Template name")
+    parser.add_argument("template_name", choices=template_names(), help="Template name")
     parser.add_argument("context_path", help="Path to the context JSON file")
     parser.add_argument("output_path", help="Path to the output .docx file")
     return parser.parse_args()

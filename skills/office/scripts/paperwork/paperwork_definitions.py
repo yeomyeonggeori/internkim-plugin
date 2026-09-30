@@ -1,4 +1,8 @@
+from amounts import ROUNDING_RULE, VAT_RATE_PERCENT
+from office_result import ERROR, WARNING, IssueKind
 from office_schema import AnyOf, Boolean, CellValue, Field, ListOf, Number, Record, Text, Variant
+from template_context import caller_fields, default_values, derived_values
+from template_fields import template_list_fields, template_names
 
 
 LABELED_VALUE = Record("labeled value", "one label and its value", (
@@ -92,68 +96,65 @@ CONTRACT_DOCUMENT = Record("contract", "the JSON of paperwork render to a .docx,
     Field("blocks", ListOf(CONTRACT_BLOCK, non_empty=True), "the content", required=True),
 ))
 
-TEMPLATE_CONTEXTS = {
-    "employment-contract": {
-        "required": ["companyName", "companyPhone", "companyAddress", "representative", "employeeName",
-                     "startDate", "workplace", "duties", "workStartTime", "workEndTime", "breakStart",
-                     "breakEnd", "workDays", "weeklyHoliday", "monthlySalary", "bonus", "payday",
-                     "paymentMethod", "contractDate"],
-        "optional": ["endDate", "employeeAddress", "employeePhone", "otherAllowances", "insurances"],
-        "lists": [],
-        "defaults": {"otherAllowances": "없음", "insurances": "☑ 고용보험  ☑ 산재보험  ☑ 국민연금  ☑ 건강보험",
-                     "employeeAddress": "", "employeePhone": "", "endDate": ""},
-    },
-    "service-agreement": {
-        "required": ["clientName", "clientAddress", "clientRepresentative", "providerName", "providerAddress",
-                     "providerRepresentative", "serviceName", "startDate", "endDate", "totalAmount",
-                     "totalAmountKorean", "vatNote", "bankAccount", "penaltyRate", "warrantyMonths",
-                     "jurisdiction", "contractDate"],
-        "optional": [],
-        "lists": ["scopeItems", "payments", "deliverables"],
-        "defaults": {"penaltyRate": "1.25", "warrantyMonths": "3"},
-    },
-    "nda": {
-        "required": ["partyAName", "partyAAddress", "partyARepresentative", "partyBName", "partyBAddress",
-                     "partyBRepresentative", "purpose", "termYears", "survivalYears", "jurisdiction", "contractDate"],
-        "optional": ["penaltyAmount"],
-        "lists": [],
-        "defaults": {"termYears": "5", "survivalYears": "3", "penaltyAmount": ""},
-    },
-    "mou": {
-        "required": ["orgAName", "orgARepresentative", "orgBName", "orgBRepresentative", "purpose",
-                     "termYears", "contractDate"],
-        "optional": [],
-        "lists": ["cooperationItems", "orgARoles", "orgBRoles"],
-        "defaults": {"termYears": "2"},
-    },
-    "offer-letter": {
-        "required": ["companyName", "representative", "candidateName", "position", "department", "workplace",
-                     "startDate", "salary", "expiryDate", "offerDate"],
-        "optional": ["equity", "probationNote"],
-        "lists": ["benefits"],
-        "defaults": {"equity": "", "probationNote": ""},
-    },
-}
+QUANTITY_HEADERS = ("수량", "Qty")
+UNIT_PRICE_HEADERS = ("단가", "Unit price")
+AMOUNT_HEADERS = ("공급가액", "Amount")
+WORDS_LABELS = ("합계금액",)
+
+ROW_AMOUNT_MISMATCH = IssueKind("ROW_AMOUNT_MISMATCH", ERROR, "a row's amount is not its quantity times its unit price", "correct the row's amount, or the quantity or unit price if one of those is wrong")
+SUPPLY_TOTAL_MISMATCH = IssueKind("SUPPLY_TOTAL_MISMATCH", ERROR, "the supply total is not the sum of the row amounts", "correct the supply total, or the row that is wrong")
+VAT_MISMATCH = IssueKind("VAT_MISMATCH", ERROR, "the VAT is not the VAT rate times the supply total", "correct the VAT line")
+GRAND_TOTAL_MISMATCH = IssueKind("GRAND_TOTAL_MISMATCH", ERROR, "the grand total is not the supply total plus the VAT", "correct the grand total line")
+AMOUNT_IN_WORDS_MISMATCH = IssueKind("AMOUNT_IN_WORDS_MISMATCH", ERROR, "the Korean amount in words does not match the grand total", "rewrite the amount in words from the grand total")
+AMOUNT_UNREADABLE = IssueKind("AMOUNT_UNREADABLE", ERROR, "a quantity, price or total holds no number", "write the value as a number, with or without thousands separators")
+NO_AMOUNTS_FOUND = IssueKind("NO_AMOUNTS_FOUND", WARNING, "the input holds no quantity, unit price and amount columns and no contract amount, so nothing was checked", "pass the document JSON of a priced form or a contract context with totalAmount")
+
+AMOUNT_ISSUE_KINDS = (ROW_AMOUNT_MISMATCH, SUPPLY_TOTAL_MISMATCH, VAT_MISMATCH, GRAND_TOTAL_MISMATCH, AMOUNT_IN_WORDS_MISMATCH, AMOUNT_UNREADABLE, NO_AMOUNTS_FOUND)
 
 GUIDE_INPUTS = (
     ("paperwork render <document.json> <output>.pdf", PAPERWORK_DOCUMENT),
     ("paperwork render <document.json> <output>.docx", CONTRACT_DOCUMENT),
 )
-GUIDE_ISSUES = ()
+GUIDE_ISSUES = (("paperwork check", AMOUNT_ISSUE_KINDS),)
 
 
 def template_guide_lines() -> list[str]:
     lines = []
-    for name, manifest in TEMPLATE_CONTEXTS.items():
+    for name in template_names():
         lines.append(f"  {name}")
-        lines.append(f"    required: {', '.join(manifest['required'])}")
-        if manifest["optional"]:
-            lines.append(f"    optional: {', '.join(manifest['optional'])}")
-        if manifest["lists"]:
-            lines.append(f"    non-empty lists: {', '.join(manifest['lists'])}")
-        if manifest["defaults"]:
-            lines.append("    defaults: " + ", ".join(f"{field}={value!r}" for field, value in manifest["defaults"].items()))
+        lines.append(f"    required: {', '.join(caller_fields(name))}")
+        lines.extend(list_lines(name) + default_lines(name) + derived_lines(name))
     return lines
 
 
-GUIDE_SECTIONS = (("Templates of paperwork fill <template> <context.json> <output>.docx; the context JSON holds these fields", template_guide_lines),)
+def list_lines(template_name: str) -> list[str]:
+    fields = template_list_fields(template_name)
+    return [f"    non-empty lists: {', '.join(fields)}"] if fields else []
+
+
+def default_lines(template_name: str) -> list[str]:
+    defaults = default_values(template_name)
+    if not defaults:
+        return []
+    return ["    defaults: " + ", ".join(f"{field}={value!r}" for field, value in defaults.items())]
+
+
+def derived_lines(template_name: str) -> list[str]:
+    return [f"    derived when empty: {field}" for field in derived_values(template_name)]
+
+
+def amount_rule_lines() -> list[str]:
+    return [
+        f"  input: the document JSON of paperwork render with items.headers holding {', '.join(QUANTITY_HEADERS + UNIT_PRICE_HEADERS + AMOUNT_HEADERS)}, or the context JSON of paperwork fill service-agreement",
+        "  row amount = quantity x unit price; supply total = sum of row amounts; grand total = supply total + VAT",
+        f"  VAT = {VAT_RATE_PERCENT}% of the supply total; {ROUNDING_RULE}",
+        "  items.totals lists supply total, VAT and grand total in that order; meta \"합계금액\" holds the amount in words",
+        "  amount in words: \"일금 일백만원정\" for 1,000,000; a trailing 整 counts as 정",
+        "  the command only reports facts in details and never rewrites the input",
+    ]
+
+
+GUIDE_SECTIONS = (
+    ("Templates of paperwork fill <template> <context.json> <output>.docx; the context JSON holds these fields", template_guide_lines),
+    ("Amount rules of paperwork check <input.json>", amount_rule_lines),
+)

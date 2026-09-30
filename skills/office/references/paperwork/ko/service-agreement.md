@@ -41,7 +41,6 @@ filename: 용역계약서_<상대방명>_<YYYYMMDD>.docx
   "startDate": "<YYYY-MM-DD>",
   "endDate": "<YYYY-MM-DD>",
   "totalAmount": "<숫자 금액>",
-  "totalAmountKorean": "<한글 병기 금액, 예: 일금 오천만원整>",
   "vatNote": "<별도|포함>",
   "bankAccount": "<은행 계좌 예금주>",
   "penaltyRate": "1.25",
@@ -64,7 +63,7 @@ filename: 용역계약서_<상대방명>_<YYYYMMDD>.docx
 ## context 값 검사 (deliver 전 자기검사)
 
 - 갑/을 방향이 요청 문맥과 일치하는가?
-- 계약금액·`payments`·`deliverables`·`scopeItems`가 요청자 제공 값 그대로인가? 금액은 한글병기(일금 ○○○원整) 관례를 따랐는가?
+- 계약금액·`payments`·`deliverables`·`scopeItems`가 요청자 제공 값 그대로인가? `totalAmountKorean`은 `totalAmount`에서 채워지므로 직접 넣지 않았는가?
 - `penaltyRate`, `warrantyMonths`가 요청자 제공값이거나 기본값(1.25/1000, 3개월)인가?
 - 당사자 표시(상호·주소·대표자)가 갑·을 모두 채워졌거나, 못 받은 값은 빈 문자열로 남겼는가?
 
