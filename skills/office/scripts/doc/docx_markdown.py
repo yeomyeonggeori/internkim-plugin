@@ -11,6 +11,7 @@ from docx.shared import Inches, Pt, RGBColor
 
 from doc_definitions import IMAGE_UNAVAILABLE
 from docx_defaults import apply_korean_defaults, set_page
+from docx_tables import add_space_after_table, format_table
 from docx_lists import add_list_paragraph, start_list
 from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, inline_segments, link_parts, local_image_problem
 from office_result import Issue
@@ -72,11 +73,9 @@ def add_table(document: Document, rows: list[list[str]]) -> None:
     for row_index, row in enumerate(rows):
         for column_index in range(column_count):
             paragraph = table.rows[row_index].cells[column_index].paragraphs[0]
-            paragraph.text = ""
             add_inline_runs(paragraph, row[column_index] if column_index < len(row) else "")
-            if row_index == 0:
-                for run in paragraph.runs:
-                    run.bold = True
+    format_table(table)
+    add_space_after_table(document)
 
 
 def add_quote(document: Document, text: str) -> None:
