@@ -11,7 +11,7 @@ const slideWidth = 1600;
 const slideHeight = 900;
 const browserStartTimeoutMilliseconds = 15000;
 const geometryFileName = "geometry.json";
-const geometryThresholds = { pixelTolerance: 1, overlapRatioMinimum: 0.12, aspectRatioTolerance: 0.05, textPreviewLength: 40 };
+const geometryThresholds = { pixelTolerance: 4, overlapRatioMinimum: 0.12, aspectRatioTolerance: 0.05, textPreviewLength: 40 };
 
 function renderProgress(label) {
   process.stderr.write(`[render] ${label} ${Math.floor(Date.now() / 1000)}\n`);
