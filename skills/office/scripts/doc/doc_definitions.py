@@ -35,9 +35,9 @@ BLOCK = Variant(
     ),
 )
 
-PAGE = Record("page", "page setup", (
+PAGE = Record("page", "page setup on A4", (
     Field("orientation", Choice(("portrait", "landscape")), "default portrait"),
-    Field("marginInches", Number(minimum=0), "every margin, default 0.8"),
+    Field("marginInches", Number(minimum=0), "every margin, default 1"),
 ))
 
 DOCUMENT_SPECIFICATION = Record("document", "the --spec file of doc create", (
