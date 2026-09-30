@@ -3,7 +3,7 @@ from __future__ import annotations
 from office_operations import OPERATION_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
 from office_schema import AnyOf, Boolean, CellValue, Choice, Field, ListOf, MapOf, Number, Record, Text, Variant
-from text_checks import TEXT_CHECK_ISSUE_KINDS
+from text_checks import PLACEHOLDER_LEFT, TEXT_CHECK_ISSUE_KINDS
 
 
 TABLE_ROWS = ListOf(ListOf(CellValue()), non_empty=True)
@@ -177,7 +177,6 @@ OPERATION_BATCH = ListOf(OPERATIONS, non_empty=True)
 
 MERGE_VALUES = MapOf(AnyOf((CellValue(), ListOf(CellValue()), MapOf(CellValue(), key="name"), ListOf(MapOf(CellValue(), key="name"))), name="a cell, a list, an object, or a list of objects"), key="placeholder name")
 
-PLACEHOLDER_LEFT = IssueKind("PLACEHOLDER_LEFT", ERROR, "template placeholder syntax or a merge field is still in the text", "replace it with the real value")
 BROKEN_INTERNAL_REFERENCE = IssueKind("BROKEN_INTERNAL_REFERENCE", ERROR, "a link or cross-reference points at a bookmark the document does not have", "point it at an existing heading or bookmark, or remove it")
 STALE_TABLE_OF_CONTENTS = IssueKind("STALE_TABLE_OF_CONTENTS", WARNING, "the table of contents does not list the headings the document has", "apply update_fields_on_open so Word refreshes it")
 EAST_ASIA_FONT_MISSING = IssueKind("EAST_ASIA_FONT_MISSING", WARNING, "Korean text has no East Asian font at any level, so each reader substitutes its own", "apply set_east_asia_font")

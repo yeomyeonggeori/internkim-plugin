@@ -79,7 +79,7 @@ class ResultEnvelopeTest(unittest.TestCase):
         codes = [kind.code for kind in COMMAND_ISSUE_KINDS]
         for office_format in FORMATS:
             codes.extend(kind.code for kind in set(defined_issue_kinds(load_definitions(office_format))))
-        duplicates = sorted({code for code in codes if codes.count(code) > 1} - {"REQUIRED_TEXT_MISSING", "FORBIDDEN_TEXT_PRESENT", "KOREAN_FONT_MISSING"})
+        duplicates = sorted({code for code in codes if codes.count(code) > 1} - {"REQUIRED_TEXT_MISSING", "FORBIDDEN_TEXT_PRESENT", "KOREAN_FONT_MISSING", "PLACEHOLDER_LEFT"})
         self.assertEqual(duplicates, [])
 
 
