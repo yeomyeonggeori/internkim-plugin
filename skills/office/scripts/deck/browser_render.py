@@ -2,6 +2,7 @@ import pathlib
 import subprocess
 
 from office_result import INPUT_NOT_FOUND, OfficeFailure
+from geometry_checks import GEOMETRY_FILE_NAME
 from slide_images import rendered_slide_image_paths
 
 
@@ -53,6 +54,7 @@ def clear_stale_render_evidence(review_path: pathlib.Path, deck_name: str) -> No
         *rendered_slide_image_paths(review_path, deck_name),
         *review_path.glob("contact-sheet-*.png"),
         review_path / "render-source.txt",
+        review_path / GEOMETRY_FILE_NAME,
     ]
     for stale_path in stale_paths:
         if stale_path.exists():
