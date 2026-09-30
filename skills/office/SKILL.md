@@ -24,7 +24,7 @@ A standardized form belongs to paperwork even when it ships as .docx or PDF: its
 
 ## Rules for every format
 
-**Source truth.** Supplied files and pasted data are the source of truth. Preserve names, products, people, dates, amounts, IDs, and units exactly, and put the source title, organization, and period in visible content, not only the filename. A missing value is written as the user's-language equivalent of "Not provided"; never invent contacts, totals, vendors, prices, or background.
+**Source truth.** Supplied files and pasted data are the source of truth. Preserve names, products, people, dates, amounts, IDs, and units exactly, and put the source title, organization, and period in visible content as well as the filename. A missing value is written as the user's-language equivalent of "Not provided"; never invent contacts, totals, vendors, prices, or background.
 
 **Totals.** Compute totals from the source numbers in code and check that they equal any total the source states before writing the file.
 
@@ -34,7 +34,7 @@ A standardized form belongs to paperwork even when it ships as .docx or PDF: its
 
 **Results.** Every command prints one JSON result: `status` is ok, warning, or error, and each issue carries a stable `code`, a `location`, and a `suggestion`. `<skill>/scripts/office guide <format>` lists every input field and every code a command reports.
 
-**Verify before attaching.** Run the format's `validate` command, or reopen the file, before delivery. Pass the source names, dates, totals, and key labels as `--required-text` where the validator takes it. Read every warning, revise real problems, then attach only the accepted final output, never intermediate files. Say what visual uncertainty remains.
+**Verify before attaching.** Run the format's `validate` command, or reopen the file, before delivery. Pass the source names, dates, totals, and key labels as `--required-text` where the validator takes it. Read every warning, revise real problems, then attach only the accepted final output. Say what visual uncertainty remains.
 
 **Korean fonts.** Korean text needs a Korean-capable font. The commands find one from a single list (Nanum Gothic, Noto Sans CJK, Apple SD Gothic Neo); never fall back to a built-in Latin font for Korean. Decks use the bundled Paperlogy font.
 

@@ -1,6 +1,6 @@
 # PDF
 
-Read, extract, merge, split, lightly edit, or create layout-critical PDFs in `~/documents`. Reach for this when placement carries meaning. When it does not, write the content and export it with `doc export`; when the layout belongs to someone else's letterhead or contract template, fill that template with paperwork rather than redrawing it. SKILL.md's rules for source truth, totals, earlier files, naming, and verification apply here.
+Read, extract, merge, split, lightly edit, or create layout-critical PDFs in `~/documents`. Reach for this when placement carries meaning. When it does not, write the content and export it with `doc export`; when the layout belongs to someone else's letterhead or contract template, fill that template with paperwork. SKILL.md's rules for source truth, totals, earlier files, naming, and verification apply here.
 
 ## Workflow
 
@@ -20,4 +20,4 @@ For ordinary edits, use `pdf edit` and save in place. For custom layout, write a
 
 ## Final check
 
-Validate the PDF and confirm every required source value is extractable. Then run `<skill>/scripts/office pdf render <file>` and look at `contact-sheet.png`, and at any page it shows a problem on, in `page-NNN.png`: clipped cells, overflow, missing Korean glyphs, blank pages. `--pages 2,4-5` picks pages and `--scale 2` reads small text; the first 12 pages render by default. Deliver the accepted output.
+Validate the PDF and confirm every required source value is extractable. Then run `<skill>/scripts/office pdf render <file>` and look at `contact-sheet.png`, and at any page it shows a problem on, in `page-NNN.png`: clipped cells, overflow, missing Korean glyphs, blank pages. `--pages 2,4-5` picks pages and `--scale 2` reads small text; the first 12 pages render by default.

@@ -6,8 +6,8 @@ Create a useful, visually strong deck and attach accepted output. HTML-first mea
 
 1. Decide the output format, slide count, audience, and story spine before writing. Pick one deck archetype and make each slide's job, claim, proof, and visual structure clear.
 2. Resolve revisions from the latest compatible artifact in recent same-conversation posts. Older PDF or Markdown files are supporting material. For an existing deck, work only in `artifacts/<deck-slug>/`, keep the same slug, and use `deck restore` when the controller-free source must be recovered. Treat `slides.html` as the canonical controller-free source; edit it in place with targeted changes and never rewrite an existing deck whole.
-3. For a new deck, write the complete `slides.html` as a file in one step; do not assemble it through shell heredocs or echo. Add `DESIGN.md`, `deck-brief.md`, and `required-visible-text.txt` immediately so they must not delay the primary source file.
-4. Put `data-visual-system` on the body and `data-slide-role` on every slide. Use the requested language, a complete HTML document, visible source facts, and spoken notes in `<aside class="notes">`. Preserve the design-source marker, requested slide count, source-fact ledger intent.
+3. For a new deck, write the complete `slides.html` as a file in one step; do not assemble it through shell heredocs or echo. Write `DESIGN.md`, `deck-brief.md`, and `required-visible-text.txt` right after it, so they never delay the primary source file.
+4. Put `data-visual-system` on the body and `data-slide-role` on every slide. Use the requested language and a complete HTML document, show the source facts, and write the spoken notes in `<aside class="notes">`. Through every edit keep the `design-source: DESIGN.md` marker, the slide count the brief requests, and the facts listed in `required-visible-text.txt`.
 5. Build from the persistent artifact workspace. The command shape is:
 
    ```json
@@ -26,7 +26,7 @@ Create a useful, visually strong deck and attach accepted output. HTML-first mea
 
 ## Measured layout
 
-With a browser, the build measures every slide after the fonts load and writes `build/review/geometry.json`: elements whose content is larger than their box, elements outside the slide, text that overlaps other text by at least 12% of the smaller text, and images stretched more than 5% away from their own ratio. The review reports each as `CONTENT_OVERFLOW`, `OUT_OF_FRAME`, `TEXT_OVERLAP`, or `IMAGE_DISTORTED` on the slide that has it, naming the element and its size. These are warnings; fix the ones that are real defects and leave a deliberate overlap alone. Without a browser there is no `geometry.json` and the review reports `GEOMETRY_NOT_MEASURED`: say the layout was not measured rather than calling the deck fit.
+With a browser, the build measures every slide after the fonts load and writes `build/review/geometry.json`: elements whose content is larger than their box, elements outside the slide, text that overlaps other text by at least 12% of the smaller text, and images stretched more than 5% away from their own ratio. The review reports each as `CONTENT_OVERFLOW`, `OUT_OF_FRAME`, `TEXT_OVERLAP`, or `IMAGE_DISTORTED` on the slide that has it, naming the element and its size. These are warnings; fix the ones that are real defects and leave a deliberate overlap alone. Without a browser there is no `geometry.json` and the review reports `GEOMETRY_NOT_MEASURED`: say the layout was not measured.
 
 ## Speaker notes
 
@@ -40,15 +40,15 @@ When the user hands over a .pptx, or asks for a change to one that has no `slide
 
 Use the vocabulary of title thesis, section divider, comparison, matrix, timeline, evidence card, recommendation, and closing ask. Reject shallow content: generic cards, claims without examples, raw `<table>` or bare `<ul>`, and slides that only restate the prompt. Add a worked example, target-versus-actual metrics, and risk/evidence/response/owner where relevant. End with a decision or next action.
 
-Pick one deck archetype and make its `deck-brief.md` state the story spine, slide count, visual system, signature move, and what would be too shallow. A board or quarterly deck needs KPI cards, status chips, variance bars, owner-date timelines, risk matrices, approval panels, or another recurring primitive, not the same 2x2 card dashboard on every slide. Avoid bullet-only decks. Read `references/deck/layouts.md` and `references/deck/minimal-design.md` first; use their `colors`, `typography`, and `layout` vocabulary, then consult `references/deck/composition-seeds.md`, `references/deck/visual-styles.md`, and `references/deck/webfonts.md` when needed.
+The `deck-brief.md` states the story spine, slide count, visual system, signature move, and what would be too shallow. A board or quarterly deck needs KPI cards, status chips, variance bars, owner-date timelines, risk matrices, approval panels, or another recurring primitive, not the same 2x2 card dashboard on every slide. Read `references/deck/layouts.md` and `references/deck/minimal-design.md` first; use their `colors`, `typography`, and `layout` vocabulary, then consult `references/deck/composition-seeds.md`, `references/deck/visual-styles.md`, and `references/deck/webfonts.md` when needed.
 
-Use claim-style titles, exact organization, product, and period, and preserve original period wording exactly. Preserve exact source values and show `제공된 자료 없음` when a source value is missing. Required facts go one per line in `required-visible-text.txt`: one source fact or must-appear phrase per line. This is a source ledger, not a token filter; represent them naturally in rendered text. Do not replace Korean period wording.
+Use claim-style titles that name the exact organization, product, and period, with the period worded as the source words it, Korean included. `required-visible-text.txt` holds one source fact or must-appear phrase per line. It is a source ledger, not a token filter; represent each fact naturally in rendered text.
 
 ## Source and visual quality
 
 `DESIGN.md` may use Stitch-compatible YAML front matter followed by `Style Prompt`, `Visual Identity Gate`, `Scene`, `Design Thesis`, `Visual System`, `Signature Move`, and `Anti-default Check`. It must express a design thesis and a recurring signature move. A dark theme is not a visual system. Every slide should fill the 16:9 frame safely, avoid cropped or hidden text, and use readable type and meaningful visual hierarchy.
 
-Do not use emoji as functional icons or bullets. Paperlogy is the default display and body font, with local WOFF2 fallback and the CSS stack `"Paperlogy", "Noto Sans KR", system-ui`. Follow `references/deck/webfonts.md` for web fonts and never paste base64 font data into source. With `PRESENTATION_PPTX_MODE=native`, native text-backed PPTX is available when editable text is explicitly required; otherwise use image-backed PPTX.
+Do not use emoji as functional icons or bullets. Paperlogy is the default display and body font, with local WOFF2 fallback and the CSS stack `"Paperlogy", "Noto Sans KR", system-ui`. Follow `references/deck/webfonts.md` for web fonts and never paste base64 font data into source. Set `PRESENTATION_PPTX_MODE=native` for a native text-backed PPTX when editable text is explicitly required.
 
 ## Without a browser
 
@@ -56,4 +56,4 @@ When no browser can render the deck, the build falls back to a text-backed PPTX 
 
 ## Delivery rules
 
-HTML is the default deliverable. PDF and PPTX are derived from the same `slides.html`; deliver the source with generated output when requested. Do not claim visual acceptance when `visualEvidenceReliable` is false. Source review, rendered text checks, and the requested review loop are required before delivery.
+PDF and PPTX are derived from the same `slides.html`; deliver the source with generated output when requested. Do not claim visual acceptance when `visualEvidenceReliable` is false.
