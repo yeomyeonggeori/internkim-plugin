@@ -36,10 +36,7 @@ class DirectChildScanner(html.parser.HTMLParser):
 
 def last_direct_child(slide_source: str) -> typing.Optional[tuple[str, dict]]:
     scanner = DirectChildScanner()
-    try:
-        scanner.feed(slide_source)
-    except Exception:
-        return None
+    scanner.feed(slide_source)
     for child in reversed(scanner.direct_children):
         if not is_speaker_note_child(child):
             return child
