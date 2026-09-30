@@ -12,6 +12,7 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 
 from doc_definitions import OPERATIONS
+from docx_language import make_east_asia_language_korean
 from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, body_block_elements, paragraph_runs
 from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change, OperationSet
 from office_result import INVALID_VALUE, OfficeFailure
@@ -358,6 +359,13 @@ def plan_set_east_asia_font(editing: DocxEditing, operation: dict, location: str
     return change
 
 
+def plan_set_korean_language(editing: DocxEditing, operation: dict, location: str) -> Change:
+    def change() -> str:
+        retagged = make_east_asia_language_korean(editing.document)
+        return f"tagged the East Asian language as ko-KR; retagged {retagged} styles and runs that named another"
+    return change
+
+
 def default_run_fonts(document):
     styles = document.styles.element
     defaults = child_or_create(styles, "w:docDefaults", first=True)
@@ -416,5 +424,6 @@ DOCX_OPERATIONS = OperationSet(OPERATIONS, {
     "set_footer": plan_set_footer,
     "add_comment": plan_add_comment,
     "set_east_asia_font": plan_set_east_asia_font,
+    "set_korean_language": plan_set_korean_language,
     "update_fields_on_open": plan_update_fields_on_open,
 })
