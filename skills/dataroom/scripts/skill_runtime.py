@@ -7,7 +7,6 @@ import subprocess
 import sys
 
 
-BOOTSTRAP_READY_ENVIRONMENT_PREFIX = "INTERNKIM_SKILL_BOOTSTRAP_READY"
 BOOTSTRAP_DISABLE_ENVIRONMENT_PREFIX = "INTERNKIM_SKILL_BOOTSTRAP_DISABLE"
 SKILL_CACHE_DIRECTORY_NAME = "internkim-skills"
 
@@ -58,14 +57,14 @@ def ensure_requirements(skill_name):
         return True
     if os.environ.get(bootstrap_disable_environment_variable(skill_name)) == "1":
         return False
-    if os.environ.get(bootstrap_ready_environment_variable(skill_name)) == "1":
+    environment_path = dependency_environment_path(skill_name)
+    python_path = environment_path / "bin" / "python"
+    if is_current_python(python_path):
         return True
 
     if python_satisfies_requirements(Path(sys.executable), requirements_path):
         return True
 
-    environment_path = dependency_environment_path(skill_name)
-    python_path = environment_path / "bin" / "python"
     try:
         create_dependency_environment(python_path, environment_path)
         install_requirements_if_needed(python_path, requirements_path, environment_path)
@@ -73,10 +72,7 @@ def ensure_requirements(skill_name):
         sys.stderr.write(f"warning: {skill_name} dependency bootstrap failed: {error_value}\n")
         return False
 
-    if is_current_python(python_path):
-        return True
-
-    reexecute_python(python_path, skill_name)
+    reexecute_python(python_path)
     return False
 
 
@@ -108,13 +104,11 @@ for raw_requirement in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines(
     return result.returncode == 0
 
 
-def reexecute_python(python_path, skill_name):
-    environment = os.environ.copy()
-    environment[bootstrap_ready_environment_variable(skill_name)] = "1"
+def reexecute_python(python_path):
     os.execve(
         str(python_path),
         [str(python_path), str(Path(sys.argv[0]).resolve()), *sys.argv[1:]],
-        environment,
+        os.environ.copy(),
     )
 
 
@@ -209,10 +203,6 @@ def safe_name(value):
     if normalized == "":
         return "default"
     return normalized.lower()
-
-
-def bootstrap_ready_environment_variable(skill_name):
-    return f"{BOOTSTRAP_READY_ENVIRONMENT_PREFIX}_{environment_suffix(skill_name)}"
 
 
 def bootstrap_disable_environment_variable(skill_name):
