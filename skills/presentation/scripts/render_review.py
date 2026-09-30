@@ -12,14 +12,15 @@ from content_warnings import (
     apply_missing_speaker_notes_warning,
     apply_unsourced_current_date_warning,
 )
+from design_tokens import read_design_tokens
 from design_warnings import annotate_design_revision_need, apply_deck_design_warnings, calculate_visual_quality_score, unique_design_warnings
 from fit_review import DESIGN_REVIEW_PROMPT, attach_fit_review_metadata, create_fit_reviews
 from footer_warnings import apply_footer_baseline_warning, apply_unpinned_footer_warning
 from review_report import write_review_outputs
 from slide_render_checks import review_slides
-from slide_source import split_slide_sources
+from slide_source import read_optional_text, split_slide_sources
 from slide_structure import read_slide_texts
-from source_context import inspect_source_context, read_design_tokens
+from source_context import inspect_source_context
 
 
 VISUAL_QUALITY_SCORE_MINIMUM = 82
@@ -127,12 +128,6 @@ def read_render_source(review_directory_path: pathlib.Path, image_paths: list[pa
     if image_paths:
         return "browser"
     return "unavailable"
-
-
-def read_optional_text(path: pathlib.Path) -> str:
-    if not path.exists():
-        return ""
-    return path.read_text(encoding="utf-8")
 
 
 def print_review_summary(report: dict[str, object]) -> None:
