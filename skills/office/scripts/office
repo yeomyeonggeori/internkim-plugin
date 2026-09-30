@@ -1,48 +1,15 @@
 #!/usr/bin/env python3
-from dataclasses import dataclass
 import os
 import pathlib
 import sys
 
+from office_commands import COMMANDS, Command, find_command
+from office_result import DEPENDENCIES_UNAVAILABLE, UNKNOWN_COMMAND, OfficeFailure, run_command
 from skill_runtime import ensure_requirements
 
 
 SKILL_NAME = "office"
 SCRIPTS_PATH = pathlib.Path(__file__).resolve().parent
-
-
-@dataclass(frozen=True)
-class Command:
-    format_name: str
-    verb: str
-    script: str
-    summary: str
-    needs_packages: bool = True
-
-    @property
-    def name(self) -> str:
-        return f"{self.format_name} {self.verb}"
-
-
-COMMANDS = (
-    Command("doc", "export", "doc/export_document.py", "write a .docx or .pdf from a Markdown source"),
-    Command("doc", "create", "doc/create_docx.py", "build a .docx from blocks or a JSON spec"),
-    Command("doc", "edit", "doc/edit_docx.py", "append blocks to a .docx"),
-    Command("doc", "validate", "doc/validate_docx.py", "check a .docx for required text, fonts and layout"),
-    Command("pdf", "create", "pdf/create_pdf.py", "lay out a PDF from blocks or a JSON spec"),
-    Command("pdf", "edit", "pdf/edit_pdf.py", "append a section page to a PDF"),
-    Command("pdf", "validate", "pdf/validate_pdf.py", "check a PDF for pages, extractable text and fonts"),
-    Command("sheet", "create", "sheet/create_xlsx.py", "build an .xlsx from rows or a JSON spec"),
-    Command("sheet", "edit", "sheet/edit_xlsx.py", "append rows to an .xlsx"),
-    Command("sheet", "validate", "sheet/validate_xlsx.py", "check an .xlsx for headers, filters and formulas"),
-    Command("deck", "build", "deck/build.sh", "build slides.html in this directory into HTML, PDF, PPTX and review evidence", needs_packages=False),
-    Command("deck", "validate", "deck/validate_pptx.py", "check a .pptx for design warnings"),
-    Command("deck", "restore", "deck/restore_source.py", "recover controller-free slides.html from a delivered deck", needs_packages=False),
-    Command("deck", "accept", "deck/accept_review.py", "check review-decision.json against the review evidence", needs_packages=False),
-    Command("deck", "image", "deck/fetch_image.py", "download a public-domain photo for a search query", needs_packages=False),
-    Command("paperwork", "render", "paperwork/render_paperwork.py", "render a company form to PDF on letterhead"),
-    Command("paperwork", "fill", "paperwork/fill_template.py", "fill a standard contract template to .docx"),
-)
 PYTHON_COMMAND_SUMMARY = "run a task-local Python script with the office packages installed"
 
 
@@ -54,22 +21,29 @@ def main(arguments: list[str]) -> int:
         return run_python(arguments[1:])
     command = find_command(arguments[:2])
     if command is None:
-        print(f"office: unknown command {' '.join(arguments[:2])!r}\n\n{usage()}", file=sys.stderr)
-        return 2
-    return run_command(command, arguments[2:])
+        return run_command(lambda: reject_unknown_command(arguments[:2]))
+    return run_office_command(command, arguments[2:])
 
 
 def usage() -> str:
     width = max(len(command.name) for command in COMMANDS)
-    lines = ["usage: office <format> <verb> [arguments]", "       office python <script.py> [arguments]", ""]
+    lines = [
+        "usage: office <format> <verb> [arguments]",
+        "       office python <script.py> [arguments]",
+        "",
+    ]
     lines.extend(f"  {command.name.ljust(width)}  {command.summary}" for command in COMMANDS)
     lines.append(f"  {'python'.ljust(width)}  {PYTHON_COMMAND_SUMMARY}")
     lines.extend(["", "Each command's own --help lists its arguments."])
     return "\n".join(lines)
 
 
-def find_command(words: list[str]) -> Command | None:
-    return next((command for command in COMMANDS if [command.format_name, command.verb] == words), None)
+def reject_unknown_command(words: list[str]):
+    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"office: unknown command {' '.join(words)!r}", " ".join(words)))
+
+
+def reject_missing_dependencies():
+    raise OfficeFailure(DEPENDENCIES_UNAVAILABLE.issue("office dependencies could not be installed"))
 
 
 def run_python(arguments: list[str]) -> int:
@@ -78,22 +52,24 @@ def run_python(arguments: list[str]) -> int:
         return 2
     if not ensure_requirements(SKILL_NAME):
         return 1
-    os.execve(sys.executable, [sys.executable, *arguments], script_environment())
+    os.execve(sys.executable, [sys.executable, *arguments], script_environment(None))
 
 
-def run_command(command: Command, arguments: list[str]) -> int:
+def run_office_command(command: Command, arguments: list[str]) -> int:
     if command.needs_packages and not ensure_requirements(SKILL_NAME):
-        return 1
+        return run_command(reject_missing_dependencies)
     script_path = str(SCRIPTS_PATH / command.script)
     if script_path.endswith(".sh"):
-        os.execvpe("bash", ["bash", script_path, *arguments], script_environment())
-    os.execve(sys.executable, [sys.executable, script_path, *arguments], script_environment())
+        os.execvpe("bash", ["bash", script_path, *arguments], script_environment(command))
+    os.execve(sys.executable, [sys.executable, script_path, *arguments], script_environment(command))
 
 
-def script_environment() -> dict[str, str]:
+def script_environment(command: Command | None) -> dict[str, str]:
     environment = os.environ.copy()
     python_paths = [str(SCRIPTS_PATH), environment.get("PYTHONPATH", "")]
     environment["PYTHONPATH"] = os.pathsep.join(path for path in python_paths if path)
+    if command is not None:
+        environment["OFFICE_COMMAND"] = f"office {command.name}"
     return environment
 
 

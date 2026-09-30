@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-import argparse
-import json
 import os
-import sys
 from pathlib import Path
 
-from skill_runtime import cache_home_path, ensure_requirements
+from office_result import KOREAN_FONT_UNAVAILABLE, MISSING_FIELD, PERMISSION_DENIED, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
+from office_schema import require_valid
+from paperwork_definitions import CONTRACT_DOCUMENT, PAPERWORK_CONTENT_FIELDS, PAPERWORK_DOCUMENT
+from skill_runtime import cache_home_path
 from paperwork_design import (
     COLOR_BORDER,
     COLOR_HEADER_FILL,
@@ -39,22 +39,28 @@ BORDER_COLOR = COLOR_BORDER
 HEADER_FILL_COLOR = COLOR_HEADER_FILL
 
 
-ALLOWED_TOP_LEVEL_KEYS = {
-    "title", "documentNumber", "profile", "approvalLine", "recipient",
-    "meta", "items", "sections", "notes", "signature", "footer", "fontPath",
-}
-CONTENT_KEYS = {"recipient", "meta", "items", "sections", "notes", "signature"}
 SPEC_HINT = "read the document type's spec at this skill's references/paperwork/<ko|en>/<type>.md and copy its Document JSON skeleton exactly"
 
 
 def load_document(document_path):
-    with open(document_path, "r", encoding="utf-8") as document_file:
-        document = json.load(document_file)
-    if not isinstance(document, dict):
-        raise ValueError("document must be a JSON object")
+    document = read_json_file(document_path)
+    require_valid(PAPERWORK_DOCUMENT, document, "document")
+    require_company_name(document["profile"])
+    require_content(document)
     normalize_document(document)
-    validate_document(document)
     return document
+
+
+def require_company_name(profile):
+    if company_display_name(profile):
+        return
+    raise OfficeFailure(MISSING_FIELD.issue("document.profile.name: required; insert the company_info_get result into profile", "document.profile.name", suggestion=SPEC_HINT))
+
+
+def require_content(document):
+    if any(field in document for field in PAPERWORK_CONTENT_FIELDS):
+        return
+    raise OfficeFailure(MISSING_FIELD.issue(f"document has no content: add at least one of {', '.join(PAPERWORK_CONTENT_FIELDS)}", "document", suggestion=SPEC_HINT))
 
 
 def normalize_document(document):
@@ -70,40 +76,6 @@ def normalize_document(document):
         document["notes"] = [notes.strip()]
 
 
-def validate_document(document):
-    problems = []
-    if not str(document.get("title", "")).strip():
-        problems.append("document.title is required")
-    unknown_keys = set(document) - ALLOWED_TOP_LEVEL_KEYS
-    if unknown_keys:
-        problems.append(f"unknown document fields {sorted(unknown_keys)}; allowed fields are {sorted(ALLOWED_TOP_LEVEL_KEYS - {'fontPath'})}")
-    if not any(key in document for key in CONTENT_KEYS):
-        problems.append(f"document has no content blocks ({sorted(CONTENT_KEYS)} all missing)")
-    items = document.get("items")
-    if items is not None and (not isinstance(items, dict) or not isinstance(items.get("headers"), list) or not isinstance(items.get("rows"), list)):
-        problems.append("items must be an object with headers[], rows[][], optional aligns[] and totals[]")
-    totals = items.get("totals") if isinstance(items, dict) else None
-    if totals is not None and (not isinstance(totals, list) or any(not isinstance(row, dict) for row in totals)):
-        problems.append('items.totals must be an ARRAY of objects like [{"label": "공급가액 합계", "value": "12,000,000원"}, {"label": "부가세(10%)", "value": "1,200,000원"}, {"label": "총 합계", "value": "13,200,000원"}]')
-    meta = document.get("meta")
-    if meta is not None and (not isinstance(meta, list) or any(not isinstance(row, dict) for row in meta)):
-        problems.append("meta must be an array of {label, value} objects")
-    sections = document.get("sections")
-    if sections is not None and (not isinstance(sections, list) or any(not isinstance(section, dict) for section in sections)):
-        problems.append("sections must be an array of {title, paragraphs, bullets} objects")
-    signature = document.get("signature")
-    if signature is not None and not isinstance(signature, dict):
-        problems.append('signature must be an object like {"date": "2026년 7월 7일", "line": "주식회사 던 대표이사 이샘플", "stamp": true}')
-    recipient = document.get("recipient")
-    if recipient is not None and (not isinstance(recipient, dict) or not isinstance(recipient.get("lines", []), list)):
-        problems.append("recipient must be an object {label, lines[]}")
-    notes = document.get("notes")
-    if notes is not None and not isinstance(notes, list):
-        problems.append("notes must be an array of strings")
-    if problems:
-        raise ValueError("fix ALL of these in document.json, then rerun: " + " | ".join(problems) + f" — {SPEC_HINT}")
-
-
 def resolve_font(document):
     configured_path = str(document.get("fontPath", "")).strip()
     if configured_path:
@@ -111,7 +83,7 @@ def resolve_font(document):
     for candidate in candidate_font_paths():
         if candidate.exists() and is_embeddable_font(candidate):
             return candidate
-    raise ValueError("no Korean-capable font found; pass fontPath in the document JSON")
+    raise OfficeFailure(KOREAN_FONT_UNAVAILABLE.issue("no Korean-capable font found; pass fontPath in the document JSON"))
 
 
 def is_embeddable_font(font_path):
@@ -136,9 +108,6 @@ def cached_font_paths():
 
 
 def render_document(document):
-    if not ensure_requirements("office"):
-        raise RuntimeError("paperwork dependencies are unavailable after bootstrap")
-
     from fpdf import FPDF
 
     footer_text = str(document.get("footer", "")).strip()
@@ -192,8 +161,6 @@ def company_display_name(profile):
 
 
 def add_letterhead(pdf, profile):
-    if not company_display_name(profile):
-        raise ValueError("profile.name is required — insert the company_info_get result into profile")
     top_y = pdf.get_y()
     logo_path = str(profile.get("logoPath", "")).strip()
     if logo_path and Path(logo_path).exists():
@@ -246,8 +213,6 @@ def letterhead_detail_lines(profile):
 def add_approval_line(pdf, labels):
     if not labels:
         return
-    if not isinstance(labels, list) or not all(isinstance(label, str) for label in labels):
-        raise ValueError("approvalLine must be an array of strings")
     table_width = APPROVAL_BOX_WIDTH * len(labels)
     start_x = pdf.w - pdf.r_margin - table_width
     start_y = pdf.get_y()
@@ -314,12 +279,10 @@ def add_meta_table(pdf, meta_rows):
 
 
 def add_item_table(pdf, items):
-    if not isinstance(items, dict):
+    if items is None:
         return
-    headers = items.get("headers", [])
-    rows = items.get("rows", [])
-    if not headers:
-        raise ValueError("items.headers must be a non-empty array")
+    headers = items["headers"]
+    rows = items.get("rows") or []
     aligns = normalized_aligns(items.get("aligns"), len(headers))
     column_widths = compute_column_widths(pdf, headers, rows)
     add_table_row(pdf, column_widths, headers, ["C"] * len(headers), is_header=True)
@@ -489,24 +452,9 @@ def write_multiline(pdf, height, text):
     pdf.multi_cell(0, height, text, new_x="LMARGIN", new_y="NEXT")
 
 
-DOCX_ALLOWED_KEYS = {"title", "fontName", "fontSize", "page", "blocks"}
-DOCX_HINT = 'a .docx document JSON must look like {"title": "...", "fontName": "맑은 고딕", "blocks": [{"type": "heading", "level": 2, "text": "제1조 (목적)"}, {"type": "paragraph", "text": "..."}, {"type": "bullets", "items": ["..."]}, {"type": "table", "rows": [["...", "..."]]}]} — copy the spec\'s DOCX blocks skeleton'
-
-
-def load_docx_document(document_path):
-    with open(document_path, "r", encoding="utf-8") as document_file:
-        document = json.load(document_file)
-    if not isinstance(document, dict):
-        raise ValueError(f"document must be a JSON object; {DOCX_HINT}")
-    unknown_keys = set(document) - DOCX_ALLOWED_KEYS
-    if unknown_keys:
-        raise ValueError(f"unknown document fields {sorted(unknown_keys)}; {DOCX_HINT}")
-    blocks = document.get("blocks")
-    if not isinstance(blocks, list) or not blocks:
-        raise ValueError(f"document has no content: blocks must be a non-empty array; {DOCX_HINT}")
-    page = document.get("page")
-    if page is not None and not isinstance(page, dict):
-        raise ValueError('page must be an object like {"marginInches": 0.9} or omitted; ' + DOCX_HINT)
+def load_contract_document(document_path):
+    document = read_json_file(document_path)
+    require_valid(CONTRACT_DOCUMENT, document, "document")
     return document
 
 
@@ -517,11 +465,12 @@ def generate_docx(document, output_path):
 
     word_document = Document()
     section = word_document.sections[0]
-    margin_inches = float((document.get("page") or {}).get("marginInches", 0.9))
-    section.top_margin = section.bottom_margin = Inches(margin_inches)
-    section.left_margin = section.right_margin = Inches(margin_inches)
-    font_name = str(document.get("fontName", FONT_KOREAN_DOCX))
-    font_size = float(document.get("fontSize", SIZE_BODY))
+    margin_inches = (document.get("page") or {}).get("marginInches")
+    margin = Inches(float(0.9 if margin_inches is None else margin_inches))
+    section.top_margin = section.bottom_margin = margin
+    section.left_margin = section.right_margin = margin
+    font_name = text_or_default(document.get("fontName"), FONT_KOREAN_DOCX)
+    font_size = float(SIZE_BODY if document.get("fontSize") is None else document["fontSize"])
     style = word_document.styles["Normal"]
     style.font.name = font_name
     style.font.size = Pt(font_size)
@@ -529,7 +478,7 @@ def generate_docx(document, output_path):
     style.paragraph_format.line_spacing = LINE_SPACING
     style.element.rPr.rFonts.set(
         "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}eastAsia", font_name)
-    title = str(document.get("title", "")).strip()
+    title = text_or_default(document.get("title"), "").strip()
     if title:
         paragraph = word_document.add_paragraph()
         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -543,74 +492,65 @@ def generate_docx(document, output_path):
     word_document.save(str(output_path))
 
 
+def text_or_default(value, default):
+    return default if value is None else str(value)
+
+
 def append_docx_block(word_document, block):
     from docx.shared import Pt, RGBColor
 
-    if not isinstance(block, dict):
-        raise ValueError(f"each block must be an object; {DOCX_HINT}")
-    block_type = str(block.get("type", "")).strip()
+    block_type = block["type"]
     if block_type == "heading":
         paragraph = word_document.add_paragraph()
         paragraph.paragraph_format.space_before = Pt(10)
         paragraph.paragraph_format.space_after = Pt(2)
-        run = paragraph.add_run(str(block.get("text", "")))
+        run = paragraph.add_run(text_or_default(block.get("text"), ""))
         run.bold = True
         run.font.size = Pt(SIZE_CLAUSE_HEADING)
         run.font.color.rgb = RGBColor(*COLOR_INK)
     elif block_type == "paragraph":
-        word_document.add_paragraph(str(block.get("text", "")))
+        word_document.add_paragraph(text_or_default(block.get("text"), ""))
     elif block_type == "bullets":
-        for item in block.get("items", []):
+        for item in block.get("items") or []:
             word_document.add_paragraph(str(item), style="List Bullet")
     elif block_type == "table":
-        rows = block.get("rows", [])
-        if not rows or not isinstance(rows[0], list):
-            raise ValueError(f"table.rows must be a non-empty array of row arrays; {DOCX_HINT}")
+        rows = block["rows"]
         table = word_document.add_table(rows=len(rows), cols=len(rows[0]))
         table.style = "Table Grid"
         for row_index, row in enumerate(rows):
             for column_index, value in enumerate(row):
                 if column_index < len(table.rows[row_index].cells):
                     table.rows[row_index].cells[column_index].text = "" if value is None else str(value)
-    else:
-        raise ValueError(f"unknown block type {block_type!r}; {DOCX_HINT}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Render a paperwork document JSON to a letterhead PDF or a DOCX contract.")
+    parser = OfficeArgumentParser(description="Render a paperwork document JSON to a letterhead PDF or a DOCX contract; office guide paperwork describes both.")
     parser.add_argument("document_path", help="Path to the document JSON file")
     parser.add_argument("output_path", help="Path to the output .pdf or .docx file")
     arguments = parser.parse_args()
     output_path = Path(os.path.expanduser(arguments.output_path))
-    is_docx = output_path.suffix.lower() == ".docx"
+    document_path = os.path.expanduser(arguments.document_path)
     try:
-        if is_docx:
-            if not ensure_requirements("office"):
-                raise RuntimeError("paperwork dependencies are unavailable after bootstrap")
-            document = load_docx_document(os.path.expanduser(arguments.document_path))
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            generate_docx(document, output_path)
-            print(output_path)
-            return
-        document = load_document(os.path.expanduser(arguments.document_path))
-        pdf = render_document(document)
-    except FileNotFoundError:
-        print(f"paperwork renderer error: document JSON not found at {arguments.document_path}; write it with write first, following the spec's skeleton", file=sys.stderr)
-        raise SystemExit(1)
-    except PermissionError:
-        print(f"paperwork renderer error: cannot write to {output_path} (permission denied); rerun the SAME command with the output changed to ~/documents/{output_path.parent.name}/{output_path.name}", file=sys.stderr)
-        raise SystemExit(1)
-    except (ValueError, json.JSONDecodeError) as validation_error:
-        print(f"paperwork renderer error: {validation_error}", file=sys.stderr)
-        raise SystemExit(1)
-    try:
+        write_output(document_path, output_path)
+    except PermissionError as error:
+        raise OfficeFailure(PERMISSION_DENIED.issue(
+            f"cannot write to {output_path} (permission denied)",
+            location=error.filename,
+            suggestion=f"rerun the SAME command with the output changed to ~/documents/{output_path.parent.name}/{output_path.name}",
+        )) from error
+    return Result(summary=f"rendered {output_path}", output_path=str(output_path))
+
+
+def write_output(document_path, output_path):
+    if output_path.suffix.lower() == ".docx":
+        document = load_contract_document(document_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        pdf.output(str(output_path))
-    except PermissionError:
-        print(f"paperwork renderer error: cannot write to {output_path} (permission denied); rerun the SAME command with the output changed to ~/documents/{output_path.parent.name}/{output_path.name}", file=sys.stderr)
-        raise SystemExit(1)
-    print(output_path)
+        generate_docx(document, output_path)
+        return
+    pdf = render_document(load_document(document_path))
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    pdf.output(str(output_path))
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(run_command(main))

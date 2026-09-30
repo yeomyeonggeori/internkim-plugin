@@ -5,6 +5,9 @@ import sys
 import urllib.parse
 import urllib.request
 
+from deck_definitions import IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND
+from office_result import INVALID_ARGUMENTS, OfficeFailure, Result, run_command
+
 OPENVERSE_ENDPOINT = "https://api.openverse.org/v1/images/"
 SAFE_LICENSES = "cc0,pdm"
 MAXIMUM_BYTES = 3_500_000
@@ -81,34 +84,41 @@ def reference_path(output_path: pathlib.Path) -> str:
     return output_path.name
 
 
-def main() -> int:
+def main() -> Result:
     query, output_value = parse_arguments(sys.argv[1:])
     if not query or not output_value:
-        print("usage: fetch_image.py <search query> <output path>   (also accepts --output <path>)")
-        return 2
+        raise OfficeFailure(INVALID_ARGUMENTS.issue("usage: office deck image <search query> <output path>   (also accepts --output <path>)"))
     output_path = anchor_site_output(output_value)
     try:
         results = search_openverse(query)
-    except Exception as error:
-        print(f"image search failed: {error}; skip imagery or try a simpler English query")
-        return 1
+    except (OSError, ValueError) as error:
+        raise OfficeFailure(IMAGE_SEARCH_FAILED.issue(f"image search failed: {error}")) from error
     for result in results:
-        image_url = result.get("url") or ""
-        if not image_url:
-            continue
-        try:
-            written = download(image_url, output_path)
-        except Exception:
-            continue
-        if written:
-            title = result.get("title") or "untitled"
-            creator = result.get("creator") or "unknown"
-            print(f"saved {output_path} ({written // 1024}KB) — \"{title}\" by {creator}, license {result.get('license', '?').upper()} (no attribution required)")
-            print(f"reference it as {reference_path(output_path)}")
-            return 0
-    print(f"no usable cc0/public-domain image found for {query!r}; try a simpler English query or skip imagery")
-    return 1
+        saved = try_download(result, output_path)
+        if saved:
+            return saved
+    raise OfficeFailure(NO_IMAGE_FOUND.issue(f"no usable cc0/public-domain image found for {query!r}"))
+
+
+def try_download(result: dict, output_path: pathlib.Path) -> Result | None:
+    image_url = result.get("url") or ""
+    if not image_url:
+        return None
+    try:
+        written = download(image_url, output_path)
+    except (OSError, ValueError):
+        return None
+    if not written:
+        return None
+    title = result.get("title") or "untitled"
+    creator = result.get("creator") or "unknown"
+    license_name = str(result.get("license", "?")).upper()
+    return Result(
+        summary=f"saved {output_path} ({written // 1024}KB), \"{title}\" by {creator}, license {license_name} (no attribution required); reference it as {reference_path(output_path)}",
+        output_path=str(output_path),
+        details={"title": title, "creator": creator, "license": license_name, "referencePath": reference_path(output_path), "bytes": written},
+    )
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run_command(main))

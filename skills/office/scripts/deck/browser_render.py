@@ -1,16 +1,14 @@
 import pathlib
 import subprocess
-import sys
 
+from office_result import INPUT_NOT_FOUND, OfficeFailure
 from slide_images import rendered_slide_image_paths
 
 
 def try_html_render(html_render_script: pathlib.Path, source_path: pathlib.Path, deck_name: str, build_path: pathlib.Path, formats: set[str]) -> str:
     marker_path = browser_unavailable_marker_path(build_path)
     if marker_path.exists():
-        message = "browser previously unavailable in this workspace; skipping render attempt"
-        print(f"[warning] {message}", file=sys.stderr, flush=True)
-        return message
+        return "browser previously unavailable in this workspace; skipped the render attempt"
     try:
         run_html_render(html_render_script, source_path, deck_name, build_path, formats)
         return ""
@@ -21,14 +19,13 @@ def try_html_render(html_render_script: pathlib.Path, source_path: pathlib.Path,
 
 
 def record_browser_unavailable(marker_path: pathlib.Path, message: str) -> str:
-    print(f"[warning] {message}; continuing with available browserless outputs", file=sys.stderr, flush=True)
     write_browser_unavailable_marker(marker_path)
     return message
 
 
 def run_html_render(html_render_script: pathlib.Path, source_path: pathlib.Path, deck_name: str, build_path: pathlib.Path, formats: set[str]) -> None:
     if not html_render_script.exists():
-        raise SystemExit("Error: html_render.mjs not found. Cannot export HTML-first deck.")
+        raise OfficeFailure(INPUT_NOT_FOUND.issue(f"{html_render_script} not found; cannot render the deck", str(html_render_script)))
     command = [
         "bun",
         str(html_render_script),

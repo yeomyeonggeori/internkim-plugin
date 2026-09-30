@@ -32,7 +32,7 @@ class SpeakerNotesTest(unittest.TestCase):
         slides = [{"warnings": []}, {"warnings": []}]
         apply_missing_speaker_notes_warning(slides, SIDEBAR_SLIDE + NOTES_SLIDE)
         self.assertEqual(len(slides[0]["warnings"]), 1)
-        self.assertIn("slide 1 lacks", slides[0]["warnings"][0])
+        self.assertIn("slide 1 lacks", slides[0]["warnings"][0].message)
 
     def test_a_footnote_can_be_the_slide_footer(self):
         self.assertEqual(last_direct_child(FOOTNOTE_SLIDE), ("div", {"class": "footnotes"}))

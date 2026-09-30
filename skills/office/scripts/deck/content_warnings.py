@@ -1,6 +1,7 @@
 import datetime
 import re
 
+from deck_definitions import EMOJI_ICON, LANGUAGE_MISMATCH, MISSING_REQUIRED_TEXT, MISSING_SPEAKER_NOTES, UNSOURCED_CURRENT_DATE
 from design_warnings import LABEL_ONLY_SLIDE_ROLES, append_deck_warning
 from slide_source import SPEAKER_NOTES_CLASS_ATTRIBUTE_PATTERN, split_slide_sources
 
@@ -28,8 +29,10 @@ def apply_language_mismatch_warning(slides: list[dict[str, object]], slide_texts
     if mismatched_indexes:
         append_deck_warning(
             slides,
-            "languageMismatchWarning: slide " + ", ".join(mismatched_indexes)
-            + " titles are Latin-only while the deck text is Korean; write slide titles in the request language",
+            LANGUAGE_MISMATCH.deck_issue(
+                "slide " + ", ".join(mismatched_indexes)
+                + " titles are Latin-only while the deck text is Korean; write slide titles in the request language"
+            ),
         )
 
 
@@ -60,8 +63,10 @@ def apply_unsourced_current_date_warning(
     if dated_indexes:
         append_deck_warning(
             slides,
-            "unsourcedCurrentDateWarning: slide " + ", ".join(dated_indexes)
-            + f" shows today's date {today.isoformat()}, which is not in required-visible-text.txt; only show dates from the source material",
+            UNSOURCED_CURRENT_DATE.deck_issue(
+                "slide " + ", ".join(dated_indexes)
+                + f" shows today's date {today.isoformat()}, which is not in required-visible-text.txt; only show dates from the source material"
+            ),
         )
 
 
@@ -85,7 +90,7 @@ def apply_missing_required_text_warning(
         preview = "; ".join(missing_lines[:REQUIRED_TEXT_PREVIEW_LINE_COUNT]) + (" ..." if len(missing_lines) > REQUIRED_TEXT_PREVIEW_LINE_COUNT else "")
         append_deck_warning(
             slides,
-            f"missingRequiredTextWarning: {len(missing_lines)} of {len(ledger_lines)} required-visible-text.txt lines are not visible in the deck: {preview}",
+            MISSING_REQUIRED_TEXT.deck_issue(f"{len(missing_lines)} of {len(ledger_lines)} required-visible-text.txt lines are not visible in the deck: {preview}"),
         )
 
 
@@ -105,8 +110,10 @@ def apply_missing_speaker_notes_warning(slides: list[dict[str, object]], source_
     if missing_indexes:
         append_deck_warning(
             slides,
-            "missingSpeakerNotesWarning: slide " + ", ".join(missing_indexes)
-            + " lacks an <aside class=\"notes\"> speaker script the presenter can read aloud",
+            MISSING_SPEAKER_NOTES.deck_issue(
+                "slide " + ", ".join(missing_indexes)
+                + " lacks an <aside class=\"notes\"> speaker script the presenter can read aloud"
+            ),
         )
 
 
@@ -119,8 +126,10 @@ def apply_emoji_icon_warning(slides: list[dict[str, object]], slide_texts: list[
     if emoji_indexes:
         append_deck_warning(
             slides,
-            "emojiIconWarning: slide " + ", ".join(emoji_indexes)
-            + " uses emoji glyphs; use text labels, CSS markers, or inline SVG instead",
+            EMOJI_ICON.deck_issue(
+                "slide " + ", ".join(emoji_indexes)
+                + " uses emoji glyphs; use text labels, CSS markers, or inline SVG instead"
+            ),
         )
 
 
