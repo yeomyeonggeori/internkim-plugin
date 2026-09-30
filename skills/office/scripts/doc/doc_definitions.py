@@ -1,5 +1,6 @@
+from office_operations import OPERATION_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
-from office_schema import AnyOf, CellValue, Choice, Field, ListOf, MapOf, Number, Record, Text, Variant
+from office_schema import AnyOf, Boolean, CellValue, Choice, Field, ListOf, MapOf, Number, Record, Text, Variant
 from text_checks import TEXT_CHECK_ISSUE_KINDS
 
 
@@ -85,9 +86,100 @@ VALIDATE_ISSUE_KINDS = (
     TABLE_DENSE_CELLS,
 )
 
+BLOCK_INDEX = Number(minimum=0, integer=True)
+INSERT_AFTER = Field("after", Number(minimum=-1, integer=True), "insert after this block index from doc read; -1 inserts at the start")
+INSERT_BEFORE = Field("before", BLOCK_INDEX, "insert before this block index; give after or before, not both")
+TARGET_BLOCK = Field("block", BLOCK_INDEX, "block index from doc read", required=True)
+TABLE_BLOCK = Field("block", BLOCK_INDEX, "index of a table block from doc read", required=True)
+ROW_INDEX = Number(minimum=0, integer=True)
+
+OPERATIONS = Variant(
+    "operation",
+    "one edit of doc apply; every index refers to the document as doc read showed it before the batch, and the batch applies whole or not at all",
+    "op",
+    (
+        Record("replace_text", "replace every occurrence of text, keeping the formatting of the run the match starts in", (
+            Field("find", Text(non_empty=True), "exact text to find; it must occur at least once", required=True),
+            Field("replace", Text(), "replacement text", required=True),
+            Field("block", BLOCK_INDEX, "only this block; default the whole body and every table"),
+        )),
+        Record("set_text", "replace a paragraph's text, keeping its first run's formatting", (
+            TARGET_BLOCK,
+            Field("text", Text(), "new text", required=True),
+        )),
+        Record("insert_paragraph", "insert a paragraph", (
+            INSERT_AFTER,
+            INSERT_BEFORE,
+            Field("text", Text(), "paragraph text", required=True),
+            Field("style", Text(non_empty=True), "paragraph style name, default Normal"),
+        )),
+        Record("insert_heading", "insert a heading", (
+            INSERT_AFTER,
+            INSERT_BEFORE,
+            Field("text", Text(), "heading text", required=True),
+            Field("level", Number(1, 9, integer=True), "heading depth, default 1"),
+        )),
+        Record("insert_list", "insert list items", (
+            INSERT_AFTER,
+            INSERT_BEFORE,
+            Field("items", ListOf(Text(non_empty=True), non_empty=True), "one entry per item", required=True),
+            Field("numbered", Boolean(), "numbered instead of bulleted"),
+        )),
+        Record("insert_table", "insert a table", (
+            INSERT_AFTER,
+            INSERT_BEFORE,
+            Field("rows", TABLE_ROWS, "every row the same width, header row first", required=True),
+            Field("style", Text(non_empty=True), "table style name, default Table Grid"),
+        )),
+        Record("insert_page_break", "insert a page break", (INSERT_AFTER, INSERT_BEFORE)),
+        Record("delete_block", "delete a block", (TARGET_BLOCK,)),
+        Record("set_style", "set a paragraph or table style that the document defines", (
+            TARGET_BLOCK,
+            Field("style", Text(non_empty=True), "a style name from doc read's paragraphStyles or tableStyles", required=True),
+        )),
+        Record("set_cell", "replace one table cell's text", (
+            TABLE_BLOCK,
+            Field("row", ROW_INDEX, "row index", required=True),
+            Field("column", ROW_INDEX, "column index", required=True),
+            Field("text", Text(), "new text", required=True),
+        )),
+        Record("insert_table_row", "insert a row copying the formatting of the row it follows", (
+            TABLE_BLOCK,
+            Field("after", Number(minimum=0, integer=True), "insert after this row index", required=True),
+            Field("cells", ListOf(CellValue()), "one value per column; missing cells stay empty", required=True),
+        )),
+        Record("delete_table_row", "delete a table row", (
+            TABLE_BLOCK,
+            Field("row", ROW_INDEX, "row index", required=True),
+        )),
+        Record("set_header", "replace a section's header text", (
+            Field("text", Text(), "header text", required=True),
+            Field("section", Number(minimum=0, integer=True), "section index, default 0"),
+        )),
+        Record("set_footer", "replace a section's footer text", (
+            Field("text", Text(), "footer text", required=True),
+            Field("section", Number(minimum=0, integer=True), "section index, default 0"),
+        )),
+        Record("add_comment", "attach a review comment to a paragraph", (
+            TARGET_BLOCK,
+            Field("text", Text(non_empty=True), "comment text", required=True),
+            Field("author", Text(), "author name"),
+        )),
+        Record("set_east_asia_font", "make the document's default East Asian font this one", (
+            Field("font", Text(non_empty=True), "font name such as 맑은 고딕", required=True),
+        )),
+        Record("update_fields_on_open", "ask Word to refresh the table of contents and other fields when the file opens", ()),
+    ),
+)
+OPERATION_BATCH = ListOf(OPERATIONS, non_empty=True)
+
 GUIDE_INPUTS = (
     ("doc create --spec <file>", DOCUMENT_SPECIFICATION),
     ("doc create --table <file>", TABLE_FILE),
     ("doc edit --blocks <file>", BLOCK_LIST),
+    ("doc apply <file.docx> <ops.json>", OPERATION_BATCH),
 )
-GUIDE_ISSUES = (("doc validate", VALIDATE_ISSUE_KINDS),)
+GUIDE_ISSUES = (
+    ("doc validate", VALIDATE_ISSUE_KINDS),
+    ("doc apply", OPERATION_ISSUE_KINDS),
+)
