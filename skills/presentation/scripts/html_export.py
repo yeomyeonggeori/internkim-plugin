@@ -8,11 +8,13 @@ import sys
 import time
 
 from browser_render import clear_stale_render_evidence, rendered_slide_image_paths, try_html_render, write_render_source
+from design_tokens import read_design_tokens
 from image_pptx import write_image_backed_pptx
 from native_pptx import write_native_text_pptx
 from native_preview import write_native_review_images
 from resource_inlining import inject_vendored_paperlogy_fallback, inline_local_fonts, inline_local_images
-from slide_model import SlideModel, create_slide_models, extract_notes, extract_slide_sources, read_design_tokens
+from slide_model import SlideModel, create_slide_models, extract_notes, extract_slide_sources
+from slide_source import read_optional_text
 from slide_viewer import inject_screen_slide_viewer
 
 
@@ -63,7 +65,7 @@ def parse_export_request(arguments: list[str]) -> ExportRequest:
 
 
 def write_derived_outputs(request: ExportRequest, html_output_path: pathlib.Path, slide_sources: list[str]) -> None:
-    design = read_design_tokens(request.source_path.with_name("DESIGN.md"))
+    design = read_design_tokens(read_optional_text(request.source_path.with_name("DESIGN.md")))
     slide_models = create_slide_models(slide_sources)
     slide_image_paths = render_slide_images(request, html_output_path, slide_models, design)
     pptx_output_mode = ""

@@ -8,31 +8,6 @@ TINY_FONT_SIZE_PIXELS = 16
 SIDE_STRIPE_MINIMUM_PIXELS = 2
 
 
-def read_design_tokens(text: str) -> dict[str, str]:
-    tokens = {}
-    if not text.startswith("---"):
-        return tokens
-    parts = text.split("---", 2)
-    if len(parts) < 3:
-        return tokens
-    section = ""
-    for raw_line in parts[1].splitlines():
-        line = raw_line.rstrip()
-        if not line.strip():
-            continue
-        if not line.startswith(" ") and line.endswith(":"):
-            section = line[:-1].strip()
-            continue
-        if not section or ":" not in line:
-            continue
-        key, value = line.split(":", 1)
-        key = key.strip()
-        value = value.strip().strip('"')
-        if key and value:
-            tokens[section + "." + key] = value
-    return tokens
-
-
 def design_document_body(design_document_text: str) -> str:
     if not design_document_text.startswith("---"):
         return design_document_text.strip()
