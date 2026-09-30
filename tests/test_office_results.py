@@ -17,7 +17,7 @@ sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
 
 from office_commands import COMMANDS, FORMATS  # noqa: E402
 from office_result import COMMAND_ISSUE_KINDS, IssueKind  # noqa: E402
-from office_schema import CellValue, Field, ListOf, Number, Record, Text  # noqa: E402
+from office_schema import CellValue, Field, ListOf, Number, Record, Text, Variant  # noqa: E402
 
 
 def load_definitions(office_format):
@@ -77,6 +77,29 @@ class ResultEnvelopeTest(unittest.TestCase):
             codes.extend(kind.code for kind in set(defined_issue_kinds(load_definitions(office_format))))
         duplicates = sorted({code for code in codes if codes.count(code) > 1} - {"REQUIRED_TEXT_MISSING", "FORBIDDEN_TEXT_PRESENT", "KOREAN_FONT_MISSING"})
         self.assertEqual(duplicates, [])
+
+
+class GuideTest(unittest.TestCase):
+    def guide(self, format_name):
+        return subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", format_name], capture_output=True, text=True, check=True).stdout
+
+    def test_the_guide_lists_every_code_its_format_defines(self):
+        for office_format in FORMATS:
+            with self.subTest(format=office_format.name):
+                guide_text = self.guide(office_format.name)
+                missing = [kind.code for kind in defined_issue_kinds(load_definitions(office_format)) if kind.code not in guide_text]
+                self.assertEqual(missing, [])
+
+    def test_the_guide_lists_every_field_the_validators_accept(self):
+        for office_format in FORMATS:
+            with self.subTest(format=office_format.name):
+                guide_text = self.guide(office_format.name)
+                for _, shape in load_definitions(office_format).GUIDE_INPUTS:
+                    for structure in shape.structures():
+                        records = structure.records if isinstance(structure, Variant) else (structure,)
+                        for record in records:
+                            for field in record.fields:
+                                self.assertRegex(guide_text, rf"\n\s+{re.escape(field.name)}\s")
 
 
 class SchemaTest(unittest.TestCase):

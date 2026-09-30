@@ -32,3 +32,9 @@ VALIDATE_ISSUE_KINDS = (
     BLANK_HEADER_CELLS,
     FORMULA_ERROR_MARKER,
 )
+
+GUIDE_INPUTS = (
+    ("sheet create --spec <file>", WORKBOOK_SPECIFICATION),
+    ("sheet edit --rows <file>", ROWS),
+)
+GUIDE_ISSUES = (("sheet validate", VALIDATE_ISSUE_KINDS),)

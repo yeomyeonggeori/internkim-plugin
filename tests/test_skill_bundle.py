@@ -26,6 +26,10 @@ def office_command_table():
     return runpy.run_path(str(OFFICE_SCRIPTS_PATH / "office_commands.py"))["COMMANDS"]
 
 
+def office_format_names():
+    return {office_format.name for office_format in runpy.run_path(str(OFFICE_SCRIPTS_PATH / "office_commands.py"))["FORMATS"]}
+
+
 class SharedSkillRuntimeTest(unittest.TestCase):
     def test_every_bundled_runtime_is_the_same_file(self):
         digests = {
@@ -46,12 +50,13 @@ class OfficeEntryTest(unittest.TestCase):
         self.assertEqual(unlisted_commands, [])
 
     def test_every_referenced_command_exists(self):
-        command_names = {command.name for command in office_command_table()} | {"python"}
+        command_names = {command.name for command in office_command_table()} | {"python", "guide"}
+        command_names |= {f"guide {format_name}" for format_name in office_format_names()}
         referenced_names = set()
         for document_path in (SKILLS_PATH / "office").rglob("*.md"):
             text = document_path.read_text(encoding="utf-8")
             for words in re.findall(r"<skill>/scripts/office ([a-z]+)(?: ([a-z]+))?", text):
-                referenced_names.add(words[0] if words[0] == "python" else " ".join(words))
+                referenced_names.add(words[0] if words[0] == "python" or not words[1] else " ".join(words))
         self.assertEqual(referenced_names - command_names, set())
 
 

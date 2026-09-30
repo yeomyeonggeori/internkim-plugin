@@ -46,3 +46,9 @@ VALIDATE_ISSUE_KINDS = (
     NO_FONT_RESOURCES,
     KOREAN_FONT_NOT_EMBEDDED,
 )
+
+GUIDE_INPUTS = (
+    ("pdf create --spec <file>", PDF_SPECIFICATION),
+    ("pdf edit --section <file>", SECTION),
+)
+GUIDE_ISSUES = (("pdf validate", VALIDATE_ISSUE_KINDS),)

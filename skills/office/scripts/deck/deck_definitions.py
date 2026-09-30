@@ -127,3 +127,12 @@ IMAGE_SEARCH_FAILED = IssueKind("IMAGE_SEARCH_FAILED", ERROR, "the image search 
 NO_IMAGE_FOUND = IssueKind("NO_IMAGE_FOUND", ERROR, "no usable public-domain image matched", "try a simpler English query or skip imagery")
 
 IMAGE_ISSUE_KINDS = (IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND)
+
+GUIDE_INPUTS = ()
+GUIDE_ISSUES = (
+    ("deck build", BUILD_ISSUE_KINDS + REVIEW_ISSUE_KINDS),
+    ("deck validate", VALIDATE_ISSUE_KINDS),
+    ("deck restore", (NO_SLIDE_SECTIONS,)),
+    ("deck accept", ACCEPT_ISSUE_KINDS),
+    ("deck image", IMAGE_ISSUE_KINDS),
+)
