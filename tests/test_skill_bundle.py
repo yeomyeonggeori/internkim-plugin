@@ -1,3 +1,4 @@
+import ast
 import hashlib
 import re
 import runpy
@@ -65,6 +66,40 @@ class OfficeEntryTest(unittest.TestCase):
         listed_names = set(re.findall(r"`([a-z]+ [a-z]+)`", route_table))
         command_names = {command.name for command in office_command_table()}
         self.assertEqual(command_names ^ listed_names, set())
+
+
+class OldPythonTest(unittest.TestCase):
+    def test_modern_annotations_are_never_evaluated_at_definition_time(self):
+        offending_paths = [
+            str(path.relative_to(SKILLS_PATH))
+            for path in (SKILLS_PATH / "office" / "scripts").rglob("*.py")
+            if uses_modern_annotations(path) and not postpones_annotations(path)
+        ]
+        self.assertEqual(offending_paths, [], "Python 3.9, the macOS Command Line Tools interpreter, cannot evaluate list[str] or X | None")
+
+
+def annotation_nodes(tree):
+    for node in ast.walk(tree):
+        if isinstance(node, ast.arg) and node.annotation:
+            yield node.annotation
+        if isinstance(node, ast.FunctionDef) and node.returns:
+            yield node.returns
+        if isinstance(node, ast.AnnAssign):
+            yield node.annotation
+
+
+def uses_modern_annotations(path):
+    for annotation in annotation_nodes(ast.parse(path.read_text(encoding="utf-8"))):
+        for node in ast.walk(annotation):
+            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+                return True
+            if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name) and node.value.id in {"list", "dict", "set", "tuple"}:
+                return True
+    return False
+
+
+def postpones_annotations(path):
+    return "from __future__ import annotations" in path.read_text(encoding="utf-8")
 
 
 class HostNeutralEnvironmentTest(unittest.TestCase):

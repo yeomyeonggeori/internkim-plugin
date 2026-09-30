@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 from docx_operations import DOCX_OPERATIONS, load_editing, save_editing
 from office_operations import apply_parser, run_apply
 from office_result import Result, run_command

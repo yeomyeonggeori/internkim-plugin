@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import html.parser
 import re
 import typing
@@ -33,6 +35,10 @@ class DirectChildScanner(html.parser.HTMLParser):
     def handle_endtag(self, tag):
         if tag not in VOID_HTML_TAGS:
             self.depth = max(0, self.depth - 1)
+
+    def parse_marked_section(self, i, report=1):
+        closing_index = self.rawdata.find(">", i)
+        return -1 if closing_index == -1 else closing_index + 1
 
 
 def last_direct_child(slide_source: str) -> typing.Optional[tuple[str, dict]]:

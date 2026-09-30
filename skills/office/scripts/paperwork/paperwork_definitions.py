@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from amounts import ROUNDING_RULE, VAT_RATE_PERCENT
 from office_result import ERROR, WARNING, IssueKind
 from office_schema import AnyOf, Boolean, CellValue, Field, ListOf, Number, Record, Text, Variant

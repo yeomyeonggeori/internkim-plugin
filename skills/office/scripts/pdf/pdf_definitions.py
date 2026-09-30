@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from office_result import ERROR, WARNING, IssueKind
 from office_schema import Boolean, CellValue, Field, ListOf, Number, Record, Text
 from text_checks import TEXT_CHECK_ISSUE_KINDS
