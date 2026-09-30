@@ -3,7 +3,7 @@ import sys
 import unittest
 
 
-SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "presentation" / "scripts"
+SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from slide_model import create_slide_models  # noqa: E402
