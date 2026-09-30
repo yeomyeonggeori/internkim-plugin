@@ -121,5 +121,36 @@ class PageTest(GeneratedDocumentTest):
         self.assertEqual((size, set(margins.values()), is_landscape), ({"w": 16838, "h": 11906}, {720}, True))
 
 
+def first_table(document_path):
+    return re.search(r"<w:tbl>.*?</w:tbl>(<w:p>.*?</w:p>)?", package_part(document_path, "word/document.xml"), re.S)
+
+
+class TableTest(GeneratedDocumentTest):
+    ROWS = [["항목", "값"], ["매출", "100"]]
+
+    def assert_default_table(self, document_path):
+        table = first_table(document_path).group(0)
+        first_row, second_row = re.findall(r"<w:tr[ >].*?</w:tr>", table, re.S)
+        margins = re.search(r"<w:tblCellMar>(.*?)</w:tblCellMar>", table, re.S).group(1)
+        self.assertRegex(margins, r'<w:top w:w="[1-9]\d*"')
+        self.assertRegex(margins, r'<w:bottom w:w="[1-9]\d*"')
+        self.assertIn("<w:tblHeader/>", first_row)
+        self.assertEqual(len(re.findall(r'<w:shd [^>]*w:fill="EAF1F8"', first_row)), 2)
+        self.assertEqual(len(re.findall(r"<w:b/>", first_row)), 2)
+        self.assertNotIn("<w:shd", second_row)
+        self.assertNotIn("<w:b/>", second_row)
+        self.assertLess(table.index("<w:tblBorders>"), table.index("<w:tblCellMar>"))
+        self.assertLess(table.index("<w:tblCellMar>"), table.index("<w:tblLook"))
+        self.assertEqual(table.count("<w:tcW"), 4)
+        spacer = first_table(document_path).group(1)
+        self.assertRegex(spacer or "", r'<w:spacing [^>]*w:after="1[0-9]{2}"')
+
+    def test_created_table_has_margins_a_shaded_bold_header_and_space_after(self):
+        self.assert_default_table(self.created([{"type": "table", "rows": self.ROWS}]))
+
+    def test_exported_table_has_margins_a_shaded_bold_header_and_space_after(self):
+        self.assert_default_table(self.exported("| 항목 | 값 |\n| --- | --- |\n| 매출 | 100 |\n\n뒤\n"))
+
+
 if __name__ == "__main__":
     unittest.main()
