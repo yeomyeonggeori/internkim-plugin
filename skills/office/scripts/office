@@ -3,7 +3,8 @@ import os
 import pathlib
 import sys
 
-from office_commands import COMMANDS, Command, find_command
+from office_commands import COMMANDS, Command, find_command, find_format
+from office_guide import formats_text, guide_text
 from office_result import DEPENDENCIES_UNAVAILABLE, UNKNOWN_COMMAND, OfficeFailure, run_command
 from skill_runtime import ensure_requirements
 
@@ -11,12 +12,15 @@ from skill_runtime import ensure_requirements
 SKILL_NAME = "office"
 SCRIPTS_PATH = pathlib.Path(__file__).resolve().parent
 PYTHON_COMMAND_SUMMARY = "run a task-local Python script with the office packages installed"
+GUIDE_COMMAND_SUMMARY = "print a format's commands, input fields and issue codes"
 
 
 def main(arguments: list[str]) -> int:
     if not arguments or arguments[0] in {"-h", "--help", "help"}:
         print(usage())
         return 0
+    if arguments[0] == "guide":
+        return print_guide(arguments[1:])
     if arguments[0] == "python":
         return run_python(arguments[1:])
     command = find_command(arguments[:2])
@@ -29,13 +33,24 @@ def usage() -> str:
     width = max(len(command.name) for command in COMMANDS)
     lines = [
         "usage: office <format> <verb> [arguments]",
+        "       office guide <format>",
         "       office python <script.py> [arguments]",
         "",
     ]
     lines.extend(f"  {command.name.ljust(width)}  {command.summary}" for command in COMMANDS)
+    lines.append(f"  {'guide'.ljust(width)}  {GUIDE_COMMAND_SUMMARY}")
     lines.append(f"  {'python'.ljust(width)}  {PYTHON_COMMAND_SUMMARY}")
     lines.extend(["", "Each command's own --help lists its arguments."])
     return "\n".join(lines)
+
+
+def print_guide(arguments: list[str]) -> int:
+    office_format = find_format(arguments[0]) if arguments else None
+    if office_format is None:
+        print(formats_text())
+        return 0 if not arguments else 2
+    print(guide_text(office_format))
+    return 0
 
 
 def reject_unknown_command(words: list[str]):

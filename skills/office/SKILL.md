@@ -32,6 +32,8 @@ A standardized form belongs to paperwork even when it ships as .docx or PDF: its
 
 **File naming.** Documents, PDFs, and workbooks live at `~/documents/<title>.<ext>`, with any Markdown source beside them. Decks live in `artifacts/<deck-slug>/` and deliver from `artifacts/<deck-slug>/build/`. Company forms go to the storage directory their registration returns.
 
+**Results.** Every command prints one JSON result: `status` is ok, warning, or error, and each issue carries a stable `code`, a `location`, and a `suggestion`. `<skill>/scripts/office guide <format>` lists every input field and every code a command reports.
+
 **Verify before attaching.** Run the format's `validate` command, or reopen the file, before delivery. Pass the source names, dates, totals, and key labels as `--required-text` where the validator takes it. Read every warning, revise real problems, then attach only the accepted final output, never intermediate files. Say what visual uncertainty remains.
 
 **Korean fonts.** Korean text needs a Korean-capable font. The commands find one from a single list (Nanum Gothic, Noto Sans CJK, Apple SD Gothic Neo); never fall back to a built-in Latin font for Korean. Decks use the bundled Paperlogy font.

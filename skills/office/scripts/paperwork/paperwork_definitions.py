@@ -134,3 +134,26 @@ TEMPLATE_CONTEXTS = {
         "defaults": {"equity": "", "probationNote": ""},
     },
 }
+
+GUIDE_INPUTS = (
+    ("paperwork render <document.json> <output>.pdf", PAPERWORK_DOCUMENT),
+    ("paperwork render <document.json> <output>.docx", CONTRACT_DOCUMENT),
+)
+GUIDE_ISSUES = ()
+
+
+def template_guide_lines() -> list[str]:
+    lines = []
+    for name, manifest in TEMPLATE_CONTEXTS.items():
+        lines.append(f"  {name}")
+        lines.append(f"    required: {', '.join(manifest['required'])}")
+        if manifest["optional"]:
+            lines.append(f"    optional: {', '.join(manifest['optional'])}")
+        if manifest["lists"]:
+            lines.append(f"    non-empty lists: {', '.join(manifest['lists'])}")
+        if manifest["defaults"]:
+            lines.append("    defaults: " + ", ".join(f"{field}={value!r}" for field, value in manifest["defaults"].items()))
+    return lines
+
+
+GUIDE_SECTIONS = (("Templates of paperwork fill <template> <context.json> <output>.docx; the context JSON holds these fields", template_guide_lines),)

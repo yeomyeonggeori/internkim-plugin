@@ -84,3 +84,10 @@ VALIDATE_ISSUE_KINDS = (
     TABLE_EMPTY_CELLS,
     TABLE_DENSE_CELLS,
 )
+
+GUIDE_INPUTS = (
+    ("doc create --spec <file>", DOCUMENT_SPECIFICATION),
+    ("doc create --table <file>", TABLE_FILE),
+    ("doc edit --blocks <file>", BLOCK_LIST),
+)
+GUIDE_ISSUES = (("doc validate", VALIDATE_ISSUE_KINDS),)
