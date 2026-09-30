@@ -71,6 +71,7 @@ ensure_node_environment() {
     echo "[stage] bun_install_done $(date +%s)" >&2
   fi
   cp "$HTML_RENDER_SCRIPT" "${NODE_RUNTIME_ROOT}/html_render.mjs"
+  cp "$(dirname "$HTML_RENDER_SCRIPT")/text_layout.mjs" "${NODE_RUNTIME_ROOT}/text_layout.mjs"
   HTML_RENDER_SCRIPT="${NODE_RUNTIME_ROOT}/html_render.mjs"
   export NODE_PATH="${NODE_RUNTIME_ROOT}/node_modules${NODE_PATH:+:$NODE_PATH}"
 }
