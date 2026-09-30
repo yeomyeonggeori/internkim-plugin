@@ -8,12 +8,11 @@ from pathlib import Path
 from docx import Document
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml import OxmlElement
-from docx.oxml.ns import qn
 from docx.shared import Inches, Pt
 
 from doc_definitions import DOCUMENT_SPECIFICATION, TABLE_FILE
 from docx_defaults import apply_korean_defaults, set_page, usable_width_inches
+from docx_tables import add_space_after_table, format_table
 from docx_lists import add_list_paragraph, start_list
 from office_result import INVALID_ARGUMENTS, INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
@@ -23,8 +22,6 @@ DEFAULT_FONT_NAME = "맑은 고딕"
 DEFAULT_FONT_SIZE = 10.5
 SIZED_STYLE_NAMES = ["Normal", "Title", "Heading 1", "Heading 2", "Heading 3", "Heading 4"]
 LIST_BLOCK_TYPES = ("bullets", "numbered")
-HEADER_FILL_COLOR = "EAF1F8"
-BORDER_COLOR = "B7C3D0"
 
 
 def main() -> Result:
@@ -135,20 +132,20 @@ def add_table(document: Document, block: dict) -> None:
     table.style = block.get("style") or "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.autofit = False
-    for row_index, row in enumerate(rows):
+    for row in rows:
         cells = table.add_row().cells
         for index, value in enumerate(row):
-            fill_cell(cells[index], value, column_widths[index], is_header=row_index == 0)
-    set_table_borders(table)
+            fill_cell(cells[index], value, column_widths[index])
+    format_table(table)
+    add_space_after_table(document)
 
 
-def fill_cell(cell, value: object, width_inches: float, is_header: bool) -> None:
+def fill_cell(cell, value: object, width_inches: float) -> None:
     cell.text = "" if value is None else str(value)
     cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
-    set_cell_width(cell, width_inches)
-    format_cell_text(cell, is_header)
-    if is_header:
-        shade_cell(cell, HEADER_FILL_COLOR)
+    cell.width = Inches(width_inches)
+    for paragraph in cell.paragraphs:
+        paragraph.paragraph_format.space_after = Pt(2)
 
 
 def read_column_widths(block: dict, width: int, table_width: float) -> list[float]:
@@ -156,39 +153,6 @@ def read_column_widths(block: dict, width: int, table_width: float) -> list[floa
     if isinstance(column_widths, list) and len(column_widths) == width:
         return [float(value) for value in column_widths]
     return [table_width / width for _ in range(width)]
-
-
-def set_cell_width(cell, width_inches: float) -> None:
-    cell.width = Inches(width_inches)
-    cell_width = OxmlElement("w:tcW")
-    cell_width.set(qn("w:w"), str(int(width_inches * 1440)))
-    cell_width.set(qn("w:type"), "dxa")
-    cell._tc.get_or_add_tcPr().append(cell_width)
-
-
-def format_cell_text(cell, is_header: bool) -> None:
-    for paragraph in cell.paragraphs:
-        paragraph.paragraph_format.space_after = Pt(2)
-        for run in paragraph.runs:
-            run.bold = is_header
-
-
-def shade_cell(cell, color: str) -> None:
-    shading = OxmlElement("w:shd")
-    shading.set(qn("w:fill"), color)
-    cell._tc.get_or_add_tcPr().append(shading)
-
-
-def set_table_borders(table) -> None:
-    borders = OxmlElement("w:tblBorders")
-    for border_name in ["top", "left", "bottom", "right", "insideH", "insideV"]:
-        border = OxmlElement(f"w:{border_name}")
-        border.set(qn("w:val"), "single")
-        border.set(qn("w:sz"), "6")
-        border.set(qn("w:space"), "0")
-        border.set(qn("w:color"), BORDER_COLOR)
-        borders.append(border)
-    table._tbl.tblPr.append(borders)
 
 
 def load_table_block(table_path: str) -> dict:
