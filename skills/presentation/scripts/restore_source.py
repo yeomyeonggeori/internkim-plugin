@@ -2,7 +2,7 @@
 import pathlib
 import sys
 
-from html_export import strip_screen_slide_viewer
+from slide_viewer import strip_screen_slide_viewer
 
 
 def main() -> int:

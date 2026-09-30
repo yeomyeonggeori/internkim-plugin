@@ -1,0 +1,52 @@
+section aside.notes, section aside[role="note"], section [data-speaker-notes] { display: none !important; }
+@media screen {
+  html { background: #000; }
+  body { min-height: 100vh; margin: 0; background: #000; }
+  body:not(.internkim-deck-ready) { padding: 32px; display: grid; gap: 32px; justify-items: center; align-content: start; }
+  body:not(.internkim-deck-ready) section { width: 1600px; height: 900px; max-width: calc(100vw - 64px); max-height: calc((100vw - 64px) * 0.5625); aspect-ratio: 16 / 9; box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28); }
+  body.internkim-deck-ready { width: 100vw; height: 100vh; overflow: hidden; display: block; padding: 0; }
+  .bespoke-marp-parent { position: absolute; inset: 0; overflow: hidden; }
+  .marpit { position: absolute; left: 50%; top: 50%; width: 1600px; height: 900px; transform: translate(-50%, -50%) scale(var(--internkim-deck-scale, 1)); transform-origin: center center; }
+  .marpit > section { position: absolute; inset: 0; width: 1600px !important; height: 900px !important; min-width: 1600px !important; max-width: none !important; min-height: 900px !important; max-height: none !important; margin: 0 !important; box-sizing: border-box; box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28); visibility: hidden !important; pointer-events: none; }
+  .marpit > section.bespoke-active { visibility: visible !important; pointer-events: auto; z-index: 1; }
+  .bespoke-marp-osc { position: fixed; right: 20px; bottom: 18px; display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid rgba(255,255,255,0.16); border-radius: 999px; background: rgba(15,23,42,0.86); color: white; font: 600 13px system-ui, -apple-system, BlinkMacSystemFont, sans-serif; box-shadow: 0 16px 40px rgba(0,0,0,0.26); backdrop-filter: blur(12px); z-index: 9999; transition: transform 320ms ease, opacity 320ms ease; }
+  .bespoke-marp-osc[data-idle="true"] { transform: translateY(calc(100% + 26px)); opacity: 0; pointer-events: none; }
+  body[data-bespoke-view="presenter"] .bespoke-marp-osc { right: auto; left: 33%; transform: translateX(-50%); }
+  body[data-bespoke-view="presenter"] .bespoke-marp-osc[data-idle="true"] { transform: translateX(-50%) translateY(calc(100% + 26px)); }
+  .bespoke-marp-osc button { width: 32px; height: 32px; border: 0; border-radius: 999px; background: rgba(255,255,255,0.12); color: white; cursor: pointer; display: grid; place-items: center; font: inherit; }
+  .bespoke-marp-osc button:disabled { opacity: 0.35; cursor: default; }
+  .bespoke-marp-osc svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+  .bespoke-marp-osc-status { min-width: 44px; text-align: center; }
+  .bespoke-marp-tooltip { position: fixed; left: 0; top: 0; opacity: 0; pointer-events: none; transform: translate(-50%, calc(-100% - 12px)); padding: 6px 8px; border-radius: 6px; background: rgba(15,23,42,0.94); color: white; font: 600 12px system-ui, -apple-system, BlinkMacSystemFont, sans-serif; white-space: nowrap; z-index: 10002; transition: opacity 120ms ease; }
+  .bespoke-marp-tooltip[data-open="true"] { opacity: 1; }
+  body[data-bespoke-view="presenter"] .bespoke-marp-osc button[data-action="presenter"] { display: none; }
+  .bespoke-progress-parent { position: fixed; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255,255,255,0.14); z-index: 9998; }
+  .bespoke-progress-bar { display: block; height: 100%; width: 0; background: #60a5fa; transition: width 180ms ease; }
+  .bespoke-marp-overview { position: fixed; inset: 0; display: none; overflow: auto; padding: 72px 48px; background: rgba(2, 6, 23, 0.92); z-index: 10000; }
+  .bespoke-marp-overview[data-open="true"] { display: block; }
+  .bespoke-marp-overview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 24px; max-width: 1440px; margin: 0 auto; }
+  .bespoke-marp-overview-card { display: grid; gap: 10px; border: 0; background: transparent; color: white; text-align: left; cursor: pointer; font: 600 13px system-ui, -apple-system, BlinkMacSystemFont, sans-serif; }
+  .bespoke-marp-overview-card.is-current .bespoke-marp-overview-thumb { outline: 3px solid #60a5fa; }
+  .bespoke-marp-overview-thumb { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 8px; background: #0f172a; box-shadow: 0 18px 46px rgba(0,0,0,0.35); }
+  .bespoke-marp-overview-thumb > section { position: absolute !important; left: 0 !important; top: 0 !important; width: 1600px !important; height: 900px !important; min-width: 1600px !important; max-width: none !important; min-height: 900px !important; max-height: none !important; opacity: 1 !important; pointer-events: none !important; transform: scale(var(--internkim-thumb-scale, 0.16)) !important; transform-origin: 0 0 !important; box-shadow: none !important;  visibility: visible !important;}
+  .bespoke-marp-overview-close { position: fixed; right: 24px; top: 20px; width: 36px; height: 36px; border: 0; border-radius: 999px; background: rgba(255,255,255,0.14); color: white; cursor: pointer; font: 700 16px system-ui, -apple-system, BlinkMacSystemFont, sans-serif; z-index: 10001; }
+  .bespoke-marp-overview-close svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+  body[data-bespoke-view="presenter"] { background: #000; }
+  body[data-bespoke-view="presenter"] .bespoke-marp-parent { right: 34%; bottom: 0; }
+  .bespoke-marp-presenter-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 34%; display: grid; grid-template-rows: minmax(160px, 38%) 1fr 64px; gap: 0; background: #0a0a0a; border-left: 1px solid rgba(255,255,255,0.1); color: white; font: 500 15px system-ui, -apple-system, BlinkMacSystemFont, sans-serif; z-index: 3; }
+  .bespoke-marp-presenter-next { position: relative; overflow: hidden; margin: 20px; border-radius: 10px; background: #000; box-shadow: 0 12px 34px rgba(0,0,0,0.35); }
+  .bespoke-marp-presenter-next > section { position: absolute !important; left: 0 !important; top: 0 !important; width: 1600px !important; height: 900px !important; min-width: 1600px !important; max-width: none !important; min-height: 900px !important; max-height: none !important; opacity: 1 !important; pointer-events: none !important; transform: scale(var(--internkim-presenter-next-scale, 0.2)) !important; transform-origin: 0 0 !important; box-shadow: none !important;  visibility: visible !important;}
+  .bespoke-marp-presenter-note { overflow: auto; padding: 0 24px 24px; color: #d1d5db; line-height: 1.55; white-space: pre-wrap; }
+  .bespoke-marp-presenter-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 24px; border-top: 1px solid rgba(255,255,255,0.08); color: #f9fafb; }
+}
+@page { size: 1600px 900px; margin: 0; }
+@media print {
+  body.internkim-deck-ready { display: block; width: auto; height: auto; overflow: visible; }
+  .bespoke-marp-parent { position: static; inset: auto; overflow: visible; }
+  .marpit { position: static; width: auto; height: auto; transform: none; }
+  .marpit > section { position: relative; inset: auto; opacity: 1; pointer-events: auto; transform: none; box-shadow: none; page-break-after: always; }
+  .bespoke-marp-osc,
+  .bespoke-progress-parent,
+  .bespoke-marp-overview,
+  .bespoke-marp-presenter-panel { display: none !important; }
+}
