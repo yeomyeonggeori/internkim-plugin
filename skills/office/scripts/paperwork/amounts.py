@@ -1,9 +1,9 @@
-from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from decimal import ROUND_DOWN, Decimal, InvalidOperation
 import re
 
 
 VAT_RATE_PERCENT = 10
-ROUNDING_RULE = "every computed amount is rounded half up to a whole won"
+ROUNDING_RULE = "every computed amount drops its fraction below one won (truncates toward zero)"
 
 DIGITS = "영일이삼사오육칠팔구"
 SMALL_UNITS = ("", "십", "백", "천")
@@ -11,12 +11,12 @@ LARGE_UNITS = ("", "만", "억", "조", "경")
 AMOUNT_PATTERN = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
 
 
-def round_to_won(value: Decimal) -> int:
-    return int(value.quantize(Decimal(1), rounding=ROUND_HALF_UP))
+def truncate_to_won(value: Decimal) -> int:
+    return int(value.quantize(Decimal(1), rounding=ROUND_DOWN))
 
 
 def row_amount(quantity: Decimal, unit_price: Decimal) -> int:
-    return round_to_won(quantity * unit_price)
+    return truncate_to_won(quantity * unit_price)
 
 
 def supply_total(row_amounts: list[int]) -> int:
@@ -24,7 +24,11 @@ def supply_total(row_amounts: list[int]) -> int:
 
 
 def value_added_tax(supply: int) -> int:
-    return round_to_won(Decimal(supply) * VAT_RATE_PERCENT / 100)
+    return truncate_to_won(Decimal(supply) * VAT_RATE_PERCENT / 100)
+
+
+def vat_total(row_vats: list[int]) -> int:
+    return sum(row_vats)
 
 
 def grand_total(supply: int, tax: int) -> int:

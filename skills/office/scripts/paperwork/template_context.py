@@ -1,6 +1,6 @@
 from typing import Callable
 
-from amounts import korean_number_words, parse_amount
+from amounts import korean_number_words, parse_amount, truncate_to_won
 from template_fields import template_fields, template_list_fields
 
 
@@ -21,7 +21,7 @@ DEFAULT_VALUES = {
 
 def derive_korean_total(context: dict) -> str | None:
     amount = parse_amount(context.get("totalAmount", ""))
-    return None if amount is None else korean_number_words(round(amount))
+    return None if amount is None else korean_number_words(truncate_to_won(amount))
 
 
 DERIVED_VALUES: dict[str, dict[str, Callable[[dict], str | None]]] = {

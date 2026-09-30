@@ -9,7 +9,7 @@ from doc_fixture import SCRIPTS_PATH, run_office, write_json
 
 sys.path.insert(0, str(SCRIPTS_PATH / "paperwork"))
 
-from amounts import grand_total, korean_amount_in_words, korean_number_words, round_to_won, row_amount, supply_total, value_added_tax
+from amounts import grand_total, korean_amount_in_words, korean_number_words, truncate_to_won, row_amount, supply_total, value_added_tax
 
 
 def quote(supply_total_text="1,000,000원", vat_text="100,000원", grand_total_text="1,100,000원", words="일금 일백일십만원정 (₩1,100,000) (부가세 포함)"):
@@ -32,13 +32,20 @@ def quote(supply_total_text="1,000,000원", vat_text="100,000원", grand_total_t
     }
 
 
+def fifteen_won_rows(row_vats, vat_total, grand_total="48"):
+    headers = ["품명", "수량", "단가", "공급가액"] + ([] if row_vats is None else ["세액"])
+    rows = [["품목", "1", "15", "15"] + ([] if row_vats is None else [row_vat]) for row_vat in (row_vats or ["", "", ""])]
+    totals = [{"label": "공급가액 합계", "value": "45"}, {"label": "부가세", "value": vat_total}, {"label": "총 합계", "value": grand_total}]
+    return {"title": "견 적 서", "items": {"headers": headers, "rows": rows, "totals": totals}}
+
+
 class AmountArithmeticTest(unittest.TestCase):
-    def test_every_amount_rounds_half_up_to_a_whole_won(self):
-        self.assertEqual(round_to_won(Decimal("0.5")), 1)
-        self.assertEqual(round_to_won(Decimal("0.4")), 0)
-        self.assertEqual(value_added_tax(1_005), 101)
-        self.assertEqual(value_added_tax(1_004), 100)
-        self.assertEqual(row_amount(Decimal("1.5"), Decimal("333")), 500)
+    def test_every_amount_drops_the_fraction_below_one_won(self):
+        self.assertEqual(truncate_to_won(Decimal("0.9")), 0)
+        self.assertEqual(truncate_to_won(Decimal("-0.9")), 0)
+        self.assertEqual(value_added_tax(1_009), 100)
+        self.assertEqual(value_added_tax(1_010), 101)
+        self.assertEqual(row_amount(Decimal("1.5"), Decimal("333")), 499)
 
     def test_totals_follow_from_the_rows(self):
         supply = supply_total([500_000, 500_000])
@@ -90,6 +97,24 @@ class CheckCommandTest(unittest.TestCase):
         self.assertEqual(codes["ROW_AMOUNT_MISMATCH"], "items.rows[1][5]")
         self.assertEqual(codes["SUPPLY_TOTAL_MISMATCH"], "items.totals[0].value")
 
+    def test_row_vats_set_the_vat_total_and_each_row_is_truncated(self):
+        document = fifteen_won_rows(row_vats=["1", "1", "1"], vat_total="3")
+        self.assertEqual(self.check(document)["issues"], [])
+        document = fifteen_won_rows(row_vats=["1", "2", "1"], vat_total="4")
+        issues = {issue["code"]: issue for issue in self.check(document)["issues"]}
+        self.assertEqual(issues["ROW_VAT_MISMATCH"]["suggestion"], {"expected": 1, "found": 2})
+        self.assertEqual(issues["ROW_VAT_MISMATCH"]["location"], "items.rows[1][4]")
+        self.assertNotIn("VAT_MISMATCH", issues)
+
+    def test_the_vat_total_must_equal_the_row_vat_sum_not_the_truncated_supply_vat(self):
+        envelope = self.check(fifteen_won_rows(row_vats=["1", "1", "1"], vat_total="4", grand_total="49"))
+        self.assertEqual([(issue["code"], issue["suggestion"]) for issue in envelope["issues"]], [("VAT_MISMATCH", {"expected": 3, "found": 4})])
+
+    def test_without_row_vats_the_vat_total_is_truncated_from_the_supply_total(self):
+        self.assertEqual(self.check(fifteen_won_rows(row_vats=None, vat_total="4", grand_total="49"))["issues"], [])
+        envelope = self.check(fifteen_won_rows(row_vats=None, vat_total="3", grand_total="48"))
+        self.assertEqual([(issue["code"], issue["suggestion"]) for issue in envelope["issues"]], [("VAT_MISMATCH", {"expected": 4, "found": 3})])
+
     def test_a_spelled_total_with_the_old_hanja_suffix_matches(self):
         envelope = self.check(quote(words="일금 일백일십만원整 (₩1,100,000) (부가세 포함)"))
         self.assertEqual(envelope["issues"], [])
@@ -109,7 +134,7 @@ class CheckCommandTest(unittest.TestCase):
 
     def test_the_guide_lists_the_command_rules_and_codes(self):
         guide = run_guide("paperwork")
-        for text in ("office paperwork check", "rounded half up", "VAT_MISMATCH", "AMOUNT_IN_WORDS_MISMATCH"):
+        for text in ("office paperwork check", "truncates toward zero", "VAT_MISMATCH", "AMOUNT_IN_WORDS_MISMATCH"):
             self.assertIn(text, guide)
 
 
