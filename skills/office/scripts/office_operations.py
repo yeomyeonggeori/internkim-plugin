@@ -4,9 +4,9 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 import tempfile
-from typing import Callable
+from typing import Callable, Sequence
 
-from office_result import ERROR, IssueKind, OfficeArgumentParser, Result, read_json_file
+from office_result import ERROR, Issue, IssueKind, OfficeArgumentParser, Result, read_json_file
 from office_schema import ListOf, Variant, require_valid
 
 
@@ -23,6 +23,7 @@ Planner = Callable[[object, dict, str], Change]
 class OperationSet:
     shape: Variant
     planners: dict[str, Planner]
+    sequential: bool = False
 
     @property
     def batch(self) -> ListOf:
@@ -30,6 +31,8 @@ class OperationSet:
 
 
 def apply_batch(operation_set: OperationSet, editing: object, operations: list[dict]) -> list[dict]:
+    if operation_set.sequential:
+        return apply_in_order(operation_set, editing, operations)
     changes = [
         operation_set.planners[operation["op"]](editing, operation, f"ops[{index}]")
         for index, operation in enumerate(operations)
@@ -40,21 +43,30 @@ def apply_batch(operation_set: OperationSet, editing: object, operations: list[d
     ]
 
 
+def apply_in_order(operation_set: OperationSet, editing: object, operations: list[dict]) -> list[dict]:
+    results = []
+    for index, operation in enumerate(operations):
+        change = operation_set.planners[operation["op"]](editing, operation, f"ops[{index}]")
+        results.append({"index": index, "op": operation["op"], "change": change()})
+    return results
+
+
 def read_batch(operation_set: OperationSet, operations_path: str) -> list[dict]:
     operations = read_json_file(operations_path)
     require_valid(operation_set.batch, operations, "ops")
     return operations
 
 
-def save_atomically(save: Callable[[str], None], output_path: str) -> None:
+def save_atomically(save: Callable[[str], Sequence[Issue] | None], output_path: str) -> Sequence[Issue]:
     directory = os.path.dirname(os.path.abspath(output_path))
     os.makedirs(directory, exist_ok=True)
     suffix = Path(output_path).suffix
     descriptor, temporary_path = tempfile.mkstemp(prefix=".office-", suffix=suffix, dir=directory)
     os.close(descriptor)
     try:
-        save(temporary_path)
+        issues = save(temporary_path) or ()
         os.replace(temporary_path, output_path)
+        return issues
     finally:
         if os.path.exists(temporary_path):
             os.unlink(temporary_path)
@@ -69,13 +81,13 @@ def apply_parser(description: str) -> OfficeArgumentParser:
     return parser
 
 
-def run_apply(arguments, operation_set: OperationSet, load: Callable[[str], object], save: Callable[[object, str], None]) -> Result:
+def run_apply(arguments, operation_set: OperationSet, load: Callable[[str], object], save: Callable[[object, str], Sequence[Issue] | None]) -> Result:
     operations = read_batch(operation_set, arguments.ops)
     document = load(arguments.path)
     changes = apply_batch(operation_set, document, operations)
     output_path = os.path.expanduser(arguments.output or arguments.path)
     if arguments.dry_run:
         return Result(summary=f"dry run: {len(changes)} operations would apply to {arguments.path}", details={"dryRun": True, "changes": changes})
-    save_atomically(lambda temporary_path: save(document, temporary_path), output_path)
-    return Result(summary=f"applied {len(changes)} operations to {output_path}", output_path=output_path, details={"dryRun": False, "changes": changes})
+    issues = save_atomically(lambda temporary_path: save(document, temporary_path), output_path)
+    return Result(summary=f"applied {len(changes)} operations to {output_path}", output_path=output_path, issues=tuple(issues), details={"dryRun": False, "changes": changes})
 
