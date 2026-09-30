@@ -6,13 +6,13 @@ PRESENTATION_HEIGHT_EMU = 6858000
 SLIDE_MASTER_RELATIONSHIP_ID = 2147483648
 
 
-def write_pptx_static_files(archive: zipfile.ZipFile, slide_count: int) -> None:
-    archive.writestr("[Content_Types].xml", content_types_xml(slide_count))
+def write_pptx_static_files(archive: zipfile.ZipFile, slide_count: int, noted_slides: tuple[int, ...]) -> None:
+    archive.writestr("[Content_Types].xml", content_types_xml(slide_count, noted_slides))
     archive.writestr("_rels/.rels", package_relationships_xml())
     archive.writestr("docProps/core.xml", core_properties_xml())
     archive.writestr("docProps/app.xml", app_properties_xml(slide_count))
-    archive.writestr("ppt/presentation.xml", presentation_xml(slide_count))
-    archive.writestr("ppt/_rels/presentation.xml.rels", presentation_relationships_xml(slide_count))
+    archive.writestr("ppt/presentation.xml", presentation_xml(slide_count, bool(noted_slides)))
+    archive.writestr("ppt/_rels/presentation.xml.rels", presentation_relationships_xml(slide_count, bool(noted_slides)))
     archive.writestr("ppt/slideMasters/slideMaster1.xml", slide_master_xml())
     archive.writestr("ppt/slideMasters/_rels/slideMaster1.xml.rels", slide_master_relationships_xml())
     archive.writestr("ppt/slideLayouts/slideLayout1.xml", slide_layout_xml())
@@ -20,7 +20,7 @@ def write_pptx_static_files(archive: zipfile.ZipFile, slide_count: int) -> None:
     archive.writestr("ppt/theme/theme1.xml", theme_xml())
 
 
-def content_types_xml(slide_count: int) -> str:
+def content_types_xml(slide_count: int, noted_slides: tuple[int, ...]) -> str:
     overrides = [
         '<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>',
         '<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>',
@@ -33,6 +33,7 @@ def content_types_xml(slide_count: int) -> str:
         f'<Override PartName="/ppt/slides/slide{index}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>'
         for index in range(1, slide_count + 1)
     )
+    overrides.extend(notes_content_type_overrides(noted_slides))
     return xml_document(
         '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
         '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
@@ -41,6 +42,19 @@ def content_types_xml(slide_count: int) -> str:
         + "".join(overrides)
         + "</Types>"
     )
+
+
+def notes_content_type_overrides(noted_slides: tuple[int, ...]) -> list[str]:
+    if not noted_slides:
+        return []
+    return [
+        '<Override PartName="/ppt/notesMasters/notesMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml"/>',
+        '<Override PartName="/ppt/theme/theme2.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>',
+        *(
+            f'<Override PartName="/ppt/notesSlides/notesSlide{number}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml"/>'
+            for number in noted_slides
+        ),
+    ]
 
 
 def package_relationships_xml() -> str:
@@ -53,7 +67,7 @@ def package_relationships_xml() -> str:
     )
 
 
-def presentation_relationships_xml(slide_count: int) -> str:
+def presentation_relationships_xml(slide_count: int, has_notes: bool) -> str:
     relationships = [
         '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>',
     ]
@@ -61,17 +75,20 @@ def presentation_relationships_xml(slide_count: int) -> str:
         f'<Relationship Id="rId{index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide{index}.xml"/>'
         for index in range(1, slide_count + 1)
     )
+    if has_notes:
+        relationships.append(f'<Relationship Id="rId{slide_count + 2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster" Target="notesMasters/notesMaster1.xml"/>')
     return xml_document(f'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">{"".join(relationships)}</Relationships>')
 
 
-def presentation_xml(slide_count: int) -> str:
+def presentation_xml(slide_count: int, has_notes: bool) -> str:
+    notes_master_ids = f'<p:notesMasterIdLst><p:notesMasterId r:id="rId{slide_count + 2}"/></p:notesMasterIdLst>' if has_notes else ""
     slide_ids = "".join(f'<p:sldId id="{255 + index}" r:id="rId{index + 1}"/>' for index in range(1, slide_count + 1))
     return xml_document(
         '<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
         'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
         'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
         f'<p:sldMasterIdLst><p:sldMasterId id="{SLIDE_MASTER_RELATIONSHIP_ID}" r:id="rId1"/></p:sldMasterIdLst>'
-        f"<p:sldIdLst>{slide_ids}</p:sldIdLst>"
+        f"{notes_master_ids}<p:sldIdLst>{slide_ids}</p:sldIdLst>"
         f'<p:sldSz cx="{PRESENTATION_WIDTH_EMU}" cy="{PRESENTATION_HEIGHT_EMU}" type="wide"/>'
         '<p:notesSz cx="6858000" cy="9144000"/>'
         "</p:presentation>"

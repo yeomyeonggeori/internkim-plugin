@@ -26,6 +26,7 @@ class SlideModel:
     tables: list[list[list[str]]]
     list_items: list[str]
     kind: str
+    notes: str
 
 
 def extract_slide_sources(source_path: pathlib.Path) -> list[str]:
@@ -46,6 +47,7 @@ def create_slide_model(index: int, slide_source: str) -> SlideModel:
         tables=extract_tables(slide_source),
         list_items=extract_list_items(slide_source),
         kind=native_layout_kind(slide_source),
+        notes=extract_notes(slide_source),
     )
 
 
