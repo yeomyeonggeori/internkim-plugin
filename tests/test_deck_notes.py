@@ -24,8 +24,8 @@ models = create_slide_models(split_slide_sources({deck!r}))
 layers_path = Path("review/pptx-layers")
 layers_path.mkdir(parents=True)
 run = {{"text": "본문", "fontFamily": "PaperlogyLocal", "fontWeight": 400, "italic": False, "sizePx": 32, "color": "rgb(0, 0, 0)", "opacity": 1, "letterSpacingPx": 0, "underline": False, "strike": False, "baseline": "", "href": None}}
-paragraph = {{"alignment": "l", "lineHeightPx": 40, "spaceBeforePx": 0, "bullet": None, "runs": [run]}}
-block = {{"box": {{"left": 80, "top": 80, "right": 800, "bottom": 120}}, "insets": {{"left": 0, "top": 0, "right": 0, "bottom": 0}}, "anchor": "t", "singleLine": True, "noWrap": False, "keepWords": True, "firstLineHalfLeading": 4, "paragraphs": [paragraph]}}
+paragraph = {{"alignment": "l", "lineHeightPx": 40, "spaceBeforePx": 0, "bullet": None, "runs": [run], "lines": [{{"widthPx": 64, "sizePx": 32, "text": "본문"}}]}}
+block = {{"box": {{"left": 80, "top": 80, "right": 800, "bottom": 120}}, "insets": {{"left": 0, "top": 0, "right": 0, "bottom": 0}}, "anchor": "t", "noWrap": False, "keepWords": True, "firstLineHalfLeading": 4, "paragraphs": [paragraph]}}
 slides = [{{"width": 1600, "height": 900, "visibleText": "본문", "pictureTexts": [], "blocks": [block], "shapes": [], "boxesKeptAsPicture": 0}} for _ in models]
 (layers_path / "layout.json").write_text(json.dumps({{"language": "ko", "slides": slides}}), encoding="utf-8")
 for model in models:
