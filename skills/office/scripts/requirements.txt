@@ -1,6 +1,8 @@
 docxtpl
 fpdf2
 openpyxl
+Pillow
 pypdf
+pypdfium2
 python-docx
 python-pptx

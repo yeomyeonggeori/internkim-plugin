@@ -35,6 +35,10 @@ REQUIRED_FONT_MISSING = IssueKind("REQUIRED_FONT_MISSING", ERROR, "no font name 
 NO_FONT_RESOURCES = IssueKind("NO_FONT_RESOURCES", WARNING, "no page declares a font resource", "check whether the text was drawn as images")
 KOREAN_FONT_NOT_EMBEDDED = IssueKind("KOREAN_FONT_NOT_EMBEDDED", ERROR, "the PDF has Korean text but embeds no font", "embed a Korean-capable font so every reader shows the glyphs")
 
+PAGE_NOT_IN_DOCUMENT = IssueKind("PAGE_NOT_IN_DOCUMENT", ERROR, "--pages names a page the PDF does not have", "run pdf read to see the page count, then pass pages inside it")
+
+RENDER_ISSUE_KINDS = (PAGE_NOT_IN_DOCUMENT,)
+
 VALIDATE_ISSUE_KINDS = (
     PDF_ENCRYPTED,
     NO_TEXT_LAYER,
@@ -51,4 +55,7 @@ GUIDE_INPUTS = (
     ("pdf create --spec <file>", PDF_SPECIFICATION),
     ("pdf edit --section <file>", SECTION),
 )
-GUIDE_ISSUES = (("pdf validate", VALIDATE_ISSUE_KINDS),)
+GUIDE_ISSUES = (
+    ("pdf render", RENDER_ISSUE_KINDS),
+    ("pdf validate", VALIDATE_ISSUE_KINDS),
+)
