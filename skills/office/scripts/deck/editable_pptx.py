@@ -10,6 +10,7 @@ import zipfile
 from pptx_fonts import run_font
 from pptx_notes import noted_slide_numbers, notes_relationship_xml, write_notes_parts
 from pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU, DeckFonts, slide_document, write_pptx_static_files, xml_document
+from pptx_shapes import shape_xml
 from pptx_text import SlideScale, TextContext, language_tag, text_box_xml
 from truetype_font import TrueTypeFace
 
@@ -18,6 +19,7 @@ TEXT_LAYERS_DIRECTORY_NAME = "pptx-layers"
 LAYOUT_FILE_NAME = "layout.json"
 HYPERLINK_RELATIONSHIP_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
 FIRST_LINK_RELATIONSHIP_NUMBER = 4
+FIRST_SHAPE_ID = 3
 
 
 @dataclass(frozen=True)
@@ -30,6 +32,8 @@ class TextLayers:
 @dataclass(frozen=True)
 class EditablePptx:
     text_box_count: int
+    shape_count: int
+    boxes_kept_as_picture: int
     embedded_typefaces: tuple[str, ...]
     unembedded_families: tuple[str, ...]
     picture_texts: tuple[str, ...]
@@ -63,6 +67,8 @@ def write_editable_pptx(layers: TextLayers, notes: list[str], pptx_path: pathlib
             write_slide(archive, number, slide, background_path, context_language, bool(notes[number - 1]))
     return EditablePptx(
         text_box_count=sum(len(slide["blocks"]) for slide in layers.slides),
+        shape_count=sum(len(slide["shapes"]) for slide in layers.slides),
+        boxes_kept_as_picture=sum(slide["boxesKeptAsPicture"] for slide in layers.slides),
         embedded_typefaces=tuple(face.family for face in faces),
         unembedded_families=unembedded_families(runs),
         picture_texts=tuple(text for slide in layers.slides for text in slide["pictureTexts"]),
@@ -71,10 +77,14 @@ def write_editable_pptx(layers: TextLayers, notes: list[str], pptx_path: pathlib
 
 def write_slide(archive: zipfile.ZipFile, number: int, slide: dict, background_path: pathlib.Path, language: str, has_notes: bool) -> None:
     links = slide_link_ids(slide)
-    context = TextContext(SlideScale(slide["width"], slide["height"]), language, links)
-    text_boxes = "".join(text_box_xml(shape_id, block, context) for shape_id, block in enumerate(slide["blocks"], start=3))
+    scale = SlideScale(slide["width"], slide["height"])
+    context = TextContext(scale, language, links)
+    shapes = slide["shapes"]
+    first_text_box_id = FIRST_SHAPE_ID + len(shapes)
+    boxes = "".join(shape_xml(shape_id, shape, scale) for shape_id, shape in enumerate(shapes, start=FIRST_SHAPE_ID))
+    text_boxes = "".join(text_box_xml(shape_id, block, context) for shape_id, block in enumerate(slide["blocks"], start=first_text_box_id))
     archive.write(background_path, f"ppt/media/background{number}.png")
-    archive.writestr(f"ppt/slides/slide{number}.xml", slide_document(background_picture_xml() + text_boxes))
+    archive.writestr(f"ppt/slides/slide{number}.xml", slide_document(background_picture_xml() + boxes + text_boxes))
     archive.writestr(f"ppt/slides/_rels/slide{number}.xml.rels", slide_relationships_xml(number, has_notes, links))
 
 

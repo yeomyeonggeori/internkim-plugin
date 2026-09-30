@@ -7,6 +7,7 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { exportedListAttribute, exportedTextAttribute, extractTextLayout, hideExportedText, insertMarkerProbes, markerProbeAttribute, markerProbeHostId } from "./text_layout.mjs";
+import { exportedAfterShapeAttribute, exportedBeforeShapeAttribute, exportedShapeAttribute, extractBoxLayout, hideExportedBoxes } from "./box_layout.mjs";
 
 const slideWidth = 1600;
 const slideHeight = 900;
@@ -14,6 +15,7 @@ const browserStartTimeoutMilliseconds = 15000;
 const geometryFileName = "geometry.json";
 const textLayersDirectoryName = "pptx-layers";
 const exportedAttributes = { exportedTextAttribute, exportedListAttribute, markerProbeAttribute, markerProbeHostId };
+const exportedBoxAttributes = { exportedShapeAttribute, exportedBeforeShapeAttribute, exportedAfterShapeAttribute };
 const slideIsolationStyle = [
   "html, body { overflow: hidden !important; scrollbar-width: none; }",
   "section:not([data-internkim-render-target]) { display: none !important; }",
@@ -156,6 +158,7 @@ async function renderDeck(browser, deck, sourceURL, allowedURLPrefix) {
   if (textLayout) {
     await fs.mkdir(layersPath, { recursive: true });
     await page.evaluate(hideExportedText, exportedAttributes);
+    await page.evaluate(hideExportedBoxes, exportedBoxAttributes);
     await screenshotEachSlide(page, deck.slideCount, (number) => path.join(layersPath, `background.${number}.png`));
     await fs.writeFile(path.join(layersPath, "layout.json"), `${JSON.stringify(textLayout, null, 2)}\n`);
     renderProgress(`text_layers ${textLayout.slides.length}`);
@@ -166,7 +169,9 @@ async function renderDeck(browser, deck, sourceURL, allowedURLPrefix) {
 async function measureTextLayout(page) {
   await page.evaluate(insertMarkerProbes, exportedAttributes);
   await layOutByPainting(page);
-  return page.evaluate(extractTextLayout, exportedAttributes);
+  const textLayout = await page.evaluate(extractTextLayout, exportedAttributes);
+  const boxLayouts = await page.evaluate(extractBoxLayout, exportedBoxAttributes);
+  return { ...textLayout, slides: textLayout.slides.map((slide, index) => ({ ...slide, ...boxLayouts[index] })) };
 }
 
 async function layOutByPainting(page) {
