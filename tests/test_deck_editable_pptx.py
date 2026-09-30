@@ -48,13 +48,15 @@ p, li, td, th { font-size: 30px; line-height: 1.5; }
 .stamp { position: absolute; right: 100px; top: 90px; transform: rotate(-8deg); border: 4px solid #b91c1c; font-weight: 800; }
 td.number { text-align: right; }
 .narrow { width: 440px; }
+.rail { position: relative; height: 30px; }
+.rail::before { content: ""; position: absolute; left: 0; right: 0; top: 10px; height: 4px; background: #14213d; }
 </style></head><body data-visual-system="fixture">
 <section data-slide-role="cover"><h1>샘플전자 매출은<br>3분기에 18% 늘었습니다</h1><p>박예시 · <em>전략기획팀</em></p><aside class="notes">표지 노트</aside></section>
 <section data-slide-role="summary"><h2>성장은 두 가지에서 나왔습니다</h2>
 <ul><li>프리미엄 전환이 <strong>2배</strong> 늘었습니다</li><li>설치가 하루로 줄었습니다</li></ul>
 <ol start="3"><li>공공 계약 12건</li><li>자세한 표는 <a href="https://example.com/q3">부록</a>에 있습니다</li></ol>
 <div class="card"><span>카드 안의 문장</span></div><div class="meter"><span></span></div>
-<p class="narrow">연간 물류비 4.2억원 절감 · 회수 약 4.3년</p></section>
+<p class="narrow">연간 물류비 4.2억원 절감 · 회수 약 4.3년</p><div class="rail"></div></section>
 <section data-slide-role="comparison"><h2>지역별 매출</h2>
 <table><tr><th>지역</th><th>3분기</th></tr><tr><td>수도권</td><td class="number">₩25억</td></tr></table>
 <div class="stamp">잠정</div><aside class="notes">표 노트</aside></section>
@@ -346,6 +348,9 @@ class RenderedEditablePptxTest(unittest.TestCase):
         for shape in (card, track, meter_fill):
             x, y = shape_center_pixel(shape)
             self.assertEqual(backgrounds[1]["rows"][y][x][:3], (0xF8, 0xFA, 0xFC))
+        rail, = [shape for shape in preset_shapes(summary, "rect") if solid_color(shape) == ("14213D", None)]
+        self.assertEqual(rail.find("a:xfrm/a:ext", NAMESPACES).get("cx"), str(1360 * EMU_PER_PIXEL))
+        self.assertEqual(rail.find("a:xfrm/a:ext", NAMESPACES).get("cy"), str(4 * EMU_PER_PIXEL))
         stamp_pixels = [pixel for row in backgrounds[2]["rows"] for pixel in row if pixel[3] > 200 and pixel[0] > 150 and pixel[1] < 80 and pixel[2] < 80]
         self.assertTrue(stamp_pixels, "the rotated stamp's border stays in the picture")
         stamp_outlines = [shape for shape in comparison.iterfind(".//p:spPr/a:ln/a:solidFill/a:srgbClr", NAMESPACES) if shape.get("val") == "B91C1C"]
