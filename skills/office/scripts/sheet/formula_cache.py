@@ -20,6 +20,11 @@ LISTED_CELL_LIMIT = 20
 
 
 
+def save_workbook_with_values(workbook, path: str) -> list[Issue]:
+    workbook.save(path)
+    return cache_formula_values(path)
+
+
 def cache_formula_values(path: str) -> list[Issue]:
     evaluation = evaluate_workbook(path)
     rewrite_archive(path, evaluation)

@@ -1,38 +1,28 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from openpyxl import load_workbook
-
 from cell_values import typed_cell_value
 from documents_folder import resolve_document_path
-from formula_cache import cache_formula_values
+from formula_cache import save_workbook_with_values
 from office_operations import save_atomically
 from office_result import OfficeArgumentParser, Result, read_json_file, run_command
 from office_schema import require_valid
 from sheet_definitions import ROWS
+from workbook_access import open_workbook
 
 
 def main() -> Result:
     arguments = parse_arguments()
     json_rows = load_rows(arguments.rows) if arguments.rows else []
     workbook_path = resolve_document_path(arguments.workbook_path, "xlsx")
-    workbook = load_workbook(workbook_path, keep_vba=is_macro_workbook(workbook_path))
+    workbook = open_workbook(workbook_path)
     worksheet = resolve_worksheet(workbook, arguments.sheet)
     for row_string in arguments.row:
         worksheet.append(parse_row(row_string))
     for row in json_rows:
         worksheet.append(row)
-    issues = save_atomically(lambda temporary_path: save_with_cached_values(workbook, temporary_path), workbook_path)
+    issues = save_atomically(lambda temporary_path: save_workbook_with_values(workbook, temporary_path), workbook_path)
     return Result(summary=f"appended rows to {workbook_path}", output_path=workbook_path, issues=tuple(issues))
-
-
-def save_with_cached_values(workbook, path: str) -> list:
-    workbook.save(path)
-    return cache_formula_values(path)
-
-
-def is_macro_workbook(path: str) -> bool:
-    return path.lower().endswith(".xlsm")
 
 
 def load_rows(rows_path: str) -> list[list]:
