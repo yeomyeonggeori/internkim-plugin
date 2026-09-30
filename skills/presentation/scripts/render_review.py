@@ -17,6 +17,7 @@ from design_warnings import annotate_design_revision_need, apply_deck_design_war
 from fit_review import DESIGN_REVIEW_PROMPT, attach_fit_review_metadata, create_fit_reviews
 from footer_warnings import apply_footer_baseline_warning, apply_unpinned_footer_warning
 from review_report import write_review_outputs
+from slide_images import rendered_slide_image_paths
 from slide_render_checks import review_slides
 from slide_source import read_optional_text, split_slide_sources
 from slide_structure import read_slide_texts
@@ -48,7 +49,7 @@ def parse_arguments(raw_arguments: list[str]) -> typing.Optional[dict[str, objec
 
 
 def build_review_report(source_path: pathlib.Path, deck_name: str, review_directory_path: pathlib.Path) -> dict[str, object]:
-    image_paths = sorted(review_directory_path.glob(deck_name + "*.png"))
+    image_paths = rendered_slide_image_paths(review_directory_path, deck_name)
     render_source = read_render_source(review_directory_path, image_paths)
     source_text = source_path.read_text(encoding="utf-8")
     design_document_text = read_optional_text(source_path.parent / "DESIGN.md")

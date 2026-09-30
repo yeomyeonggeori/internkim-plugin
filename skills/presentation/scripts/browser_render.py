@@ -2,6 +2,8 @@ import pathlib
 import subprocess
 import sys
 
+from slide_images import rendered_slide_image_paths
+
 
 def try_html_render(html_render_script: pathlib.Path, source_path: pathlib.Path, deck_name: str, build_path: pathlib.Path, formats: set[str]) -> str:
     marker_path = browser_unavailable_marker_path(build_path)
@@ -45,10 +47,6 @@ def browser_unavailable_marker_path(build_path: pathlib.Path) -> pathlib.Path:
 def write_browser_unavailable_marker(marker_path: pathlib.Path) -> None:
     marker_path.parent.mkdir(parents=True, exist_ok=True)
     marker_path.write_text("browser launch failed; delete this file to retry browser rendering\n", encoding="utf-8")
-
-
-def rendered_slide_image_paths(review_path: pathlib.Path, deck_name: str) -> list[pathlib.Path]:
-    return sorted(review_path.glob(f"{deck_name}.[0-9][0-9][0-9].png"))
 
 
 def clear_stale_render_evidence(review_path: pathlib.Path, deck_name: str) -> None:
