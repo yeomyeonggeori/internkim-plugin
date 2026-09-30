@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pptx import Presentation
+from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 from deck_definitions import (
     DEFAULT_FONT_REMAINS,
@@ -17,6 +18,7 @@ from office_result import Issue, OfficeArgumentParser, Result, run_command
 
 DEFAULT_FONT_NAMES = {"Aptos", "Calibri"}
 EXCESSIVE_SHAPE_COUNT = 40
+CONTENT_SHAPE_TYPES = {MSO_SHAPE_TYPE.PICTURE, MSO_SHAPE_TYPE.TABLE, MSO_SHAPE_TYPE.CHART, MSO_SHAPE_TYPE.GROUP, MSO_SHAPE_TYPE.EMBEDDED_OLE_OBJECT, MSO_SHAPE_TYPE.MEDIA}
 
 
 def main() -> Result:
@@ -36,15 +38,17 @@ def summarize_slide(slide, index, slide_width, slide_height):
     text_entries = text_entries_from_slide(slide)
     title = slide_title(slide, text_entries)
     shape_count = len(slide.shapes)
+    content_shape_count = sum(1 for shape in slide.shapes if holds_content(shape))
     explicit_default_fonts = sorted(default_fonts_from_entries(text_entries))
     inherited_font_runs = sum(entry["inheritedFontRuns"] for entry in text_entries)
     hybrid_summary = hybrid_slide_summary(slide)
     out_of_bounds_overlays = editable_overlays_out_of_bounds(slide, slide_width, slide_height)
-    issues = slide_issues(f"slide {index}", title, text_entries, shape_count, explicit_default_fonts, inherited_font_runs, hybrid_summary, out_of_bounds_overlays)
+    issues = slide_issues(f"slide {index}", title, text_entries, content_shape_count, explicit_default_fonts, inherited_font_runs, hybrid_summary, out_of_bounds_overlays)
     return {
         "index": index,
         "title": title,
         "shapeCount": shape_count,
+        "contentShapeCount": content_shape_count,
         "textShapeCount": len(text_entries),
         "explicitDefaultFonts": explicit_default_fonts,
         "inheritedFontRuns": inherited_font_runs,
@@ -52,6 +56,12 @@ def summarize_slide(slide, index, slide_width, slide_height):
         "editableOverlayCount": hybrid_summary["editableOverlayCount"],
         "outOfBoundsEditableOverlays": out_of_bounds_overlays,
     }, issues
+
+
+def holds_content(shape) -> bool:
+    if shape.shape_type in CONTENT_SHAPE_TYPES:
+        return True
+    return bool(getattr(shape, "has_text_frame", False) and shape.text.strip())
 
 
 def text_entries_from_slide(slide):
@@ -114,14 +124,14 @@ def editable_overlays_out_of_bounds(slide, slide_width, slide_height):
     return indexes
 
 
-def slide_issues(location, title, text_entries, shape_count, explicit_default_fonts, inherited_font_runs, hybrid_summary, out_of_bounds_overlays) -> list[Issue]:
+def slide_issues(location, title, text_entries, content_shape_count, explicit_default_fonts, inherited_font_runs, hybrid_summary, out_of_bounds_overlays) -> list[Issue]:
     issues = []
     if not text_entries:
         issues.append(SLIDE_EMPTY.issue("slide appears empty", location))
     if not title:
         issues.append(SLIDE_TITLE_MISSING.issue("slide is missing a title", location))
-    if shape_count > EXCESSIVE_SHAPE_COUNT:
-        issues.append(TOO_MANY_SHAPES.issue(f"slide has excessive shape count ({shape_count})", location))
+    if content_shape_count > EXCESSIVE_SHAPE_COUNT:
+        issues.append(TOO_MANY_SHAPES.issue(f"slide has {content_shape_count} shapes that hold content", location))
     if explicit_default_fonts:
         issues.append(DEFAULT_FONT_REMAINS.issue("default font remains: " + ", ".join(explicit_default_fonts), location))
     if inherited_font_runs:
