@@ -38,7 +38,9 @@ and a browser that speaks the Chrome DevTools Protocol to render decks.
 
 `office` runs every command through one entry, `scripts/office <format>
 <verb>`, which prepares that environment first; `scripts/office --help` lists
-the commands.
+the commands. Each command prints one JSON result with a status and coded
+issues, and `scripts/office guide <format>` prints the fields every input takes
+and every code a command reports, generated from the validators themselves.
 
 Those environments, the package cache and any host-supplied fonts live under
 `XDG_CACHE_HOME`, falling back to `~/.cache` when it is unset. A host with a
@@ -90,8 +92,10 @@ Every skill passes the [Agent Skills](https://agentskills.io/specification)
 reference validator. The unit tests hold the bundle to what it promises above:
 the copies of `scripts/skill_runtime.py` in `office` and `dataroom` stay one
 file, every `office` command runs a bundled script and every command a reference
-names exists, the deck scripts keep their behavior, and nothing under `skills/`
-reads an environment variable named after a host.
+names exists, every command answers with the result envelope, the paperwork
+specs' JSON skeletons pass the renderer's schema, the deck scripts keep their
+behavior, and nothing under `skills/` reads an environment variable named after
+a host.
 
 ## License
 

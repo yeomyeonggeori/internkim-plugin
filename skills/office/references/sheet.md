@@ -5,7 +5,7 @@ Create or modify local workbooks (.xlsx, .xlsm, .csv, .tsv). SKILL.md's rules fo
 ## Workflow
 
 1. Clarify only missing columns, source data, formulas, or format choices that affect structure. Preview a newly uploaded file before extraction.
-2. Work in `~/documents/`. Use `sheet create` for straightforward workbooks, `sheet edit` for simple appends, and a task-local Python file run through `office python` for charts, macros, advanced formulas, or substantial edits. The commands' `--help` and typed descriptors define exact payload fields; do not copy their schemas into a reply.
+2. Work in `~/documents/`. Use `sheet create` for straightforward workbooks, `sheet edit` for simple appends, and a task-local Python file run through `office python` for charts, macros, advanced formulas, or substantial edits. `<skill>/scripts/office guide sheet` lists every spec field; do not copy the schema into a reply.
 3. Parse CSV and TSV with Python's `csv`, preserve malformed data for review, and never silently drop rows or columns. Put uncertain rows in a separate `Issues` sheet when they cannot be repaired confidently.
 4. Validate with `<skill>/scripts/office sheet validate ~/documents/<title>.xlsx` or by reopening the workbook. Fix warnings for missing filters, frozen headers, blank headers, broken formulas, suspicious totals, and unsupported source values.
 5. Deliver source CSVs only when requested.

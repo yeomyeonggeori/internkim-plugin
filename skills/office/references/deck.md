@@ -21,7 +21,7 @@ Create a useful, visually strong deck and attach accepted output. HTML-first mea
    ```
 
    With no `FORMATS`, it creates `build/<deck-slug>.html` plus review evidence. Use `FORMATS=pptx` only for the final conversion, then deliver `artifacts/<deck-slug>/build/<deck-slug>.html` or `artifacts/<deck-slug>/build/<deck-slug>.pptx`. Run the command as one shell command line from that working directory.
-6. Inspect `slide-review.json`, contact sheets, `fit-review-XX.md`, and rendered image evidence. Check `needsDesignRevision`, `qualityGatePassed`, `visualQualityScore`, `visualEvidenceReliable`, expected visible text, and design warnings. Revise `slides.html` with targeted edits while the score improves. A clean export is not acceptance. Remaining review notes are not a delivery blocker after the required review loop. Do not spend delivery budget creating or attaching internal review-decision files.
+6. Read the build's result: its issues carry every preflight, render, and review warning with a code, and `office guide deck` explains each code. Then inspect `slide-review.json`, contact sheets, `fit-review-XX.md`, and rendered image evidence. Check `needsDesignRevision`, `qualityGatePassed`, `visualQualityScore`, `visualEvidenceReliable`, expected visible text, and design warnings. Revise `slides.html` with targeted edits while the score improves. A clean export is not acceptance. Remaining review notes are not a delivery blocker after the required review loop. Do not spend delivery budget creating or attaching internal review-decision files.
 7. Attach every accepted output when more than one file is delivered. Check an existing .pptx with `deck validate`.
 
 ## Design contract

@@ -5,7 +5,7 @@ Read, extract, merge, split, lightly edit, or create layout-critical PDFs in `~/
 ## Workflow
 
 1. For an earlier PDF, append a section page with `pdf edit`; preview a newly uploaded file before extraction.
-2. For a short source-backed PDF, use `pdf create`; use a spec, or a task-local script run through `office python`, only when tables or precise placement require it. Reading, extracting, merging, and splitting use pypdf in a task-local script.
+2. For a short source-backed PDF, use `pdf create`; use a spec, or a task-local script run through `office python`, only when tables or precise placement require it; `<skill>/scripts/office guide pdf` lists the spec fields. Reading, extracting, merging, and splitting use pypdf in a task-local script.
 3. Validate with `<skill>/scripts/office pdf validate ~/documents/<title>.pdf`: it checks page count, extractable text, required and forbidden facts, encryption, embedded fonts, and Korean-capable fonts. Revise missing text, overflow, glyph, or layout failures before delivery.
 
 Put source facts in extractable PDF text, not in images.

@@ -7,7 +7,7 @@ Create or modify Word documents as local `.docx` files, PDF on request, authored
 1. Clarify only when a missing source file, legal recipient, or required approval makes safe work impossible. For a new report, memo, guide, or template, choose a useful title, audience framing, sections, and structure from intent.
 2. For an earlier document, revise `content.md` when it exists beside the file; otherwise append with `doc edit`, or rewrite with a task-local script run through `office python`.
 3. For a newly uploaded file, read its exact workspace path before extraction, work directly in `~/documents/`, and keep the Markdown source beside the output for follow-up edits.
-4. For content-first documents, write complete Markdown at `~/documents/<title>.md` before running any terminal command. Then run `<skill>/scripts/office doc export ~/documents/<title>.md --output ~/documents/<title>.docx`. Use `doc create` with a spec only when precise margins, orientation, tables, columns, or fonts are the point.
+4. For content-first documents, write complete Markdown at `~/documents/<title>.md` before running any terminal command. Then run `<skill>/scripts/office doc export ~/documents/<title>.md --output ~/documents/<title>.docx`. Use `doc create` with a spec only when precise margins, orientation, tables, columns, or fonts are the point; `<skill>/scripts/office guide doc` lists every spec field and block type.
 5. Validate with `<skill>/scripts/office doc validate ~/documents/<title>.docx`, passing source names, dates, totals, and key labels as `--required-text` values and unsupported claims as `--forbidden-text` values.
 
 ## Source and layout quality
