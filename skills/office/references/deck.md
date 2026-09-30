@@ -24,6 +24,18 @@ Create a useful, visually strong deck and attach accepted output. HTML-first mea
 6. Read the build's result: its issues carry every preflight, render, and review warning with a code, and `office guide deck` explains each code. Then inspect `slide-review.json`, contact sheets, `fit-review-XX.md`, and rendered image evidence. Check `needsDesignRevision`, `qualityGatePassed`, `visualQualityScore`, `visualEvidenceReliable`, expected visible text, and design warnings. Revise `slides.html` with targeted edits while the score improves. A clean export is not acceptance. Remaining review notes are not a delivery blocker after the required review loop. Do not spend delivery budget creating or attaching internal review-decision files.
 7. Attach every accepted output when more than one file is delivered. Check an existing .pptx with `deck validate`.
 
+## Measured layout
+
+With a browser, the build measures every slide after the fonts load and writes `build/review/geometry.json`: elements whose content is larger than their box, elements outside the slide, text that overlaps other text by at least 12% of the smaller text, and images stretched more than 5% away from their own ratio. The review reports each as `CONTENT_OVERFLOW`, `OUT_OF_FRAME`, `TEXT_OVERLAP`, or `IMAGE_DISTORTED` on the slide that has it, naming the element and its size. These are warnings; fix the ones that are real defects and leave a deliberate overlap alone. Without a browser there is no `geometry.json` and the review reports `GEOMETRY_NOT_MEASURED`: say the layout was not measured rather than calling the deck fit.
+
+## Speaker notes
+
+The text of each slide's `<aside class="notes">` is written into the PPTX notes of both the image-backed and the native deck. A slide without notes gets none.
+
+## Editing a delivered .pptx
+
+When the user hands over a .pptx, or asks for a change to one that has no `slides.html` beside it, run `<skill>/scripts/office deck read <file.pptx>`. It lists each slide's number, layout name, shapes with their index and text, tables, and notes. Then change the file with `deck apply <file.pptx> <ops.json>`: a batch of `set_text`, `find_replace`, `set_notes`, `delete_slide`, and `reorder`, with every slide number and shape index taken from that read, applied whole or not at all. Pass `--dry-run` first when the batch is long, and `--output` to keep the original. `office guide deck` lists each operation's fields. Layouts, masters, and everything an operation does not touch are kept. Text inside an image-backed slide is part of the picture and cannot be edited this way; rebuild from `slides.html`, or restore it with `deck restore`.
+
 ## Design contract
 
 Use the vocabulary of title thesis, section divider, comparison, matrix, timeline, evidence card, recommendation, and closing ask. Reject shallow content: generic cards, claims without examples, raw `<table>` or bare `<ul>`, and slides that only restate the prompt. Add a worked example, target-versus-actual metrics, and risk/evidence/response/owner where relevant. End with a decision or next action.
