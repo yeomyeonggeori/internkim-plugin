@@ -1,6 +1,9 @@
 import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import fs from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { accessSync, constants, createReadStream, existsSync, statSync } from "node:fs";
+import http from "node:http";
+import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -31,8 +34,14 @@ async function main() {
     throw new Error("slides.html must contain at least one <section> slide");
   }
 
+  const deck = { sourcePath, deckName, buildPath, reviewPath, enabledFormats, slideCount };
+  const moliPath = executableOnPath("moli");
   try {
-    await renderWithPlaywright(sourcePath, deckName, buildPath, reviewPath, enabledFormats, slideCount);
+    if (moliPath) {
+      await renderWithMoli(moliPath, deck);
+    } else {
+      await renderWithPlaywright(deck);
+    }
   } catch (error) {
     renderProgress(`playwright_failed ${compactErrorMessage(error)}`);
     await removePreviousReviewFiles(reviewPath, deckName);
@@ -40,7 +49,28 @@ async function main() {
   }
 }
 
-async function renderWithPlaywright(sourcePath, deckName, buildPath, reviewPath, enabledFormats, slideCount) {
+async function renderWithMoli(moliPath, deck) {
+  const { chromium } = await import("playwright-core");
+  const deckServer = await serveDirectory(path.dirname(deck.sourcePath));
+  const cdpPort = await unusedPort();
+  renderProgress("moli_start");
+  const moliProcess = spawn(moliPath, ["serve", "--layout", "--resource", "--port", String(cdpPort)], { stdio: ["ignore", "ignore", "inherit"] });
+  try {
+    await waitForCDP(cdpPort);
+    const browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`, { timeout: playwrightLaunchTimeoutMilliseconds });
+    renderProgress("launched");
+    try {
+      await renderDeck(browser, deck, deckServer.urlOf(path.basename(deck.sourcePath)), deckServer.origin);
+    } finally {
+      await browser.close().catch(() => {});
+    }
+  } finally {
+    moliProcess.kill("SIGTERM");
+    deckServer.close();
+  }
+}
+
+async function renderWithPlaywright(deck) {
   const { chromium } = await import("playwright-core");
   renderProgress("launch_start");
   const browser = await chromium.launch({
@@ -70,55 +100,142 @@ async function renderWithPlaywright(sourcePath, deckName, buildPath, reviewPath,
       "--use-mock-keychain",
     ],
   });
-
   renderProgress("launched");
   try {
-    const page = await browser.newPage({ viewport: { width: slideWidth, height: slideHeight }, deviceScaleFactor: 1 });
-    await page.route("**/*", (route) => {
-      const requestURL = route.request().url();
-      if (requestURL.startsWith("file:") || requestURL.startsWith("data:")) {
-        route.continue();
-      } else {
-        route.abort();
-      }
-    });
-    renderProgress("navigating");
-    await page.goto(pathToFileURL(sourcePath).toString(), { waitUntil: "load", timeout: 30000 }).catch(() => {});
-    await page.emulateMedia({ media: "print" });
-    await waitForFonts(page);
-    renderProgress("navigated");
-
-    const renderedSlideCount = await page.locator("section").count();
-    if (renderedSlideCount !== slideCount) {
-      throw new Error(`expected ${slideCount} slides, rendered ${renderedSlideCount}`);
-    }
-
-    if (enabledFormats.has("pdf")) {
-      await page.pdf({
-        path: path.join(buildPath, `${deckName}.pdf`),
-        printBackground: true,
-        preferCSSPageSize: true,
-        width: `${slideWidth}px`,
-        height: `${slideHeight}px`,
-        margin: { top: "0", right: "0", bottom: "0", left: "0" },
-      });
-    }
-
-    if (enabledFormats.has("pptx") || enabledFormats.has("review")) {
-      const slides = await page.locator("section").all();
-      renderProgress(`screenshots ${slides.length}`);
-      for (let index = 0; index < slides.length; index += 1) {
-        const slide = slides[index];
-        await slide.screenshot({
-          path: path.join(reviewPath, `${deckName}.${String(index + 1).padStart(3, "0")}.png`),
-          animations: "disabled",
-        });
-      }
-    }
-    renderProgress("render_done");
+    await renderDeck(browser, deck, fileURL(deck.sourcePath), "file:");
   } finally {
     await browser.close();
   }
+}
+
+async function renderDeck(browser, deck, sourceURL, allowedURLPrefix) {
+  const page = await browser.newPage({ viewport: { width: slideWidth, height: slideHeight }, deviceScaleFactor: 1 });
+  await page.route("**/*", (route) => {
+    const requestURL = route.request().url();
+    if (requestURL.startsWith(allowedURLPrefix) || requestURL.startsWith("data:")) {
+      route.continue();
+    } else {
+      route.abort();
+    }
+  });
+  renderProgress("navigating");
+  await page.goto(sourceURL, { waitUntil: "load", timeout: 30000 }).catch(() => {});
+  await page.emulateMedia({ media: "print" });
+  await waitForFonts(page);
+  renderProgress("navigated");
+
+  const renderedSlideCount = await page.locator("section").count();
+  if (renderedSlideCount !== deck.slideCount) {
+    throw new Error(`expected ${deck.slideCount} slides, rendered ${renderedSlideCount}`);
+  }
+
+  if (deck.enabledFormats.has("pdf")) {
+    await page.pdf({
+      path: path.join(deck.buildPath, `${deck.deckName}.pdf`),
+      printBackground: true,
+      width: `${slideWidth}px`,
+      height: `${slideHeight}px`,
+      margin: { top: "0", right: "0", bottom: "0", left: "0" },
+    });
+  }
+
+  if (deck.enabledFormats.has("pptx") || deck.enabledFormats.has("review")) {
+    const slides = await page.locator("section").all();
+    renderProgress(`screenshots ${slides.length}`);
+    for (let index = 0; index < slides.length; index += 1) {
+      await slides[index].screenshot({
+        path: path.join(deck.reviewPath, `${deck.deckName}.${String(index + 1).padStart(3, "0")}.png`),
+        animations: "disabled",
+      });
+    }
+  }
+  renderProgress("render_done");
+}
+
+const contentTypes = {
+  ".css": "text/css",
+  ".gif": "image/gif",
+  ".html": "text/html; charset=utf-8",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".js": "text/javascript",
+  ".json": "application/json",
+  ".otf": "font/otf",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".ttf": "font/ttf",
+  ".webp": "image/webp",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+};
+
+async function serveDirectory(rootPath) {
+  const secretPrefix = `/${randomBytes(16).toString("hex")}/`;
+  const server = http.createServer((request, response) => {
+    const filePath = servedFilePath(rootPath, secretPrefix, request.url);
+    if (!filePath) {
+      response.writeHead(404).end();
+      return;
+    }
+    response.writeHead(200, { "content-type": contentTypes[path.extname(filePath).toLowerCase()] || "application/octet-stream" });
+    createReadStream(filePath).pipe(response);
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const origin = `http://127.0.0.1:${server.address().port}${secretPrefix}`;
+  return {
+    origin,
+    urlOf: (relativePath) => origin + encodeURI(relativePath),
+    close: () => server.close(),
+  };
+}
+
+function servedFilePath(rootPath, secretPrefix, requestURL) {
+  const requestPath = decodeURIComponent(new URL(requestURL, "http://127.0.0.1").pathname);
+  if (!requestPath.startsWith(secretPrefix)) {
+    return null;
+  }
+  const filePath = path.resolve(rootPath, requestPath.slice(secretPrefix.length));
+  const relativePath = path.relative(rootPath, filePath);
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    return null;
+  }
+  return statSync(filePath, { throwIfNoEntry: false })?.isFile() ? filePath : null;
+}
+
+function unusedPort() {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.once("error", reject);
+    probe.listen(0, "127.0.0.1", () => {
+      const { port } = probe.address();
+      probe.close(() => resolve(port));
+    });
+  });
+}
+
+async function waitForCDP(port) {
+  const deadline = Date.now() + playwrightLaunchTimeoutMilliseconds;
+  while (Date.now() < deadline) {
+    const answer = await fetch(`http://127.0.0.1:${port}/json/version`).catch(() => null);
+    if (answer?.ok) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`moli did not answer CDP on port ${port}`);
+}
+
+function executableOnPath(programName) {
+  for (const directoryPath of (process.env.PATH || "").split(path.delimiter).filter(Boolean)) {
+    const candidatePath = path.join(directoryPath, programName);
+    try {
+      accessSync(candidatePath, constants.X_OK);
+      return candidatePath;
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 async function renderWithChromiumCommand(sourcePath, deckName, buildPath, enabledFormats, slideCount) {
