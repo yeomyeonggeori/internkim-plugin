@@ -6,10 +6,11 @@ export const markerProbeHostId = "internkim-pptx-marker-probes";
 export function insertMarkerProbes({ markerProbeAttribute, markerProbeHostId }) {
   const bulletCharacters = { disc: "•", circle: "◦", square: "▪" };
   const numberingSchemes = { decimal: "arabicPeriod", "decimal-leading-zero": "arabicPeriod", "lower-alpha": "alphaLcPeriod", "lower-latin": "alphaLcPeriod", "upper-alpha": "alphaUcPeriod", "upper-latin": "alphaUcPeriod", "lower-roman": "romanLcPeriod", "upper-roman": "romanUcPeriod" };
+  const ordinalOf = (item) => (item.parentElement.start || 1) + Array.from(item.parentElement.children).filter((child) => child.tagName === "LI").indexOf(item);
   const markerTextOf = (item, style) => {
     if (style.listStyleType.startsWith('"')) return style.listStyleType.slice(1, -1);
     if (bulletCharacters[style.listStyleType]) return `${bulletCharacters[style.listStyleType]} `;
-    if (numberingSchemes[style.listStyleType]) return `${item.value || 1}. `;
+    if (numberingSchemes[style.listStyleType]) return `${ordinalOf(item)}. `;
     return "";
   };
   const host = document.createElement("div");
@@ -307,7 +308,7 @@ export function extractTextLayout({ exportedTextAttribute, exportedListAttribute
     return {
       character: numbering ? "" : probe.textContent.trim(),
       numbering,
-      startAt: numbering ? item.value || 1 : 0,
+      startAt: numbering ? item.parentElement.start || 1 : 0,
       color: getComputedStyle(item, "::marker").color || style.color,
       outside: style.listStylePosition === "outside",
       markerWidthPx: round(probe.getBoundingClientRect().width),

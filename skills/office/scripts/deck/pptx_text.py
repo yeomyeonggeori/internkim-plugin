@@ -126,8 +126,14 @@ def bullet_xml(paragraph: dict) -> str:
     font = run_font(first_run["fontFamily"], first_run["fontWeight"])
     color = f'<a:buClr>{color_xml(parse_css_color(bullet["color"]), 1.0)}</a:buClr><a:buSzPct val="100000"/><a:buFont typeface="{attribute(font.east_asian)}"/>'
     if bullet["numbering"]:
-        return f'{color}<a:buAutoNum type="{bullet["numbering"]}" startAt="{bullet["startAt"]}"/>'
+        return f'{color}<a:buAutoNum type="{bullet["numbering"]}"{start_attribute(bullet["startAt"])}/>'
     return f'{color}<a:buChar char="{attribute(bullet["character"])}"/>'
+
+
+def start_attribute(start_at: int) -> str:
+    if start_at == 1:
+        return ""
+    return f' startAt="{start_at}"'
 
 
 def run_xml(run: dict, context: TextContext) -> str:
