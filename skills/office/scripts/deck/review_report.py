@@ -45,6 +45,7 @@ def report_summary_lines(report: dict[str, object]) -> list[str]:
         f"- Needs design revision: {report['needsDesignRevision']}",
         f"- Slide count: {report['slideCount']}",
         f"- Rendered slide count: {report['renderedSlideCount']}",
+        f"- Geometry: {geometry_line(report)}",
         f"- Contact sheets: {', '.join(sheet['filename'] for sheet in report['contactSheets'])}",
         f"- Fit reviews: {', '.join(review['filename'] for review in report['fitReviews'])}",
         "",
@@ -57,6 +58,12 @@ def report_summary_lines(report: dict[str, object]) -> list[str]:
         str(report["designReviewPrompt"]),
         "",
     ]
+
+
+def geometry_line(report: dict[str, object]) -> str:
+    if report["geometryMeasured"]:
+        return "measured in the browser (review/geometry.json)"
+    return "not measured, so overflow, overlap and stretched images were not checked"
 
 
 def design_revision_lines(design_warnings: list[str]) -> list[str]:
