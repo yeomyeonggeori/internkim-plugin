@@ -7,6 +7,7 @@ from pathlib import Path
 import unicodedata
 
 from cell_values import typed_cell_value
+from formula_cache import cache_formula_values
 from office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
 from sheet_definitions import WORKBOOK_SPECIFICATION
@@ -181,7 +182,8 @@ def main():
     output_path = Path(os.path.expanduser(arguments.output_path))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     workbook.save(output_path)
-    return Result(summary=f"created {output_path}", output_path=str(output_path))
+    issues = cache_formula_values(str(output_path))
+    return Result(summary=f"created {output_path}", output_path=str(output_path), issues=tuple(issues))
 
 
 if __name__ == "__main__":
