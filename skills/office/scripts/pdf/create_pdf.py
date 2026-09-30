@@ -6,6 +6,7 @@ from pathlib import Path
 from office_result import INVALID_ARGUMENTS, KOREAN_FONT_UNAVAILABLE, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
 from pdf_definitions import PDF_SPECIFICATION
+from pdf_fonts import register_regular_and_bold
 from skill_runtime import HANGUL_FONT_PATHS, cache_home_path
 
 
@@ -67,8 +68,7 @@ def create_pdf(specification):
     margin = float(18 if margin_millimeters is None else margin_millimeters)
     pdf.set_margins(margin, margin, margin)
     pdf.set_auto_page_break(auto=True, margin=16)
-    if font_path:
-        pdf.add_font(active_font_name, fname=str(font_path))
+    font_issues = register_regular_and_bold(pdf, active_font_name, font_path) if font_path else []
     pdf.add_page()
     pdf.set_font(active_font_name, size=11)
     pdf.set_text_color(31, 41, 55)
@@ -76,14 +76,14 @@ def create_pdf(specification):
     add_title(pdf, specification, active_font_name)
     for section in specification.get("sections") or []:
         add_section(pdf, section, active_font_name)
-    return pdf
+    return pdf, font_issues
 
 
 def add_title(pdf, specification, font_name):
     title = optional_text(specification.get("title"))
     if not title:
         return
-    pdf.set_font(font_name, size=18)
+    pdf.set_font(font_name, "B", size=18)
     pdf.set_text_color(17, 24, 39)
     write_multiline(pdf, 0, 9, title, align="L")
     subtitle = optional_text(specification.get("subtitle"))
@@ -100,7 +100,7 @@ def add_title(pdf, specification, font_name):
 def add_section(pdf, section, font_name):
     title = optional_text(section.get("title"))
     if title:
-        pdf.set_font(font_name, size=13)
+        pdf.set_font(font_name, "B", size=13)
         pdf.set_text_color(17, 24, 39)
         write_multiline(pdf, 0, 7, title)
         pdf.ln(1)
@@ -295,11 +295,11 @@ def parse_arguments():
 def main():
     arguments = parse_arguments()
     specification = read_specification(arguments)
-    pdf = create_pdf(specification)
+    pdf, font_issues = create_pdf(specification)
     output_path = Path(os.path.expanduser(arguments.output_path))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     pdf.output(str(output_path))
-    return Result(summary=f"created {output_path}", output_path=str(output_path))
+    return Result(summary=f"created {output_path}", output_path=str(output_path), issues=tuple(font_issues))
 
 
 if __name__ == "__main__":
