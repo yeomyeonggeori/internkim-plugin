@@ -5,7 +5,7 @@ import typing
 
 from deck_definitions import EDGE_CLIPPING, FRAME_FIT_RISK, SAFE_MARGIN_INTRUSION, SLIDE_BLANK, SLIDE_TOO_CROWDED, SLIDE_TOO_SPARSE, VERTICAL_DEAD_ZONE
 from design_warnings import LABEL_ONLY_SLIDE_ROLES, slide_design_warnings
-from geometry_checks import geometry_warnings, slide_geometry
+from geometry_checks import content_extent, geometry_warnings, slide_geometry
 from image_analysis import analyze_image_content, content_density, corner_background_color
 from office_result import Issue
 from png_codec import read_png
@@ -14,6 +14,7 @@ from png_codec import read_png
 CONTENT_DENSITY_MINIMUM = 0.006
 CONTENT_DENSITY_MAXIMUM = 0.42
 VERTICAL_DEAD_ZONE_HEIGHT_RATIO = 0.27
+UNFILLED_BOTTOM_HEIGHT_RATIO = 0.2
 
 
 def review_slides(image_paths: list[pathlib.Path], design: dict[str, str], slide_texts: list[dict[str, object]], geometry: list[dict[str, object]] | None) -> list[dict[str, object]]:
@@ -34,7 +35,7 @@ def review_slide(path: typing.Optional[pathlib.Path], design: dict[str, str], in
     margin = margin_pixels(image, design)
     checks = slide_checks(analysis["bounds"], image, margin, density)
     risks = slide_risks(analysis["bounds"], image, margin)
-    warnings = slide_warnings(checks, margin, density, risks, structure, measured) + vertical_dead_zone_warnings(analysis, structure)
+    warnings = slide_warnings(checks, margin, density, risks, structure, measured) + vertical_dead_zone_warnings(analysis, measured, structure)
     return {
         "index": index,
         "filename": path.name,
@@ -85,14 +86,16 @@ def slide_text_fields(slide_text: dict[str, object]) -> dict[str, object]:
     }
 
 
-def vertical_dead_zone_warnings(analysis: dict[str, object], structure: dict[str, object]) -> list[Issue]:
-    if analysis["verticalGapRatio"] < VERTICAL_DEAD_ZONE_HEIGHT_RATIO:
-        return []
+def vertical_dead_zone_warnings(analysis: dict[str, object], measured: dict[str, object] | None, structure: dict[str, object]) -> list[Issue]:
     if str(structure["slideRole"]) in LABEL_ONLY_SLIDE_ROLES:
         return []
-    return [
-        VERTICAL_DEAD_ZONE.issue(f"an empty band spans {analysis['verticalGapRatio']:.0%} of the slide height; distribute content to fill the frame")
-    ]
+    extent = content_extent(measured)
+    if extent is not None and extent.unfilled_ratio >= UNFILLED_BOTTOM_HEIGHT_RATIO:
+        below = "above the footer" if extent.has_footer else "below it"
+        return [VERTICAL_DEAD_ZONE.issue(f"the content ends at {extent.body_bottom_ratio:.0%} of the slide height and leaves {extent.unfilled_ratio:.0%} of it empty {below}; let the body fill the frame")]
+    if analysis["verticalGapRatio"] >= VERTICAL_DEAD_ZONE_HEIGHT_RATIO:
+        return [VERTICAL_DEAD_ZONE.issue(f"an empty band spans {analysis['verticalGapRatio']:.0%} of the slide height; distribute content to fill the frame")]
+    return []
 
 
 def slide_checks(bounds: typing.Optional[dict[str, int]], image: dict[str, object], margin: int, density: float) -> dict[str, bool]:
