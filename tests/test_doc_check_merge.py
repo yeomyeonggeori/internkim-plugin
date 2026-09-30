@@ -29,8 +29,8 @@ class CheckTest(DocumentFixture):
         """, self.directory)
         envelope = run_office(["doc", "check", "fixture.docx"], self.directory)
         findings = {issue["code"]: issue["suggestion"] for issue in envelope["issues"]}
-        self.assertEqual(set(findings), {"PLACEHOLDER_LEFT", "BROKEN_INTERNAL_REFERENCE", "STALE_TABLE_OF_CONTENTS", "EAST_ASIA_FONT_MISSING"})
-        fixes = [findings["PLACEHOLDER_LEFT"] | {"replace": "박예시"}, findings["STALE_TABLE_OF_CONTENTS"], findings["EAST_ASIA_FONT_MISSING"]]
+        self.assertEqual(set(findings), {"PLACEHOLDER_LEFT", "BROKEN_INTERNAL_REFERENCE", "STALE_TABLE_OF_CONTENTS", "EAST_ASIA_FONT_MISSING", "EAST_ASIA_LANGUAGE_NOT_KOREAN"})
+        fixes = [findings["PLACEHOLDER_LEFT"] | {"replace": "박예시"}, findings["STALE_TABLE_OF_CONTENTS"], findings["EAST_ASIA_FONT_MISSING"], findings["EAST_ASIA_LANGUAGE_NOT_KOREAN"]]
         write_json(self.directory / "fixes.json", fixes)
         self.assertEqual(run_office(["doc", "apply", "fixture.docx", "fixes.json"], self.directory)["status"], "ok")
         remaining = {issue["code"] for issue in run_office(["doc", "check", "fixture.docx"], self.directory)["issues"]}

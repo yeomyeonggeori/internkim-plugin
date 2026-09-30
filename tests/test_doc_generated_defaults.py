@@ -4,7 +4,7 @@ import tempfile
 import unittest
 import zipfile
 
-from doc_fixture import run_office, write_json
+from doc_fixture import run_office, run_office_python, write_json
 
 
 def package_part(document_path, part_name):
@@ -158,6 +158,49 @@ class ImageTest(GeneratedDocumentTest):
         Image.new("RGB", (40, 20)).save(self.directory / "chart.png")
         path = self.exported("![세그먼트별 이탈률 막대 차트](chart.png)\n")
         self.assertRegex(package_part(path, "word/document.xml"), r'<wp:docPr [^>]*descr="세그먼트별 이탈률 막대 차트"')
+
+
+class KoreanLanguageCheckTest(GeneratedDocumentTest):
+    def codes(self, path):
+        return [issue["code"] for issue in run_office(["doc", "check", path.name], self.directory)["issues"]]
+
+    def test_a_generated_document_passes(self):
+        self.assertNotIn("EAST_ASIA_LANGUAGE_NOT_KOREAN", self.codes(self.created()))
+        self.assertNotIn("EAST_ASIA_LANGUAGE_NOT_KOREAN", self.codes(self.exported("본문\n")))
+
+    def test_a_run_or_style_tagged_for_another_language_is_flagged_and_fixed(self):
+        path = self.created([{"type": "paragraph", "text": "본문"}, {"type": "heading", "text": "제목", "level": 1}])
+        run_office_python("""
+            from docx import Document
+            from docx.oxml import OxmlElement
+            from docx.oxml.ns import qn
+            document = Document("created.docx")
+            run = document.paragraphs[-2].runs[0]._r
+            language = OxmlElement("w:lang")
+            language.set(qn("w:eastAsia"), "ja-JP")
+            run.get_or_add_rPr().append(language)
+            document.save("created.docx")
+        """, self.directory)
+        envelope = run_office(["doc", "check", path.name], self.directory)
+        issue = next(issue for issue in envelope["issues"] if issue["code"] == "EAST_ASIA_LANGUAGE_NOT_KOREAN")
+        write_json(self.directory / "fix.json", [issue["suggestion"]])
+        self.assertEqual(run_office(["doc", "apply", path.name, "fix.json"], self.directory)["status"], "ok")
+        self.assertNotIn("EAST_ASIA_LANGUAGE_NOT_KOREAN", self.codes(path))
+        self.assertNotIn("ja-JP", package_part(path, "word/document.xml"))
+
+    def test_a_style_tag_that_overrides_the_default_is_flagged(self):
+        path = self.created()
+        run_office_python("""
+            from docx import Document
+            from docx.oxml import OxmlElement
+            from docx.oxml.ns import qn
+            document = Document("created.docx")
+            language = OxmlElement("w:lang")
+            language.set(qn("w:eastAsia"), "zh-CN")
+            document.styles["Normal"].element.get_or_add_rPr().append(language)
+            document.save("created.docx")
+        """, self.directory)
+        self.assertIn("EAST_ASIA_LANGUAGE_NOT_KOREAN", self.codes(path))
 
 
 if __name__ == "__main__":

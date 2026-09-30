@@ -4,11 +4,13 @@ from __future__ import annotations
 import re
 
 from docx import Document
-from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml.ns import qn
 from docx.text.paragraph import Paragraph
 
-from doc_definitions import BROKEN_INTERNAL_REFERENCE, EAST_ASIA_FONT_MISSING, STALE_TABLE_OF_CONTENTS, TRACKED_CHANGES_PRESENT
+from doc_definitions import BROKEN_INTERNAL_REFERENCE, EAST_ASIA_FONT_MISSING, EAST_ASIA_LANGUAGE_NOT_KOREAN, STALE_TABLE_OF_CONTENTS, TRACKED_CHANGES_PRESENT
+from docx_defaults import KOREAN_LANGUAGE
+from docx_language import effective_east_asia_language
+from docx_styles import run_styles
 from docx_blocks import PARAGRAPH_TAG, body_block_elements, element_text, heading_level
 from office_result import Issue, OfficeArgumentParser, Result, run_command
 from text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN, contains_korean
@@ -31,6 +33,7 @@ def main() -> Result:
         + reference_issues(document, elements)
         + table_of_contents_issues(document, elements)
         + east_asia_font_issues(document)
+        + east_asia_language_issues(document)
         + tracked_change_issues(document)
     )
     return Result(summary=f"checked {arguments.document_path}: {len(issues)} issues", output_path=arguments.document_path, issues=tuple(issues))
@@ -165,34 +168,20 @@ def run_names_east_asia_font(run, document) -> bool:
     run_properties = run.find(qn("w:rPr"))
     if run_properties is not None and names_east_asia_font(run_properties.find(qn("w:rFonts"))):
         return True
-    character_style = run_properties.find(qn("w:rStyle")) if run_properties is not None else None
-    if character_style is not None and style_names_east_asia_font(character_style.get(qn("w:val")), document):
-        return True
-    paragraph = next((ancestor for ancestor in run.iterancestors(qn("w:p"))), None)
-    return paragraph is not None and style_names_east_asia_font(paragraph_style_id(paragraph, document), document)
+    return any(style_names_east_asia_font(style) for style in run_styles(run, document))
 
 
-def paragraph_style_id(paragraph, document) -> str | None:
-    style_properties = paragraph.find(qn("w:pPr"))
-    style_element = style_properties.find(qn("w:pStyle")) if style_properties is not None else None
-    if style_element is not None:
-        return style_element.get(qn("w:val"))
-    return document.styles.default(WD_STYLE_TYPE.PARAGRAPH).style_id
+def style_names_east_asia_font(style) -> bool:
+    run_properties = style.find(qn("w:rPr"))
+    return run_properties is not None and names_east_asia_font(run_properties.find(qn("w:rFonts")))
 
 
-def style_names_east_asia_font(style_id: str | None, document) -> bool:
-    seen = set()
-    while style_id and style_id not in seen:
-        seen.add(style_id)
-        style = document.styles.element.get_by_id(style_id)
-        if style is None:
-            return False
-        run_properties = style.find(qn("w:rPr"))
-        if run_properties is not None and names_east_asia_font(run_properties.find(qn("w:rFonts"))):
-            return True
-        based_on = style.find(qn("w:basedOn"))
-        style_id = based_on.get(qn("w:val")) if based_on is not None else None
-    return False
+def east_asia_language_issues(document) -> list[Issue]:
+    runs = [run for run in document.element.body.iter(qn("w:r")) if contains_korean(element_text(run))]
+    mistagged = [run for run in runs if effective_east_asia_language(run, document) != KOREAN_LANGUAGE]
+    if not mistagged:
+        return []
+    return [EAST_ASIA_LANGUAGE_NOT_KOREAN.issue(f"{len(mistagged)} runs of Korean text have an East Asian language other than ko-KR", "document", suggestion={"op": "set_korean_language"})]
 
 
 def tracked_change_issues(document) -> list[Issue]:
@@ -203,7 +192,7 @@ def tracked_change_issues(document) -> list[Issue]:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Check a .docx for placeholders left, broken internal references, a stale table of contents, missing East Asian fonts, and tracked changes. Issues suggest a doc apply operation where one fixes them.")
+    parser = OfficeArgumentParser(description="Check a .docx for placeholders left, broken internal references, a stale table of contents, missing East Asian fonts, a wrong East Asian language, and tracked changes. Issues suggest a doc apply operation where one fixes them.")
     parser.add_argument("document_path")
     return parser.parse_args()
 
