@@ -92,7 +92,9 @@ Every skill passes the [Agent Skills](https://agentskills.io/specification)
 reference validator. The unit tests hold the bundle to what it promises above:
 the copies of `scripts/skill_runtime.py` in `office` and `dataroom` stay one
 file, every `office` command runs a bundled script and every command a reference
-names exists, every command answers with the result envelope, the paperwork
+names exists, every command answers with the result envelope, `doc apply`
+changes a file all at once or not at all and leaves the parts it does not edit
+byte-identical, the paperwork
 specs' JSON skeletons pass the renderer's schema, the deck scripts keep their
 behavior, and nothing under `skills/` reads an environment variable named after
 a host.
