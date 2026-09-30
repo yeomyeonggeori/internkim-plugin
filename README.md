@@ -28,6 +28,26 @@ declares. Each names the tools it calls in its own `tool-references`.
 | `company-data` | Reads and records company profile, metrics and records |
 | `web-search` | Searches the public web and fetches pages |
 
+## Install
+
+### Claude Code
+
+```sh
+claude plugin marketplace add yeomyeonggeori/internkim-plugin
+claude plugin install internkim@internkim
+```
+
+### Codex
+
+```sh
+codex plugin marketplace add yeomyeonggeori/internkim-plugin
+codex plugin add internkim@internkim
+```
+
+Either client lists the `internkim` tool server as needing sign-in until the
+first tool call opens the browser; [Tool server](#tool-server) says how that
+works and what to do in a client that cannot.
+
 ## Requirements
 
 Python 3 and [uv](https://docs.astral.sh/uv/) on `PATH`. A skill that bundles
@@ -63,14 +83,15 @@ never holds one.
 
 ## Loading it
 
-This repository holds nothing but the portable plugin: `plugin.json`,
-`skills/` and `mcp.json`. How a client reads that layout is the client's own
-affair, so no client-specific manifest or adapter code lives here.
+The plugin is the portable layout alone: `plugin.json`, `skills/` and
+`mcp.json`, with no client-specific manifest or adapter. The repository also
+publishes itself as a marketplace, through one catalog per client that points
+at that layout and adds nothing to it.
 
 | Client | How it loads the plugin |
 | --- | --- |
-| Codex | Reads the root `plugin.json`, `skills/` and `mcp.json` natively (openai/codex#36544). |
-| Claude Code | Reads its own manifest format, so the InternKim host publishes a marketplace entry with `strict: false` that names `./skills` and `./mcp.json`: `claude plugin marketplace add yeomyeonggeori/internkim`, then `claude plugin install internkim@internkim`. |
+| Codex | `.agents/plugins/marketplace.json` lists the repository root, and Codex reads `plugin.json`, `skills/` and `mcp.json` there natively (openai/codex#36544). |
+| Claude Code | `.claude-plugin/marketplace.json` lists the repository root with `strict: false`, naming `./skills` and `./mcp.json`, because Claude Code reads its own manifest format. |
 | Pi | Ships no MCP client. The community extensions `pi-agent-plugins` (an Agent Plugins 1.0.0 client) and `pi-mcp-adapter` load the layout: `pi install npm:pi-mcp-adapter`, `pi install npm:pi-agent-plugins`, then place a checkout under `.pi/plugins/`. |
 | Bluecollar | The ACP host passes the servers in `mcp.json` when it opens a session; the loop itself owns no tools. |
 
