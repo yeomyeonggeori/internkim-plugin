@@ -9,10 +9,11 @@ from amounts import (
     korean_amount_in_words,
     korean_number_words,
     parse_amount,
-    round_to_won,
     row_amount,
     supply_total,
+    truncate_to_won,
     value_added_tax,
+    vat_total,
 )
 from office_result import WRONG_TYPE, Issue, IssueKind, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from paperwork_definitions import (
@@ -23,7 +24,9 @@ from paperwork_definitions import (
     NO_AMOUNTS_FOUND,
     QUANTITY_HEADERS,
     ROW_AMOUNT_MISMATCH,
+    ROW_VAT_MISMATCH,
     SUPPLY_TOTAL_MISMATCH,
+    TAX_HEADERS,
     UNIT_PRICE_HEADERS,
     VAT_MISMATCH,
     WORDS_LABELS,
@@ -113,19 +116,25 @@ def read_rows(headers: list, rows: list) -> Reading:
     columns = [column_index(headers, names) for names in (QUANTITY_HEADERS, UNIT_PRICE_HEADERS, AMOUNT_HEADERS)]
     if None in columns:
         return Reading()
+    tax_column = column_index(headers, TAX_HEADERS)
     reading = Reading()
     for index, row in enumerate(rows):
-        reading = reading.merge(read_row(row, index, columns))
+        reading = reading.merge(read_row(row, index, columns, tax_column))
     return reading
 
 
-def read_row(row: list, index: int, columns: list[int]) -> Reading:
-    locations = [f"items.rows[{index}][{column}]" for column in columns]
-    quantity, unit_price, amount = (parse_cell(row, column) for column in columns)
-    unreadable = tuple(unreadable_issue(location) for value, location in zip((quantity, unit_price, amount), locations) if value is None)
+def read_row(row: list, index: int, columns: list[int], tax_column: int | None) -> Reading:
+    read_columns = columns if tax_column is None else [*columns, tax_column]
+    locations = [f"items.rows[{index}][{column}]" for column in read_columns]
+    values = [parse_cell(row, column) for column in read_columns]
+    unreadable = tuple(unreadable_issue(location) for value, location in zip(values, locations) if value is None)
     if unreadable:
         return Reading(unreadable=unreadable)
-    return Reading((Fact(ROW_AMOUNT_MISMATCH, locations[2], row_amount(quantity, unit_price), json_number(amount)),))
+    quantity, unit_price, amount = values[:3]
+    facts = [Fact(ROW_AMOUNT_MISMATCH, locations[2], row_amount(quantity, unit_price), json_number(amount))]
+    if tax_column is not None:
+        facts.append(Fact(ROW_VAT_MISMATCH, locations[3], value_added_tax(truncate_to_won(amount)), json_number(values[3])))
+    return Reading(tuple(facts))
 
 
 def parse_cell(row: list, column: int) -> Decimal | None:
@@ -137,12 +146,19 @@ def read_totals(rows_reading: Reading, stated: list[Decimal | None]) -> Reading:
     unreadable = tuple(unreadable_issue(location) for value, location in zip(stated, locations) if value is None)
     if unreadable:
         return Reading(unreadable=unreadable)
-    supply, tax, grand = (round_to_won(value) for value in stated)
+    supply, tax, grand = (truncate_to_won(value) for value in stated)
     facts = [
-        Fact(VAT_MISMATCH, locations[VAT_POSITION], value_added_tax(supply), tax),
+        Fact(VAT_MISMATCH, locations[VAT_POSITION], expected_vat(rows_reading, supply), tax),
         Fact(GRAND_TOTAL_MISMATCH, locations[GRAND_TOTAL_POSITION], grand_total(supply, tax), grand),
     ]
     return Reading(tuple(row_sum_facts(rows_reading, locations[SUPPLY_TOTAL_POSITION], supply) + facts))
+
+
+def expected_vat(rows_reading: Reading, supply: int) -> int:
+    row_vats = [fact.found for fact in rows_reading.facts if fact.kind is ROW_VAT_MISMATCH]
+    if not row_vats or rows_reading.unreadable:
+        return value_added_tax(supply)
+    return vat_total(row_vats)
 
 
 def row_sum_facts(rows_reading: Reading, location: str, supply: int) -> list[Fact]:
@@ -158,7 +174,7 @@ def read_words(document: dict, grand: Decimal | None) -> Reading:
         return Reading()
     index, entry = entries[0]
     found = squeeze(str(entry.get("value", "")).split("(")[0].replace("整", "정"))
-    return Reading((Fact(AMOUNT_IN_WORDS_MISMATCH, f"meta[{index}].value", squeeze(korean_amount_in_words(round_to_won(grand))), found),))
+    return Reading((Fact(AMOUNT_IN_WORDS_MISMATCH, f"meta[{index}].value", squeeze(korean_amount_in_words(truncate_to_won(grand))), found),))
 
 
 def read_contract_amount(document: dict) -> Reading:
@@ -168,7 +184,7 @@ def read_contract_amount(document: dict) -> Reading:
     found = squeeze(str(document.get("totalAmountKorean", "")))
     if not found:
         return Reading()
-    return Reading((Fact(AMOUNT_IN_WORDS_MISMATCH, "totalAmountKorean", squeeze(korean_number_words(round_to_won(amount))), found),))
+    return Reading((Fact(AMOUNT_IN_WORDS_MISMATCH, "totalAmountKorean", squeeze(korean_number_words(truncate_to_won(amount))), found),))
 
 
 def squeeze(text: str) -> str:

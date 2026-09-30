@@ -99,17 +99,19 @@ CONTRACT_DOCUMENT = Record("contract", "the JSON of paperwork render to a .docx,
 QUANTITY_HEADERS = ("수량", "Qty")
 UNIT_PRICE_HEADERS = ("단가", "Unit price")
 AMOUNT_HEADERS = ("공급가액", "Amount")
+TAX_HEADERS = ("세액", "Tax")
 WORDS_LABELS = ("합계금액",)
 
 ROW_AMOUNT_MISMATCH = IssueKind("ROW_AMOUNT_MISMATCH", ERROR, "a row's amount is not its quantity times its unit price", "correct the row's amount, or the quantity or unit price if one of those is wrong")
 SUPPLY_TOTAL_MISMATCH = IssueKind("SUPPLY_TOTAL_MISMATCH", ERROR, "the supply total is not the sum of the row amounts", "correct the supply total, or the row that is wrong")
-VAT_MISMATCH = IssueKind("VAT_MISMATCH", ERROR, "the VAT is not the VAT rate times the supply total", "correct the VAT line")
+ROW_VAT_MISMATCH = IssueKind("ROW_VAT_MISMATCH", ERROR, "a row's VAT is not the VAT rate times the row's supply amount", "correct the row's VAT, or its amount if that is wrong")
+VAT_MISMATCH = IssueKind("VAT_MISMATCH", ERROR, "the VAT total is not the sum of the row VATs, or without row VATs not the VAT rate times the supply total", "correct the VAT line")
 GRAND_TOTAL_MISMATCH = IssueKind("GRAND_TOTAL_MISMATCH", ERROR, "the grand total is not the supply total plus the VAT", "correct the grand total line")
 AMOUNT_IN_WORDS_MISMATCH = IssueKind("AMOUNT_IN_WORDS_MISMATCH", ERROR, "the Korean amount in words does not match the grand total", "rewrite the amount in words from the grand total")
 AMOUNT_UNREADABLE = IssueKind("AMOUNT_UNREADABLE", ERROR, "a quantity, price or total holds no number", "write the value as a number, with or without thousands separators")
 NO_AMOUNTS_FOUND = IssueKind("NO_AMOUNTS_FOUND", WARNING, "the input holds no quantity, unit price and amount columns and no contract amount, so nothing was checked", "pass the document JSON of a priced form or a contract context with totalAmount")
 
-AMOUNT_ISSUE_KINDS = (ROW_AMOUNT_MISMATCH, SUPPLY_TOTAL_MISMATCH, VAT_MISMATCH, GRAND_TOTAL_MISMATCH, AMOUNT_IN_WORDS_MISMATCH, AMOUNT_UNREADABLE, NO_AMOUNTS_FOUND)
+AMOUNT_ISSUE_KINDS = (ROW_AMOUNT_MISMATCH, ROW_VAT_MISMATCH, SUPPLY_TOTAL_MISMATCH, VAT_MISMATCH, GRAND_TOTAL_MISMATCH, AMOUNT_IN_WORDS_MISMATCH, AMOUNT_UNREADABLE, NO_AMOUNTS_FOUND)
 
 GUIDE_INPUTS = (
     ("paperwork render <document.json> <output>.pdf", PAPERWORK_DOCUMENT),
@@ -147,7 +149,8 @@ def amount_rule_lines() -> list[str]:
     return [
         f"  input: the document JSON of paperwork render with items.headers holding {', '.join(QUANTITY_HEADERS + UNIT_PRICE_HEADERS + AMOUNT_HEADERS)}, or the context JSON of paperwork fill service-agreement",
         "  row amount = quantity x unit price; supply total = sum of row amounts; grand total = supply total + VAT",
-        f"  VAT = {VAT_RATE_PERCENT}% of the supply total; {ROUNDING_RULE}",
+        f"  row VAT = {VAT_RATE_PERCENT}% of the row amount when rows have a {' or '.join(TAX_HEADERS)} column; VAT total = sum of row VATs, else {VAT_RATE_PERCENT}% of the supply total",
+        f"  rounding: {ROUNDING_RULE}",
         "  items.totals lists supply total, VAT and grand total in that order; meta \"합계금액\" holds the amount in words",
         "  amount in words: \"일금 일백만원정\" for 1,000,000; a trailing 整 counts as 정",
         "  the command only reports facts in details and never rewrites the input",
