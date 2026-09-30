@@ -53,6 +53,7 @@ COMMANDS = (
     Command("deck", "image", "deck/fetch_image.py", "download a public-domain photo for a search query", needs_packages=False),
     Command("paperwork", "render", "paperwork/render_paperwork.py", "render a company form to PDF on letterhead"),
     Command("paperwork", "fill", "paperwork/fill_template.py", "fill a standard contract template to .docx"),
+    Command("paperwork", "check", "paperwork/check_amounts.py", "report row amounts, totals, VAT and the amount in words of a priced form, never rewriting it", needs_packages=False),
 )
 
 
