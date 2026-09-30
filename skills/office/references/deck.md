@@ -1,6 +1,6 @@
 # Decks
 
-Create a useful, visually strong deck and attach accepted output. HTML-first means `slides.html` is the source of truth, `DESIGN.md` the design brief, and HTML is the layout surface and default deliverable; PPTX is image-backed by default. SKILL.md's rules for source truth and verification apply here, and a deck never invents current dates, people, values, or claims.
+Create a useful, visually strong deck and attach accepted output. HTML-first means `slides.html` is the source of truth, `DESIGN.md` the design brief, and HTML is the layout surface and default deliverable; the PPTX is built from the rendered slides with editable text. SKILL.md's rules for source truth and verification apply here, and a deck never invents current dates, people, values, or claims.
 
 ## Workflow
 
@@ -30,11 +30,15 @@ With a browser, the build measures every slide after the fonts load and writes `
 
 ## Speaker notes
 
-The text of each slide's `<aside class="notes">` is written into the PPTX notes of both the image-backed and the native deck. A slide without notes gets none.
+The text of each slide's `<aside class="notes">` is written into the PPTX notes, with or without a browser. A slide without notes gets none.
+
+## Editable PPTX
+
+With a browser, each PPTX slide is a picture of the rendered slide with its text hidden, and one text box on top for every element that holds text, placed and styled as the browser drew it: font, size, weight, color, letter spacing, line height, alignment, bullets, numbering, line breaks and links. The recipient can edit every word. Text boxes do not grow or shrink, so a much longer replacement runs past its box. The Paperlogy weights the deck uses are embedded in the file; `details.pptx.embeddedFonts` lists them. PowerPoint and LibreOffice 26.2 draw with the embedded faces; LibreOffice 24.2 and viewers that ignore embedded fonts substitute their own until Paperlogy is installed. A deck font other than Paperlogy is named but not embedded and reported as `FONT_NOT_EMBEDDED`. Rotated, skewed, filtered, gradient-clipped and SVG text stays in the picture and is reported as `TEXT_KEPT_AS_PICTURE`; charts and diagrams drawn in SVG are pictures too.
 
 ## Editing a delivered .pptx
 
-When the user hands over a .pptx, or asks for a change to one that has no `slides.html` beside it, run `<skill>/scripts/office deck read <file.pptx>`. It lists each slide's number, layout name, shapes with their index and text, tables, and notes. Then change the file with `deck apply <file.pptx> <ops.json>`: a batch of `set_text`, `find_replace`, `set_notes`, `delete_slide`, and `reorder`, with every slide number and shape index taken from that read, applied whole or not at all. Pass `--dry-run` first when the batch is long, and `--output` to keep the original. `office guide deck` lists each operation's fields. Layouts, masters, and everything an operation does not touch are kept. Text inside an image-backed slide is part of the picture and cannot be edited this way; rebuild from `slides.html`, or restore it with `deck restore`.
+When the user hands over a .pptx, or asks for a change to one that has no `slides.html` beside it, run `<skill>/scripts/office deck read <file.pptx>`. It lists each slide's number, layout name, shapes with their index and text, tables, and notes. Then change the file with `deck apply <file.pptx> <ops.json>`: a batch of `set_text`, `find_replace`, `set_notes`, `delete_slide`, and `reorder`, with every slide number and shape index taken from that read, applied whole or not at all. Pass `--dry-run` first when the batch is long, and `--output` to keep the original. `office guide deck` lists each operation's fields. Layouts, masters, and everything an operation does not touch are kept. A PPTX built here holds its text in text boxes, so `deck read` lists them; text that stayed in the picture cannot be edited this way. For anything larger than a wording change, edit `slides.html` and rebuild, or recover it with `deck restore`.
 
 ## Design contract
 
@@ -48,11 +52,11 @@ Use claim-style titles that name the exact organization, product, and period, wi
 
 `DESIGN.md` may use Stitch-compatible YAML front matter followed by `Style Prompt`, `Visual Identity Gate`, `Scene`, `Design Thesis`, `Visual System`, `Signature Move`, and `Anti-default Check`. It must express a design thesis and a recurring signature move. A dark theme is not a visual system. Every slide should fill the 16:9 frame safely, avoid cropped or hidden text, and use readable type and meaningful visual hierarchy.
 
-Do not use emoji as functional icons or bullets. Paperlogy is the default display and body font, with local WOFF2 fallback and the CSS stack `"Paperlogy", "Noto Sans KR", system-ui`. Follow `references/deck/webfonts.md` for web fonts and never paste base64 font data into source. Set `PRESENTATION_PPTX_MODE=native` for a native text-backed PPTX when editable text is explicitly required.
+Do not use emoji as functional icons or bullets. Paperlogy is the default display and body font, with local WOFF2 fallback and the CSS stack `"Paperlogy", "Noto Sans KR", system-ui`. Follow `references/deck/webfonts.md` for web fonts and never paste base64 font data into source.
 
 ## Without a browser
 
-When no browser can render the deck, the build falls back to a text-backed PPTX and, where Pillow is installed, preview images drawn from the slide text. The fallback picks each slide's layout from its `data-slide-role`: `cover` or `title`, `summary`, `metrics`, `timeline`, `risk`, and `approval` select those layouts, and any other role gets the plain generic layout. The review then reports `visualEvidenceReliable: false`.
+When no browser can render the deck, the build falls back to a PPTX that re-lays the slide text into stock layouts, reported as `PPTX_WITHOUT_DESIGN`, and, where Pillow is installed, preview images drawn from the slide text. The fallback picks each slide's layout from its `data-slide-role`: `cover` or `title`, `summary`, `metrics`, `timeline`, `risk`, and `approval` select those layouts, and any other role gets the plain generic layout. The review then reports `visualEvidenceReliable: false`.
 
 ## Delivery rules
 
