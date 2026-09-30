@@ -262,15 +262,6 @@ section aside.notes, section aside[role="note"], section [data-speaker-notes] { 
   .bespoke-marp-presenter-next > section { position: absolute !important; left: 0 !important; top: 0 !important; width: 1600px !important; height: 900px !important; min-width: 1600px !important; max-width: none !important; min-height: 900px !important; max-height: none !important; opacity: 1 !important; pointer-events: none !important; transform: scale(var(--internkim-presenter-next-scale, 0.2)) !important; transform-origin: 0 0 !important; box-shadow: none !important;  visibility: visible !important;}
   .bespoke-marp-presenter-note { overflow: auto; padding: 0 24px 24px; color: #d1d5db; line-height: 1.55; white-space: pre-wrap; }
   .bespoke-marp-presenter-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 24px; border-top: 1px solid rgba(255,255,255,0.08); color: #f9fafb; }
-  body.internkim-export { width: 1600px; height: 900px; min-height: 900px; overflow: hidden; padding: 0; background: transparent; }
-  body.internkim-export .bespoke-marp-parent { position: fixed; inset: 0; width: 1600px; height: 900px; overflow: hidden; }
-  body.internkim-export .marpit { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; transform: none !important; }
-  body.internkim-export .marpit > section { box-shadow: none !important; }
-  body.internkim-export .bespoke-marp-osc,
-  body.internkim-export .bespoke-progress-parent,
-  body.internkim-export .bespoke-marp-overview,
-  body.internkim-export .bespoke-marp-presenter-panel,
-  body.internkim-export .bespoke-marp-tooltip { display: none !important; }
 }
 @page { size: 1600px 900px; margin: 0; }
 @media print {
@@ -333,7 +324,6 @@ section aside.notes, section aside[role="note"], section [data-speaker-notes] { 
     });
     document.body.dataset.bespokeView = currentView();
     document.body.classList.add("internkim-deck-ready");
-    if (isExportMode()) document.body.classList.add("internkim-export");
     parent.appendChild(osc);
     document.body.insertBefore(progress, parent);
     tooltip = document.createElement("div");
@@ -486,10 +476,6 @@ section aside.notes, section aside[role="note"], section [data-speaker-notes] { 
   }
 
   function updateScale() {
-    if (isExportMode()) {
-      deck.style.setProperty("--internkim-deck-scale", "1");
-      return;
-    }
     const horizontalPadding = 0;
     const verticalPadding = 0;
     const bounds = parent.getBoundingClientRect();
@@ -507,10 +493,6 @@ section aside.notes, section aside[role="note"], section [data-speaker-notes] { 
 
   function currentView() {
     return new URLSearchParams(location.search).get("view") === "presenter" ? "presenter" : "slide";
-  }
-
-  function isExportMode() {
-    return new URLSearchParams(location.search).has("internkim-export");
   }
 
   async function toggleFullscreen() {

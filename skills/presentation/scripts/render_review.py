@@ -183,6 +183,7 @@ def read_render_source(review_directory_path: pathlib.Path, image_paths: list[pa
 
 
 def write_review_outputs(review_directory_path: pathlib.Path, report: dict[str, object]) -> None:
+    review_directory_path.mkdir(parents=True, exist_ok=True)
     write_fit_reviews(review_directory_path, report["fitReviews"])
     write_json(review_directory_path / "slide-review.json", report)
     write_markdown(review_directory_path / "slide-review.md", report)
