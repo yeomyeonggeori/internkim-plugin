@@ -14,7 +14,7 @@ One command, `<skill>/scripts/office <format> <verb> [arguments]`, writes and ch
 
 | Work | Commands | Reference |
 | --- | --- | --- |
-| Word document, report, memo, letter, template; a PDF whose words matter more than their placement | `doc export`, `doc create`, `doc edit`, `doc validate` | `references/doc.md` |
+| Word document, report, memo, letter, template; a PDF whose words matter more than their placement | `doc export`, `doc create`, `doc read`, `doc apply`, `doc merge`, `doc check`, `doc validate` | `references/doc.md` |
 | Existing PDF to read, extract, split, merge, or append to; a PDF whose placement is the point | `pdf create`, `pdf edit`, `pdf validate` | `references/pdf.md` |
 | Workbook, CSV or TSV cleanup, formulas, charts | `sheet create`, `sheet edit`, `sheet validate` | `references/sheet.md` |
 | Deck, presentation, PPTX, or checking an existing .pptx | `deck build`, `deck validate`, `deck restore` | `references/deck.md` |
