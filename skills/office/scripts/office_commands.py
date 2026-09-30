@@ -47,6 +47,7 @@ COMMANDS = (
     Command("pdf", "validate", "pdf/validate_pdf.py", "check a PDF for pages, extractable text and fonts"),
     Command("sheet", "create", "sheet/create_xlsx.py", "build an .xlsx from rows or a JSON spec"),
     Command("sheet", "edit", "sheet/edit_xlsx.py", "append rows to an .xlsx"),
+    Command("sheet", "read", "sheet/read_xlsx.py", "list a workbook's sheets, a range's values and formulas, panes, filters, tables, charts and defined names"),
     Command("sheet", "validate", "sheet/validate_xlsx.py", "check an .xlsx for headers, filters and formulas"),
     Command("deck", "build", "deck/build.sh", "build slides.html in this directory into HTML, PDF, PPTX and review evidence", needs_packages=False),
     Command("deck", "validate", "deck/validate_pptx.py", "check a .pptx for design warnings"),
