@@ -10,7 +10,7 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
 from doc_definitions import IMAGE_UNAVAILABLE
-from docx_defaults import apply_korean_defaults
+from docx_defaults import apply_korean_defaults, set_page
 from docx_lists import add_list_paragraph, start_list
 from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, inline_segments, link_parts, local_image_problem
 from office_result import Issue
@@ -22,6 +22,7 @@ LINK_COLOR = "0563C1"
 
 def markdown_document(blocks: list, font_name: str, font_size: float, source_directory: Path) -> tuple[Document, list[Issue]]:
     document = Document()
+    set_page(document.sections[0])
     set_base_font(document, font_name, font_size)
     issues = []
     list_ids: dict[bool, int] = {}
