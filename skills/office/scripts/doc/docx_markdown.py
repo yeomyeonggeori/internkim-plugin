@@ -10,6 +10,7 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
 from doc_definitions import IMAGE_UNAVAILABLE
+from docx_defaults import apply_korean_defaults
 from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, inline_segments, link_parts, local_image_problem
 from office_result import Issue
 
@@ -30,9 +31,8 @@ def markdown_document(blocks: list, font_name: str, font_size: float, source_dir
 
 def set_base_font(document: Document, font_name: str, font_size: float) -> None:
     style = document.styles["Normal"]
-    style.font.name = font_name
     style.font.size = Pt(font_size)
-    style.element.rPr.rFonts.set(qn("w:eastAsia"), font_name)
+    apply_korean_defaults(document, font_name)
 
 
 def add_block(document: Document, block, source_directory: Path) -> list[Issue]:

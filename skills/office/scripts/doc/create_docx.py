@@ -14,6 +14,7 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Pt
 
 from doc_definitions import DOCUMENT_SPECIFICATION, TABLE_FILE
+from docx_defaults import apply_korean_defaults
 from office_result import INVALID_ARGUMENTS, INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
 
@@ -21,7 +22,7 @@ from office_schema import require_valid
 DEFAULT_FONT_NAME = "맑은 고딕"
 DEFAULT_FONT_SIZE = 10.5
 DEFAULT_MARGIN_INCHES = 0.8
-STYLED_FONT_NAMES = ["Normal", "Title", "Heading 1", "Heading 2", "Heading 3", "Heading 4"]
+SIZED_STYLE_NAMES = ["Normal", "Title", "Heading 1", "Heading 2", "Heading 3", "Heading 4"]
 LIST_STYLES = {"bullets": "List Bullet", "numbered": "List Number"}
 TABLE_WIDTH_INCHES = 6.6
 HEADER_FILL_COLOR = "EAF1F8"
@@ -77,7 +78,9 @@ def table_width_problems(rows: list[list], location: str) -> list[Issue]:
 def create_document(specification: dict) -> Document:
     document = Document()
     set_page(document.sections[0], specification.get("page") or {})
-    set_document_font(document, (specification.get("fontName") or DEFAULT_FONT_NAME).strip(), float(specification.get("fontSize") or DEFAULT_FONT_SIZE))
+    font_name = (specification.get("fontName") or DEFAULT_FONT_NAME).strip()
+    set_text_sizes(document, float(specification.get("fontSize") or DEFAULT_FONT_SIZE))
+    apply_korean_defaults(document, font_name)
     add_title(document, specification.get("title") or "")
     for block in specification["blocks"]:
         add_block(document, block)
@@ -96,26 +99,14 @@ def set_page(section, page: dict) -> None:
     section.left_margin = margin
 
 
-def set_document_font(document: Document, font_name: str, font_size: float) -> None:
-    for style_name in STYLED_FONT_NAMES:
+def set_text_sizes(document: Document, font_size: float) -> None:
+    for style_name in SIZED_STYLE_NAMES:
         if style_name not in document.styles:
             continue
         style = document.styles[style_name]
-        style.font.name = font_name
         style.font.size = Pt(font_size if style_name == "Normal" else max(font_size + 1, 11))
         style.paragraph_format.line_spacing = 1.08
         style.paragraph_format.space_after = Pt(4)
-        set_run_fonts(style.element.get_or_add_rPr(), font_name)
-
-
-def set_run_fonts(run_properties, font_name: str) -> None:
-    run_fonts = run_properties.rFonts
-    if run_fonts is None:
-        run_fonts = OxmlElement("w:rFonts")
-        run_properties.append(run_fonts)
-    run_fonts.set(qn("w:ascii"), font_name)
-    run_fonts.set(qn("w:hAnsi"), font_name)
-    run_fonts.set(qn("w:eastAsia"), font_name)
 
 
 def add_title(document: Document, title: str) -> None:
