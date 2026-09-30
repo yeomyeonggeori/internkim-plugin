@@ -3,6 +3,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 import zipfile
 from xml.etree import ElementTree
@@ -54,3 +55,7 @@ class WorkbookFixture(unittest.TestCase):
 
     def cells(self, name="book.xlsx", part_name="xl/worksheets/sheet1.xml"):
         return stored_cells(self.directory / name, part_name)
+
+
+def run_office_python(code, working_directory):
+    subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", textwrap.dedent(code)], check=True, cwd=working_directory)

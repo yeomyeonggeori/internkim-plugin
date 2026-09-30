@@ -5,6 +5,7 @@ from office_schema import Boolean, CellValue, Field, ListOf, MapOf, Number, Reco
 
 
 ROWS = ListOf(ListOf(CellValue()))
+READ_ROW_LIMIT = 500
 
 SHEET = Record("sheet", "one worksheet; the first row, or the row after the heading, is the header", (
     Field("title", Text(non_empty=True), "sheet name, cut to 31 characters", required=True),
