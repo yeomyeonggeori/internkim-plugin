@@ -1,70 +1,82 @@
 #!/usr/bin/env python3
 import argparse
-import json
 import re
 
-from skill_runtime import ensure_requirements
+from docx import Document
+from docx.oxml.ns import qn
+
+from doc_definitions import (
+    BODY_SIZE_UNUSUAL,
+    DOCUMENT_EMPTY,
+    DOCUMENT_SPARSE,
+    LINE_SPACING_UNUSUAL,
+    MARGIN_TOO_NARROW,
+    MARGIN_TOO_WIDE,
+    NO_STRUCTURED_TABLE,
+    TABLE_DENSE_CELLS,
+    TABLE_EMPTY_CELLS,
+    TABLE_TOO_WIDE,
+)
+from office_result import Issue, OfficeArgumentParser, Result, run_command
+from text_checks import korean_font_issues, text_presence_issues
 
 
-def summarize_document(document_path, required_text, forbidden_text):
-    if not ensure_requirements("office"):
-        raise RuntimeError("docx dependencies are unavailable after bootstrap")
+DENSE_CELL_CHARACTERS = 90
+MARGIN_SIDES = ["topMarginInches", "rightMarginInches", "bottomMarginInches", "leftMarginInches"]
 
-    from docx import Document
 
-    document = Document(document_path)
+def main() -> Result:
+    arguments = parse_arguments()
+    document = Document(arguments.document_path)
     paragraphs = [paragraph.text for paragraph in document.paragraphs if paragraph.text.strip()]
     table_texts = [cell.text for table in document.tables for row in table.rows for cell in row.cells if cell.text.strip()]
     visible_text = "\n".join(paragraphs + table_texts)
-    required_missing = [value for value in required_text if value not in visible_text]
-    forbidden_present = [value for value in forbidden_text if value in visible_text]
-    heading_count = sum(1 for paragraph in document.paragraphs if paragraph.style and paragraph.style.name.startswith("Heading"))
-    tables = []
-    for table in document.tables:
-        empty_cell_count = sum(1 for row in table.rows for cell in row.cells if not cell.text.strip())
-        dense_cell_count = sum(1 for row in table.rows for cell in row.cells if len(cell.text.strip()) > 90)
-        tables.append({
-            "rows": len(table.rows),
-            "columns": len(table.columns),
-            "emptyCellCount": empty_cell_count,
-            "denseCellCount": dense_cell_count,
-        })
+    tables = [table_metrics(table) for table in document.tables]
     typography = collect_typography(document, visible_text)
-    warnings = collect_warnings(paragraphs, tables, required_missing, forbidden_present, typography)
-    return {
+    issues = (
+        paragraph_issues(paragraphs)
+        + text_presence_issues(visible_text, arguments.required_text, arguments.forbidden_text)
+        + korean_font_issues(visible_text, typography["fontNames"])
+        + typography_issues(typography)
+        + table_issues(tables)
+    )
+    details = {
         "paragraphCount": len(paragraphs),
-        "headingCount": heading_count,
+        "headingCount": sum(1 for paragraph in document.paragraphs if paragraph.style and paragraph.style.name.startswith("Heading")),
         "tableCount": len(document.tables),
         "tables": tables,
         "firstParagraphs": paragraphs[:5],
         "visibleTextLength": len(visible_text),
-        "requiredMissing": required_missing,
-        "forbiddenPresent": forbidden_present,
         "typography": typography,
-        "warnings": warnings,
-        "warningCount": len(warnings),
+    }
+    return Result(summary=f"checked {arguments.document_path}: {len(issues)} issues", output_path=arguments.document_path, issues=tuple(issues), details=details)
+
+
+def table_metrics(table) -> dict:
+    cells = [cell for row in table.rows for cell in row.cells]
+    return {
+        "rows": len(table.rows),
+        "columns": len(table.columns),
+        "emptyCellCount": sum(1 for cell in cells if not cell.text.strip()),
+        "denseCellCount": sum(1 for cell in cells if len(cell.text.strip()) > DENSE_CELL_CHARACTERS),
     }
 
 
-def collect_typography(document, visible_text):
+def collect_typography(document, visible_text: str) -> dict:
     normal_style = document.styles["Normal"] if "Normal" in document.styles else None
-    sections = [section_metrics(section) for section in document.sections]
     paragraph_metrics = [metrics_for_paragraph(paragraph) for paragraph in document.paragraphs if paragraph.text.strip()]
-    font_names = sorted({font_name for font_name in collect_font_names(document) if font_name})
-    font_sizes = sorted({size for size in collect_font_sizes(document, normal_style) if size is not None})
-    line_spacings = sorted({metric["lineSpacing"] for metric in paragraph_metrics if metric["lineSpacing"] is not None})
     return {
-        "hasKoreanText": bool(re.search(r"[\uac00-\ud7a3]", visible_text)),
-        "fontNames": font_names,
-        "fontSizePoints": font_sizes,
+        "hasKoreanText": bool(re.search(r"[가-힣]", visible_text)),
+        "fontNames": sorted({font_name for font_name in collect_font_names(document) if font_name}),
+        "fontSizePoints": sorted({size for size in collect_font_sizes(document, normal_style) if size is not None}),
         "normalFontSizePoints": point_value(normal_style.font.size) if normal_style is not None else None,
         "normalLineSpacing": line_spacing_value(normal_style.paragraph_format.line_spacing) if normal_style is not None else None,
-        "paragraphLineSpacings": line_spacings,
-        "sections": sections,
+        "paragraphLineSpacings": sorted({metric["lineSpacing"] for metric in paragraph_metrics if metric["lineSpacing"] is not None}),
+        "sections": [section_metrics(section) for section in document.sections],
     }
 
 
-def section_metrics(section):
+def section_metrics(section) -> dict:
     return {
         "pageWidthInches": inch_value(section.page_width),
         "pageHeightInches": inch_value(section.page_height),
@@ -75,7 +87,7 @@ def section_metrics(section):
     }
 
 
-def metrics_for_paragraph(paragraph):
+def metrics_for_paragraph(paragraph) -> dict:
     return {
         "style": paragraph.style.name if paragraph.style else "",
         "lineSpacing": line_spacing_value(paragraph.paragraph_format.line_spacing),
@@ -83,140 +95,120 @@ def metrics_for_paragraph(paragraph):
     }
 
 
-def collect_font_names(document):
+def document_runs(document) -> list:
+    body_runs = [run for paragraph in document.paragraphs for run in paragraph.runs]
+    cell_runs = [
+        run
+        for table in document.tables
+        for row in table.rows
+        for cell in row.cells
+        for paragraph in cell.paragraphs
+        for run in paragraph.runs
+    ]
+    return body_runs + cell_runs
+
+
+def collect_font_names(document) -> list[str]:
     font_names = []
     for style in document.styles:
         font_names.extend(font_names_for_element(style.element))
         style_font = getattr(style, "font", None)
         if style_font is not None and style_font.name:
             font_names.append(style_font.name)
-    for paragraph in document.paragraphs:
-        for run in paragraph.runs:
-            if run.font.name:
-                font_names.append(run.font.name)
-    for table in document.tables:
-        for row in table.rows:
-            for cell in row.cells:
-                for paragraph in cell.paragraphs:
-                    for run in paragraph.runs:
-                        if run.font.name:
-                            font_names.append(run.font.name)
+    font_names.extend(run.font.name for run in document_runs(document) if run.font.name)
     return font_names
 
 
-def font_names_for_element(element):
-    from docx.oxml.ns import qn
-
+def font_names_for_element(element) -> list[str]:
     run_properties = element.rPr
     if run_properties is None or run_properties.rFonts is None:
         return []
-    names = []
-    for attribute_name in ["w:ascii", "w:hAnsi", "w:eastAsia", "w:cs"]:
-        value = run_properties.rFonts.get(qn(attribute_name))
-        if value:
-            names.append(value)
-    return names
+    values = [run_properties.rFonts.get(qn(attribute_name)) for attribute_name in ["w:ascii", "w:hAnsi", "w:eastAsia", "w:cs"]]
+    return [value for value in values if value]
 
 
-def collect_font_sizes(document, normal_style):
+def collect_font_sizes(document, normal_style) -> list[float | None]:
     sizes = []
     if normal_style is not None and getattr(normal_style, "font", None) is not None:
         sizes.append(point_value(normal_style.font.size))
     for paragraph in document.paragraphs:
         if paragraph.style is not None and getattr(paragraph.style, "font", None) is not None:
             sizes.append(point_value(paragraph.style.font.size))
-        for run in paragraph.runs:
-            sizes.append(point_value(run.font.size))
-    for table in document.tables:
-        for row in table.rows:
-            for cell in row.cells:
-                for paragraph in cell.paragraphs:
-                    for run in paragraph.runs:
-                        sizes.append(point_value(run.font.size))
+    sizes.extend(point_value(run.font.size) for run in document_runs(document))
     return sizes
 
 
-def point_value(value):
+def point_value(value) -> float | None:
     if value is None:
         return None
     return round(value.pt, 2)
 
 
-def inch_value(value):
+def inch_value(value) -> float | None:
     if value is None:
         return None
     return round(value.inches, 3)
 
 
-def line_spacing_value(value):
+def line_spacing_value(value) -> float | None:
     if value is None:
         return None
     if hasattr(value, "pt"):
         return round(value.pt, 2)
-    try:
-        return round(float(value), 2)
-    except TypeError:
-        return None
+    return round(float(value), 2)
 
 
-def collect_warnings(paragraphs, tables, required_missing, forbidden_present, typography):
-    warnings = []
+def paragraph_issues(paragraphs: list[str]) -> list[Issue]:
     if not paragraphs:
-        warnings.append("document has no visible paragraph text")
+        return [DOCUMENT_EMPTY.issue("document has no visible paragraph text"), DOCUMENT_SPARSE.issue("document has very little visible text")]
     if len(paragraphs) < 3:
-        warnings.append("document has very little visible text")
-    if required_missing:
-        warnings.append("document is missing required source text: " + ", ".join(required_missing[:8]))
-    if forbidden_present:
-        warnings.append("document includes forbidden unsupported text: " + ", ".join(forbidden_present[:8]))
-    if typography["hasKoreanText"] and not has_korean_capable_font(typography["fontNames"]):
-        warnings.append("document contains Korean text but no Korean-capable font name was detected")
-    if typography["normalFontSizePoints"] is not None and not 9.0 <= typography["normalFontSizePoints"] <= 12.5:
-        warnings.append(f"normal text size is {typography['normalFontSizePoints']} pt; expected about 10-11 pt for business documents")
-    if typography["normalLineSpacing"] is not None and not 1.0 <= typography["normalLineSpacing"] <= 1.25:
-        warnings.append(f"normal line spacing is {typography['normalLineSpacing']}; expected about 1.05-1.2")
+        return [DOCUMENT_SPARSE.issue("document has very little visible text")]
+    return []
+
+
+def typography_issues(typography: dict) -> list[Issue]:
+    issues = []
+    normal_size = typography["normalFontSizePoints"]
+    if normal_size is not None and not 9.0 <= normal_size <= 12.5:
+        issues.append(BODY_SIZE_UNUSUAL.issue(f"normal text size is {normal_size} pt; expected about 10-11 pt for business documents"))
+    normal_spacing = typography["normalLineSpacing"]
+    if normal_spacing is not None and not 1.0 <= normal_spacing <= 1.25:
+        issues.append(LINE_SPACING_UNUSUAL.issue(f"normal line spacing is {normal_spacing}; expected about 1.05-1.2"))
     for index, section in enumerate(typography["sections"], start=1):
-        margins = [
-            section["topMarginInches"],
-            section["rightMarginInches"],
-            section["bottomMarginInches"],
-            section["leftMarginInches"],
-        ]
-        if any(value is not None and value < 0.5 for value in margins):
-            warnings.append(f"section {index} has a margin under 0.5 inches")
-        if any(value is not None and value > 1.25 for value in margins):
-            warnings.append(f"section {index} has a margin above 1.25 inches")
-    if not any(table["rows"] > 1 for table in tables):
-        warnings.append("document has no multi-row table for structured facts")
+        issues.extend(margin_issues(section, f"section {index}"))
+    return issues
+
+
+def margin_issues(section: dict, location: str) -> list[Issue]:
+    margins = [section[side] for side in MARGIN_SIDES if section[side] is not None]
+    issues = []
+    if any(value < 0.5 for value in margins):
+        issues.append(MARGIN_TOO_NARROW.issue(f"{location} has a margin under 0.5 inches", location))
+    if any(value > 1.25 for value in margins):
+        issues.append(MARGIN_TOO_WIDE.issue(f"{location} has a margin above 1.25 inches", location))
+    return issues
+
+
+def table_issues(tables: list[dict]) -> list[Issue]:
+    issues = [] if any(table["rows"] > 1 for table in tables) else [NO_STRUCTURED_TABLE.issue("document has no multi-row table for structured facts")]
     for index, table in enumerate(tables, start=1):
+        location = f"table {index}"
         if table["columns"] > 5:
-            warnings.append(f"table {index} has more than 5 columns and may be too wide")
+            issues.append(TABLE_TOO_WIDE.issue(f"{location} has more than 5 columns and may be too wide", location))
         if table["emptyCellCount"] > 0:
-            warnings.append(f"table {index} has {table['emptyCellCount']} empty cells")
+            issues.append(TABLE_EMPTY_CELLS.issue(f"{location} has {table['emptyCellCount']} empty cells", location))
         if table["denseCellCount"] > 0:
-            warnings.append(f"table {index} has {table['denseCellCount']} dense cells that may need wrapping or shorter labels")
-    return warnings
+            issues.append(TABLE_DENSE_CELLS.issue(f"{location} has {table['denseCellCount']} dense cells that may need wrapping or shorter labels", location))
+    return issues
 
 
-def has_korean_capable_font(font_names):
-    candidates = ["noto", "nanum", "malgun", "apple sd", "gothic", "myeongjo", "cjk", "kr", "맑은", "고딕"]
-    normalized_names = " ".join(font_name.lower() for font_name in font_names)
-    return any(candidate in normalized_names for candidate in candidates)
-
-
-def parse_arguments():
-    parser = argparse.ArgumentParser(description="Validate and summarize a DOCX file.")
+def parse_arguments() -> argparse.Namespace:
+    parser = OfficeArgumentParser(description="Validate and summarize a DOCX file.")
     parser.add_argument("document_path")
     parser.add_argument("--required-text", action="append", default=[])
     parser.add_argument("--forbidden-text", action="append", default=[])
     return parser.parse_args()
 
 
-def main():
-    arguments = parse_arguments()
-    summary = summarize_document(arguments.document_path, arguments.required_text, arguments.forbidden_text)
-    print(json.dumps(summary, ensure_ascii=False, indent=2))
-
-
 if __name__ == "__main__":
-    main()
+    raise SystemExit(run_command(main))

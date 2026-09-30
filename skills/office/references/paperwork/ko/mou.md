@@ -55,7 +55,7 @@ filename: 업무협약서_<상대방기관명>_<YYYYMMDD>.docx
 
 ## context 값 검사 (deliver 전 자기검사)
 
-- `cooperationItems`, `orgARoles`, `orgBRoles`가 요청자가 제공한 내용만으로 채워졌는가? 빈 배열이면 fill_template.py가 거부한다.
+- `cooperationItems`, `orgARoles`, `orgBRoles`가 요청자가 제공한 내용만으로 채워졌는가? 빈 배열이면 `paperwork fill`이 거부한다.
 - 기관명·대표자가 기관A/기관B 방향에 맞게 정확히 들어갔는가?
 - `termYears`가 요청자 제공값이거나 기본값(2년)인가?
 - `purpose`, `contractDate`가 요청 내용과 일치하는가?

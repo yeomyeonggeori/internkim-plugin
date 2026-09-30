@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json
+import dataclasses
 import pathlib
 import sys
 import typing
@@ -14,6 +14,7 @@ from content_warnings import (
 )
 from design_tokens import read_design_tokens
 from design_warnings import annotate_design_revision_need, apply_deck_design_warnings, calculate_visual_quality_score, unique_design_warnings
+from office_result import INVALID_ARGUMENTS, Issue, OfficeFailure, Result, run_command
 from fit_review import DESIGN_REVIEW_PROMPT, attach_fit_review_metadata, create_fit_reviews
 from footer_warnings import apply_footer_baseline_warning, apply_unpinned_footer_warning
 from review_report import write_review_outputs
@@ -25,17 +26,32 @@ from source_context import inspect_source_context
 
 
 VISUAL_QUALITY_SCORE_MINIMUM = 82
+REVIEW_DETAIL_FIELDS = (
+    "passed",
+    "qualityGatePassed",
+    "staticGatePassed",
+    "visualQualityScore",
+    "visualQualityScoreMinimum",
+    "visualEvidenceReliable",
+    "needsDesignRevision",
+    "renderSource",
+    "slideCount",
+    "renderedSlideCount",
+)
 
 
-def main() -> int:
+def main() -> Result:
     arguments = parse_arguments(sys.argv)
     if not arguments:
-        print("Usage: render_review.py <source> <deck-name> <review-dir>", file=sys.stderr)
-        return 2
-    report = build_review_report(arguments["sourcePath"], arguments["deckName"], arguments["reviewDirectoryPath"])
+        raise OfficeFailure(INVALID_ARGUMENTS.issue("usage: render_review.py <source> <deck-name> <review-dir>"))
+    report, issues = build_review_report(arguments["sourcePath"], arguments["deckName"], arguments["reviewDirectoryPath"])
     write_review_outputs(arguments["reviewDirectoryPath"], report)
-    print_review_summary(report)
-    return 0
+    return Result(
+        summary=review_summary(report),
+        output_path=str(arguments["reviewDirectoryPath"] / "slide-review.json"),
+        issues=tuple(issues),
+        details={field: report[field] for field in REVIEW_DETAIL_FIELDS},
+    )
 
 
 def parse_arguments(raw_arguments: list[str]) -> typing.Optional[dict[str, object]]:
@@ -48,7 +64,7 @@ def parse_arguments(raw_arguments: list[str]) -> typing.Optional[dict[str, objec
     }
 
 
-def build_review_report(source_path: pathlib.Path, deck_name: str, review_directory_path: pathlib.Path) -> dict[str, object]:
+def build_review_report(source_path: pathlib.Path, deck_name: str, review_directory_path: pathlib.Path) -> tuple[dict[str, object], list[Issue]]:
     image_paths = rendered_slide_image_paths(review_directory_path, deck_name)
     render_source = read_render_source(review_directory_path, image_paths)
     source_text = source_path.read_text(encoding="utf-8")
@@ -60,13 +76,15 @@ def build_review_report(source_path: pathlib.Path, deck_name: str, review_direct
     slide_texts = read_slide_texts(source_text, slide_count)
     slides = review_slides(image_paths, design, slide_texts)
     apply_deck_warnings(slides, slide_texts, source_text, source_context, render_source, required_text_ledger)
+    design_warnings = unique_design_warnings(slides)
+    issues = located_review_issues(slides)
+    replace_warnings_with_messages(slides)
     contact_sheets = write_contact_sheets(review_directory_path, image_paths)
     fit_reviews = create_fit_reviews(contact_sheets, slides)
-    design_warnings = unique_design_warnings(slides)
-    return quality_gate_fields(slides, design_warnings, render_source) | {
+    report = quality_gate_fields(slides, design_warnings, render_source) | {
         "reviewUnavailable": slide_count == 0,
         "renderSource": render_source,
-        "designWarnings": design_warnings,
+        "designWarnings": [warning.message for warning in design_warnings],
         "sourceContext": source_context,
         "source": source_path.name,
         "deckName": deck_name,
@@ -78,6 +96,22 @@ def build_review_report(source_path: pathlib.Path, deck_name: str, review_direct
         "fitReviews": fit_reviews,
         "slides": slides,
     }
+    return report, issues
+
+
+def located_review_issues(slides: list[dict[str, object]]) -> list[Issue]:
+    issues = []
+    for slide in slides:
+        for warning in slide["warnings"]:
+            located = warning if warning.location else dataclasses.replace(warning, location=f"slide {slide['index']}")
+            if located not in issues:
+                issues.append(located)
+    return issues
+
+
+def replace_warnings_with_messages(slides: list[dict[str, object]]) -> None:
+    for slide in slides:
+        slide["warnings"] = [warning.message for warning in slide["warnings"]]
 
 
 def apply_deck_warnings(
@@ -99,7 +133,7 @@ def apply_deck_warnings(
     annotate_design_revision_need(slides)
 
 
-def quality_gate_fields(slides: list[dict[str, object]], design_warnings: list[str], render_source: str) -> dict[str, object]:
+def quality_gate_fields(slides: list[dict[str, object]], design_warnings: list[Issue], render_source: str) -> dict[str, object]:
     visual_evidence_reliable = render_source == "browser"
     visual_quality_score = calculate_visual_quality_score(design_warnings)
     static_gate_passed = visual_quality_score >= VISUAL_QUALITY_SCORE_MINIMUM
@@ -131,21 +165,14 @@ def read_render_source(review_directory_path: pathlib.Path, image_paths: list[pa
     return "unavailable"
 
 
-def print_review_summary(report: dict[str, object]) -> None:
-    print(
-        f"  - Slide render review: {report['slideCount']} slides, "
-        f"passed={str(report['passed']).lower()}, "
-        f"staticGatePassed={str(report['staticGatePassed']).lower()}, "
-        f"visualQualityScore={report['visualQualityScore']}, "
-        f"needsDesignRevision={str(report['needsDesignRevision']).lower()}, "
-        f"renderSource={report['renderSource']}"
+def review_summary(report: dict[str, object]) -> str:
+    gate = "passed" if report["staticGatePassed"] else "failed"
+    return (
+        f"reviewed {report['slideCount']} slides: static design gate {gate} "
+        f"(visual quality score {report['visualQualityScore']}, minimum {report['visualQualityScoreMinimum']}), "
+        f"render source {report['renderSource']}"
     )
-    print("QUALITY_GATE " + json.dumps({
-        "source": "presentation-review",
-        "passed": bool(report["staticGatePassed"]) and not bool(report["needsDesignRevision"]),
-        "score": report["visualQualityScore"],
-    }))
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run_command(main))

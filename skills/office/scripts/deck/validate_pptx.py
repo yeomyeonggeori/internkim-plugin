@@ -1,34 +1,33 @@
 #!/usr/bin/env python3
-import argparse
-import json
+from pptx import Presentation
 
-from skill_runtime import ensure_requirements
+from deck_definitions import (
+    DEFAULT_FONT_REMAINS,
+    OVERLAY_OUT_OF_BOUNDS,
+    OVERLAY_WITHOUT_BACKGROUND,
+    SLIDE_EMPTY,
+    SLIDE_TITLE_MISSING,
+    THEME_FONT_INHERITED,
+    TOO_MANY_SHAPES,
+)
+from office_result import Issue, OfficeArgumentParser, Result, run_command
 
 
 DEFAULT_FONT_NAMES = {"Aptos", "Calibri"}
 EXCESSIVE_SHAPE_COUNT = 40
 
 
-def summarize_presentation(presentation_path):
-    if not ensure_requirements("office"):
-        raise RuntimeError("pptx dependencies are unavailable after bootstrap")
-
-    from pptx import Presentation
-
-    presentation = Presentation(presentation_path)
+def main() -> Result:
+    arguments = parse_arguments()
+    presentation = Presentation(arguments.presentation_path)
     slides = []
-    warnings = []
+    issues = []
     for index, slide in enumerate(presentation.slides, start=1):
-        slide_summary = summarize_slide(slide, index, presentation.slide_width, presentation.slide_height)
+        slide_summary, found_issues = summarize_slide(slide, index, presentation.slide_width, presentation.slide_height)
         slides.append(slide_summary)
-        warnings.extend(f"slide {index}: {warning}" for warning in slide_summary["warnings"])
-    return {
-        "slideCount": len(presentation.slides),
-        "slides": slides,
-        "warnings": warnings,
-        "passed": len(warnings) == 0,
-        "validator": "python-pptx",
-    }
+        issues.extend(found_issues)
+    details = {"slideCount": len(presentation.slides), "slides": slides}
+    return Result(summary=f"checked {arguments.presentation_path}: {len(issues)} issues", output_path=arguments.presentation_path, issues=tuple(issues), details=details)
 
 
 def summarize_slide(slide, index, slide_width, slide_height):
@@ -39,7 +38,7 @@ def summarize_slide(slide, index, slide_width, slide_height):
     inherited_font_runs = sum(entry["inheritedFontRuns"] for entry in text_entries)
     hybrid_summary = hybrid_slide_summary(slide)
     out_of_bounds_overlays = editable_overlays_out_of_bounds(slide, slide_width, slide_height)
-    warnings = slide_warnings(title, text_entries, shape_count, explicit_default_fonts, inherited_font_runs, hybrid_summary, out_of_bounds_overlays)
+    issues = slide_issues(f"slide {index}", title, text_entries, shape_count, explicit_default_fonts, inherited_font_runs, hybrid_summary, out_of_bounds_overlays)
     return {
         "index": index,
         "title": title,
@@ -50,8 +49,7 @@ def summarize_slide(slide, index, slide_width, slide_height):
         "hybridBackgroundPresent": hybrid_summary["hasHybridBackground"],
         "editableOverlayCount": hybrid_summary["editableOverlayCount"],
         "outOfBoundsEditableOverlays": out_of_bounds_overlays,
-        "warnings": warnings,
-    }
+    }, issues
 
 
 def text_entries_from_slide(slide):
@@ -114,36 +112,30 @@ def editable_overlays_out_of_bounds(slide, slide_width, slide_height):
     return indexes
 
 
-def slide_warnings(title, text_entries, shape_count, explicit_default_fonts, inherited_font_runs, hybrid_summary, out_of_bounds_overlays):
-    warnings = []
+def slide_issues(location, title, text_entries, shape_count, explicit_default_fonts, inherited_font_runs, hybrid_summary, out_of_bounds_overlays) -> list[Issue]:
+    issues = []
     if not text_entries:
-        warnings.append("slide appears empty")
+        issues.append(SLIDE_EMPTY.issue("slide appears empty", location))
     if not title:
-        warnings.append("slide is missing a title")
+        issues.append(SLIDE_TITLE_MISSING.issue("slide is missing a title", location))
     if shape_count > EXCESSIVE_SHAPE_COUNT:
-        warnings.append(f"slide has excessive shape count ({shape_count})")
+        issues.append(TOO_MANY_SHAPES.issue(f"slide has excessive shape count ({shape_count})", location))
     if explicit_default_fonts:
-        warnings.append("default font remains: " + ", ".join(explicit_default_fonts))
+        issues.append(DEFAULT_FONT_REMAINS.issue("default font remains: " + ", ".join(explicit_default_fonts), location))
     if inherited_font_runs:
-        warnings.append(f"{inherited_font_runs} text runs inherit the theme font")
+        issues.append(THEME_FONT_INHERITED.issue(f"{inherited_font_runs} text runs inherit the theme font", location))
     if hybrid_summary["editableOverlayCount"] and not hybrid_summary["hasHybridBackground"]:
-        warnings.append("editable overlays are present without a hybrid background image")
+        issues.append(OVERLAY_WITHOUT_BACKGROUND.issue("editable overlays are present without a hybrid background image", location))
     if out_of_bounds_overlays:
-        warnings.append("editable overlay out of bounds: " + ", ".join(str(index) for index in out_of_bounds_overlays))
-    return warnings
+        issues.append(OVERLAY_OUT_OF_BOUNDS.issue("editable overlay out of bounds: " + ", ".join(str(index) for index in out_of_bounds_overlays), location))
+    return issues
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Validate and summarize a PPTX deck.")
+    parser = OfficeArgumentParser(description="Validate and summarize a PPTX deck.")
     parser.add_argument("presentation_path")
     return parser.parse_args()
 
 
-def main():
-    arguments = parse_arguments()
-    summary = summarize_presentation(arguments.presentation_path)
-    print(json.dumps(summary, ensure_ascii=False, indent=2))
-
-
 if __name__ == "__main__":
-    main()
+    raise SystemExit(run_command(main))

@@ -1,66 +1,51 @@
 #!/usr/bin/env python3
-import argparse
-import json
+from openpyxl import load_workbook
 
-from skill_runtime import ensure_requirements
+from office_result import Issue, OfficeArgumentParser, Result, run_command
+from sheet_definitions import AUTO_FILTER_MISSING, BLANK_HEADER_CELLS, FORMULA_ERROR_MARKER, HEADER_NOT_FROZEN
 
 
-def summarize_workbook(workbook_path):
-    if not ensure_requirements("office"):
-        raise RuntimeError("xlsx dependencies are unavailable after bootstrap")
+ERROR_MARKERS = ("#REF!", "#VALUE!", "#DIV/0!")
+FORMULA_CELL_LIMIT = 50
 
-    from openpyxl import load_workbook
 
-    workbook = load_workbook(workbook_path, data_only=False)
-    sheets = []
-    formula_cells = []
-    warnings = []
-    for worksheet in workbook.worksheets:
-        sheet_summary = summarize_sheet(worksheet)
-        sheets.append({
-            "title": worksheet.title,
-            "rows": worksheet.max_row,
-            "columns": worksheet.max_column,
-            "freezePanes": sheet_summary["freezePanes"],
-            "autoFilter": sheet_summary["autoFilter"],
-            "blankHeaderCount": sheet_summary["blankHeaderCount"],
-            "errorFormulaCount": sheet_summary["errorFormulaCount"],
-        })
-        warnings.extend(sheet_warnings(worksheet.title, sheet_summary))
-        for row in worksheet.iter_rows():
-            for cell in row:
-                if isinstance(cell.value, str) and cell.value.startswith("="):
-                    formula_cells.append(f"{worksheet.title}!{cell.coordinate}")
-    return {
+def main() -> Result:
+    arguments = parse_arguments()
+    workbook = load_workbook(arguments.workbook_path, data_only=False)
+    sheet_summaries = [summarize_sheet(worksheet) for worksheet in workbook.worksheets]
+    issues = [issue for summary in sheet_summaries for issue in sheet_issues(summary)]
+    formula_cells = [
+        f"{worksheet.title}!{cell.coordinate}"
+        for worksheet in workbook.worksheets
+        for row in worksheet.iter_rows()
+        for cell in row
+        if is_formula(cell.value)
+    ]
+    details = {
         "sheetCount": len(workbook.worksheets),
-        "sheets": sheets,
-        "formulaCells": formula_cells[:50],
+        "sheets": sheet_summaries,
+        "formulaCells": formula_cells[:FORMULA_CELL_LIMIT],
         "formulaCellCount": len(formula_cells),
-        "warnings": warnings,
-        "warningCount": len(warnings),
     }
+    return Result(summary=f"checked {arguments.workbook_path}: {len(issues)} issues", output_path=arguments.workbook_path, issues=tuple(issues), details=details)
 
 
-def summarize_sheet(worksheet):
+def summarize_sheet(worksheet) -> dict:
     header_row = header_row_index(worksheet)
     header_values = [cell.value for cell in worksheet[header_row]] if worksheet.max_row >= header_row else []
-    blank_header_count = sum(1 for value in header_values if value is None or str(value).strip() == "")
-    error_formula_count = 0
-    for row in worksheet.iter_rows():
-        for cell in row:
-            if isinstance(cell.value, str) and ("#REF!" in cell.value or "#VALUE!" in cell.value or "#DIV/0!" in cell.value):
-                error_formula_count += 1
+    cells = [cell for row in worksheet.iter_rows() for cell in row]
     return {
-        "headerRow": header_row,
-        "titleRowDetected": header_row == 2,
+        "title": worksheet.title,
+        "rows": worksheet.max_row,
+        "columns": worksheet.max_column,
         "freezePanes": str(worksheet.freeze_panes) if worksheet.freeze_panes else None,
         "autoFilter": bool(worksheet.auto_filter.ref),
-        "blankHeaderCount": blank_header_count,
-        "errorFormulaCount": error_formula_count,
+        "blankHeaderCount": sum(1 for value in header_values if value is None or str(value).strip() == ""),
+        "errorFormulaCount": sum(1 for cell in cells if isinstance(cell.value, str) and any(marker in cell.value for marker in ERROR_MARKERS)),
     }
 
 
-def header_row_index(worksheet):
+def header_row_index(worksheet) -> int:
     if worksheet.max_row < 2:
         return 1
     first_row_values = [cell.value for cell in worksheet[1]]
@@ -70,35 +55,33 @@ def header_row_index(worksheet):
     return 1
 
 
-def non_blank_count(values):
+def non_blank_count(values: list) -> int:
     return sum(1 for value in values if value is not None and str(value).strip())
 
 
+def is_formula(value: object) -> bool:
+    return isinstance(value, str) and value.startswith("=")
 
-def sheet_warnings(title, sheet_summary):
-    warnings = []
-    if not sheet_summary["freezePanes"]:
-        warnings.append(f"{title}: header row is not frozen")
-    if not sheet_summary["autoFilter"]:
-        warnings.append(f"{title}: auto filter is missing")
-    if sheet_summary["blankHeaderCount"] > 0:
-        warnings.append(f"{title}: {sheet_summary['blankHeaderCount']} blank header cells")
-    if sheet_summary["errorFormulaCount"] > 0:
-        warnings.append(f"{title}: {sheet_summary['errorFormulaCount']} formulas contain spreadsheet error markers")
-    return warnings
+
+def sheet_issues(summary: dict) -> list[Issue]:
+    title = summary["title"]
+    issues = []
+    if not summary["freezePanes"]:
+        issues.append(HEADER_NOT_FROZEN.issue(f"{title}: header row is not frozen", title))
+    if not summary["autoFilter"]:
+        issues.append(AUTO_FILTER_MISSING.issue(f"{title}: auto filter is missing", title))
+    if summary["blankHeaderCount"] > 0:
+        issues.append(BLANK_HEADER_CELLS.issue(f"{title}: {summary['blankHeaderCount']} blank header cells", title))
+    if summary["errorFormulaCount"] > 0:
+        issues.append(FORMULA_ERROR_MARKER.issue(f"{title}: {summary['errorFormulaCount']} formulas contain spreadsheet error markers", title))
+    return issues
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Validate and summarize an XLSX workbook.")
+    parser = OfficeArgumentParser(description="Validate and summarize an XLSX workbook.")
     parser.add_argument("workbook_path")
     return parser.parse_args()
 
 
-def main():
-    arguments = parse_arguments()
-    summary = summarize_workbook(arguments.workbook_path)
-    print(json.dumps(summary, ensure_ascii=False, indent=2))
-
-
 if __name__ == "__main__":
-    main()
+    raise SystemExit(run_command(main))

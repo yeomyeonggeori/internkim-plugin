@@ -26,7 +26,7 @@ class ReviewImageSelectionTest(unittest.TestCase):
             review_path.mkdir()
             for file_name in ("deck.001.png", "deck-extra.png", "deck.1.png", "deck.final.png"):
                 write_blank_png(review_path / file_name)
-            report = build_review_report(source_path, "deck", review_path)
+            report, _ = build_review_report(source_path, "deck", review_path)
         self.assertEqual(report["renderedSlideCount"], 1)
         self.assertEqual(report["slideCount"], 1)
         self.assertEqual([slide["filename"] for slide in report["slides"]], ["deck.001.png"])

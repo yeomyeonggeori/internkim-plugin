@@ -1,0 +1,58 @@
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Command:
+    format_name: str
+    verb: str
+    script: str
+    summary: str
+    needs_packages: bool = True
+
+    @property
+    def name(self) -> str:
+        return f"{self.format_name} {self.verb}"
+
+
+@dataclass(frozen=True)
+class Format:
+    name: str
+    summary: str
+    definitions_script: str
+
+
+FORMATS = (
+    Format("doc", "Word documents (.docx), and PDFs exported from Markdown", "doc/doc_definitions.py"),
+    Format("pdf", "PDF files", "pdf/pdf_definitions.py"),
+    Format("sheet", "workbooks (.xlsx)", "sheet/sheet_definitions.py"),
+    Format("deck", "slide decks built from slides.html", "deck/deck_definitions.py"),
+    Format("paperwork", "Korean company forms and contracts on letterhead", "paperwork/paperwork_definitions.py"),
+)
+
+COMMANDS = (
+    Command("doc", "export", "doc/export_document.py", "write a .docx or .pdf from a Markdown source"),
+    Command("doc", "create", "doc/create_docx.py", "build a .docx from blocks or a JSON spec"),
+    Command("doc", "edit", "doc/edit_docx.py", "append blocks to a .docx"),
+    Command("doc", "validate", "doc/validate_docx.py", "check a .docx for required text, fonts and layout"),
+    Command("pdf", "create", "pdf/create_pdf.py", "lay out a PDF from blocks or a JSON spec"),
+    Command("pdf", "edit", "pdf/edit_pdf.py", "append a section page to a PDF"),
+    Command("pdf", "validate", "pdf/validate_pdf.py", "check a PDF for pages, extractable text and fonts"),
+    Command("sheet", "create", "sheet/create_xlsx.py", "build an .xlsx from rows or a JSON spec"),
+    Command("sheet", "edit", "sheet/edit_xlsx.py", "append rows to an .xlsx"),
+    Command("sheet", "validate", "sheet/validate_xlsx.py", "check an .xlsx for headers, filters and formulas"),
+    Command("deck", "build", "deck/build.sh", "build slides.html in this directory into HTML, PDF, PPTX and review evidence", needs_packages=False),
+    Command("deck", "validate", "deck/validate_pptx.py", "check a .pptx for design warnings"),
+    Command("deck", "restore", "deck/restore_source.py", "recover controller-free slides.html from a delivered deck", needs_packages=False),
+    Command("deck", "accept", "deck/accept_review.py", "check review-decision.json against the review evidence", needs_packages=False),
+    Command("deck", "image", "deck/fetch_image.py", "download a public-domain photo for a search query", needs_packages=False),
+    Command("paperwork", "render", "paperwork/render_paperwork.py", "render a company form to PDF on letterhead"),
+    Command("paperwork", "fill", "paperwork/fill_template.py", "fill a standard contract template to .docx"),
+)
+
+
+def find_command(words: list[str]) -> Command | None:
+    return next((command for command in COMMANDS if [command.format_name, command.verb] == words), None)
+
+
+def find_format(name: str) -> Format | None:
+    return next((office_format for office_format in FORMATS if office_format.name == name), None)
