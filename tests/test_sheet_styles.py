@@ -123,5 +123,27 @@ class DefaultTableStyleTest(WorkbookFixture):
         self.assertFalse(workbook["Notes"]["A1"].has_style)
 
 
+class ChartColorTest(WorkbookFixture):
+    def charts(self):
+        self.create_workbook([{"title": "Sales", "rows": [["month", "Seoul", "Busan"], ["Jan", 10, 5], ["Feb", 12, 6], ["Mar", 9, 7]]}])
+        operations = [{"op": "add_chart", "sheet": "Sales", "type": kind, "range": "A1:C4", "anchor": anchor} for kind, anchor in (("bar", "F2"), ("line", "F20"), ("pie", "F40"))]
+        self.assertEqual(self.apply(operations)["status"], "ok")
+        return load_workbook(self.directory / "book.xlsx")["Sales"]._charts
+
+    def test_every_series_has_its_own_explicit_color(self):
+        bar, line, _ = self.charts()
+        bar_colors = [series.graphicalProperties.solidFill.srgbClr for series in bar.series]
+        line_colors = [series.graphicalProperties.line.solidFill.srgbClr for series in line.series]
+        self.assertEqual(len(set(bar_colors)), 2)
+        self.assertEqual(bar_colors, line_colors)
+        self.assertTrue(all(len(color) == 6 for color in bar_colors))
+
+    def test_every_pie_slice_has_its_own_explicit_color(self):
+        pie = self.charts()[2]
+        colors = [point.graphicalProperties.solidFill.srgbClr for point in pie.series[0].dPt]
+        self.assertEqual(len(colors), 3)
+        self.assertEqual(len(set(colors)), 3)
+
+
 if __name__ == "__main__":
     unittest.main()
