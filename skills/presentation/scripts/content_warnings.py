@@ -2,14 +2,14 @@ import datetime
 import re
 
 from design_warnings import LABEL_ONLY_SLIDE_ROLES, append_deck_warning
-from slide_source import split_slide_sources
+from slide_source import SPEAKER_NOTES_CLASS_ATTRIBUTE_PATTERN, split_slide_sources
 
 
 HANGUL_PATTERN = re.compile(r"[가-힣]")
 LATIN_LETTER_PATTERN = re.compile(r"[A-Za-z]")
 EMOJI_PATTERN = re.compile("[\U0001F000-\U0001FAFF✅❌❎❗❓⭐⚠⌚⏰️]")
 SPEAKER_NOTES_PATTERN = re.compile(
-    r"<aside\b[^>]*(?:class=[\"'][^\"']*notes[^\"']*[\"']|role=[\"']note[\"'])|data-speaker-notes",
+    rf"<aside\b[^>]*(?:{SPEAKER_NOTES_CLASS_ATTRIBUTE_PATTERN}|role=[\"']note[\"'])|data-speaker-notes",
     flags=re.IGNORECASE,
 )
 REQUIRED_TEXT_PREVIEW_LINE_COUNT = 4

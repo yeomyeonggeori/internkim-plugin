@@ -3,7 +3,7 @@ import re
 import typing
 
 from design_warnings import LABEL_ONLY_SLIDE_ROLES, append_deck_warning
-from slide_source import split_slide_sources
+from slide_source import has_speaker_notes_class, split_slide_sources
 from slide_structure import extract_class_names
 
 
@@ -50,7 +50,7 @@ def is_speaker_note_child(child: tuple[str, dict]) -> bool:
     tag, attributes = child
     if tag == "aside" or "data-speaker-notes" in attributes:
         return True
-    return "notes" in str(attributes.get("class") or "")
+    return has_speaker_notes_class(str(attributes.get("class") or ""))
 
 
 def footer_identity(child: typing.Optional[tuple[str, dict]]) -> str:

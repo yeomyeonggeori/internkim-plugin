@@ -3,15 +3,19 @@ import pathlib
 import re
 
 
-SPEAKER_NOTES_BLOCK_PATTERN = (
-    r"<(?:aside|div)\b[^>]*class=[\"'][^\"']*(?:speaker-notes|notes)[^\"']*[\"'][^>]*>(.*?)</(?:aside|div)>"
-)
+SPEAKER_NOTES_CLASS = "notes"
+SPEAKER_NOTES_CLASS_ATTRIBUTE_PATTERN = rf"class=[\"'](?:[^\"']*\s)?{SPEAKER_NOTES_CLASS}(?:\s[^\"']*)?[\"']"
+SPEAKER_NOTES_BLOCK_PATTERN = rf"<(?:aside|div)\b[^>]*{SPEAKER_NOTES_CLASS_ATTRIBUTE_PATTERN}[^>]*>(.*?)</(?:aside|div)>"
 
 
 def read_optional_text(path: pathlib.Path) -> str:
     if not path.exists():
         return ""
     return path.read_text(encoding="utf-8")
+
+
+def has_speaker_notes_class(class_value: str) -> bool:
+    return SPEAKER_NOTES_CLASS in class_value.split()
 
 
 def split_slide_sources(source_text: str) -> list[str]:
