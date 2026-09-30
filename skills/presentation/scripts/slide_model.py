@@ -10,7 +10,7 @@ SLIDE_KIND_KEYWORDS = (
     ("summary", ["summary", "요약", "executive"]),
     ("approval", ["approval", "승인", "next step", "다음 단계", "요청"]),
     ("risk", ["risk", "리스크", "defect", "sla", "response", "대응"]),
-    ("timeline", ["roadmap", "로드맵", "timeline", "milestone", "2026-08", "2026-09"]),
+    ("timeline", ["roadmap", "로드맵", "timeline", "milestone"]),
     ("metrics", ["metric", "지표", "revenue", "uptime", "target", "actual", "목표", "실제"]),
 )
 
@@ -35,14 +35,14 @@ def create_slide_models(slide_sources: list[str]) -> list[SlideModel]:
 
 def create_slide_model(index: int, slide_source: str) -> SlideModel:
     lines = slide_visible_lines(slide_source)
-    title = first_heading_text(slide_source) or first_non_empty_line(lines, f"Slide {index}")
+    title = first_heading_text(slide_source) or first_non_empty_line(lines, "")
     return SlideModel(
         index=index,
         title=title,
         lines=lines,
         tables=extract_tables(slide_source),
         list_items=extract_list_items(slide_source),
-        kind=infer_slide_kind(index, slide_source, title, lines),
+        kind=infer_slide_kind(index, title, lines),
     )
 
 
@@ -96,10 +96,10 @@ def inline_texts(element_pattern: str, source: str) -> list[str]:
     return texts
 
 
-def infer_slide_kind(index: int, slide_source: str, title: str, lines: list[str]) -> str:
+def infer_slide_kind(index: int, title: str, lines: list[str]) -> str:
     if index == 1:
         return "cover"
-    text = " ".join([title, " ".join(lines), slide_source]).casefold()
+    text = " ".join([title, *lines]).casefold()
     for kind, keywords in SLIDE_KIND_KEYWORDS:
         if contains_any(text, keywords):
             return kind
