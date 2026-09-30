@@ -3,7 +3,7 @@ import html
 import pathlib
 import re
 
-from slide_source import SPEAKER_NOTES_BLOCK_PATTERN, remove_invisible_markup, split_slide_sources
+from slide_source import SPEAKER_NOTES_BLOCK_PATTERN, remove_invisible_markup, slide_title, split_slide_sources
 
 
 SLIDE_KIND_KEYWORDS = (
@@ -35,7 +35,7 @@ def create_slide_models(slide_sources: list[str]) -> list[SlideModel]:
 
 def create_slide_model(index: int, slide_source: str) -> SlideModel:
     lines = slide_visible_lines(slide_source)
-    title = first_heading_text(slide_source) or first_non_empty_line(lines, "")
+    title = slide_title(slide_source) or first_non_empty_line(lines, "")
     return SlideModel(
         index=index,
         title=title,
@@ -49,13 +49,6 @@ def create_slide_model(index: int, slide_source: str) -> SlideModel:
 def slide_visible_lines(slide_source: str) -> list[str]:
     text = visible_text(remove_invisible_markup(slide_source))
     return [line for line in text.splitlines() if line.strip()]
-
-
-def first_heading_text(slide_source: str) -> str:
-    match = re.search(r"<h[1-3]\b[^>]*>(.*?)</h[1-3]>", slide_source, flags=re.IGNORECASE | re.DOTALL)
-    if not match:
-        return ""
-    return visible_text(match.group(1)).replace("\n", " ").strip()
 
 
 def first_non_empty_line(lines: list[str], default_value: str) -> str:
