@@ -165,7 +165,7 @@ def write_native_fallback_review_images(slide_models: list[SlideModel], design: 
 
 def write_pptx(slide_models: list[SlideModel], design: dict[str, str], image_paths: list[pathlib.Path], pptx_path: pathlib.Path) -> str:
     if pptx_mode() == "image" and image_paths:
-        write_image_backed_pptx(image_paths, pptx_path)
+        write_image_backed_pptx(image_paths, [model.notes for model in slide_models], pptx_path)
         return "image"
     write_native_text_pptx(slide_models, design, pptx_path)
     return "native"

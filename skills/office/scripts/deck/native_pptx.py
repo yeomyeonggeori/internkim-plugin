@@ -4,6 +4,7 @@ import zipfile
 
 from native_pptx_layouts import draw_native_slide
 from native_rendering import SLIDE_HEIGHT, SLIDE_WIDTH, native_colors
+from pptx_notes import noted_slide_numbers, notes_relationship_xml, write_notes_parts
 from pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU, slide_document, write_pptx_static_files, xml_document
 from slide_model import SlideModel
 
@@ -27,10 +28,12 @@ class NativeSlideCanvas:
 
 def write_native_text_pptx(slide_models: list[SlideModel], design: dict[str, str], pptx_path: pathlib.Path) -> None:
     with zipfile.ZipFile(pptx_path, "w", zipfile.ZIP_DEFLATED) as archive:
-        write_pptx_static_files(archive, len(slide_models))
+        notes = [model.notes for model in slide_models]
+        write_pptx_static_files(archive, len(slide_models), noted_slide_numbers(notes))
+        write_notes_parts(archive, notes)
         for model in slide_models:
             archive.writestr(f"ppt/slides/slide{model.index}.xml", native_slide_xml(model, design))
-            archive.writestr(f"ppt/slides/_rels/slide{model.index}.xml.rels", native_slide_relationship_xml())
+            archive.writestr(f"ppt/slides/_rels/slide{model.index}.xml.rels", native_slide_relationship_xml(model.index, bool(model.notes)))
 
 
 def native_slide_xml(model: SlideModel, design: dict[str, str]) -> str:
@@ -39,11 +42,12 @@ def native_slide_xml(model: SlideModel, design: dict[str, str]) -> str:
     return slide_document("".join(canvas.shape_parts))
 
 
-def native_slide_relationship_xml() -> str:
+def native_slide_relationship_xml(index: int, has_notes: bool) -> str:
+    notes_relationship = notes_relationship_xml(index, "rId2") if has_notes else ""
     return xml_document(
         '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
         '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>'
-        "</Relationships>"
+        f"{notes_relationship}</Relationships>"
     )
 
 
