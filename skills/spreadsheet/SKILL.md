@@ -26,7 +26,7 @@ Use clear sheet names, readable widths, frozen header rows, professional number 
 
 Formulas are stored exactly as written, so write every reference for the row and column it lands in, counting any title or heading row you add. The scripts add no rows of their own: the spec `title` is document metadata only, and a title meant to be visible goes in a row or `heading` you write. CSV and `--row` values become numbers when they are plain integers or decimals and dates when they are `YYYY-MM-DD`; values such as `007`, `+82`, `1,500`, or more than 15 digits stay text.
 
-Treat `offRowFormulaCount` as a defect unless a formula intentionally references another sheet or aggregate range. Preserve formulas, styles, sheet names, and macros during edits unless the user asks otherwise.
+Preserve formulas, styles, sheet names, and macros during edits unless the user asks otherwise.
 
 ## Editing and runtime
 
