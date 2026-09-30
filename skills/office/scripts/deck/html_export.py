@@ -3,16 +3,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
-import os
 import pathlib
 import subprocess
 import sys
 import time
 
 from browser_render import clear_stale_render_evidence, try_html_render, write_render_source
-from deck_definitions import BROWSER_RENDER_UNAVAILABLE, IMAGE_PPTX_UNAVAILABLE, REVIEW_FAILED, REVIEW_ISSUE_KINDS, UNKNOWN_FORMAT
+from deck_definitions import BROWSER_RENDER_UNAVAILABLE, FONT_NOT_EMBEDDED, PPTX_WITHOUT_DESIGN, REVIEW_FAILED, REVIEW_ISSUE_KINDS, TEXT_KEPT_AS_PICTURE, UNKNOWN_FORMAT
 from design_tokens import read_design_tokens
-from image_pptx import write_image_backed_pptx
+from editable_pptx import EditablePptx, read_text_layers, text_layers_path, write_editable_pptx
 from native_pptx import write_native_text_pptx
 from native_preview import write_native_review_images
 from office_result import INPUT_NOT_FOUND, INVALID_ARGUMENTS, Issue, OfficeFailure, Result, issue_from_json, run_command
@@ -48,7 +47,7 @@ class ExportRequest:
 @dataclass(frozen=True)
 class DerivedOutputs:
     issues: list[Issue]
-    pptx_mode: str
+    pptx: dict | None
     review: Result | None
 
 
@@ -84,14 +83,12 @@ def parse_export_request(arguments: list[str]) -> ExportRequest:
 def write_derived_outputs(request: ExportRequest, html_output_path: pathlib.Path, slide_sources: list[str]) -> DerivedOutputs:
     design = read_design_tokens(read_optional_text(request.source_path.with_name("DESIGN.md")))
     slide_models = create_slide_models(slide_sources)
-    slide_image_paths, render_issues = render_slide_images(request, html_output_path, slide_models, design)
-    issues = list(render_issues)
-    pptx_mode = ""
+    issues = render_slide_images(request, html_output_path, slide_models, design)
+    pptx_details = None
     if "pptx" in request.formats:
         print_stage("pptx")
-        pptx_mode = write_pptx(slide_models, design, slide_image_paths, request.output_path(".pptx"))
-        if pptx_mode_fell_back(pptx_mode):
-            issues.append(IMAGE_PPTX_UNAVAILABLE.issue("image-backed PPTX requested, but rendered slide images are unavailable; wrote a native text-backed PPTX", str(request.output_path(".pptx"))))
+        pptx_details, pptx_issues = write_pptx(request, slide_models, design)
+        issues.extend(pptx_issues)
     if "notes" in request.formats:
         print_stage("notes")
         write_notes(slide_sources, request.output_path("-notes.txt"))
@@ -100,7 +97,7 @@ def write_derived_outputs(request: ExportRequest, html_output_path: pathlib.Path
         print_stage("review")
         review = run_render_review(request.render_review_script, request.source_path, request.deck_name, request.review_path)
         issues.extend(review.issues)
-    return DerivedOutputs(issues, pptx_mode, review)
+    return DerivedOutputs(issues, pptx_details, review)
 
 
 def enabled_formats(raw_formats: str) -> set[str]:
@@ -119,23 +116,6 @@ def enabled_formats(raw_formats: str) -> set[str]:
     return formats
 
 
-def needs_rendered_slides(formats: set[str]) -> bool:
-    if "pdf" in formats or "review" in formats:
-        return True
-    return "pptx" in formats and pptx_mode() == "image"
-
-
-def pptx_mode() -> str:
-    mode = os.environ.get("PRESENTATION_PPTX_MODE", "image").strip().casefold()
-    if mode in {"image", "native"}:
-        return mode
-    return "image"
-
-
-def pptx_mode_fell_back(written_mode: str) -> bool:
-    return pptx_mode() == "image" and written_mode == "native"
-
-
 def deck_html_text(source_path: pathlib.Path) -> str:
     source_text = source_path.read_text(encoding="utf-8")
     source_text = inject_vendored_paperlogy_fallback(source_text)
@@ -144,9 +124,7 @@ def deck_html_text(source_path: pathlib.Path) -> str:
     return inject_screen_slide_viewer(source_text)
 
 
-def render_slide_images(request: ExportRequest, html_output_path: pathlib.Path, slide_models: list[SlideModel], design: dict[str, str]) -> tuple[list[pathlib.Path], list[Issue]]:
-    if not needs_rendered_slides(request.formats):
-        return [], []
+def render_slide_images(request: ExportRequest, html_output_path: pathlib.Path, slide_models: list[SlideModel], design: dict[str, str]) -> list[Issue]:
     print_stage("render")
     clear_stale_render_evidence(request.review_path, request.deck_name)
     render_error = try_html_render(request.html_render_script, html_output_path, request.deck_name, request.build_path, request.formats)
@@ -154,10 +132,9 @@ def render_slide_images(request: ExportRequest, html_output_path: pathlib.Path, 
     if not render_error and slide_image_paths:
         write_render_source(request.review_path, "browser")
     if not render_error:
-        return slide_image_paths, []
-    if "review" in request.formats:
-        write_native_fallback_review_images(slide_models, design, request)
-    return slide_image_paths, [BROWSER_RENDER_UNAVAILABLE.issue(f"{render_error}; continued with browserless outputs")]
+        return []
+    write_native_fallback_review_images(slide_models, design, request)
+    return [BROWSER_RENDER_UNAVAILABLE.issue(f"{render_error}; continued with browserless outputs")]
 
 
 def write_native_fallback_review_images(slide_models: list[SlideModel], design: dict[str, str], request: ExportRequest) -> None:
@@ -165,12 +142,34 @@ def write_native_fallback_review_images(slide_models: list[SlideModel], design: 
         write_render_source(request.review_path, "nativeFallback")
 
 
-def write_pptx(slide_models: list[SlideModel], design: dict[str, str], image_paths: list[pathlib.Path], pptx_path: pathlib.Path) -> str:
-    if pptx_mode() == "image" and image_paths:
-        write_image_backed_pptx(image_paths, [model.notes for model in slide_models], pptx_path)
-        return "image"
-    write_native_text_pptx(slide_models, design, pptx_path)
-    return "native"
+def write_pptx(request: ExportRequest, slide_models: list[SlideModel], design: dict[str, str]) -> tuple[dict, list[Issue]]:
+    pptx_path = request.output_path(".pptx")
+    layers = read_text_layers(request.review_path, len(slide_models))
+    if layers is None:
+        write_native_text_pptx(slide_models, design, pptx_path)
+        return {"source": "slideText"}, [PPTX_WITHOUT_DESIGN.issue("no browser rendered the deck; the PPTX holds the slide text in stock layouts", str(pptx_path))]
+    written = write_editable_pptx(layers, [model.notes for model in slide_models], pptx_path)
+    return editable_pptx_details(written, text_layers_path(request.review_path)), editable_pptx_issues(written, pptx_path)
+
+
+def editable_pptx_details(written: EditablePptx, layers_path: pathlib.Path) -> dict:
+    return {
+        "source": "browser",
+        "textBoxes": written.text_box_count,
+        "embeddedFonts": list(written.embedded_typefaces),
+        "unembeddedFonts": list(written.unembedded_families),
+        "textKeptAsPicture": list(written.picture_texts),
+        "layers": str(layers_path),
+    }
+
+
+def editable_pptx_issues(written: EditablePptx, pptx_path: pathlib.Path) -> list[Issue]:
+    issues = []
+    if written.unembedded_families:
+        issues.append(FONT_NOT_EMBEDDED.issue("not embedded: " + ", ".join(written.unembedded_families), str(pptx_path)))
+    if written.picture_texts:
+        issues.append(TEXT_KEPT_AS_PICTURE.issue("kept as picture: " + " / ".join(written.picture_texts), str(pptx_path)))
+    return issues
 
 
 def write_notes(slide_sources: list[str], notes_path: pathlib.Path) -> None:
@@ -214,7 +213,7 @@ def build_summary(request: ExportRequest, derived: DerivedOutputs) -> str:
 
 
 def build_details(request: ExportRequest, derived: DerivedOutputs) -> dict:
-    details = {"outputs": output_paths(request, derived), "pptxMode": derived.pptx_mode or None}
+    details = {"outputs": output_paths(request, derived), "pptx": derived.pptx}
     if derived.review is not None:
         details["review"] = derived.review.details
     return details
