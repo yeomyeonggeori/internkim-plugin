@@ -1,0 +1,175 @@
+import pathlib
+import typing
+
+from design_warnings import LABEL_ONLY_SLIDE_ROLES, slide_design_warnings
+from image_analysis import analyze_image_content, content_density, corner_background_color
+from png_codec import read_png
+
+
+CONTENT_DENSITY_MINIMUM = 0.006
+CONTENT_DENSITY_MAXIMUM = 0.42
+TEXT_OVERFLOW_CHARACTER_LIMIT = 900
+TEXT_OVERFLOW_LINE_LIMIT = 16
+VERTICAL_DEAD_ZONE_HEIGHT_RATIO = 0.27
+TEXT_OVERFLOW_WARNING = "textOverflowRisk: extracted slide text is long enough to require contact sheet verification"
+
+
+def review_slides(image_paths: list[pathlib.Path], design: dict[str, str], slide_texts: list[dict[str, object]]) -> list[dict[str, object]]:
+    return [
+        review_slide(image_paths[index] if index < len(image_paths) else None, design, index + 1, slide_text)
+        for index, slide_text in enumerate(slide_texts)
+    ]
+
+
+def review_slide(path: typing.Optional[pathlib.Path], design: dict[str, str], index: int, slide_text: dict[str, object]) -> dict[str, object]:
+    structure = slide_text["structure"]
+    if path is None:
+        return review_slide_without_image(index, slide_text, structure)
+    image = read_png(path)
+    background = corner_background_color(image)
+    analysis = analyze_image_content(image, background)
+    density = content_density(image, background)
+    margin = margin_pixels(image, design)
+    checks = slide_checks(analysis["bounds"], image, margin, density)
+    risks = slide_risks(analysis["bounds"], image, margin, slide_text)
+    warnings = slide_warnings(checks, margin, density, risks, structure) + vertical_dead_zone_warnings(analysis, structure)
+    return {
+        "index": index,
+        "filename": path.name,
+        "hasRenderEvidence": True,
+        "width": image["width"],
+        "height": image["height"],
+        "contentBounds": analysis["bounds"] or {},
+        "contentDensity": density,
+        **slide_text_fields(slide_text),
+        "marginPixel": margin,
+        "passed": all(checks.values()),
+        "checks": checks,
+        "risks": risks,
+        "warnings": warnings,
+        "needsDesignRevision": False,
+        "structure": structure,
+    }
+
+
+def review_slide_without_image(index: int, slide_text: dict[str, object], structure: dict[str, object]) -> dict[str, object]:
+    risks = {"textOverflowRisk": text_overflow_risk(slide_text), "frameFitRisk": False}
+    warnings = [TEXT_OVERFLOW_WARNING] if risks["textOverflowRisk"] else []
+    return {
+        "index": index,
+        "filename": "",
+        "hasRenderEvidence": False,
+        "width": 0,
+        "height": 0,
+        "contentBounds": {},
+        "contentDensity": 0.0,
+        **slide_text_fields(slide_text),
+        "marginPixel": 0,
+        "passed": False,
+        "checks": {},
+        "risks": risks,
+        "warnings": warnings + slide_design_warnings(structure),
+        "needsDesignRevision": False,
+        "structure": structure,
+    }
+
+
+def slide_text_fields(slide_text: dict[str, object]) -> dict[str, object]:
+    return {
+        "expectedVisibleText": slide_text["expectedVisibleText"],
+        "textCharacterCount": slide_text["textCharacterCount"],
+        "textLineCount": slide_text["textLineCount"],
+        "textPreview": slide_text["textPreview"],
+    }
+
+
+def vertical_dead_zone_warnings(analysis: dict[str, object], structure: dict[str, object]) -> list[str]:
+    if analysis["verticalGapRatio"] < VERTICAL_DEAD_ZONE_HEIGHT_RATIO:
+        return []
+    if str(structure["slideRole"]) in LABEL_ONLY_SLIDE_ROLES:
+        return []
+    return [
+        f"verticalDeadZoneWarning: an empty band spans {analysis['verticalGapRatio']:.0%} of the slide height; distribute content to fill the frame"
+    ]
+
+
+def slide_checks(bounds: typing.Optional[dict[str, int]], image: dict[str, object], margin: int, density: float) -> dict[str, bool]:
+    return {
+        "nonblank": bounds is not None,
+        "safeMargin": safe_margin_passed(bounds, image, margin),
+        "edgeOverflow": edge_overflow_passed(bounds, image),
+        "notTooEmpty": density >= CONTENT_DENSITY_MINIMUM,
+        "notTooDense": density <= CONTENT_DENSITY_MAXIMUM,
+    }
+
+
+def slide_risks(bounds: typing.Optional[dict[str, int]], image: dict[str, object], margin: int, slide_text: dict[str, object]) -> dict[str, bool]:
+    return {
+        "textOverflowRisk": text_overflow_risk(slide_text),
+        "frameFitRisk": frame_fit_risk(bounds, image, margin),
+    }
+
+
+def margin_pixels(image: dict[str, object], design: dict[str, str]) -> int:
+    margin = parse_pixel_value(design.get("layout.margin", "68px"), 68)
+    scale = image["width"] / 1280
+    return max(16, round(margin * scale * 0.35))
+
+
+def parse_pixel_value(value: str, default_value: int) -> int:
+    cleaned = value.strip().lower().removesuffix("px")
+    try:
+        return int(float(cleaned))
+    except ValueError:
+        return default_value
+
+
+def safe_margin_passed(bounds: typing.Optional[dict[str, int]], image: dict[str, object], margin: int) -> bool:
+    if bounds is None:
+        return False
+    return all([
+        bounds["left"] >= margin,
+        bounds["top"] >= margin,
+        image["width"] - bounds["right"] >= margin,
+        image["height"] - bounds["bottom"] >= margin,
+    ])
+
+
+def edge_overflow_passed(bounds: typing.Optional[dict[str, int]], image: dict[str, object]) -> bool:
+    if bounds is None:
+        return False
+    edge = max(8, round(min(image["width"], image["height"]) * 0.015))
+    return bounds["left"] > edge and bounds["top"] > edge and image["width"] - bounds["right"] > edge and image["height"] - bounds["bottom"] > edge
+
+
+def text_overflow_risk(slide_text: dict[str, object]) -> bool:
+    return int(slide_text["textCharacterCount"]) > TEXT_OVERFLOW_CHARACTER_LIMIT or int(slide_text["textLineCount"]) > TEXT_OVERFLOW_LINE_LIMIT
+
+
+def frame_fit_risk(bounds: typing.Optional[dict[str, int]], image: dict[str, object], margin: int) -> bool:
+    if bounds is None:
+        return False
+    clearance = max(round(margin * 1.75), 36)
+    right_clearance = image["width"] - bounds["right"]
+    bottom_clearance = image["height"] - bounds["bottom"]
+    return right_clearance < clearance or bottom_clearance < clearance
+
+
+def slide_warnings(checks: dict[str, bool], margin: int, density: float, risks: dict[str, bool], structure: dict[str, object]) -> list[str]:
+    warnings = []
+    if not checks["nonblank"]:
+        warnings.append("slide render appears blank")
+    if not checks["safeMargin"]:
+        warnings.append(f"content extends inside the recommended safe margin of {margin}px")
+    if not checks["edgeOverflow"]:
+        warnings.append("content touches the slide edge and may be clipped")
+    if not checks["notTooEmpty"]:
+        warnings.append(f"slide appears too sparse for a finished deck (content density {density:.1%})")
+    if not checks["notTooDense"]:
+        warnings.append(f"slide appears visually crowded (content density {density:.1%})")
+    if risks["textOverflowRisk"]:
+        warnings.append(TEXT_OVERFLOW_WARNING)
+    if risks["frameFitRisk"]:
+        warnings.append("frameFitRisk: rendered content is close to the right or bottom frame edge")
+    warnings.extend(slide_design_warnings(structure))
+    return warnings
