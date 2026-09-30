@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import re
+
 from office_result import ERROR, Issue, IssueKind
 
 
+PLACEHOLDER_PATTERN = re.compile(r"\{\{.*?\}\}|\{%.*?%\}")
 KOREAN_FONT_NAME_FRAGMENTS = (
     "noto",
     "nanum",
@@ -21,6 +24,7 @@ KOREAN_FONT_NAME_FRAGMENTS = (
 
 REQUIRED_TEXT_MISSING = IssueKind("REQUIRED_TEXT_MISSING", ERROR, "a --required-text value does not appear in the file's visible text", "put the source fact in the visible content, then rebuild")
 FORBIDDEN_TEXT_PRESENT = IssueKind("FORBIDDEN_TEXT_PRESENT", ERROR, "a --forbidden-text value appears in the file's visible text", "remove the unsupported text, then rebuild")
+PLACEHOLDER_LEFT = IssueKind("PLACEHOLDER_LEFT", ERROR, "template placeholder syntax or a merge field is still in the text", "replace it with the real value")
 KOREAN_FONT_MISSING = IssueKind("KOREAN_FONT_MISSING", ERROR, "the file has Korean text but names no Korean-capable font", "set a Korean-capable font such as Nanum Gothic or Noto Sans CJK")
 
 TEXT_CHECK_ISSUE_KINDS = (REQUIRED_TEXT_MISSING, FORBIDDEN_TEXT_PRESENT, KOREAN_FONT_MISSING)

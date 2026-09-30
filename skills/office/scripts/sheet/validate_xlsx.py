@@ -4,10 +4,9 @@ from __future__ import annotations
 from openpyxl import load_workbook
 
 from office_result import Issue, OfficeArgumentParser, Result, run_command
-from sheet_definitions import AUTO_FILTER_MISSING, BLANK_HEADER_CELLS, FORMULA_ERROR_MARKER, HEADER_NOT_FROZEN
+from sheet_definitions import AUTO_FILTER_MISSING, BLANK_HEADER_CELLS, HEADER_NOT_FROZEN
 
 
-ERROR_MARKERS = ("#REF!", "#VALUE!", "#DIV/0!")
 FORMULA_CELL_LIMIT = 50
 
 
@@ -35,7 +34,6 @@ def main() -> Result:
 def summarize_sheet(worksheet) -> dict:
     header_row = header_row_index(worksheet)
     header_values = [cell.value for cell in worksheet[header_row]] if worksheet.max_row >= header_row else []
-    cells = [cell for row in worksheet.iter_rows() for cell in row]
     return {
         "title": worksheet.title,
         "rows": worksheet.max_row,
@@ -43,7 +41,6 @@ def summarize_sheet(worksheet) -> dict:
         "freezePanes": str(worksheet.freeze_panes) if worksheet.freeze_panes else None,
         "autoFilter": bool(worksheet.auto_filter.ref),
         "blankHeaderCount": sum(1 for value in header_values if value is None or str(value).strip() == ""),
-        "errorFormulaCount": sum(1 for cell in cells if isinstance(cell.value, str) and any(marker in cell.value for marker in ERROR_MARKERS)),
     }
 
 
@@ -74,8 +71,6 @@ def sheet_issues(summary: dict) -> list[Issue]:
         issues.append(AUTO_FILTER_MISSING.issue(f"{title}: auto filter is missing", title))
     if summary["blankHeaderCount"] > 0:
         issues.append(BLANK_HEADER_CELLS.issue(f"{title}: {summary['blankHeaderCount']} blank header cells", title))
-    if summary["errorFormulaCount"] > 0:
-        issues.append(FORMULA_ERROR_MARKER.issue(f"{title}: {summary['errorFormulaCount']} formulas contain spreadsheet error markers", title))
     return issues
 
 

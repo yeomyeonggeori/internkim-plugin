@@ -4,9 +4,9 @@ from __future__ import annotations
 import csv
 import os
 from pathlib import Path
-import unicodedata
 
 from cell_values import typed_cell_value
+from display_width import display_width
 from formula_cache import cache_formula_values
 from office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
@@ -118,15 +118,6 @@ def apply_default_formatting(worksheet, sheet_specification, alignment_class, bo
         worksheet.column_dimensions[column_letter].width = min(max(content_width + 2, 10), 48)
     apply_column_widths(worksheet, sheet_specification)
     apply_column_number_formats(worksheet, sheet_specification)
-
-
-def display_width(value):
-    lines = str(value or "").split("\n")
-    return max(sum(character_width(character) for character in line) for line in lines)
-
-
-def character_width(character):
-    return 2 if unicodedata.east_asian_width(character) in ("W", "F") else 1
 
 
 def create_thin_border(border_class, side_class):

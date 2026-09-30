@@ -3,6 +3,7 @@ from __future__ import annotations
 from office_operations import OPERATION_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
 from office_schema import Boolean, CellValue, Choice, Field, ListOf, MapOf, Number, Record, Text, Variant
+from text_checks import PLACEHOLDER_LEFT
 
 
 ROWS = ListOf(ListOf(CellValue()))
@@ -113,13 +114,23 @@ FORMULA_NOT_EVALUATED = IssueKind("FORMULA_NOT_EVALUATED", WARNING, "a formula c
 HEADER_NOT_FROZEN = IssueKind("HEADER_NOT_FROZEN", WARNING, "the header row is not frozen", "freeze the pane under the header row")
 AUTO_FILTER_MISSING = IssueKind("AUTO_FILTER_MISSING", WARNING, "the table has no auto filter", "add a filter over the header and data rows")
 BLANK_HEADER_CELLS = IssueKind("BLANK_HEADER_CELLS", WARNING, "header cells are blank", "name every column")
-FORMULA_ERROR_MARKER = IssueKind("FORMULA_ERROR_MARKER", ERROR, "a cell holds #REF!, #VALUE! or #DIV/0!", "fix the formula's references or its inputs")
+FORMULA_ERROR = IssueKind("FORMULA_ERROR", ERROR, "a formula computes #DIV/0!, #REF!, #NAME?, #VALUE! or #N/A", "fix the formula's references or the cells it reads, with set_cell")
+MISSING_SHEET_REFERENCE = IssueKind("MISSING_SHEET_REFERENCE", ERROR, "a formula reads a sheet the workbook does not have", "add the sheet, or point the formula at an existing one with set_cell")
+BROKEN_DEFINED_NAME = IssueKind("BROKEN_DEFINED_NAME", ERROR, "a defined name points at #REF! or a sheet the workbook does not have", "read the workbook's defined names and recreate the reference")
+NUMBER_TOO_WIDE = IssueKind("NUMBER_TOO_WIDE", ERROR, "a number is wider than its column and Excel shows it as ####", "apply the suggested set_column_width")
 
 VALIDATE_ISSUE_KINDS = (
     HEADER_NOT_FROZEN,
     AUTO_FILTER_MISSING,
     BLANK_HEADER_CELLS,
-    FORMULA_ERROR_MARKER,
+)
+CHECK_ISSUE_KINDS = (
+    FORMULA_ERROR,
+    MISSING_SHEET_REFERENCE,
+    BROKEN_DEFINED_NAME,
+    NUMBER_TOO_WIDE,
+    PLACEHOLDER_LEFT,
+    FORMULA_NOT_EVALUATED,
 )
 
 GUIDE_INPUTS = (
@@ -128,4 +139,4 @@ GUIDE_INPUTS = (
     ("sheet apply <file.xlsx> <ops.json>", OPERATION_BATCH),
 )
 WRITE_ISSUE_KINDS = (FORMULA_NOT_EVALUATED,)
-GUIDE_ISSUES = (("sheet create, sheet edit and sheet apply", WRITE_ISSUE_KINDS), ("sheet validate", VALIDATE_ISSUE_KINDS), ("sheet apply", OPERATION_ISSUE_KINDS))
+GUIDE_ISSUES = (("sheet create, sheet edit and sheet apply", WRITE_ISSUE_KINDS), ("sheet check", CHECK_ISSUE_KINDS), ("sheet validate", VALIDATE_ISSUE_KINDS), ("sheet apply", OPERATION_ISSUE_KINDS))
