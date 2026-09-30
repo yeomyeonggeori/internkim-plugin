@@ -26,4 +26,4 @@ A user's .docx template with `{{ name }}` placeholders and `{% %}` tags is fille
 
 ## Final check
 
-Run `doc check` for placeholders left, broken cross-references, a stale table of contents, and missing East Asian fonts; each issue suggests the `doc apply` operation that fixes it. Confirm required source facts and visible headings, inspect table fit and Korean glyphs, then attach the accepted file. For a contract, preserve every standard clause and checklist item from its governing spec.
+Run `doc check` for placeholders left, broken cross-references, a stale table of contents, and missing East Asian fonts; each issue suggests the `doc apply` operation that fixes it. Confirm required source facts and visible headings. A Word file cannot be rendered here, so say its layout was not seen. A PDF exported from Markdown can: run `<skill>/scripts/office pdf render <file.pdf>` and look at the pages before attaching. For a contract, preserve every standard clause and checklist item from its governing spec.

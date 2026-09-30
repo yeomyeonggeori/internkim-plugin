@@ -13,7 +13,7 @@ Read the requested language's spec first at `references/paperwork/<ko|en>/<slug>
 3. Compare the spec's required fields with the request. Ask only for missing critical names, counterpart, dates, amounts, or terms; never invent them. Use the user's-language equivalent of "미기재" only for optional fields.
 4. Register with `company_document_register` before rendering, using the catalog slug and a concise summary. Put the returned document number in the content JSON.
 5. Write the spec-shaped content JSON, run `<skill>/scripts/office paperwork render <content.json> <storageDirectory>/<filename>.pdf` or the `paperwork fill` command the spec names, then deliver the generated PDF or DOCX to the requester. The spec and `<skill>/scripts/office guide paperwork` define the payload fields; do not reproduce their schema in a reply.
-6. Validate output and layout, especially table-heavy PDFs and contract density, then call `company_document_update` with the actual delivered path. If the registered storage directory is not writable, use the requester documents area and record that path.
+6. Validate the output, then run `<skill>/scripts/office pdf render <file.pdf>` and look at the pages, especially table-heavy forms and dense contracts, then call `company_document_update` with the actual delivered path. If the registered storage directory is not writable, use the requester documents area and record that path.
 
 ## Renderer choices
 

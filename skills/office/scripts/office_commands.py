@@ -40,6 +40,8 @@ COMMANDS = (
     Command("doc", "validate", "doc/validate_docx.py", "check a .docx for required text, fonts and layout"),
     Command("pdf", "create", "pdf/create_pdf.py", "lay out a PDF from blocks or a JSON spec"),
     Command("pdf", "edit", "pdf/edit_pdf.py", "append a section page to a PDF"),
+    Command("pdf", "read", "pdf/read_pdf.py", "list a PDF's text by page, with page sizes and which pages have extractable text"),
+    Command("pdf", "render", "pdf/render_pdf.py", "render PDF pages to PNG files and a contact sheet to look at"),
     Command("pdf", "validate", "pdf/validate_pdf.py", "check a PDF for pages, extractable text and fonts"),
     Command("sheet", "create", "sheet/create_xlsx.py", "build an .xlsx from rows or a JSON spec"),
     Command("sheet", "edit", "sheet/edit_xlsx.py", "append rows to an .xlsx"),
