@@ -8,19 +8,22 @@ import sys
 import time
 
 from browser_render import clear_stale_render_evidence, try_html_render, write_render_source
+from deck_definitions import BROWSER_RENDER_UNAVAILABLE, IMAGE_PPTX_UNAVAILABLE, REVIEW_FAILED, REVIEW_ISSUE_KINDS, UNKNOWN_FORMAT
 from design_tokens import read_design_tokens
 from image_pptx import write_image_backed_pptx
 from native_pptx import write_native_text_pptx
 from native_preview import write_native_review_images
+from office_result import INPUT_NOT_FOUND, INVALID_ARGUMENTS, Issue, OfficeFailure, Result, issue_from_json, run_command
 from resource_inlining import inject_vendored_paperlogy_fallback, inline_local_fonts, inline_local_images
 from slide_images import rendered_slide_image_paths
-from slide_model import SlideModel, create_slide_models, extract_notes, extract_slide_sources
+from slide_model import SlideModel, create_slide_models, extract_notes
 from slide_source import read_optional_text
 from slide_viewer import inject_screen_slide_viewer
+from source_preflight import preflight_issues, read_checked_source
 
 
 ALLOWED_FORMATS = {"html", "pdf", "pptx", "notes", "review"}
-USAGE = "Usage: html_export.py <source.html> <deck-name> <build-dir> <formats> <render-review-script> <html-render-script>"
+USAGE = "usage: html_export.py <source.html> <deck-name> <build-dir> <formats> <render-review-script> <html-render-script>"
 
 
 @dataclass(frozen=True)
@@ -36,22 +39,33 @@ class ExportRequest:
     def review_path(self) -> pathlib.Path:
         return self.build_path / "review"
 
+    def output_path(self, suffix: str) -> pathlib.Path:
+        return self.build_path / f"{self.deck_name}{suffix}"
 
-def main() -> int:
+
+@dataclass(frozen=True)
+class DerivedOutputs:
+    issues: list[Issue]
+    pptx_mode: str
+    review: Result | None
+
+
+def main() -> Result:
     if len(sys.argv) != 7:
-        print(USAGE, file=sys.stderr)
-        return 2
+        raise OfficeFailure(INVALID_ARGUMENTS.issue(USAGE))
     request = parse_export_request(sys.argv)
-    validate_source(request.source_path)
+    source_text, slide_sources = read_checked_source(request.source_path)
+    issues = preflight_issues(request.source_path, source_text, len(slide_sources))
     request.build_path.mkdir(parents=True, exist_ok=True)
-    html_output_path = request.build_path / f"{request.deck_name}.html"
+    html_output_path = request.output_path(".html")
     html_output_path.write_text(deck_html_text(request.source_path), encoding="utf-8")
-    slide_sources = extract_slide_sources(request.source_path)
-    if not slide_sources:
-        print("Error: slides.html must contain at least one <section> slide", file=sys.stderr)
-        return 1
-    write_derived_outputs(request, html_output_path, slide_sources)
-    return 0
+    derived = write_derived_outputs(request, html_output_path, slide_sources)
+    return Result(
+        summary=build_summary(request, derived),
+        output_path=str(html_output_path),
+        issues=tuple(issues + derived.issues),
+        details=build_details(request, derived),
+    )
 
 
 def parse_export_request(arguments: list[str]) -> ExportRequest:
@@ -65,23 +79,26 @@ def parse_export_request(arguments: list[str]) -> ExportRequest:
     )
 
 
-def write_derived_outputs(request: ExportRequest, html_output_path: pathlib.Path, slide_sources: list[str]) -> None:
+def write_derived_outputs(request: ExportRequest, html_output_path: pathlib.Path, slide_sources: list[str]) -> DerivedOutputs:
     design = read_design_tokens(read_optional_text(request.source_path.with_name("DESIGN.md")))
     slide_models = create_slide_models(slide_sources)
-    slide_image_paths = render_slide_images(request, html_output_path, slide_models, design)
-    pptx_output_mode = ""
+    slide_image_paths, render_issues = render_slide_images(request, html_output_path, slide_models, design)
+    issues = list(render_issues)
+    pptx_mode = ""
     if "pptx" in request.formats:
         print_stage("pptx")
-        pptx_output_mode = write_pptx(slide_models, design, slide_image_paths, request.build_path / f"{request.deck_name}.pptx")
+        pptx_mode = write_pptx(slide_models, design, slide_image_paths, request.output_path(".pptx"))
+        if pptx_mode_fell_back(pptx_mode):
+            issues.append(IMAGE_PPTX_UNAVAILABLE.issue("image-backed PPTX requested, but rendered slide images are unavailable; wrote a native text-backed PPTX", str(request.output_path(".pptx"))))
     if "notes" in request.formats:
         print_stage("notes")
-        write_notes(slide_sources, request.build_path / f"{request.deck_name}-notes.txt")
+        write_notes(slide_sources, request.output_path("-notes.txt"))
+    review = None
     if "review" in request.formats:
         print_stage("review")
-        run_render_review(request.render_review_script, request.source_path, request.deck_name, request.review_path)
-    print_outputs(request.build_path, request.deck_name, request.formats, pptx_output_mode)
-    if "review" in request.formats:
-        print_review_gate_summary(request.review_path)
+        review = run_render_review(request.render_review_script, request.source_path, request.deck_name, request.review_path)
+        issues.extend(review.issues)
+    return DerivedOutputs(issues, pptx_mode, review)
 
 
 def enabled_formats(raw_formats: str) -> set[str]:
@@ -96,7 +113,7 @@ def enabled_formats(raw_formats: str) -> set[str]:
     formats.update({"review", "html"})
     unknown_formats = sorted(formats - ALLOWED_FORMATS)
     if unknown_formats:
-        raise SystemExit("Error: unknown presentation format(s): " + ", ".join(unknown_formats))
+        raise OfficeFailure(UNKNOWN_FORMAT.issue("unknown presentation format(s): " + ", ".join(unknown_formats)))
     return formats
 
 
@@ -113,13 +130,8 @@ def pptx_mode() -> str:
     return "image"
 
 
-def validate_source(source_path: pathlib.Path) -> None:
-    if not source_path.exists():
-        raise SystemExit(f"Error: {source_path.name} not found. Create slides.html or set SRC=yourfile.html")
-    if not source_path.with_name("DESIGN.md").exists():
-        print("[warning] DESIGN.md not found; continuing with HTML source and native defaults", file=sys.stderr, flush=True)
-    if "design-source: DESIGN.md" not in source_path.read_text(encoding="utf-8"):
-        print(f"[warning] {source_path.name} does not include design-source: DESIGN.md", file=sys.stderr, flush=True)
+def pptx_mode_fell_back(written_mode: str) -> bool:
+    return pptx_mode() == "image" and written_mode == "native"
 
 
 def deck_html_text(source_path: pathlib.Path) -> str:
@@ -130,18 +142,20 @@ def deck_html_text(source_path: pathlib.Path) -> str:
     return inject_screen_slide_viewer(source_text)
 
 
-def render_slide_images(request: ExportRequest, html_output_path: pathlib.Path, slide_models: list[SlideModel], design: dict[str, str]) -> list[pathlib.Path]:
+def render_slide_images(request: ExportRequest, html_output_path: pathlib.Path, slide_models: list[SlideModel], design: dict[str, str]) -> tuple[list[pathlib.Path], list[Issue]]:
     if not needs_rendered_slides(request.formats):
-        return []
+        return [], []
     print_stage("render")
     clear_stale_render_evidence(request.review_path, request.deck_name)
     render_error = try_html_render(request.html_render_script, html_output_path, request.deck_name, request.build_path, request.formats)
     slide_image_paths = rendered_slide_image_paths(request.review_path, request.deck_name)
     if not render_error and slide_image_paths:
         write_render_source(request.review_path, "browser")
-    if render_error and "review" in request.formats:
+    if not render_error:
+        return slide_image_paths, []
+    if "review" in request.formats:
         write_native_fallback_review_images(slide_models, design, request)
-    return slide_image_paths
+    return slide_image_paths, [BROWSER_RENDER_UNAVAILABLE.issue(f"{render_error}; continued with browserless outputs")]
 
 
 def write_native_fallback_review_images(slide_models: list[SlideModel], design: dict[str, str], request: ExportRequest) -> None:
@@ -153,8 +167,6 @@ def write_pptx(slide_models: list[SlideModel], design: dict[str, str], image_pat
     if pptx_mode() == "image" and image_paths:
         write_image_backed_pptx(image_paths, pptx_path)
         return "image"
-    if pptx_mode() == "image":
-        print("[warning] image-backed PPTX requested, but rendered slide images are unavailable; writing native text-backed PPTX", file=sys.stderr, flush=True)
     write_native_text_pptx(slide_models, design, pptx_path)
     return "native"
 
@@ -168,52 +180,58 @@ def write_notes(slide_sources: list[str], notes_path: pathlib.Path) -> None:
     notes_path.write_text("\n\n".join(note_blocks) + ("\n" if note_blocks else ""), encoding="utf-8")
 
 
-def run_render_review(render_review_script: pathlib.Path, source_path: pathlib.Path, deck_name: str, review_path: pathlib.Path) -> None:
+def run_render_review(render_review_script: pathlib.Path, source_path: pathlib.Path, deck_name: str, review_path: pathlib.Path) -> Result:
     if not render_review_script.exists():
-        raise SystemExit("Error: render_review.py not found. Cannot review HTML-first deck.")
-    result = subprocess.run([sys.executable, str(render_review_script), str(source_path), deck_name, str(review_path)])
-    if result.returncode != 0:
-        raise SystemExit(f"Error: slide render review failed; see {review_path / 'slide-review.json'}")
+        raise OfficeFailure(INPUT_NOT_FOUND.issue(f"{render_review_script} not found; cannot review the deck", str(render_review_script)))
+    completed = subprocess.run(
+        [sys.executable, str(render_review_script), str(source_path), deck_name, str(review_path)],
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    if completed.returncode != 0:
+        raise OfficeFailure(REVIEW_FAILED.issue(f"slide render review failed with exit code {completed.returncode}: {completed.stdout.strip()[-400:]}", str(review_path)))
+    envelope = json.loads(completed.stdout)
+    return Result(
+        summary=envelope["summary"],
+        output_path=envelope["outputPath"],
+        issues=tuple(issue_from_json(document, REVIEW_ISSUE_KINDS) for document in envelope["issues"]),
+        details=envelope["details"],
+    )
 
 
 def print_stage(stage_name: str) -> None:
     print(f"[stage] {stage_name} {int(time.time())}", file=sys.stderr, flush=True)
 
 
-def print_outputs(build_path: pathlib.Path, deck_name: str, formats: set[str], pptx_output_mode: str) -> None:
-    print("")
-    print("Done.")
-    if "html" in formats:
-        print(f"  {build_path.name}/{deck_name}.html            (HTML source rendered as deck)")
-    if "pptx" in formats and pptx_output_mode == "image":
-        print(f"  {build_path.name}/{deck_name}.pptx            (image-backed PowerPoint / Keynote)")
-    elif "pptx" in formats:
-        print(f"  {build_path.name}/{deck_name}.pptx            (native text-backed PowerPoint / Keynote fallback)")
-    if "pdf" in formats and (build_path / f"{deck_name}.pdf").exists():
-        print(f"  {build_path.name}/{deck_name}.pdf             (browser-rendered PDF)")
-    elif "pdf" in formats:
-        print(f"  {build_path.name}/{deck_name}.pdf             (not created; browser render unavailable)")
-    if "notes" in formats:
-        print(f"  {build_path.name}/{deck_name}-notes.txt       (speaker notes)")
-    if "review" in formats:
-        print(f"  {build_path.name}/review/slide-review.json (per-slide render review)")
+def build_summary(request: ExportRequest, derived: DerivedOutputs) -> str:
+    written = [name for name, path in output_paths(request, derived).items() if path]
+    summary = f"built {', '.join(written)} into {request.build_path}"
+    if derived.review is None:
+        return summary
+    return f"{summary}; {derived.review.summary}"
 
 
-def print_review_gate_summary(review_path: pathlib.Path) -> None:
-    report_path = review_path / "slide-review.json"
-    if not report_path.exists():
-        return
-    report = json.loads(report_path.read_text(encoding="utf-8"))
-    score = report.get("visualQualityScore", 0)
-    minimum = report.get("visualQualityScoreMinimum", 0)
-    if report.get("staticGatePassed"):
-        print(f"Static design gate PASSED (visualQualityScore {score}/{minimum} minimum).")
-        return
-    print(f"Static design gate FAILED (visualQualityScore {score}, minimum {minimum}).")
-    print("Revise slides.html to resolve these warnings, then rebuild before delivering:")
-    for warning in report.get("designWarnings", []):
-        print(f"  - {warning}")
+def build_details(request: ExportRequest, derived: DerivedOutputs) -> dict:
+    details = {"outputs": output_paths(request, derived), "pptxMode": derived.pptx_mode or None}
+    if derived.review is not None:
+        details["review"] = derived.review.details
+    return details
+
+
+def output_paths(request: ExportRequest, derived: DerivedOutputs) -> dict[str, str | None]:
+    candidates = {
+        "html": request.output_path(".html"),
+        "pdf": request.output_path(".pdf"),
+        "pptx": request.output_path(".pptx"),
+        "notes": request.output_path("-notes.txt"),
+        "review": request.review_path / "slide-review.json",
+    }
+    return {
+        name: str(path) if path.exists() else None
+        for name, path in candidates.items()
+        if name in request.formats
+    }
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run_command(main))

@@ -1,32 +1,33 @@
 #!/usr/bin/env python3
-import argparse
 import json
 import os
 from pathlib import Path
 
-from skill_runtime import HANGUL_FONT_PATHS, cache_home_path, ensure_requirements
+from office_result import INVALID_ARGUMENTS, KOREAN_FONT_UNAVAILABLE, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
+from office_schema import require_valid
+from pdf_definitions import PDF_SPECIFICATION
+from skill_runtime import HANGUL_FONT_PATHS, cache_home_path
 
 
-def load_specification(specification_path):
-    with open(specification_path, "r", encoding="utf-8") as specification_file:
-        specification = json.load(specification_file)
-    if not isinstance(specification, dict):
-        raise ValueError("PDF specification must be an object")
+def read_specification(arguments):
+    if arguments.spec:
+        specification = read_json_file(arguments.spec)
+        location = "spec"
+    elif has_inline_content(arguments):
+        specification = build_specification(arguments)
+        location = "arguments"
+    else:
+        raise OfficeFailure(INVALID_ARGUMENTS.issue("provide at least --title, --heading, --paragraph, or --bullet; or pass --spec <file>"))
+    require_valid(PDF_SPECIFICATION, specification, location)
     return specification
 
 
-def require_text(value, field_name):
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"{field_name} must be a non-empty string")
-    return value.strip()
+def has_inline_content(arguments):
+    return bool(arguments.title or arguments.subtitle or arguments.heading or arguments.paragraph or arguments.bullet)
 
 
 def optional_text(value):
-    if value is None:
-        return ""
-    if not isinstance(value, str):
-        raise ValueError("text fields must be strings")
-    return value.strip()
+    return (value or "").strip()
 
 
 def build_specification(arguments):
@@ -47,14 +48,11 @@ def build_specification(arguments):
 
 
 def create_pdf(specification):
-    if not ensure_requirements("office"):
-        raise RuntimeError("pdf dependencies are unavailable after bootstrap")
-
     from fpdf import FPDF
 
     class DocumentPDF(FPDF):
         def footer(self):
-            if not specification.get("pageNumbers", True):
+            if specification.get("pageNumbers") is False:
                 return
             self.set_y(-14)
             self.set_font(active_font_name, size=8)
@@ -64,8 +62,9 @@ def create_pdf(specification):
     active_font_name, font_path = resolve_font(specification)
     validate_font_availability(specification, font_path)
 
-    pdf = DocumentPDF(orientation="P", unit="mm", format=specification.get("format", "A4"))
-    margin = float(specification.get("marginMillimeters", 18))
+    pdf = DocumentPDF(orientation="P", unit="mm", format=specification.get("format") or "A4")
+    margin_millimeters = specification.get("marginMillimeters")
+    margin = float(18 if margin_millimeters is None else margin_millimeters)
     pdf.set_margins(margin, margin, margin)
     pdf.set_auto_page_break(auto=True, margin=16)
     if font_path:
@@ -75,7 +74,7 @@ def create_pdf(specification):
     pdf.set_text_color(31, 41, 55)
 
     add_title(pdf, specification, active_font_name)
-    for section in specification.get("sections", []):
+    for section in specification.get("sections") or []:
         add_section(pdf, section, active_font_name)
     return pdf
 
@@ -99,8 +98,6 @@ def add_title(pdf, specification, font_name):
 
 
 def add_section(pdf, section, font_name):
-    if not isinstance(section, dict):
-        raise ValueError("each section must be an object")
     title = optional_text(section.get("title"))
     if title:
         pdf.set_font(font_name, size=13)
@@ -109,11 +106,11 @@ def add_section(pdf, section, font_name):
         pdf.ln(1)
     pdf.set_font(font_name, size=10.5)
     pdf.set_text_color(31, 41, 55)
-    for paragraph in section.get("paragraphs", []):
-        write_multiline(pdf, 0, 6.2, require_text(paragraph, "paragraph"))
+    for paragraph in section.get("paragraphs") or []:
+        write_multiline(pdf, 0, 6.2, paragraph.strip())
         pdf.ln(1.5)
-    for item in section.get("bullets", []):
-        write_multiline(pdf, 0, 6.2, "• " + require_text(item, "bullet"))
+    for item in section.get("bullets") or []:
+        write_multiline(pdf, 0, 6.2, "• " + item.strip())
     table = section.get("table")
     if table:
         add_table(pdf, table, font_name)
@@ -121,20 +118,12 @@ def add_section(pdf, section, font_name):
 
 
 def add_table(pdf, table, font_name):
-    if not isinstance(table, dict):
-        raise ValueError("table must be an object")
-    headers = table.get("headers", [])
-    rows = table.get("rows", [])
-    if not isinstance(headers, list) or not headers:
-        raise ValueError("table.headers must be a non-empty array")
-    if not isinstance(rows, list):
-        raise ValueError("table.rows must be an array")
+    headers = table["headers"]
+    rows = table.get("rows") or []
     pdf.set_font(font_name, size=9.5)
     column_widths = compute_column_widths(pdf, headers, rows)
     add_table_row(pdf, column_widths, headers, is_header=True)
     for row in rows:
-        if not isinstance(row, list):
-            raise ValueError("table rows must be arrays")
         add_table_row(pdf, column_widths, row, is_header=False)
     pdf.ln(1)
 
@@ -259,7 +248,7 @@ def validate_font_availability(specification, font_path):
         return
     text = json.dumps(specification, ensure_ascii=False)
     if contains_non_latin_text(text):
-        raise ValueError("non-Latin PDF text requires fontPath or an installed Korean-capable font")
+        raise OfficeFailure(KOREAN_FONT_UNAVAILABLE.issue("non-Latin PDF text requires fontPath or an installed Korean-capable font"))
 
 
 def is_embeddable_font(font_path):
@@ -292,7 +281,7 @@ def contains_non_latin_text(text):
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Create a PDF from arguments or a JSON spec.")
+    parser = OfficeArgumentParser(description="Create a PDF from arguments or a JSON spec; office guide pdf describes the spec.")
     parser.add_argument("output_path", help="Path to the output .pdf file")
     parser.add_argument("--title", metavar="TEXT", default="", help="Document title")
     parser.add_argument("--subtitle", metavar="TEXT", default="", help="Document subtitle (optional)")
@@ -305,16 +294,13 @@ def parse_arguments():
 
 def main():
     arguments = parse_arguments()
-    has_inline_content = arguments.title or arguments.subtitle or arguments.heading or arguments.paragraph or arguments.bullet
-    if not arguments.spec and not has_inline_content:
-        raise ValueError("provide at least --title, --heading, --paragraph, or --bullet; or pass --spec <file>")
-    specification = load_specification(arguments.spec) if arguments.spec else build_specification(arguments)
+    specification = read_specification(arguments)
     pdf = create_pdf(specification)
     output_path = Path(os.path.expanduser(arguments.output_path))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     pdf.output(str(output_path))
-    print(output_path)
+    return Result(summary=f"created {output_path}", output_path=str(output_path))
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(run_command(main))

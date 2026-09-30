@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-import argparse
 import os
 import re
 from pathlib import Path
 
-from skill_runtime import HANGUL_FONT_PATHS, cache_home_path, ensure_requirements
+from office_result import KOREAN_FONT_UNAVAILABLE, OfficeArgumentParser, OfficeFailure, Result, run_command
+from skill_runtime import HANGUL_FONT_PATHS, cache_home_path
 
 INLINE_PATTERN = re.compile(r"(\*\*.+?\*\*|\*.+?\*|`.+?`)")
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Render a markdown source of truth into a .docx deliverable")
+    parser = OfficeArgumentParser(description="Render a markdown source of truth into a .docx or .pdf deliverable")
     parser.add_argument("markdown_path", help="path to content.md")
     parser.add_argument("--output", help="output path; defaults next to the markdown")
     parser.add_argument("--format", default="docx", choices=["docx", "pdf"], help="deliverable format")
@@ -171,7 +171,7 @@ def export_pdf(markdown_text, output_path, font_path_argument, font_size):
         pdf.add_font(family, "B", str(font_path))
         pdf.add_font(family, "I", str(font_path))
     elif any(ord(character) > 0x2000 for character in markdown_text):
-        raise SystemExit("non-Latin PDF text requires --font-path or an installed Korean-capable font")
+        raise OfficeFailure(KOREAN_FONT_UNAVAILABLE.issue("non-Latin PDF text requires --font-path or an installed Korean-capable font"))
 
     def write_line(text, size, style="", indent=0, spacing=2):
         pdf.set_font(family, style, size)
@@ -228,10 +228,8 @@ def strip_inline_markers(text):
     return re.sub(r"\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`", lambda match: next(group for group in match.groups() if group is not None), text)
 
 
-def main():
+def main() -> Result:
     arguments = parse_arguments()
-    ensure_requirements("office")
-
     markdown_path = Path(arguments.markdown_path)
     markdown_text = markdown_path.read_text(encoding="utf-8")
     default_suffix = "." + arguments.format
@@ -248,8 +246,8 @@ def main():
         set_base_font(document, arguments.font, arguments.font_size, Pt)
         render_markdown(document, markdown_text, Pt)
         document.save(output_path)
-    print(f"exported {output_path} from {markdown_path}")
+    return Result(summary=f"exported {output_path} from {markdown_path}", output_path=str(output_path))
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(run_command(main))

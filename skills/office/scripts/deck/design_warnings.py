@@ -1,45 +1,40 @@
 import re
 
+from deck_definitions import (
+    ABSOLUTE_FOOTER,
+    BARE_LIST,
+    DESIGN_WARNING_WEIGHTS,
+    GHOST_CARD,
+    MISSING_SLIDE_ROLE,
+    RAW_STRUCTURE_PATTERN,
+    RAW_TABLE,
+    REPEATED_COMPOSITION,
+    SIDE_STRIPE,
+    TINY_TEXT,
+    TOPIC_TITLE,
+    UNRELIABLE_VISUAL_EVIDENCE,
+    WEAK_VISUAL_IDENTITY,
+)
+from office_result import Issue
+
 
 STRUCTURE_DOMINANCE_RATIO = 0.55
 CLAIM_TITLE_WORD_MINIMUM = 5
 DESIGN_DOCUMENT_BODY_MINIMUM_CHARACTERS = 80
 KOREAN_SENTENCE_ENDINGS = ("다", "요", "까", "죠")
 LABEL_ONLY_SLIDE_ROLES = {"title", "cover", "divider", "section"}
-DESIGN_WARNING_WEIGHTS = {
-    "weakVisualIdentityWarning": 24,
-    "missingSlideRoleWarning": 16,
-    "sideStripeWarning": 14,
-    "ghostCardWarning": 14,
-    "tinyTextWarning": 8,
-    "repeatedCompositionWarning": 14,
-    "rawStructurePatternWarning": 12,
-    "rawTableWarning": 10,
-    "bareListWarning": 10,
-    "topicTitleWarning": 8,
-    "languageMismatchWarning": 10,
-    "unsourcedCurrentDateWarning": 10,
-    "verticalDeadZoneWarning": 10,
-    "absoluteFooterWarning": 12,
-    "emojiIconWarning": 8,
-    "missingRequiredTextWarning": 14,
-    "inconsistentFooterBaselineWarning": 8,
-    "unpinnedFooterWarning": 10,
-    "missingSpeakerNotesWarning": 8,
-}
-DESIGN_WARNING_PREFIXES = tuple(DESIGN_WARNING_WEIGHTS)
 
 
-def slide_design_warnings(structure: dict[str, object]) -> list[str]:
+def slide_design_warnings(structure: dict[str, object]) -> list[Issue]:
     warnings = []
     if not structure["hasSlideRole"]:
-        warnings.append("missingSlideRoleWarning: slide lacks data-slide-role, so its job is not explicit")
+        warnings.append(MISSING_SLIDE_ROLE.issue("slide lacks data-slide-role, so its job is not explicit"))
     if has_generic_topic_title(structure):
-        warnings.append("topicTitleWarning: title reads as a topic label rather than a claim with a conclusion")
+        warnings.append(TOPIC_TITLE.issue("title reads as a topic label rather than a claim with a conclusion"))
     if slide_is_table_dominated(structure):
-        warnings.append("rawTableWarning: a raw table is the slide's primary composition")
+        warnings.append(RAW_TABLE.issue("a raw table is the slide's primary composition"))
     if slide_is_list_dominated(structure):
-        warnings.append("bareListWarning: a bare list is the slide's primary composition")
+        warnings.append(BARE_LIST.issue("a bare list is the slide's primary composition"))
     return warnings
 
 
@@ -77,50 +72,50 @@ def apply_deck_design_warnings(slides: list[dict[str, object]], source_context: 
         append_deck_warning(slides, warning)
 
 
-def deck_design_warnings(slides: list[dict[str, object]], source_context: dict[str, object], render_source: str) -> list[str]:
+def deck_design_warnings(slides: list[dict[str, object]], source_context: dict[str, object], render_source: str) -> list[Issue]:
     warnings = []
     if not source_has_visual_identity(source_context):
         warnings.append(weak_visual_identity_warning(source_context))
     if int(source_context["missingSlideRoleCount"]) > 0:
-        warnings.append("missingSlideRoleWarning: one or more slide sections lack data-slide-role")
+        warnings.append(MISSING_SLIDE_ROLE.deck_issue("one or more slide sections lack data-slide-role"))
     if render_source != "browser":
-        warnings.append("unreliableVisualEvidenceWarning: review images did not come from browser rendering")
+        warnings.append(UNRELIABLE_VISUAL_EVIDENCE.deck_issue("review images did not come from browser rendering"))
     return warnings + source_pattern_warnings(source_context) + composition_warnings(slides)
 
 
-def weak_visual_identity_warning(source_context: dict[str, object]) -> str:
+def weak_visual_identity_warning(source_context: dict[str, object]) -> Issue:
     missing_parts = []
     if not source_context["hasVisualSystemAttribute"]:
         missing_parts.append("a data-visual-system attribute in slides.html")
     if int(source_context["designDocumentBodyCharacterCount"]) < DESIGN_DOCUMENT_BODY_MINIMUM_CHARACTERS:
         missing_parts.append("a DESIGN.md body that describes the visual system")
-    return "weakVisualIdentityWarning: deck lacks " + " and ".join(missing_parts)
+    return WEAK_VISUAL_IDENTITY.deck_issue("deck lacks " + " and ".join(missing_parts))
 
 
-def source_pattern_warnings(source_context: dict[str, object]) -> list[str]:
+def source_pattern_warnings(source_context: dict[str, object]) -> list[Issue]:
     warnings = []
     if source_context["hasSideStripePattern"]:
-        warnings.append("sideStripeWarning: thick left or right border accents are doing the visual-identity work")
+        warnings.append(SIDE_STRIPE.deck_issue("thick left or right border accents are doing the visual-identity work"))
     if source_context["hasGhostCardPattern"]:
-        warnings.append("ghostCardWarning: thin-bordered boxes with soft shadows read as a default template surface")
+        warnings.append(GHOST_CARD.deck_issue("thin-bordered boxes with soft shadows read as a default template surface"))
     if source_context["hasTinyTextPattern"]:
-        warnings.append("tinyTextWarning: multiple CSS font sizes below 16px may be unreadable in review contact sheets")
+        warnings.append(TINY_TEXT.deck_issue("multiple CSS font sizes below 16px may be unreadable in review contact sheets"))
     if int(source_context["absoluteTextFooterSlideCount"]) >= 2:
-        warnings.append(
-            "absoluteFooterWarning: an absolutely positioned bottom strip carries text on multiple slides and can overlap the body; make header, body, and footer sibling flow children"
-        )
+        warnings.append(ABSOLUTE_FOOTER.deck_issue(
+            "an absolutely positioned bottom strip carries text on multiple slides and can overlap the body; make header, body, and footer sibling flow children"
+        ))
     return warnings
 
 
-def composition_warnings(slides: list[dict[str, object]]) -> list[str]:
+def composition_warnings(slides: list[dict[str, object]]) -> list[Issue]:
     warnings = []
     repeated_composition_count = repeated_composition_slide_count(slides)
     if repeated_composition_count >= 3:
-        warnings.append(
-            f"repeatedCompositionWarning: {repeated_composition_count} slides share the same composition classes; vary slide composition"
-        )
+        warnings.append(REPEATED_COMPOSITION.deck_issue(
+            f"{repeated_composition_count} slides share the same composition classes; vary slide composition"
+        ))
     if sum(1 for slide in slides if slide_has_dominant_raw_structure(slide)) >= 2:
-        warnings.append("rawStructurePatternWarning: multiple slides use a raw table or bare list as the primary composition")
+        warnings.append(RAW_STRUCTURE_PATTERN.deck_issue("multiple slides use a raw table or bare list as the primary composition"))
     return warnings
 
 
@@ -149,9 +144,9 @@ def repeated_composition_slide_count(slides: list[dict[str, object]]) -> int:
     return max(counts.values(), default=0)
 
 
-def append_deck_warning(slides: list[dict[str, object]], warning: str) -> None:
+def append_deck_warning(slides: list[dict[str, object]], warning: Issue) -> None:
     for slide in slides:
-        if warning not in slide["warnings"]:
+        if all(existing.message != warning.message for existing in slide["warnings"]):
             slide["warnings"].append(warning)
 
 
@@ -160,25 +155,19 @@ def annotate_design_revision_need(slides: list[dict[str, object]]) -> None:
         slide["needsDesignRevision"] = any(is_design_warning(warning) for warning in slide["warnings"])
 
 
-def unique_design_warnings(slides: list[dict[str, object]]) -> list[str]:
+def unique_design_warnings(slides: list[dict[str, object]]) -> list[Issue]:
     warnings = []
     for slide in slides:
         for warning in slide["warnings"]:
-            if is_design_warning(warning) and warning not in warnings:
+            if is_design_warning(warning) and all(existing.message != warning.message for existing in warnings):
                 warnings.append(warning)
     return warnings
 
 
-def calculate_visual_quality_score(design_warnings: list[str]) -> int:
-    score = 100
-    for warning in design_warnings:
-        score -= design_warning_weight(warning)
+def calculate_visual_quality_score(design_warnings: list[Issue]) -> int:
+    score = 100 - sum(DESIGN_WARNING_WEIGHTS[warning.kind.code] for warning in design_warnings)
     return max(0, min(100, score))
 
 
-def design_warning_weight(design_warning: str) -> int:
-    return next(weight for prefix, weight in DESIGN_WARNING_WEIGHTS.items() if design_warning.startswith(prefix))
-
-
-def is_design_warning(warning: str) -> bool:
-    return warning.startswith(DESIGN_WARNING_PREFIXES)
+def is_design_warning(warning: Issue) -> bool:
+    return warning.kind.code in DESIGN_WARNING_WEIGHTS

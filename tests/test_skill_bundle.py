@@ -23,7 +23,7 @@ def skill_files():
 
 
 def office_command_table():
-    return runpy.run_path(str(OFFICE_SCRIPTS_PATH / "office"), run_name="office_command_table")["COMMANDS"]
+    return runpy.run_path(str(OFFICE_SCRIPTS_PATH / "office_commands.py"))["COMMANDS"]
 
 
 class SharedSkillRuntimeTest(unittest.TestCase):

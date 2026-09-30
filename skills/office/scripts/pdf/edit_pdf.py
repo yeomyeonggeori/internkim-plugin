@@ -1,50 +1,38 @@
 #!/usr/bin/env python3
-import argparse
-import glob
 import io
-import json
-import os
-import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from fpdf import FPDF
+from pypdf import PdfReader, PdfWriter
 
 import create_pdf as pdf_helper
+from documents_folder import resolve_document_path
+from office_result import OfficeArgumentParser, Result, read_json_file, run_command
+from office_schema import require_valid
+from pdf_definitions import SECTION
 
 
-def parse_arguments():
-    parser = argparse.ArgumentParser(description="Append a new section page to an existing PDF in place.")
-    parser.add_argument("pdf_path", nargs="?", help="Path to the .pdf; defaults to the newest .pdf in ~/documents")
-    parser.add_argument("--heading", metavar="TEXT", help="Section heading for the appended page")
-    parser.add_argument("--paragraph", action="append", default=[], metavar="TEXT", help="Paragraph to add")
-    parser.add_argument("--bullet", action="append", default=[], metavar="TEXT", help="Bullet item to add")
-    parser.add_argument("--section", metavar="JSON_PATH", help="JSON file with a section spec (same schema as create_pdf sections array element)")
-    return parser.parse_args()
+def main() -> Result:
+    arguments = parse_arguments()
+    section = read_section(arguments)
+    pdf_path = resolve_document_path(arguments.pdf_path, "pdf")
+    font_name, font_path = pdf_helper.resolve_font({})
+    appended_page_bytes = build_appended_page(section, font_name, font_path)
+    merge_into_original(pdf_path, appended_page_bytes)
+    return Result(summary=f"appended a section page to {pdf_path}", output_path=pdf_path)
 
 
-def resolve_pdf_path(given_path):
-    if given_path:
-        return os.path.expanduser(given_path)
-    documents = sorted(
-        glob.glob(os.path.expanduser("~/documents/*.pdf")),
-        key=os.path.getmtime,
-        reverse=True,
-    )
-    if not documents:
-        raise SystemExit("no .pdf found in ~/documents; pass the document path explicitly")
-    return documents[0]
-
-
-def load_section_from_json(json_path):
-    with open(os.path.expanduser(json_path), "r", encoding="utf-8") as section_file:
-        section = json.load(section_file)
-    if not isinstance(section, dict):
-        raise ValueError("section JSON must be an object")
+def read_section(arguments) -> dict:
+    if arguments.section:
+        section = read_json_file(arguments.section)
+        location = "section"
+    else:
+        section = {"title": arguments.heading or "", "paragraphs": arguments.paragraph, "bullets": arguments.bullet}
+        location = "arguments"
+    require_valid(SECTION, section, location)
     return section
 
 
-def build_appended_page(section_data, font_name, font_path):
-    from fpdf import FPDF
-
+def build_appended_page(section: dict, font_name: str, font_path) -> bytes:
     appended_pdf = FPDF(orientation="P", unit="mm", format="A4")
     appended_pdf.set_margins(18, 18, 18)
     appended_pdf.set_auto_page_break(auto=True, margin=16)
@@ -53,13 +41,11 @@ def build_appended_page(section_data, font_name, font_path):
     appended_pdf.add_page()
     appended_pdf.set_font(font_name, size=11)
     appended_pdf.set_text_color(31, 41, 55)
-    pdf_helper.add_section(appended_pdf, section_data, font_name)
+    pdf_helper.add_section(appended_pdf, section, font_name)
     return bytes(appended_pdf.output())
 
 
-def merge_into_original(pdf_path, appended_page_bytes):
-    from pypdf import PdfReader, PdfWriter
-
+def merge_into_original(pdf_path: str, appended_page_bytes: bytes) -> None:
     original_reader = PdfReader(pdf_path)
     appended_reader = PdfReader(io.BytesIO(appended_page_bytes))
     writer = PdfWriter()
@@ -71,24 +57,15 @@ def merge_into_original(pdf_path, appended_page_bytes):
         writer.write(output_file)
 
 
-def main():
-    arguments = parse_arguments()
-    pdf_path = resolve_pdf_path(arguments.pdf_path)
-
-    if arguments.section:
-        section_data = load_section_from_json(arguments.section)
-    else:
-        section_data = {
-            "title": arguments.heading or "",
-            "paragraphs": arguments.paragraph,
-            "bullets": arguments.bullet,
-        }
-
-    font_name, font_path = pdf_helper.resolve_font({})
-    appended_page_bytes = build_appended_page(section_data, font_name, font_path)
-    merge_into_original(pdf_path, appended_page_bytes)
-    print(pdf_path)
+def parse_arguments():
+    parser = OfficeArgumentParser(description="Append a new section page to an existing PDF in place.")
+    parser.add_argument("pdf_path", nargs="?", help="Path to the .pdf; defaults to the newest .pdf in ~/documents")
+    parser.add_argument("--heading", metavar="TEXT", help="Section heading for the appended page")
+    parser.add_argument("--paragraph", action="append", default=[], metavar="TEXT", help="Paragraph to add")
+    parser.add_argument("--bullet", action="append", default=[], metavar="TEXT", help="Bullet item to add")
+    parser.add_argument("--section", metavar="JSON_PATH", help="JSON file with one section; office guide pdf describes it")
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(run_command(main))

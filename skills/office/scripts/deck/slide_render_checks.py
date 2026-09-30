@@ -1,8 +1,10 @@
 import pathlib
 import typing
 
+from deck_definitions import EDGE_CLIPPING, FRAME_FIT_RISK, SAFE_MARGIN_INTRUSION, SLIDE_BLANK, SLIDE_TOO_CROWDED, SLIDE_TOO_SPARSE, TEXT_OVERFLOW_RISK, VERTICAL_DEAD_ZONE
 from design_warnings import LABEL_ONLY_SLIDE_ROLES, slide_design_warnings
 from image_analysis import analyze_image_content, content_density, corner_background_color
+from office_result import Issue
 from png_codec import read_png
 
 
@@ -11,7 +13,7 @@ CONTENT_DENSITY_MAXIMUM = 0.42
 TEXT_OVERFLOW_CHARACTER_LIMIT = 900
 TEXT_OVERFLOW_LINE_LIMIT = 16
 VERTICAL_DEAD_ZONE_HEIGHT_RATIO = 0.27
-TEXT_OVERFLOW_WARNING = "textOverflowRisk: extracted slide text is long enough to require contact sheet verification"
+TEXT_OVERFLOW_TEXT = "extracted slide text is long enough to require contact sheet verification"
 
 
 def review_slides(image_paths: list[pathlib.Path], design: dict[str, str], slide_texts: list[dict[str, object]]) -> list[dict[str, object]]:
@@ -54,7 +56,7 @@ def review_slide(path: typing.Optional[pathlib.Path], design: dict[str, str], in
 
 def review_slide_without_image(index: int, slide_text: dict[str, object], structure: dict[str, object]) -> dict[str, object]:
     risks = {"textOverflowRisk": text_overflow_risk(slide_text), "frameFitRisk": False}
-    warnings = [TEXT_OVERFLOW_WARNING] if risks["textOverflowRisk"] else []
+    warnings = [TEXT_OVERFLOW_RISK.issue(TEXT_OVERFLOW_TEXT)] if risks["textOverflowRisk"] else []
     return {
         "index": index,
         "filename": "",
@@ -83,13 +85,13 @@ def slide_text_fields(slide_text: dict[str, object]) -> dict[str, object]:
     }
 
 
-def vertical_dead_zone_warnings(analysis: dict[str, object], structure: dict[str, object]) -> list[str]:
+def vertical_dead_zone_warnings(analysis: dict[str, object], structure: dict[str, object]) -> list[Issue]:
     if analysis["verticalGapRatio"] < VERTICAL_DEAD_ZONE_HEIGHT_RATIO:
         return []
     if str(structure["slideRole"]) in LABEL_ONLY_SLIDE_ROLES:
         return []
     return [
-        f"verticalDeadZoneWarning: an empty band spans {analysis['verticalGapRatio']:.0%} of the slide height; distribute content to fill the frame"
+        VERTICAL_DEAD_ZONE.issue(f"an empty band spans {analysis['verticalGapRatio']:.0%} of the slide height; distribute content to fill the frame")
     ]
 
 
@@ -155,21 +157,21 @@ def frame_fit_risk(bounds: typing.Optional[dict[str, int]], image: dict[str, obj
     return right_clearance < clearance or bottom_clearance < clearance
 
 
-def slide_warnings(checks: dict[str, bool], margin: int, density: float, risks: dict[str, bool], structure: dict[str, object]) -> list[str]:
+def slide_warnings(checks: dict[str, bool], margin: int, density: float, risks: dict[str, bool], structure: dict[str, object]) -> list[Issue]:
     warnings = []
     if not checks["nonblank"]:
-        warnings.append("slide render appears blank")
+        warnings.append(SLIDE_BLANK.issue("slide render appears blank"))
     if not checks["safeMargin"]:
-        warnings.append(f"content extends inside the recommended safe margin of {margin}px")
+        warnings.append(SAFE_MARGIN_INTRUSION.issue(f"content extends inside the recommended safe margin of {margin}px"))
     if not checks["edgeOverflow"]:
-        warnings.append("content touches the slide edge and may be clipped")
+        warnings.append(EDGE_CLIPPING.issue("content touches the slide edge and may be clipped"))
     if not checks["notTooEmpty"]:
-        warnings.append(f"slide appears too sparse for a finished deck (content density {density:.1%})")
+        warnings.append(SLIDE_TOO_SPARSE.issue(f"slide appears too sparse for a finished deck (content density {density:.1%})"))
     if not checks["notTooDense"]:
-        warnings.append(f"slide appears visually crowded (content density {density:.1%})")
+        warnings.append(SLIDE_TOO_CROWDED.issue(f"slide appears visually crowded (content density {density:.1%})"))
     if risks["textOverflowRisk"]:
-        warnings.append(TEXT_OVERFLOW_WARNING)
+        warnings.append(TEXT_OVERFLOW_RISK.issue(TEXT_OVERFLOW_TEXT))
     if risks["frameFitRisk"]:
-        warnings.append("frameFitRisk: rendered content is close to the right or bottom frame edge")
+        warnings.append(FRAME_FIT_RISK.issue("rendered content is close to the right or bottom frame edge"))
     warnings.extend(slide_design_warnings(structure))
     return warnings

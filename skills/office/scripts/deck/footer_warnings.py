@@ -2,6 +2,7 @@ import html.parser
 import re
 import typing
 
+from deck_definitions import INCONSISTENT_FOOTER_BASELINE, UNPINNED_FOOTER
 from design_warnings import LABEL_ONLY_SLIDE_ROLES, append_deck_warning
 from slide_source import has_speaker_notes_class, split_slide_sources
 from slide_structure import extract_class_names
@@ -80,7 +81,9 @@ def apply_unpinned_footer_warning(slides: list[dict[str, object]], source_text: 
         return
     append_deck_warning(
         slides,
-        f"unpinnedFooterWarning: the recurring bottom element {candidate} is not pinned to the frame bottom; give it margin-top: auto (or grow the body with flex: 1) inside the flex column slide",
+        UNPINNED_FOOTER.deck_issue(
+            f"the recurring bottom element {candidate} is not pinned to the frame bottom; give it margin-top: auto (or grow the body with flex: 1) inside the flex column slide"
+        ),
     )
 
 
@@ -159,5 +162,7 @@ def apply_footer_baseline_warning(slides: list[dict[str, object]]) -> None:
     if variance > height * FOOTER_BASELINE_VARIANCE_RATIO:
         append_deck_warning(
             slides,
-            f"inconsistentFooterBaselineWarning: the content bottom edge varies by {variance}px across slides; keep the footer on the same baseline on every slide",
+            INCONSISTENT_FOOTER_BASELINE.deck_issue(
+                f"the content bottom edge varies by {variance}px across slides; keep the footer on the same baseline on every slide"
+            ),
         )
