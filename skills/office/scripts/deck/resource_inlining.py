@@ -9,6 +9,8 @@ import re
 
 SKILL_ASSET_PATH = pathlib.Path(__file__).resolve().parents[2] / "assets"
 SKILL_ASSET_MARKER = "office/assets/"
+PAPERLOGY_FAMILY = "Paperlogy"
+VENDORED_PAPERLOGY_FAMILY = "PaperlogyLocal"
 VENDORED_PAPERLOGY_FONTS = (
     (400, "Paperlogy-4Regular.woff2"),
     (600, "Paperlogy-6SemiBold.woff2"),
@@ -86,7 +88,7 @@ def vendored_paperlogy_fallback_style() -> str:
 def paperlogy_local_font_face(weight: int, file_name: str) -> str:
     font_path = SKILL_ASSET_PATH / "fonts" / "paperlogy" / file_name
     return (
-        '@font-face { font-family: "PaperlogyLocal"; '
+        f'@font-face {{ font-family: "{VENDORED_PAPERLOGY_FAMILY}"; '
         f"font-weight: {weight}; font-style: normal; font-display: swap; "
         f'src: url("{base64_data_url("font/woff2", font_path)}") format("woff2"); }}'
     )
