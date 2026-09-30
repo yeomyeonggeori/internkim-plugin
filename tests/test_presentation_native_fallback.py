@@ -6,7 +6,7 @@ import sys
 import unittest
 
 
-SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "presentation" / "scripts"
+SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from native_pptx import native_slide_xml  # noqa: E402
