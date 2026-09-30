@@ -117,9 +117,10 @@ export function extractTextLayout({ exportedTextAttribute, exportedListAttribute
     return linkProtocols.has(url.protocol) ? url.href : null;
   };
 
-  const transformText = (text, textTransform) => {
+  const transformText = (text, textTransform, startsMidWord) => {
     if (textTransform === "uppercase") return text.toUpperCase();
     if (textTransform === "lowercase") return text.toLowerCase();
+    if (textTransform === "capitalize" && startsMidWord) return transformText(`x${text}`, textTransform, false).slice(1);
     if (textTransform === "capitalize") return text.replace(/(^|\s)(\S)/g, (match, space, letter) => space + letter.toUpperCase());
     return text;
   };
@@ -130,11 +131,12 @@ export function extractTextLayout({ exportedTextAttribute, exportedListAttribute
     return text.replace(/[ \t\n\r\f]+/g, " ");
   };
 
-  const runOf = (textNode, container, section, opacity) => {
+  const runOf = (textNode, container, section, opacity, segment) => {
     const element = textNode.parentElement;
     const style = getComputedStyle(element);
     const decorations = decorationsOf(element, container);
-    const text = transformText(collapseWhiteSpace(textNode.textContent, style.whiteSpace), style.textTransform);
+    const startsMidWord = segment.start > 0 && !/\s/.test(textNode.textContent[segment.start - 1]);
+    const text = transformText(collapseWhiteSpace(segment.text, style.whiteSpace), style.textTransform, startsMidWord);
     return {
       text,
       fontFamily: renderedFamily(style.fontFamily),
@@ -223,12 +225,80 @@ export function extractTextLayout({ exportedTextAttribute, exportedListAttribute
     return joined.filter((run) => run.isBreak || run.text).map(({ collapsible, ...run }) => run);
   };
 
-  const paragraphRunsOf = (items, container, section) => {
-    const runs = items.map((item) => {
-      if (item.isBreak) return { isBreak: true, text: "" };
-      const run = runOf(item.node, container, section, item.opacity);
+  const isLowSurrogate = (code) => code >= 0xdc00 && code <= 0xdfff;
+
+  const characterRectOf = (range, node, offset) => {
+    const end = offset + 1 < node.textContent.length && isLowSurrogate(node.textContent.charCodeAt(offset + 1)) ? offset + 2 : offset + 1;
+    range.setStart(node, offset);
+    range.setEnd(node, end);
+    const rects = Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0);
+    return rects[rects.length - 1] || null;
+  };
+
+  const measureVisualLines = (items) => {
+    const range = document.createRange();
+    const lineStarts = new Map();
+    const lines = [];
+    let current = null;
+    let followsExplicitBreak = true;
+    for (const item of items) {
+      if (item.isBreak) {
+        current = null;
+        followsExplicitBreak = true;
+        continue;
+      }
+      const text = item.node.textContent;
+      const style = getComputedStyle(item.node.parentElement);
+      const sizePx = pixels(style.fontSize);
+      const keepsNewlines = style.whiteSpace !== "normal" && style.whiteSpace !== "nowrap";
+      for (let offset = 0; offset < text.length; offset += 1) {
+        if (isLowSurrogate(text.charCodeAt(offset))) continue;
+        if (keepsNewlines && text[offset] === "\n") {
+          current = null;
+          followsExplicitBreak = true;
+          continue;
+        }
+        if (/\s/.test(text[offset])) {
+          if (current && !current.text.endsWith(" ")) current.text += " ";
+          continue;
+        }
+        const rect = characterRectOf(range, item.node, offset);
+        if (!rect) continue;
+        const center = rect.top + rect.height / 2;
+        if (!current || center > current.bottom) {
+          if (current && !followsExplicitBreak) {
+            if (!lineStarts.has(item.node)) lineStarts.set(item.node, []);
+            lineStarts.get(item.node).push(offset);
+          }
+          current = { left: rect.left, right: rect.right, bottom: rect.bottom, sizePx, text: "" };
+          lines.push(current);
+          followsExplicitBreak = false;
+        }
+        current.left = Math.min(current.left, rect.left);
+        current.right = Math.max(current.right, rect.right);
+        current.bottom = Math.max(current.bottom, rect.bottom);
+        current.sizePx = Math.max(current.sizePx, sizePx);
+        current.text += text.slice(offset, isLowSurrogate(text.charCodeAt(offset + 1)) ? offset + 2 : offset + 1);
+      }
+    }
+    return { lineStarts, lines: lines.map((line) => ({ widthPx: round(line.right - line.left), sizePx: round(line.sizePx), text: line.text.trim() })) };
+  };
+
+  const segmentsOf = (node, starts) => {
+    const text = node.textContent;
+    const boundaries = [0, ...starts, text.length];
+    return boundaries.slice(0, -1).map((start, index) => ({ start, text: text.slice(start, boundaries[index + 1]) }));
+  };
+
+  const paragraphRunsOf = (items, container, section, lineStarts) => {
+    const runs = items.flatMap((item) => {
+      if (item.isBreak) return [{ isBreak: true, text: "" }];
       const whiteSpace = getComputedStyle(item.node.parentElement).whiteSpace;
-      return { ...run, collapsible: !whiteSpace.startsWith("pre") && whiteSpace !== "break-spaces" };
+      const collapsible = !whiteSpace.startsWith("pre") && whiteSpace !== "break-spaces";
+      return segmentsOf(item.node, lineStarts.get(item.node) || []).flatMap((segment, index) => [
+        ...(index > 0 ? [{ isBreak: true, text: "" }] : []),
+        { ...runOf(item.node, container, section, item.opacity, segment), collapsible },
+      ]);
     });
     const trimmed = trimParagraphRuns(runs);
     while (trimmed.length && trimmed[trimmed.length - 1].isBreak) trimmed.pop();
@@ -273,6 +343,13 @@ export function extractTextLayout({ exportedTextAttribute, exportedListAttribute
 
   const relativeTo = (rect, origin) => ({ left: round(rect.left - origin.left), top: round(rect.top - origin.top), right: round(rect.right - origin.left), bottom: round(rect.bottom - origin.top) });
 
+  const measuredParagraphContent = (items, container, section) => {
+    const { lineStarts, lines } = measureVisualLines(items);
+    return { runs: paragraphRunsOf(items, container, section, lineStarts), lines };
+  };
+
+  const paragraphOf = (items, container, section, properties) => ({ ...properties, ...measuredParagraphContent(items, container, section) });
+
   const describeBlock = (container, items, section, isPure) => {
     const style = getComputedStyle(container);
     const lineHeightPx = lineHeightOf(style);
@@ -290,11 +367,10 @@ export function extractTextLayout({ exportedTextAttribute, exportedListAttribute
       box,
       insets: fitsContent ? insets : { left: 0, top: 0, right: 0, bottom: 0 },
       anchor: anchor || "t",
-      singleLine,
       noWrap: style.whiteSpace === "nowrap" || style.whiteSpace === "pre",
       keepWords: style.wordBreak === "keep-all",
       firstLineHalfLeading: round(lineBoxes[0].halfLeading),
-      paragraphs: [{ alignment, lineHeightPx: round(lineHeightPx), spaceBeforePx: 0, bullet: null, runs: paragraphRunsOf(items, container, section) }],
+      paragraphs: [paragraphOf(items, container, section, { alignment, lineHeightPx: round(lineHeightPx), spaceBeforePx: 0, bullet: null })],
     };
   };
 
@@ -336,7 +412,7 @@ export function extractTextLayout({ exportedTextAttribute, exportedListAttribute
         lineHeightPx: round(lineHeightPx),
         spaceBeforePx: previousBottom === null ? 0 : round(Math.max(0, lines.top - previousBottom)),
         bullet,
-        runs: paragraphRunsOf(items, item, section),
+        ...measuredParagraphContent(items, item, section),
       });
       previousBottom = lines.bottom;
     }
@@ -349,7 +425,6 @@ export function extractTextLayout({ exportedTextAttribute, exportedListAttribute
       box,
       insets: { left: 0, top: 0, right: 0, bottom: 0 },
       anchor: "t",
-      singleLine: false,
       noWrap: false,
       keepWords: getComputedStyle(list).wordBreak === "keep-all",
       firstLineHalfLeading: round(firstHalfLeading),

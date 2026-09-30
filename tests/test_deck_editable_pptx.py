@@ -47,12 +47,14 @@ p, li, td, th { font-size: 30px; line-height: 1.5; }
 .meter span { position: absolute; left: 0; top: 0; bottom: 0; width: 60%; background: rgba(37, 99, 235, 0.5); border-radius: 7px; }
 .stamp { position: absolute; right: 100px; top: 90px; transform: rotate(-8deg); border: 4px solid #b91c1c; font-weight: 800; }
 td.number { text-align: right; }
+.narrow { width: 440px; }
 </style></head><body data-visual-system="fixture">
 <section data-slide-role="cover"><h1>샘플전자 매출은<br>3분기에 18% 늘었습니다</h1><p>박예시 · <em>전략기획팀</em></p><aside class="notes">표지 노트</aside></section>
 <section data-slide-role="summary"><h2>성장은 두 가지에서 나왔습니다</h2>
 <ul><li>프리미엄 전환이 <strong>2배</strong> 늘었습니다</li><li>설치가 하루로 줄었습니다</li></ul>
 <ol start="3"><li>공공 계약 12건</li><li>자세한 표는 <a href="https://example.com/q3">부록</a>에 있습니다</li></ol>
-<div class="card"><span>카드 안의 문장</span></div><div class="meter"><span></span></div></section>
+<div class="card"><span>카드 안의 문장</span></div><div class="meter"><span></span></div>
+<p class="narrow">연간 물류비 4.2억원 절감 · 회수 약 4.3년</p></section>
 <section data-slide-role="comparison"><h2>지역별 매출</h2>
 <table><tr><th>지역</th><th>3분기</th></tr><tr><td>수도권</td><td class="number">₩25억</td></tr></table>
 <div class="stamp">잠정</div><aside class="notes">표 노트</aside></section>
@@ -114,6 +116,20 @@ def shape_center_pixel(shape_properties: ElementTree.Element) -> tuple[int, int]
     return (int(offset.get("x")) + int(extent.get("cx")) // 2) // EMU_PER_PIXEL, (int(offset.get("y")) + int(extent.get("cy")) // 2) // EMU_PER_PIXEL
 
 
+def paragraph_lines(slide_xml: ElementTree.Element) -> list[list[str]]:
+    paragraphs = []
+    for paragraph in slide_xml.iterfind(".//p:txBody/a:p", NAMESPACES):
+        lines = [""]
+        for child in paragraph:
+            tag = child.tag.rsplit("}", 1)[1]
+            if tag == "br":
+                lines.append("")
+            if tag == "r":
+                lines[-1] += child.find("a:t", NAMESPACES).text or ""
+        paragraphs.append([without_whitespace(line) for line in lines])
+    return paragraphs
+
+
 def notes_text(archive: zipfile.ZipFile, number: int) -> str | None:
     relationships = ElementTree.fromstring(archive.read(f"ppt/slides/_rels/slide{number}.xml.rels"))
     for relationship in relationships.iter(f"{PACKAGE_RELATIONSHIPS}Relationship"):
@@ -129,8 +145,8 @@ def layout_run(text: str, **overrides) -> dict:
 
 
 def layout_block(runs: list[dict], box: dict, bullet: dict | None = None) -> dict:
-    paragraph = {"alignment": "l", "lineHeightPx": 45, "spaceBeforePx": 0, "bullet": bullet, "runs": runs}
-    return {"box": box, "insets": {"left": 0, "top": 0, "right": 0, "bottom": 0}, "anchor": "t", "singleLine": True, "noWrap": False, "keepWords": True, "firstLineHalfLeading": 7.5, "paragraphs": [paragraph]}
+    paragraph = {"alignment": "l", "lineHeightPx": 45, "spaceBeforePx": 0, "bullet": bullet, "runs": runs, "lines": [{"widthPx": 200, "sizePx": 30, "text": "".join(run["text"] for run in runs)}]}
+    return {"box": box, "insets": {"left": 0, "top": 0, "right": 0, "bottom": 0}, "anchor": "t", "noWrap": False, "keepWords": True, "firstLineHalfLeading": 7.5, "paragraphs": [paragraph]}
 
 
 def write_layers(review_path: Path, blocks: list[dict], shapes: list[dict] | None = None) -> None:
@@ -228,6 +244,27 @@ class EditablePptxPackageTest(unittest.TestCase):
         self.assertEqual(rule_properties.find("a:xfrm/a:ext", NAMESPACES).get("cy"), "0")
         self.assertEqual(rule_properties.find("a:ln", NAMESPACES).get("w"), str(3 * EMU_PER_PIXEL))
 
+    def test_measured_lines_are_written_as_breaks_and_the_box_widens_by_the_measured_slack(self):
+        runs = [layout_run("연간 물류비 4.2억원 절감 · 회수 약 "), {"isBreak": True, "text": ""}, layout_run("4.3년")]
+        block = layout_block(runs, {"left": 100, "top": 100, "right": 400, "bottom": 190})
+        block["paragraphs"][0]["lines"] = [
+            {"widthPx": 298, "sizePx": 24, "text": "연간 물류비 4.2억원 절감 · 회수 약"},
+            {"widthPx": 50, "sizePx": 24, "text": "4.3년"},
+        ]
+        archive, _ = self.write([block])
+        slide = ElementTree.fromstring(archive.read("ppt/slides/slide1.xml"))
+        self.assertEqual(paragraph_lines(slide), [["연간물류비4.2억원절감·회수약", "4.3년"]])
+        transitions_in_first_line = 4
+        expected_width = 298 * 1.01 + transitions_in_first_line * 0.25 * 24
+        frame = shape_frames(slide)[-1]
+        self.assertEqual(frame[0], 100 * EMU_PER_PIXEL)
+        self.assertEqual(frame[2], round(expected_width * EMU_PER_PIXEL))
+
+    def test_a_box_whose_lines_already_fit_with_slack_keeps_its_measured_width(self):
+        archive, _ = self.write([layout_block([layout_run("짧은 줄")], {"left": 100, "top": 100, "right": 900, "bottom": 150})])
+        frame = shape_frames(ElementTree.fromstring(archive.read("ppt/slides/slide1.xml")))[-1]
+        self.assertEqual(frame[2], 800 * EMU_PER_PIXEL)
+
     def test_validate_counts_the_shapes_that_hold_content_and_not_the_rules_between_them(self):
         rules = [{"geometry": "line", "from": {"x": 100, "y": 100 + row * 10}, "to": {"x": 900, "y": 100 + row * 10}, "line": {"color": "rgb(216, 212, 203)", "opacity": 1, "widthPx": 1}} for row in range(60)]
         directory = Path(self.temporary_directory())
@@ -276,12 +313,17 @@ class RenderedEditablePptxTest(unittest.TestCase):
         self.assertEqual(envelope["details"]["pptx"]["textKeptAsPicture"], ["잠정"])
         self.assertEqual(notes, ["표지 노트", None, "표 노트"])
         self.assert_boxes_are_shapes_and_left_the_picture(slides, backgrounds)
+        narrow, = [lines for lines in paragraph_lines(slides[1]) if "".join(lines).startswith("연간물류비")]
+        self.assertGreater(len(narrow), 1)
+        self.assertTrue(any("4.3년" in line for line in narrow), narrow)
         for number, (slide, measured) in enumerate(zip(slides, layout["slides"]), start=1):
             with self.subTest(slide=number):
                 visible = without_whitespace(measured["visibleText"])
                 for picture_text in measured["pictureTexts"]:
                     visible = visible.replace(without_whitespace(picture_text), "", 1)
                 self.assertEqual(without_whitespace("".join(text_box_texts(slide))), visible)
+                measured_lines = [[without_whitespace(line["text"]) for line in paragraph["lines"]] for block in measured["blocks"] for paragraph in block["paragraphs"]]
+                self.assertEqual(paragraph_lines(slide), measured_lines)
                 for properties in run_properties(slide):
                     self.assertTrue(properties.find("a:latin", NAMESPACES).get("typeface").startswith("Paperlogy "))
                     self.assertEqual(properties.find("a:ea", NAMESPACES).get("typeface"), properties.find("a:latin", NAMESPACES).get("typeface"))
