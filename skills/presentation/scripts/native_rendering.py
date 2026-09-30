@@ -15,11 +15,6 @@ DEFAULT_NATIVE_COLORS = {
     "accent": "0F766E",
     "line": "CBD5E1",
 }
-LOCALIZED_GENERIC_TITLES = {
-    "summary": ({"executive summary", "summary"}, "2분기 요약"),
-    "approval": ({"next steps", "next step"}, "다음 단계"),
-    "risk": ({"risks", "risks and responses"}, "리스크와 대응"),
-}
 DATE_PATTERN = r"\d{4}-\d{2}-\d{2}"
 CARD_GAP = 26
 MAXIMUM_CARD_COUNT = 6
@@ -56,15 +51,6 @@ def normalize_hex_color(value: str, default_value: str) -> str:
     if re.fullmatch(r"[0-9A-F]{6}", cleaned_value):
         return cleaned_value
     return default_value
-
-
-def native_slide_title(model: SlideModel) -> str:
-    if model.kind not in LOCALIZED_GENERIC_TITLES:
-        return model.title
-    generic_titles, localized_title = LOCALIZED_GENERIC_TITLES[model.kind]
-    if normalize_text_for_comparison(model.title) in generic_titles:
-        return localized_title
-    return model.title
 
 
 def non_title_lines(model: SlideModel) -> list[str]:
@@ -111,19 +97,19 @@ def compact_source_line(model: SlideModel) -> list[str]:
 
 
 def timeline_lines(model: SlideModel) -> list[str]:
+    return [" / ".join(entry) for entry in timeline_entries(model)]
+
+
+def timeline_entries(model: SlideModel) -> list[list[str]]:
     if model.tables:
         rows = model.tables[0][1:] if len(model.tables[0]) > 1 else model.tables[0]
-        return [" / ".join(row) for row in rows if row]
+        return [row for row in rows if row]
     dated_lines = [line for line in non_title_lines(model) if re.search(DATE_PATTERN, line)]
     if dated_lines:
-        return dated_lines
+        return [[line] for line in dated_lines]
     if model.list_items:
-        return model.list_items
-    return non_title_lines(model)
-
-
-def card_values(lines: list[str]) -> list[str]:
-    return lines or [MISSING_SOURCE_TEXT]
+        return [[item] for item in model.list_items]
+    return [[line] for line in non_title_lines(model)]
 
 
 def card_grid_cells(card_count: int, origin: tuple[int, int], size: tuple[int, int], columns: int) -> list[CardCell]:

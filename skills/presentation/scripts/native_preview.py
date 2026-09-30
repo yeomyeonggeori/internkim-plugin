@@ -5,7 +5,6 @@ from native_rendering import (
     SLIDE_HEIGHT,
     SLIDE_WIDTH,
     card_grid_cells,
-    card_values,
     compact_source_line,
     native_colors,
     non_title_lines,
@@ -99,8 +98,7 @@ def draw_preview_table(draw, rows: list[list[str]], origin: tuple[int, int], siz
 
 
 def draw_preview_cards(draw, lines: list[str], origin: tuple[int, int], size: tuple[int, int], colors: dict[str, str], fonts: dict[str, object], columns: int) -> None:
-    values = card_values(lines)
-    for line, cell in zip(values, card_grid_cells(visible_card_count(values), origin, size, columns)):
+    for line, cell in zip(lines, card_grid_cells(visible_card_count(lines), origin, size, columns)):
         draw.rectangle((cell.x, cell.y, cell.x + cell.width, cell.y + cell.height), fill=hex_to_rgb(colors["surface"]), outline=hex_to_rgb(colors["line"]), width=2)
         draw.rectangle((cell.x, cell.y, cell.x + 10, cell.y + cell.height), fill=hex_to_rgb(colors["accent"]))
         draw_wrapped_text(draw, line, (cell.x + 30, cell.y + 28), cell.width - 56, fonts["body"], hex_to_rgb(colors["ink"]), 1.25)
