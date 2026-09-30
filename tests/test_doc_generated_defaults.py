@@ -152,5 +152,13 @@ class TableTest(GeneratedDocumentTest):
         self.assert_default_table(self.exported("| 항목 | 값 |\n| --- | --- |\n| 매출 | 100 |\n\n뒤\n"))
 
 
+class ImageTest(GeneratedDocumentTest):
+    def test_markdown_alt_text_becomes_the_picture_description(self):
+        from PIL import Image
+        Image.new("RGB", (40, 20)).save(self.directory / "chart.png")
+        path = self.exported("![세그먼트별 이탈률 막대 차트](chart.png)\n")
+        self.assertRegex(package_part(path, "word/document.xml"), r'<wp:docPr [^>]*descr="세그먼트별 이탈률 막대 차트"')
+
+
 if __name__ == "__main__":
     unittest.main()
