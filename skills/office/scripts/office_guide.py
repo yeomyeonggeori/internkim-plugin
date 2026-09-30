@@ -1,5 +1,6 @@
 import importlib.util
 import pathlib
+import sys
 from types import ModuleType
 
 from office_commands import COMMANDS, FORMATS, Format
@@ -38,6 +39,7 @@ def formats_text() -> str:
 
 def load_definitions(office_format: Format) -> ModuleType:
     script_path = SCRIPTS_PATH / office_format.definitions_script
+    sys.path.insert(0, str(script_path.parent))
     specification = importlib.util.spec_from_file_location(f"{office_format.name}_guide_definitions", script_path)
     module = importlib.util.module_from_spec(specification)
     specification.loader.exec_module(module)
