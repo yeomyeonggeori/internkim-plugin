@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 from pypdf import PdfReader
 
 from office_result import OfficeArgumentParser, Result, run_command

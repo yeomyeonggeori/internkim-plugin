@@ -21,8 +21,12 @@ from office_schema import CellValue, Field, ListOf, Number, Record, Text, Varian
 
 
 def load_definitions(office_format):
-    specification = importlib.util.spec_from_file_location(f"{office_format.name}_test_definitions", SCRIPTS_PATH / office_format.definitions_script)
+    definitions_path = SCRIPTS_PATH / office_format.definitions_script
+    sys.path.insert(0, str(definitions_path.parent))
+    module_name = f"{office_format.name}_test_definitions"
+    specification = importlib.util.spec_from_file_location(module_name, definitions_path)
     module = importlib.util.module_from_spec(specification)
+    sys.modules[module_name] = module
     specification.loader.exec_module(module)
     return module
 

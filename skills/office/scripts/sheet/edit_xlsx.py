@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 from openpyxl import load_workbook
 
 from cell_values import typed_cell_value

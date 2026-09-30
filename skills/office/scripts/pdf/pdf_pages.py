@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from office_result import INVALID_ARGUMENTS, OfficeFailure
 from pdf_definitions import PAGE_NOT_IN_DOCUMENT
 

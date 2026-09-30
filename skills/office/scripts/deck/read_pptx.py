@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 from pptx import Presentation
 
 from office_result import OfficeArgumentParser, Result, run_command

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 from office_operations import OPERATION_ISSUE_KINDS

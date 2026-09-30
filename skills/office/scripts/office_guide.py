@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import importlib.util
 import pathlib
 import sys
@@ -40,8 +42,10 @@ def formats_text() -> str:
 def load_definitions(office_format: Format) -> ModuleType:
     script_path = SCRIPTS_PATH / office_format.definitions_script
     sys.path.insert(0, str(script_path.parent))
-    specification = importlib.util.spec_from_file_location(f"{office_format.name}_guide_definitions", script_path)
+    module_name = f"{office_format.name}_guide_definitions"
+    specification = importlib.util.spec_from_file_location(module_name, script_path)
     module = importlib.util.module_from_spec(specification)
+    sys.modules[module_name] = module
     specification.loader.exec_module(module)
     return module
 
