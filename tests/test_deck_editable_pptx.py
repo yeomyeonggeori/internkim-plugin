@@ -22,7 +22,7 @@ sys.path.insert(0, str(SCRIPTS_PATH.parent))
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from editable_pptx import read_text_layers, write_editable_pptx  # noqa: E402
-from png_codec import write_png  # noqa: E402
+from png_codec import read_png, write_png  # noqa: E402
 from resource_inlining import VENDORED_PAPERLOGY_FONTS  # noqa: E402
 from truetype_font import read_truetype_face  # noqa: E402
 
@@ -34,6 +34,7 @@ NAMESPACES = {
 }
 PACKAGE_RELATIONSHIPS = "{http://schemas.openxmlformats.org/package/2006/relationships}"
 EOT_MAGIC_NUMBER = 0x504C
+EMU_PER_PIXEL = 7620
 DECK_SOURCE = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>Fixture</title>
 <style>
 body { margin: 0; font-family: "Paperlogy", system-ui; }
@@ -42,6 +43,8 @@ h1 { font-size: 80px; font-weight: 800; margin: 0; }
 h2 { font-size: 52px; font-weight: 700; margin: 0 0 40px; }
 p, li, td, th { font-size: 30px; line-height: 1.5; }
 .card { background: #fff; border: 2px solid #cbd5e1; border-radius: 24px; padding: 32px; margin-top: 32px; }
+.meter { position: relative; height: 14px; width: 400px; margin-top: 24px; background: #e2e8f0; }
+.meter span { position: absolute; left: 0; top: 0; bottom: 0; width: 60%; background: rgba(37, 99, 235, 0.5); border-radius: 7px; }
 .stamp { position: absolute; right: 100px; top: 90px; transform: rotate(-8deg); border: 4px solid #b91c1c; font-weight: 800; }
 td.number { text-align: right; }
 </style></head><body data-visual-system="fixture">
@@ -49,7 +52,7 @@ td.number { text-align: right; }
 <section data-slide-role="summary"><h2>성장은 두 가지에서 나왔습니다</h2>
 <ul><li>프리미엄 전환이 <strong>2배</strong> 늘었습니다</li><li>설치가 하루로 줄었습니다</li></ul>
 <ol start="3"><li>공공 계약 12건</li><li>자세한 표는 <a href="https://example.com/q3">부록</a>에 있습니다</li></ol>
-<div class="card"><span>카드 안의 문장</span></div></section>
+<div class="card"><span>카드 안의 문장</span></div><div class="meter"><span></span></div></section>
 <section data-slide-role="comparison"><h2>지역별 매출</h2>
 <table><tr><th>지역</th><th>3분기</th></tr><tr><td>수도권</td><td class="number">₩25억</td></tr></table>
 <div class="stamp">잠정</div><aside class="notes">표 노트</aside></section>
@@ -82,6 +85,35 @@ def shape_frames(slide_xml: ElementTree.Element) -> list[tuple[int, int, int, in
     return frames
 
 
+def shape_tree_kinds(slide_xml: ElementTree.Element) -> list[str]:
+    tree = slide_xml.find("p:cSld/p:spTree", NAMESPACES)
+    kinds = []
+    for child in tree:
+        tag = child.tag.rsplit("}", 1)[1]
+        if tag == "sp":
+            is_text_box = child.find("p:nvSpPr/p:cNvSpPr", NAMESPACES).get("txBox") == "1"
+            tag = "text" if is_text_box else child.find("p:spPr/a:prstGeom", NAMESPACES).get("prst")
+        kinds.append(tag)
+    return [kind for kind in kinds if kind not in ("nvGrpSpPr", "grpSpPr")]
+
+
+def preset_shapes(slide_xml: ElementTree.Element, preset: str) -> list[ElementTree.Element]:
+    return [shape for shape in slide_xml.iterfind(".//p:spPr", NAMESPACES) if shape.find("a:prstGeom", NAMESPACES).get("prst") == preset]
+
+
+def solid_color(parent: ElementTree.Element) -> tuple[str | None, str | None]:
+    color = parent.find("a:solidFill/a:srgbClr", NAMESPACES)
+    if color is None:
+        return None, None
+    alpha = color.find("a:alpha", NAMESPACES)
+    return color.get("val"), None if alpha is None else alpha.get("val")
+
+
+def shape_center_pixel(shape_properties: ElementTree.Element) -> tuple[int, int]:
+    offset, extent = shape_properties.find("a:xfrm/a:off", NAMESPACES), shape_properties.find("a:xfrm/a:ext", NAMESPACES)
+    return (int(offset.get("x")) + int(extent.get("cx")) // 2) // EMU_PER_PIXEL, (int(offset.get("y")) + int(extent.get("cy")) // 2) // EMU_PER_PIXEL
+
+
 def notes_text(archive: zipfile.ZipFile, number: int) -> str | None:
     relationships = ElementTree.fromstring(archive.read(f"ppt/slides/_rels/slide{number}.xml.rels"))
     for relationship in relationships.iter(f"{PACKAGE_RELATIONSHIPS}Relationship"):
@@ -101,10 +133,10 @@ def layout_block(runs: list[dict], box: dict, bullet: dict | None = None) -> dic
     return {"box": box, "insets": {"left": 0, "top": 0, "right": 0, "bottom": 0}, "anchor": "t", "singleLine": True, "noWrap": False, "keepWords": True, "firstLineHalfLeading": 7.5, "paragraphs": [paragraph]}
 
 
-def write_layers(review_path: Path, blocks: list[dict]) -> None:
+def write_layers(review_path: Path, blocks: list[dict], shapes: list[dict] | None = None) -> None:
     layers_path = review_path / "pptx-layers"
     layers_path.mkdir(parents=True)
-    slide = {"width": 1600, "height": 900, "visibleText": "", "pictureTexts": [], "blocks": blocks}
+    slide = {"width": 1600, "height": 900, "visibleText": "", "pictureTexts": [], "blocks": blocks, "shapes": shapes or [], "boxesKeptAsPicture": 0}
     (layers_path / "layout.json").write_text(json.dumps({"language": "ko", "slides": [slide]}), encoding="utf-8")
     write_png(layers_path / "background.001.png", 32, 18, [[(255, 255, 255, 255)] * 32 for _ in range(18)])
 
@@ -173,6 +205,29 @@ class EditablePptxPackageTest(unittest.TestCase):
         numbers = ElementTree.fromstring(archive.read("ppt/slides/slide1.xml")).findall(".//a:buAutoNum", NAMESPACES)
         self.assertEqual([number.get("startAt") for number in numbers], [None, "3"])
 
+    def test_boxes_become_native_shapes_between_the_background_picture_and_the_text(self):
+        card = {"geometry": "roundRect", "box": {"left": 101, "top": 101, "right": 499, "bottom": 299}, "radiusPx": 23, "fill": {"color": "rgb(255, 255, 255)", "opacity": 1}, "line": {"color": "rgb(203, 213, 225)", "opacity": 1, "widthPx": 2}}
+        chip = {"geometry": "round2SameRect", "box": {"left": 120, "top": 240, "right": 220, "bottom": 280}, "radiusPx": 8, "bottomRadiusPx": 0, "fill": {"color": "rgba(37, 99, 235, 0.5)", "opacity": 0.8}, "line": None}
+        rule = {"geometry": "line", "from": {"x": 100, "y": 400.5}, "to": {"x": 500, "y": 400.5}, "line": {"color": "rgb(20, 33, 61)", "opacity": 1, "widthPx": 3}}
+        directory = Path(self.temporary_directory())
+        write_layers(directory / "review", [layout_block([layout_run("카드")], {"left": 130, "top": 130, "right": 400, "bottom": 175})], [card, chip, rule])
+        written = write_editable_pptx(read_text_layers(directory / "review", 1), [""], directory / "deck.pptx")
+        with zipfile.ZipFile(directory / "deck.pptx") as archive:
+            slide = ElementTree.fromstring(archive.read("ppt/slides/slide1.xml"))
+        self.assertEqual(written.shape_count, 3)
+        self.assertEqual(shape_tree_kinds(slide), ["pic", "roundRect", "round2SameRect", "cxnSp", "text"])
+        card_properties, = preset_shapes(slide, "roundRect")
+        self.assertEqual(card_properties.find("a:prstGeom/a:avLst/a:gd", NAMESPACES).get("fmla"), f"val {round(23 / 198 * 100000)}")
+        self.assertEqual(solid_color(card_properties), ("FFFFFF", None))
+        self.assertEqual(card_properties.find("a:ln", NAMESPACES).get("w"), str(2 * EMU_PER_PIXEL))
+        self.assertEqual(solid_color(card_properties.find("a:ln", NAMESPACES)), ("CBD5E1", None))
+        chip_properties, = preset_shapes(slide, "round2SameRect")
+        self.assertEqual([guide.get("fmla") for guide in chip_properties.iterfind("a:prstGeom/a:avLst/a:gd", NAMESPACES)], ["val 20000", "val 0"])
+        self.assertEqual(solid_color(chip_properties), ("2563EB", "40000"))
+        rule_properties, = preset_shapes(slide, "line")
+        self.assertEqual(rule_properties.find("a:xfrm/a:ext", NAMESPACES).get("cy"), "0")
+        self.assertEqual(rule_properties.find("a:ln", NAMESPACES).get("w"), str(3 * EMU_PER_PIXEL))
+
     def test_an_unknown_family_is_named_as_rendered_and_reported_unembedded(self):
         archive, written = self.write([layout_block([layout_run("Hello", fontFamily="Georgia")], {"left": 100, "top": 100, "right": 900, "bottom": 150})])
         self.assertEqual(written.unembedded_families, ("Georgia",))
@@ -206,8 +261,10 @@ class RenderedEditablePptxTest(unittest.TestCase):
                 slides = [ElementTree.fromstring(archive.read(f"ppt/slides/slide{number}.xml")) for number in range(1, len(layout["slides"]) + 1)]
                 width, height = slide_size(archive)
                 notes = [notes_text(archive, number) for number in range(1, len(slides) + 1)]
+            backgrounds = [read_png(deck_path / "build" / "review" / "pptx-layers" / f"background.{number:03}.png") for number in range(1, len(slides) + 1)]
         self.assertEqual(envelope["details"]["pptx"]["textKeptAsPicture"], ["잠정"])
         self.assertEqual(notes, ["표지 노트", None, "표 노트"])
+        self.assert_boxes_are_shapes_and_left_the_picture(slides, backgrounds)
         for number, (slide, measured) in enumerate(zip(slides, layout["slides"]), start=1):
             with self.subTest(slide=number):
                 visible = without_whitespace(measured["visibleText"])
@@ -219,6 +276,27 @@ class RenderedEditablePptxTest(unittest.TestCase):
                     self.assertEqual(properties.find("a:ea", NAMESPACES).get("typeface"), properties.find("a:latin", NAMESPACES).get("typeface"))
                 for left, top, frame_width, frame_height in shape_frames(slide):
                     self.assertTrue(0 <= left and 0 <= top and left + frame_width <= width and top + frame_height <= height)
+
+    def assert_boxes_are_shapes_and_left_the_picture(self, slides: list[ElementTree.Element], backgrounds: list[dict]) -> None:
+        summary, comparison = slides[1], slides[2]
+        card, = [shape for shape in preset_shapes(summary, "roundRect") if solid_color(shape.find("a:ln", NAMESPACES))[0] == "CBD5E1"]
+        self.assertEqual(solid_color(card), ("FFFFFF", None))
+        self.assertEqual(card.find("a:ln", NAMESPACES).get("w"), str(2 * EMU_PER_PIXEL))
+        track, = [shape for shape in preset_shapes(summary, "rect") if solid_color(shape) == ("E2E8F0", None)]
+        meter_fill, = [shape for shape in preset_shapes(summary, "roundRect") if solid_color(shape)[0] == "2563EB"]
+        self.assertEqual(solid_color(meter_fill), ("2563EB", "50000"))
+        kinds = shape_tree_kinds(summary)
+        self.assertEqual(kinds[0], "pic")
+        self.assertEqual(kinds.index("text"), len(kinds) - kinds.count("text"))
+        shape_order = list(summary.iter())
+        self.assertLess(shape_order.index(track), shape_order.index(meter_fill))
+        for shape in (card, track, meter_fill):
+            x, y = shape_center_pixel(shape)
+            self.assertEqual(backgrounds[1]["rows"][y][x][:3], (0xF8, 0xFA, 0xFC))
+        stamp_pixels = [pixel for row in backgrounds[2]["rows"] for pixel in row if pixel[3] > 200 and pixel[0] > 150 and pixel[1] < 80 and pixel[2] < 80]
+        self.assertTrue(stamp_pixels, "the rotated stamp's border stays in the picture")
+        stamp_outlines = [shape for shape in comparison.iterfind(".//p:spPr/a:ln/a:solidFill/a:srgbClr", NAMESPACES) if shape.get("val") == "B91C1C"]
+        self.assertEqual(stamp_outlines, [])
 
 
 if __name__ == "__main__":
