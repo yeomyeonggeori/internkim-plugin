@@ -93,6 +93,7 @@ def rewrite_chart_references(workbook, rewrite: Rewrite) -> None:
 def shift_sheet_structure(worksheet, shift: Shift) -> None:
     guard_tables(worksheet, shift)
     move_cells(worksheet, shift)
+    copy_style_into_inserted(worksheet, shift)
     shift_merged_ranges(worksheet, shift)
     shift_filter(worksheet, shift)
     shift_tables(worksheet, shift)
@@ -111,6 +112,20 @@ def move_cells(worksheet, shift: Shift) -> None:
         (COLUMN_AXIS, False): worksheet.delete_cols,
     }
     operations[(shift.axis, shift.is_insert)](shift.at, shift.removed)
+
+
+def copy_style_into_inserted(worksheet, shift: Shift) -> None:
+    if not shift.is_insert or shift.at <= 1:
+        return
+    previous = shift.at - 1
+    if shift.axis == ROW_AXIS:
+        sources = [cell for cell in worksheet[previous] if cell.has_style]
+        targets = [(row, source.column, source) for source in sources for row in range(shift.at, shift.at + shift.removed)]
+    else:
+        sources = [cell for cell in worksheet.iter_rows(min_col=previous, max_col=previous) for cell in cell if cell.has_style]
+        targets = [(source.row, column, source) for source in sources for column in range(shift.at, shift.at + shift.removed)]
+    for row, column, source in targets:
+        worksheet.cell(row=row, column=column)._style = copy(source._style)
 
 
 def shifted_range_text(range_text: str, shift: Shift, sheet_title: str) -> str | None:
