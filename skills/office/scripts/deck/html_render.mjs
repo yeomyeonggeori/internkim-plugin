@@ -306,8 +306,66 @@ function measureSlideGeometry(thresholds) {
       .filter(({ renderedRatio, naturalRatio }) => Math.abs(renderedRatio / naturalRatio - 1) > aspectRatioTolerance)
       .map(({ image, renderedRatio, naturalRatio }) => ({ ...describe(image), renderedRatio: roundRatio(renderedRatio), naturalRatio: roundRatio(naturalRatio) }));
 
+  const colorIsVisible = (color) => color !== "transparent" && !/(,\s*0\)|\/\s*0%?\))$/.test(color);
+
+  const paintsBox = (style) =>
+    colorIsVisible(style.backgroundColor) ||
+    style.backgroundImage !== "none" ||
+    style.boxShadow !== "none" ||
+    ["Top", "Right", "Bottom", "Left"].some((side) => parseFloat(style[`border${side}Width`]) > 0 && style[`border${side}Style`] !== "none" && colorIsVisible(style[`border${side}Color`]));
+
+  const mediaTags = new Set(["IMG", "SVG", "CANVAS", "VIDEO", "PICTURE", "OBJECT", "EMBED", "IFRAME"]);
+
+  const intersection = (first, second) => ({
+    left: Math.max(first.left, second.left),
+    top: Math.max(first.top, second.top),
+    right: Math.min(first.right, second.right),
+    bottom: Math.min(first.bottom, second.bottom),
+  });
+
+  const visibleClipOf = (element, section) => {
+    let clip = section.getBoundingClientRect();
+    for (let ancestor = element.parentElement; ancestor && ancestor !== section; ancestor = ancestor.parentElement) {
+      const style = getComputedStyle(ancestor);
+      if (style.overflowX !== "visible" || style.overflowY !== "visible") clip = intersection(clip, ancestor.getBoundingClientRect());
+    }
+    return clip;
+  };
+
+  const contentRects = (section) => {
+    const frame = section.getBoundingClientRect();
+    const slideArea = frame.width * frame.height;
+    return elementsOf(section).slice(1).flatMap((element) => {
+      const rect = element.getBoundingClientRect();
+      const isMedia = mediaTags.has(element.tagName.toUpperCase());
+      const isBox = paintsBox(getComputedStyle(element)) && rect.width * rect.height < slideArea * 0.9;
+      const clip = visibleClipOf(element, section);
+      if (isMedia || isBox) return [intersection(rect, clip)];
+      const style = getComputedStyle(element);
+      const textClip = style.overflowX !== "visible" || style.overflowY !== "visible" ? intersection(clip, rect) : clip;
+      return ownTextRects(element).map((content) => intersection(content, textClip));
+    }).filter((rect) => rect.right > rect.left && rect.bottom > rect.top);
+  };
+
+  const contentBands = (section) => {
+    const frame = section.getBoundingClientRect();
+    const intervals = contentRects(section)
+      .map((rect) => [rect.top - frame.top, rect.bottom - frame.top])
+      .filter(([top, bottom]) => bottom > top)
+      .sort((first, second) => first[0] - second[0]);
+    const bands = [];
+    for (const [top, bottom] of intervals) {
+      const last = bands[bands.length - 1];
+      if (last && top <= last[1]) last[1] = Math.max(last[1], bottom);
+      else bands.push([top, bottom]);
+    }
+    return bands.map(([top, bottom]) => [round(top), round(bottom)]);
+  };
+
   return Array.from(document.querySelectorAll("section")).map((section, index) => ({
     index: index + 1,
+    height: round(section.getBoundingClientRect().height),
+    contentBands: contentBands(section),
     overflow: overflowingElements(section).map(describeOverflow),
     outOfFrame: elementsOutsideFrame(section).map((element) => ({ ...describe(element), rect: describeRect(element.getBoundingClientRect()) })),
     overlaps: overlappingText(section),

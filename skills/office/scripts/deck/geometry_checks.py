@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import json
 import pathlib
 
@@ -10,6 +11,15 @@ from office_result import Issue
 
 GEOMETRY_FILE_NAME = "geometry.json"
 FINDINGS_NAMED_PER_ISSUE = 3
+FOOTER_HEIGHT_RATIO = 0.08
+FOOTER_BOTTOM_RATIO = 0.85
+
+
+@dataclass(frozen=True)
+class ContentExtent:
+    body_bottom_ratio: float
+    unfilled_ratio: float
+    has_footer: bool
 
 
 def read_geometry(review_path: pathlib.Path) -> list[dict[str, object]] | None:
@@ -23,6 +33,28 @@ def slide_geometry(geometry: list[dict[str, object]] | None, index: int) -> dict
     if geometry is None or index > len(geometry):
         return None
     return geometry[index - 1]
+
+
+def content_extent(measured: dict[str, object] | None) -> ContentExtent | None:
+    if measured is None or not measured["contentBands"]:
+        return None
+    bands, height = measured["contentBands"], measured["height"]
+    footer_start = footer_start_index(bands, height)
+    body_bottom = bands[footer_start - 1][1]
+    has_footer = footer_start < len(bands)
+    floor = bands[footer_start][0] if has_footer else height - bands[0][0]
+    return ContentExtent(body_bottom / height, max(0.0, floor - body_bottom) / height, has_footer)
+
+
+def footer_start_index(bands: list[list[float]], height: float) -> int:
+    if bands[-1][1] < height * FOOTER_BOTTOM_RATIO:
+        return len(bands)
+    start = len(bands)
+    for index in range(len(bands) - 1, 0, -1):
+        if bands[-1][1] - bands[index][0] > height * FOOTER_HEIGHT_RATIO:
+            break
+        start = index
+    return start
 
 
 def geometry_warnings(measured: dict[str, object] | None) -> list[Issue]:
