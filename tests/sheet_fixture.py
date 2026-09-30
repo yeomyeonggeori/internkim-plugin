@@ -31,7 +31,7 @@ def stored_cells(workbook_path, part_name="xl/worksheets/sheet1.xml"):
         value = cell.find(f"{MAIN_NAMESPACE}v")
         cells[cell.get("r")] = {
             "formula": None if formula is None else formula.text,
-            "value": None if value is None else value.text,
+            "value": None if value is None or (not value.text and cell.get("t") is None) else value.text or "",
             "type": cell.get("t"),
         }
     return cells
