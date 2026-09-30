@@ -30,9 +30,11 @@ section {{ width: 1600px; height: 900px; position: relative; overflow: hidden; b
 </body></html>
 """
 MEASURED_SLIDES = [
-    {"index": 1, "overflow": [], "outOfFrame": [], "overlaps": [], "distortedImages": []},
+    {"index": 1, "height": 900, "contentBands": [[80, 820]], "overflow": [], "outOfFrame": [], "overlaps": [], "distortedImages": []},
     {
         "index": 2,
+        "height": 900,
+        "contentBands": [[80, 820]],
         "overflow": [{"selector": "div.clipped", "text": "길고 긴 문장", "scrollWidth": 400, "clientWidth": 400, "scrollHeight": 273, "clientHeight": 60}],
         "outOfFrame": [{"selector": "div.badge", "text": "밖으로", "rect": {"left": 1500, "top": 1000, "right": 1800, "bottom": 1050}}],
         "overlaps": [{"first": {"selector": "div.note", "text": "겹침"}, "second": {"selector": "div.other", "text": "겹침 둘"}, "ratio": 0.68}],
@@ -40,6 +42,12 @@ MEASURED_SLIDES = [
     },
 ]
 GEOMETRY_CODES = {"CONTENT_OVERFLOW", "OUT_OF_FRAME", "TEXT_OVERLAP", "IMAGE_DISTORTED"}
+TIMELINE_BANDS_ENDING_AT_62_PERCENT = [[44, 47], [72, 98], [126, 187], [234, 264], [280, 558], [800, 802], [815, 836]]
+RISK_TABLE_BANDS_ENDING_AT_72_PERCENT = [[44, 47], [72, 98], [126, 187], [216, 648], [800, 802], [815, 836]]
+
+
+def measured_slide(index: int, bands: list[list[float]]) -> dict:
+    return {"index": index, "height": 900, "contentBands": bands, "overflow": [], "outOfFrame": [], "overlaps": [], "distortedImages": []}
 
 
 def write_review_fixture(deck_path: Path, geometry_slides) -> Path:
@@ -81,6 +89,14 @@ class GeometryReviewTest(unittest.TestCase):
         self.assertIn("GEOMETRY_NOT_MEASURED", codes)
         self.assertEqual(codes & GEOMETRY_CODES, set())
 
+    def test_a_body_that_stops_high_above_its_footer_is_a_dead_zone_the_empty_band_check_missed(self):
+        report, issues = self.review([measured_slide(1, TIMELINE_BANDS_ENDING_AT_62_PERCENT), measured_slide(2, RISK_TABLE_BANDS_ENDING_AT_72_PERCENT)])
+        self.assertIn("VERTICAL_DEAD_ZONE", slide_codes(report, issues, 1))
+        self.assertNotIn("VERTICAL_DEAD_ZONE", slide_codes(report, issues, 2))
+        dead_zone = next(issue for issue in issues if issue.kind.code == "VERTICAL_DEAD_ZONE")
+        self.assertIn("ends at 62%", dead_zone.message)
+        self.assertIn("27% of it empty above the footer", dead_zone.message)
+
     def test_long_text_alone_no_longer_raises_an_overflow_warning(self):
         report, issues = self.review(MEASURED_SLIDES[:1] + MEASURED_SLIDES[:1])
         self.assertGreater(report["slides"][0]["textCharacterCount"], 900)
@@ -109,6 +125,9 @@ class RenderedGeometryTest(unittest.TestCase):
         self.assertEqual(clean["overflow"], [])
         self.assertEqual([finding["selector"] for finding in clipped["overflow"]], ["div.clipped"])
         self.assertIn("CONTENT_OVERFLOW", {issue["code"] for issue in envelope["issues"]})
+        self.assertLess(clipped["contentBands"][-1][1], clipped["height"] / 3)
+        dead_zones = {issue["location"]: issue["message"] for issue in envelope["issues"] if issue["code"] == "VERTICAL_DEAD_ZONE"}
+        self.assertIn("empty below it", dead_zones["slide 2"])
 
 
 if __name__ == "__main__":
