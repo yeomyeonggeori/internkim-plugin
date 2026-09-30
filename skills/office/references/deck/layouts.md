@@ -89,7 +89,7 @@ Use when the deck needs to prove that a workflow, tool, or concept is real.
 
 ## Decision Narrative
 
-Use when the deck must persuade rather than describe.
+Use when the deck must persuade.
 
 - Situation or constraint
 - Two or three options
