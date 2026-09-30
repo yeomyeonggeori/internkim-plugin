@@ -12,6 +12,7 @@ from office_operations import Change, OperationSet
 from office_result import INVALID_VALUE, OfficeFailure
 from sheet_charts import build_chart, chart_anchor
 from sheet_definitions import OPERATIONS
+from sheet_styling import data_bounds, style_written_cells
 from workbook_access import cell_rows, open_workbook, parse_cell, parse_range, resolve_sheet
 from workbook_structure import isolate_column, rename_sheet_references, shift_workbook
 
@@ -63,7 +64,10 @@ def plan_set_cell(workbook, operation: dict, location: str) -> Change:
     row, column = parse_cell(operation["cell"], f"{location}.cell")
 
     def change() -> str:
-        store_value(worksheet.cell(row=row, column=column), operation.get("value"), operation.get("type"))
+        existing = data_bounds(worksheet)
+        cell = worksheet.cell(row=row, column=column)
+        store_value(cell, operation.get("value"), operation.get("type"))
+        style_written_cells(worksheet, [cell], existing)
         return f"set {worksheet.title}!{operation['cell'].upper()}"
     return change
 
@@ -73,9 +77,14 @@ def plan_set_range(workbook, operation: dict, location: str) -> Change:
     first_row, first_column = parse_cell(operation["cell"], f"{location}.cell")
 
     def change() -> str:
+        existing = data_bounds(worksheet)
+        written = []
         for row_offset, values in enumerate(operation["values"]):
             for column_offset, value in enumerate(values):
-                store_value(worksheet.cell(row=first_row + row_offset, column=first_column + column_offset), value, operation.get("type"))
+                cell = worksheet.cell(row=first_row + row_offset, column=first_column + column_offset)
+                store_value(cell, value, operation.get("type"))
+                written.append(cell)
+        style_written_cells(worksheet, written, existing)
         rows = len(operation["values"])
         return f"wrote {rows} rows from {worksheet.title}!{operation['cell'].upper()}"
     return change
