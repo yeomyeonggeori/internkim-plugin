@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from png_codec import Pixel
 
 

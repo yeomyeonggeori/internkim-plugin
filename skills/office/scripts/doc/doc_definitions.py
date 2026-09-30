@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from office_operations import OPERATION_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
 from office_schema import AnyOf, Boolean, CellValue, Choice, Field, ListOf, MapOf, Number, Record, Text, Variant

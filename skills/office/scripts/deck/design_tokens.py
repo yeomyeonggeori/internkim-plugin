@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 def read_design_tokens(design_document_text: str) -> dict[str, str]:
     front_matter = design_front_matter(design_document_text)
     tokens = {}

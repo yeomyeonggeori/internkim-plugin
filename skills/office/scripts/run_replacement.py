@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 def joined_text(runs: list) -> str:
     return "".join(run.text for run in runs)
 

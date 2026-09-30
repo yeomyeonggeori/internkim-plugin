@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from office_result import ERROR, Issue, IssueKind
 
 

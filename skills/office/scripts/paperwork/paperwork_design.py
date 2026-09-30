@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from skill_runtime import HANGUL_FONT_PATHS
 
 COLOR_INK = (0x1C, 0x24, 0x30)

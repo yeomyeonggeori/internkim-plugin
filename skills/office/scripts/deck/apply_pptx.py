@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 from office_operations import apply_parser, run_apply
 from office_result import Result, run_command
 from pptx_operations import PPTX_OPERATIONS, load_editing, save_editing

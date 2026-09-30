@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pathlib
 
 from png_codec import Pixel, PixelRows, read_png, write_png
