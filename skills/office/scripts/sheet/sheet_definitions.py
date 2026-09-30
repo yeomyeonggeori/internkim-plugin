@@ -23,6 +23,7 @@ WORKBOOK_SPECIFICATION = Record("workbook", "the --spec file of sheet create", (
     Field("sheets", ListOf(SHEET, non_empty=True), "the worksheets", required=True),
 ))
 
+FORMULA_NOT_EVALUATED = IssueKind("FORMULA_NOT_EVALUATED", WARNING, "a formula could not be computed here, so the file holds no value for it until Excel recalculates", "read the cells the formula uses; the formula itself was kept as written")
 HEADER_NOT_FROZEN = IssueKind("HEADER_NOT_FROZEN", WARNING, "the header row is not frozen", "freeze the pane under the header row")
 AUTO_FILTER_MISSING = IssueKind("AUTO_FILTER_MISSING", WARNING, "the table has no auto filter", "add a filter over the header and data rows")
 BLANK_HEADER_CELLS = IssueKind("BLANK_HEADER_CELLS", WARNING, "header cells are blank", "name every column")
@@ -39,4 +40,5 @@ GUIDE_INPUTS = (
     ("sheet create --spec <file>", WORKBOOK_SPECIFICATION),
     ("sheet edit --rows <file>", ROWS),
 )
-GUIDE_ISSUES = (("sheet validate", VALIDATE_ISSUE_KINDS),)
+WRITE_ISSUE_KINDS = (FORMULA_NOT_EVALUATED,)
+GUIDE_ISSUES = (("sheet create and sheet edit", WRITE_ISSUE_KINDS), ("sheet validate", VALIDATE_ISSUE_KINDS))
