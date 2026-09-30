@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from openpyxl.chart import BarChart, LineChart, PieChart, Reference
+from openpyxl.chart.marker import DataPoint
 from openpyxl.utils import get_column_letter
 
 from office_operations import OPERATION_NOT_APPLICABLE
@@ -10,6 +11,8 @@ from workbook_access import parse_cell, parse_range
 
 CHART_CLASSES = {"bar": BarChart, "line": LineChart, "pie": PieChart}
 DEFAULT_ANCHOR_GAP = 2
+SERIES_PALETTE = ("2563EB", "F59E0B", "10B981", "EF4444", "8B5CF6", "14B8A6", "EC4899", "64748B")
+LINE_WIDTH_EMU = 28575
 
 
 def build_chart(worksheet, operation: dict, location: str):
@@ -23,7 +26,31 @@ def build_chart(worksheet, operation: dict, location: str):
     if operation.get("title"):
         chart.title = operation["title"]
     show_axes(chart)
+    color_series(chart, operation["type"], max_row - min_row)
     return chart
+
+
+def palette_color(index: int) -> str:
+    return SERIES_PALETTE[index % len(SERIES_PALETTE)]
+
+
+def color_series(chart, chart_type: str, category_count: int) -> None:
+    for index, series in enumerate(chart.series):
+        if chart_type == "pie":
+            series.dPt = [point_with_color(point, palette_color(point)) for point in range(category_count)]
+        elif chart_type == "line":
+            series.graphicalProperties.line.solidFill = palette_color(index)
+            series.graphicalProperties.line.width = LINE_WIDTH_EMU
+            series.smooth = False
+        else:
+            series.graphicalProperties.solidFill = palette_color(index)
+            series.graphicalProperties.line.solidFill = palette_color(index)
+
+
+def point_with_color(index: int, color: str) -> DataPoint:
+    point = DataPoint(idx=index)
+    point.graphicalProperties.solidFill = color
+    return point
 
 
 def show_axes(chart) -> None:
