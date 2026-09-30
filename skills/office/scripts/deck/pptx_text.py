@@ -10,8 +10,9 @@ from pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU
 
 
 EMU_PER_POINT = 12700
-SINGLE_LINE_SLACK_RATIO = 0.1
-SINGLE_LINE_SLACK_MINIMUM_PIXELS = 8
+LINE_WIDTH_SLACK_RATIO = 0.01
+AUTOSPACE_GAP_EM = 0.25
+CJK_CHARACTER = re.compile(r"[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af\u3040-\u30ff\u4e00-\u9fff]")
 INVALID_XML_CHARACTERS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 LANGUAGE_TAGS = {"ko": "ko-KR", "en": "en-US", "ja": "ja-JP", "zh": "zh-CN"}
 BASELINE_SHIFTS = {"super": "30000", "sub": "-25000"}
@@ -85,21 +86,38 @@ def placed_frame(block: dict, scale: SlideScale) -> tuple[Rectangle, Rectangle]:
         top, top_inset = top + top_inset, 0
     if bottom_inset < 0:
         bottom, bottom_inset = bottom - bottom_inset, 0
-    left, right = widened_for_single_line(block, left, right)
+    left, right = widened_for_renderer(block, left, right)
     frame = Rectangle(max(0, left), max(0, top), min(scale.width_pixels, right), min(scale.height_pixels, bottom))
     return frame, Rectangle(insets["left"], top_inset, insets["right"], bottom_inset)
 
 
-def widened_for_single_line(block: dict, left: float, right: float) -> tuple[float, float]:
-    if not block["singleLine"] or block["noWrap"]:
+def widened_for_renderer(block: dict, left: float, right: float) -> tuple[float, float]:
+    if block["noWrap"]:
         return left, right
-    slack = max(SINGLE_LINE_SLACK_MINIMUM_PIXELS, (right - left) * SINGLE_LINE_SLACK_RATIO)
+    text_width = right - left - block["insets"]["left"] - block["insets"]["right"]
+    slack = max(0.0, max(paragraph_width_needed(paragraph) for paragraph in block["paragraphs"]) - text_width)
+    if not slack:
+        return left, right
     alignment = block["paragraphs"][0]["alignment"]
     if alignment == "r":
         return left - slack, right
     if alignment == "ctr":
         return left - slack / 2, right + slack / 2
     return left, right + slack
+
+
+def paragraph_width_needed(paragraph: dict) -> float:
+    widest = max((line_width_needed(line) for line in paragraph["lines"]), default=0.0)
+    return widest + paragraph.get("marginLeftPx", 0)
+
+
+def line_width_needed(line: dict) -> float:
+    return line["widthPx"] * (1 + LINE_WIDTH_SLACK_RATIO) + script_transitions(line["text"]) * AUTOSPACE_GAP_EM * line["sizePx"]
+
+
+def script_transitions(text: str) -> int:
+    is_cjk = [bool(CJK_CHARACTER.match(character)) for character in text if not character.isspace()]
+    return sum(1 for current, following in zip(is_cjk, is_cjk[1:]) if current != following)
 
 
 def paragraph_xml(paragraph: dict, block: dict, context: TextContext) -> str:
