@@ -99,6 +99,7 @@ OPERATIONS = Variant(
             Field("at", Text(non_empty=True), "first column letter to delete", required=True),
             COUNT,
         )),
+        Record("recalculate", "store a freshly computed value for every formula the workbook can compute", ()),
         Record("add_chart", "add a chart of a block whose first column holds the categories and whose first row names the series", (
             SHEET_NAME,
             Field("type", Choice(("bar", "line", "pie")), "chart kind", required=True),
@@ -114,6 +115,7 @@ FORMULA_NOT_EVALUATED = IssueKind("FORMULA_NOT_EVALUATED", WARNING, "a formula c
 HEADER_NOT_FROZEN = IssueKind("HEADER_NOT_FROZEN", WARNING, "the header row is not frozen", "freeze the pane under the header row")
 AUTO_FILTER_MISSING = IssueKind("AUTO_FILTER_MISSING", WARNING, "the table has no auto filter", "add a filter over the header and data rows")
 BLANK_HEADER_CELLS = IssueKind("BLANK_HEADER_CELLS", WARNING, "header cells are blank", "name every column")
+STALE_CACHED_VALUE = IssueKind("STALE_CACHED_VALUE", WARNING, "a formula's stored value differs from what the formula computes, so a viewer that does not recalculate shows the wrong number", "apply recalculate")
 FORMULA_ERROR = IssueKind("FORMULA_ERROR", ERROR, "a formula computes #DIV/0!, #REF!, #NAME?, #VALUE! or #N/A", "fix the formula's references or the cells it reads, with set_cell")
 MISSING_SHEET_REFERENCE = IssueKind("MISSING_SHEET_REFERENCE", ERROR, "a formula reads a sheet the workbook does not have", "add the sheet, or point the formula at an existing one with set_cell")
 BROKEN_DEFINED_NAME = IssueKind("BROKEN_DEFINED_NAME", ERROR, "a defined name points at #REF! or a sheet the workbook does not have", "read the workbook's defined names and recreate the reference")
@@ -125,6 +127,7 @@ VALIDATE_ISSUE_KINDS = (
     BLANK_HEADER_CELLS,
 )
 CHECK_ISSUE_KINDS = (
+    STALE_CACHED_VALUE,
     FORMULA_ERROR,
     MISSING_SHEET_REFERENCE,
     BROKEN_DEFINED_NAME,

@@ -8,6 +8,7 @@ from formula_cache import not_evaluated_issues
 from formula_references import formula_references, referenced_sheet_names
 from number_display import displayed_number_width
 from office_result import Issue, OfficeArgumentParser, Result, run_command
+from stale_values import stale_cached_value_issues
 from sheet_definitions import BROKEN_DEFINED_NAME, FORMULA_ERROR, MISSING_SHEET_REFERENCE, NUMBER_TOO_WIDE
 from text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
 from workbook_access import formula_text, open_workbook
@@ -25,7 +26,8 @@ def main() -> Result:
     evaluation = evaluate_workbook(arguments.workbook_path)
     missing_references = missing_sheet_references(workbook)
     issues = (
-        missing_reference_issues(missing_references)
+        stale_cached_value_issues(arguments.workbook_path, evaluation)
+        + missing_reference_issues(missing_references)
         + formula_error_issues(evaluation, set(missing_references))
         + defined_name_issues(workbook)
         + number_width_issues(workbook, evaluation)
@@ -158,7 +160,7 @@ def placeholder_issues(workbook) -> list[Issue]:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Find computed formula errors, missing sheets, broken names, numbers too wide for their column and template placeholders in an .xlsx.")
+    parser = OfficeArgumentParser(description="Find stored formula values that differ from the computed ones, computed formula errors, missing sheets, broken names, numbers too wide for their column and template placeholders in an .xlsx.")
     parser.add_argument("workbook_path")
     return parser.parse_args()
 

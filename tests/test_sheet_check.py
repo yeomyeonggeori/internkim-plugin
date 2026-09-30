@@ -1,6 +1,6 @@
 import unittest
 
-from sheet_fixture import WorkbookFixture, run_office, run_office_python, write_json
+from sheet_fixture import WorkbookFixture, run_office, run_office_python, stored_cells, write_json
 
 FIXTURE_WORKBOOK = """
 from openpyxl import Workbook
@@ -70,3 +70,43 @@ class SheetCheckTest(WorkbookFixture):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+TAMPER_CACHED_VALUES = r"""
+import re
+import zipfile
+
+with zipfile.ZipFile("book.xlsx") as source:
+    entries = {info.filename: source.read(info.filename) for info in source.infolist()}
+sheet = entries["xl/worksheets/sheet1.xml"].decode()
+sheet = re.sub(r'(<c r="C2"[^>]*><f>[^<]*</f><v>)[^<]*', r'\g<1>25', sheet)
+sheet = re.sub(r'(<c r="D2"[^>]*><f>[^<]*</f><v>)[^<]*', r'\g<1>stale', sheet)
+entries["xl/worksheets/sheet1.xml"] = sheet.encode()
+with zipfile.ZipFile("book.xlsx", "w") as target:
+    for name, content in entries.items():
+        target.writestr(name, content)
+"""
+
+
+class StaleCachedValueTest(WorkbookFixture):
+    def setUp(self):
+        super().setUp()
+        self.create_workbook([{"title": "Sales", "rows": [["a", "b", "double", "label"], [10, 5, "=A2*2", '="n"&B2'], [1, 2, "=A3*2", '="n"&B3']]}])
+
+    def findings(self):
+        envelope = run_office(["sheet", "check", "book.xlsx"], self.directory)
+        return [(issue["code"], issue["location"]) for issue in envelope["issues"]]
+
+    def test_a_workbook_written_here_has_no_stale_value(self):
+        self.assertEqual(self.findings(), [])
+
+    def test_a_stored_value_that_differs_from_the_computed_one_is_reported_and_recalculated(self):
+        run_office_python(TAMPER_CACHED_VALUES, self.directory)
+        envelope = run_office(["sheet", "check", "book.xlsx"], self.directory)
+        issue = next(issue for issue in envelope["issues"] if issue["code"] == "STALE_CACHED_VALUE")
+        self.assertEqual(issue["location"], "Sales!C2")
+        self.assertIn("Sales!C2 stores 25 but computes 20", issue["message"])
+        self.assertIn("Sales!D2", issue["message"])
+        self.assertEqual(self.apply([issue["suggestion"]])["status"], "ok")
+        self.assertEqual(self.findings(), [])
+        self.assertEqual(stored_cells(self.directory / "book.xlsx")["C2"]["value"], "20")
