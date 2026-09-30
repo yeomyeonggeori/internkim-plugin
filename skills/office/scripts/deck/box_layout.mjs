@@ -112,19 +112,37 @@ export function extractBoxLayout({ exportedShapeAttribute, exportedBeforeShapeAt
     return value + pixels(style[`padding${first}`]) + pixels(style[`padding${second}`]) + pixels(style[`border${first}Width`]) + pixels(style[`border${second}Width`]);
   };
 
+  const pseudoAxes = {
+    x: { start: "left", end: "right", size: "width", marginStart: "marginLeft", marginEnd: "marginRight" },
+    y: { start: "top", end: "bottom", size: "height", marginStart: "marginTop", marginEnd: "marginBottom" },
+  };
+
+  const pseudoSpan = (style, block, axis) => {
+    const { start, end, size, marginStart, marginEnd } = pseudoAxes[axis];
+    if (![style[start], style[end]].every((value) => value === "auto" || value.endsWith("px"))) return null;
+    const hasStart = style[start] !== "auto";
+    const hasEnd = style[end] !== "auto";
+    if (!hasStart && !hasEnd) return null;
+    const margins = pixels(style[marginStart]) + pixels(style[marginEnd]);
+    const stretched = hasStart && hasEnd ? block[end] - block[start] - pixels(style[start]) - pixels(style[end]) - margins : null;
+    const extent = style[size].endsWith("px") ? outerSize(style, axis) : stretched;
+    if (extent === null) return null;
+    const from = hasStart ? block[start] + pixels(style[start]) + pixels(style[marginStart]) : block[end] - pixels(style[end]) - pixels(style[marginEnd]) - extent;
+    return [from, from + extent];
+  };
+
   const absolutePseudoRect = (item) => {
-    const style = item.style;
     const block = containingBlockOf(item.element);
-    const width = outerSize(style, "x");
-    const height = outerSize(style, "y");
-    const left = style.left !== "auto" ? block.left + pixels(style.left) + pixels(style.marginLeft) : block.right - pixels(style.right) - pixels(style.marginRight) - width;
-    const top = style.top !== "auto" ? block.top + pixels(style.top) + pixels(style.marginTop) : block.bottom - pixels(style.bottom) - pixels(style.marginBottom) - height;
-    return { left, top, right: left + width, bottom: top + height };
+    const horizontal = pseudoSpan(item.style, block, "x");
+    const vertical = pseudoSpan(item.style, block, "y");
+    if (!horizontal || !vertical) return null;
+    return { left: horizontal[0], top: vertical[0], right: horizontal[1], bottom: vertical[1] };
   };
 
   const rectOf = (item) => {
     if (item.pseudo) {
-      if (item.style.position === "absolute" && (item.style.left !== "auto" || item.style.right !== "auto") && (item.style.top !== "auto" || item.style.bottom !== "auto")) return { rect: absolutePseudoRect(item), exact: true };
+      const positioned = item.style.position === "absolute" ? absolutePseudoRect(item) : null;
+      if (positioned) return { rect: positioned, exact: true };
       const host = item.element.getBoundingClientRect();
       return { rect: { left: host.left, top: host.top, right: host.right, bottom: host.bottom }, exact: false };
     }
@@ -277,7 +295,7 @@ export function extractBoxLayout({ exportedShapeAttribute, exportedBeforeShapeAt
     const { rect, exact } = rectOf(item);
     if (isInsidePicture(item, section)) return { kind: "picture", rect: inflateByShadow(rect, style.boxShadow) };
     if (item.pseudo && pseudoText(style)) return { kind: "picture", rect };
-    if (style.display === "contents" || !paintsBox(style)) return { kind: "none" };
+    if (style.display === "contents" || !paintsBox(style) || rect.right <= rect.left || rect.bottom <= rect.top) return { kind: "none" };
     if (hasCollapsedBorders(item)) return { kind: "picture", rect };
     const opacity = opacityOf(item, section);
     if (opacity <= 0) return { kind: "none" };
