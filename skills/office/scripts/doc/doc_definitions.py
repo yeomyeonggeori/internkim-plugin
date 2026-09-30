@@ -170,6 +170,7 @@ OPERATIONS = Variant(
         Record("set_east_asia_font", "make the document's default East Asian font this one", (
             Field("font", Text(non_empty=True), "font name such as 맑은 고딕", required=True),
         )),
+        Record("set_korean_language", "tag the document's East Asian language as Korean (ko-KR): the default, the theme font language, and every style or run that names another", ()),
         Record("update_fields_on_open", "ask Word to refresh the table of contents and other fields when the file opens", ()),
     ),
 )
@@ -180,9 +181,10 @@ MERGE_VALUES = MapOf(AnyOf((CellValue(), ListOf(CellValue()), MapOf(CellValue(),
 BROKEN_INTERNAL_REFERENCE = IssueKind("BROKEN_INTERNAL_REFERENCE", ERROR, "a link or cross-reference points at a bookmark the document does not have", "point it at an existing heading or bookmark, or remove it")
 STALE_TABLE_OF_CONTENTS = IssueKind("STALE_TABLE_OF_CONTENTS", WARNING, "the table of contents does not list the headings the document has", "apply update_fields_on_open so Word refreshes it")
 EAST_ASIA_FONT_MISSING = IssueKind("EAST_ASIA_FONT_MISSING", WARNING, "Korean text has no East Asian font at any level, so each reader substitutes its own", "apply set_east_asia_font")
+EAST_ASIA_LANGUAGE_NOT_KOREAN = IssueKind("EAST_ASIA_LANGUAGE_NOT_KOREAN", WARNING, "Korean text is tagged with another East Asian language, so LibreOffice breaks its lines mid-word and Word picks that language's fonts", "apply set_korean_language")
 TRACKED_CHANGES_PRESENT = IssueKind("TRACKED_CHANGES_PRESENT", WARNING, "the document holds tracked insertions or deletions, which doc apply neither reads nor edits", "accept or reject them in Word before editing")
 
-CHECK_ISSUE_KINDS = (PLACEHOLDER_LEFT, BROKEN_INTERNAL_REFERENCE, STALE_TABLE_OF_CONTENTS, EAST_ASIA_FONT_MISSING, TRACKED_CHANGES_PRESENT)
+CHECK_ISSUE_KINDS = (PLACEHOLDER_LEFT, BROKEN_INTERNAL_REFERENCE, STALE_TABLE_OF_CONTENTS, EAST_ASIA_FONT_MISSING, EAST_ASIA_LANGUAGE_NOT_KOREAN, TRACKED_CHANGES_PRESENT)
 
 UNRESOLVED_PLACEHOLDER = IssueKind("UNRESOLVED_PLACEHOLDER", ERROR, "the template uses a placeholder the values file does not give", "add the value to the values file")
 UNUSED_VALUE = IssueKind("UNUSED_VALUE", WARNING, "the values file gives a name the template never uses", "check the name's spelling against the template")

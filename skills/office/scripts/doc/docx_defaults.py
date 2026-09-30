@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from docx import Document
 from docx.enum.section import WD_ORIENT
+from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Mm
 
@@ -11,6 +12,10 @@ DEFAULT_MARGIN_INCHES = 1.0
 A4_WIDTH = Mm(210)
 A4_HEIGHT = Mm(297)
 HEADING_STYLE_NAMES = ["Title"] + [f"Heading {level}" for level in range(1, 10)]
+SETTINGS_AFTER_THEME_FONT_LANGUAGE = {qn(f"w:{name}") for name in (
+    "clrSchemeMapping", "doNotIncludeSubdocsInStats", "doNotAutoCompressPictures", "forceUpgrade", "captions",
+    "readModeInkLockDown", "smartTagType", "schemaLibrary", "shapeDefaults", "doNotEmbedSmartTags", "decimalSymbol", "listSeparator",
+)}
 THEME_FONT_ATTRIBUTES = ("asciiTheme", "hAnsiTheme", "eastAsiaTheme", "cstheme")
 
 
@@ -22,13 +27,43 @@ def apply_korean_defaults(document: Document, font_name: str) -> None:
             name_fonts(document.styles[style_name].element.get_or_add_rPr(), font_name)
 
 
+def default_run_properties(document: Document):
+    styles = document.styles.element
+    defaults = styles.find(qn("w:docDefaults"))
+    if defaults is None:
+        defaults = OxmlElement("w:docDefaults")
+        styles.insert(0, defaults)
+    run_default = defaults.find(qn("w:rPrDefault"))
+    if run_default is None:
+        run_default = OxmlElement("w:rPrDefault")
+        defaults.insert(0, run_default)
+    run_properties = run_default.find(qn("w:rPr"))
+    if run_properties is None:
+        run_properties = OxmlElement("w:rPr")
+        run_default.append(run_properties)
+    return run_properties
+
+
 def set_default_east_asia_language(document: Document) -> None:
-    language = document.styles.element.find(f"{qn('w:docDefaults')}/{qn('w:rPrDefault')}/{qn('w:rPr')}/{qn('w:lang')}")
+    run_properties = default_run_properties(document)
+    language = run_properties.find(qn("w:lang"))
+    if language is None:
+        language = OxmlElement("w:lang")
+        run_properties.append(language)
     language.set(qn("w:eastAsia"), KOREAN_LANGUAGE)
 
 
 def set_theme_font_language(document: Document) -> None:
-    document.settings.element.find(qn("w:themeFontLang")).set(qn("w:eastAsia"), KOREAN_LANGUAGE)
+    settings = document.settings.element
+    language = settings.find(qn("w:themeFontLang"))
+    if language is None:
+        language = OxmlElement("w:themeFontLang")
+        successor = next((child for child in settings if child.tag in SETTINGS_AFTER_THEME_FONT_LANGUAGE), None)
+        if successor is None:
+            settings.append(language)
+        else:
+            successor.addprevious(language)
+    language.set(qn("w:eastAsia"), KOREAN_LANGUAGE)
 
 
 def name_fonts(run_properties, font_name: str) -> None:
