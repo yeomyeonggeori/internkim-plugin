@@ -1,5 +1,6 @@
 import csv
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -8,7 +9,8 @@ import zipfile
 from pathlib import Path
 from xml.etree import ElementTree
 
-SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "spreadsheet" / "scripts"
+OFFICE_SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
+SCRIPTS_PATH = OFFICE_SCRIPTS_PATH / "sheet"
 SPREADSHEET_NAMESPACE = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 
 PROBE_ROWS = [
@@ -26,6 +28,7 @@ def run_script(script_name, *arguments):
         [sys.executable, str(SCRIPTS_PATH / script_name), *arguments],
         capture_output=True,
         text=True,
+        env={**os.environ, "PYTHONPATH": str(OFFICE_SCRIPTS_PATH)},
     )
     if result.returncode != 0 and "dependencies are unavailable" in result.stderr:
         raise unittest.SkipTest(f"openpyxl is not importable and the skill runtime could not install it: {result.stderr.strip()}")

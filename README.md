@@ -4,18 +4,15 @@ Skills from the [InternKim](https://intern.kim) agent, packaged as an
 [Agent Plugins](https://agent-plugins.org) 1.0.0 plugin so they run on any
 conforming client.
 
-Six run on their own with a shell and Python.
+Three run on their own with a shell and Python.
 
 | Skill | What it does |
 | --- | --- |
-| `pdf` | Builds and validates PDFs, including Korean typography |
-| `spreadsheet` | Creates and edits `.xlsx` workbooks |
-| `presentation` | Builds HTML decks and exports PPTX |
 | `calculator` | Evaluates arithmetic exactly |
 | `weather` | Reads Open-Meteo forecasts with a local cache |
 | `dataroom` | Files, checks and searches a company data room, locally or in the record |
 
-Eleven call InternKim's tool server, the `internkim` server that `mcp.json`
+Ten call InternKim's tool server, the `internkim` server that `mcp.json`
 declares. Each names the tools it calls in its own `tool-references`.
 
 | Skill | What it does |
@@ -26,8 +23,7 @@ declares. Each names the tools it calls in its own `tool-references`.
 | `direct-message` | Sends and schedules direct messages |
 | `messages` | Reads, posts, edits and removes conversation messages |
 | `mail` | Connects a mailbox, then reads, searches and sends mail |
-| `document` | Authors `.docx` and PDF from a Markdown source |
-| `paperwork` | Fills standardized company forms and contracts on letterhead |
+| `office` | Creates, edits and validates `.docx`, PDF, `.xlsx` and decks, and fills company forms on letterhead; only the forms and reading attachments need the server |
 | `website` | Scaffolds, builds, previews and publishes a site |
 | `company-data` | Reads and records company profile, metrics and records |
 | `web-search` | Searches the public web and fetches pages |
@@ -37,7 +33,12 @@ declares. Each names the tools it calls in its own `tool-references`.
 Python 3 and [uv](https://docs.astral.sh/uv/) on `PATH`. A skill that bundles
 scripts declares its own dependencies in `scripts/requirements.txt` and installs
 them into an environment it creates on first use, so nothing has to be prepared
-in advance. `website` also needs [Bun](https://bun.sh).
+in advance. `website` also needs [Bun](https://bun.sh), and `office` needs Bun
+and a browser that speaks the Chrome DevTools Protocol to render decks.
+
+`office` runs every command through one entry, `scripts/office <format>
+<verb>`, which prepares that environment first; `scripts/office --help` lists
+the commands.
 
 Those environments, the package cache and any host-supplied fonts live under
 `XDG_CACHE_HOME`, falling back to `~/.cache` when it is unset. A host with a
@@ -87,8 +88,10 @@ python3 -m unittest discover -s tests
 
 Every skill passes the [Agent Skills](https://agentskills.io/specification)
 reference validator. The unit tests hold the bundle to what it promises above:
-the six copies of `scripts/skill_runtime.py` stay one file, and nothing under
-`skills/` reads an environment variable named after a host.
+the copies of `scripts/skill_runtime.py` in `office` and `dataroom` stay one
+file, every `office` command runs a bundled script and every command a reference
+names exists, the deck scripts keep their behavior, and nothing under `skills/`
+reads an environment variable named after a host.
 
 ## License
 
