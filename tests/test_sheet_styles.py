@@ -2,7 +2,7 @@ import unittest
 
 from openpyxl import load_workbook
 
-from sheet_fixture import WorkbookFixture, run_office_python
+from sheet_fixture import WorkbookFixture, run_office, run_office_python, write_json
 
 
 STYLED_WORKBOOK = """
@@ -62,6 +62,65 @@ class InsertedCellsTest(WorkbookFixture):
     def test_a_row_inserted_at_the_top_has_nothing_above_to_copy(self):
         sheet = self.insert({"op": "insert_rows", "sheet": "Sales", "at": 1})
         self.assertFalse(sheet["A1"].has_style)
+
+
+def rule_of(cell):
+    return (cell.border.left.style, cell.border.top.style, cell.alignment.vertical, cell.alignment.wrap_text)
+
+
+DEFAULT_RULE = ("thin", "thin", "top", True)
+
+
+class DefaultTableStyleTest(WorkbookFixture):
+    def setUp(self):
+        super().setUp()
+        (self.directory / "sales.csv").write_text("item,amount\nA,1000\nB,2000\n", encoding="utf-8")
+        write_json(self.directory / "spec.json", {"sheets": [
+            {"title": "Sales", "csvPath": "sales.csv"},
+            {"title": "Calculated", "rows": [["item", "double"], ["A", "=2*5"], ["B", 7]]},
+        ]})
+        envelope = run_office(["sheet", "create", "book.xlsx", "--spec", "spec.json"], self.directory)
+        self.assertEqual(envelope["status"], "ok", envelope)
+
+    def apply(self, operations):
+        envelope = super().apply(operations)
+        self.assertEqual(envelope["status"], "ok", envelope)
+        return load_workbook(self.directory / "book.xlsx")
+
+    def test_created_formula_cells_follow_the_same_rule_as_the_rest(self):
+        sheet = load_workbook(self.directory / "book.xlsx")["Calculated"]
+        self.assertEqual({rule_of(cell) for row in sheet.iter_rows() for cell in row}, {DEFAULT_RULE})
+
+    def test_cells_written_beside_a_table_take_its_default_style(self):
+        sheet = self.apply([
+            {"op": "set_cell", "sheet": "Sales", "cell": "C1", "value": "share"},
+            {"op": "set_cell", "sheet": "Sales", "cell": "C2", "value": "=B2/B4"},
+            {"op": "set_range", "sheet": "Sales", "cell": "A4", "values": [["total", 3000, "=SUM(C2:C3)"]]},
+        ])["Sales"]
+        for address in ("C1", "C2", "A4", "B4", "C4"):
+            self.assertEqual(rule_of(sheet[address]), DEFAULT_RULE, address)
+        self.assertEqual((sheet["C1"].font.b, sheet["C1"].fill.fgColor.rgb), (sheet["A1"].font.b, sheet["A1"].fill.fgColor.rgb))
+        self.assertEqual(sheet["B4"].number_format, "#,##0")
+
+    def test_a_block_written_to_a_new_sheet_becomes_a_table(self):
+        self.apply([{"op": "add_sheet", "name": "Summary"}, {"op": "set_range", "sheet": "Summary", "cell": "A1", "values": [["item", "value"], ["total", 3000]]}])
+        sheet = load_workbook(self.directory / "book.xlsx")["Summary"]
+        self.assertEqual({rule_of(cell) for row in sheet.iter_rows() for cell in row}, {DEFAULT_RULE})
+        self.assertTrue(sheet["A1"].font.b)
+        self.assertFalse(sheet["A2"].font.b)
+
+    def test_cells_far_from_any_table_a_lone_cell_and_styled_cells_are_left_alone(self):
+        workbook = self.apply([
+            {"op": "format_range", "sheet": "Sales", "range": "B3", "fill": "FFFF00"},
+            {"op": "set_cell", "sheet": "Sales", "cell": "B3", "value": 5},
+            {"op": "set_cell", "sheet": "Sales", "cell": "H20", "value": "note"},
+            {"op": "add_sheet", "name": "Notes"},
+            {"op": "set_cell", "sheet": "Notes", "cell": "A1", "value": "memo"},
+            {"op": "set_cell", "sheet": "Sales", "cell": "A2", "value": None},
+        ])
+        self.assertEqual(workbook["Sales"]["B3"].fill.fgColor.rgb, "00FFFF00")
+        self.assertFalse(workbook["Sales"]["H20"].has_style)
+        self.assertFalse(workbook["Notes"]["A1"].has_style)
 
 
 if __name__ == "__main__":

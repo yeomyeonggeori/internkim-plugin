@@ -6,11 +6,11 @@ import os
 from pathlib import Path
 
 from cell_values import typed_cell_value
-from display_width import display_width
 from formula_cache import cache_formula_values
 from office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
 from sheet_definitions import WORKBOOK_SPECIFICATION
+from sheet_styling import style_table
 
 
 def optional_text(value):
@@ -32,7 +32,6 @@ def read_specification(arguments):
 
 def create_workbook(specification):
     from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
 
     workbook = Workbook()
@@ -44,7 +43,7 @@ def create_workbook(specification):
 
     for sheet_specification in specification["sheets"]:
         worksheet = add_sheet(workbook, sheet_specification, get_column_letter)
-        apply_default_formatting(worksheet, sheet_specification, Alignment, Border, Font, PatternFill, Side, get_column_letter)
+        apply_default_formatting(worksheet, sheet_specification)
 
     return workbook
 
@@ -93,45 +92,12 @@ def read_delimited_rows(sheet_specification):
         return [[typed_cell_value(text) for text in row] for row in csv.reader(delimited_file, delimiter=delimiter)]
 
 
-def apply_default_formatting(worksheet, sheet_specification, alignment_class, border_class, font_class, fill_class, side_class, get_column_letter):
+def apply_default_formatting(worksheet, sheet_specification):
     if worksheet.max_row == 0:
         return
-    thin_border = create_thin_border(border_class, side_class)
-    header_fill = fill_class("solid", fgColor="DCEAF7")
-    heading = optional_text(sheet_specification.get("heading"))
-    header_row = header_row_index(sheet_specification)
-    if heading:
-        for cell in worksheet[1]:
-            cell.font = font_class(bold=True, size=14)
-            cell.fill = fill_class("solid", fgColor="EAF3F8")
-    for cell in worksheet[header_row]:
-        cell.font = font_class(bold=True)
-        cell.fill = header_fill
-    for row in worksheet.iter_rows():
-        for cell in row:
-            cell.alignment = alignment_class(vertical="top", wrap_text=True)
-            cell.border = thin_border
-            apply_number_format(cell)
-    for column_cells in worksheet.columns:
-        content_width = max(display_width(cell.value) for cell in column_cells)
-        column_letter = get_column_letter(column_cells[0].column)
-        worksheet.column_dimensions[column_letter].width = min(max(content_width + 2, 10), 48)
+    style_table(worksheet, bool(optional_text(sheet_specification.get("heading"))))
     apply_column_widths(worksheet, sheet_specification)
     apply_column_number_formats(worksheet, sheet_specification)
-
-
-def create_thin_border(border_class, side_class):
-    side = side_class(style="thin", color="CBD5E1")
-    return border_class(left=side, right=side, top=side, bottom=side)
-
-
-def apply_number_format(cell):
-    if isinstance(cell.value, bool):
-        return
-    if isinstance(cell.value, int):
-        cell.number_format = "#,##0"
-    if isinstance(cell.value, float):
-        cell.number_format = "#,##0.00"
 
 
 def apply_column_widths(worksheet, sheet_specification):
