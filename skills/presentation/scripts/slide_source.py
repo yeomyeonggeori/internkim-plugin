@@ -41,3 +41,22 @@ def single_line_text(markup: str) -> str:
     text = html.unescape(re.sub(r"<[^>]+>", "\n", markup))
     lines = [re.sub(r"\s+", " ", line).strip() for line in text.splitlines()]
     return " ".join(line for line in lines if line)
+
+
+def slide_role(slide_source: str) -> str:
+    return extract_section_attribute(slide_source, "data-slide-role")
+
+
+def extract_section_attribute(slide_source: str, attribute_name: str) -> str:
+    section_match = re.search(r"<section\b[^>]*>", slide_source, flags=re.IGNORECASE | re.DOTALL)
+    if not section_match:
+        return ""
+    attribute_pattern = rf"\b{re.escape(attribute_name)}\s*=\s*([\"'])(.*?)\1"
+    attribute_match = re.search(attribute_pattern, section_match.group(0), flags=re.IGNORECASE | re.DOTALL)
+    if not attribute_match:
+        return ""
+    return normalize_structure_text(html.unescape(attribute_match.group(2)))
+
+
+def normalize_structure_text(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip().casefold()

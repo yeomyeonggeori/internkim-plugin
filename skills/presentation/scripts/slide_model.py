@@ -3,16 +3,19 @@ import html
 import pathlib
 import re
 
-from slide_source import SPEAKER_NOTES_BLOCK_PATTERN, remove_invisible_markup, slide_title, split_slide_sources
+from slide_source import SPEAKER_NOTES_BLOCK_PATTERN, remove_invisible_markup, slide_role, slide_title, split_slide_sources
 
 
-SLIDE_KIND_KEYWORDS = (
-    ("summary", ["summary", "요약", "executive"]),
-    ("approval", ["approval", "승인", "next step", "다음 단계", "요청"]),
-    ("risk", ["risk", "리스크", "defect", "sla", "response", "대응"]),
-    ("timeline", ["roadmap", "로드맵", "timeline", "milestone"]),
-    ("metrics", ["metric", "지표", "revenue", "uptime", "target", "actual", "목표", "실제"]),
-)
+NATIVE_LAYOUT_BY_SLIDE_ROLE = {
+    "cover": "cover",
+    "title": "cover",
+    "summary": "summary",
+    "metrics": "metrics",
+    "timeline": "timeline",
+    "risk": "risk",
+    "approval": "approval",
+}
+GENERIC_LAYOUT = "content"
 
 
 @dataclass(frozen=True)
@@ -42,7 +45,7 @@ def create_slide_model(index: int, slide_source: str) -> SlideModel:
         lines=lines,
         tables=extract_tables(slide_source),
         list_items=extract_list_items(slide_source),
-        kind=infer_slide_kind(index, title, lines),
+        kind=native_layout_kind(slide_source),
     )
 
 
@@ -89,18 +92,8 @@ def inline_texts(element_pattern: str, source: str) -> list[str]:
     return texts
 
 
-def infer_slide_kind(index: int, title: str, lines: list[str]) -> str:
-    if index == 1:
-        return "cover"
-    text = " ".join([title, *lines]).casefold()
-    for kind, keywords in SLIDE_KIND_KEYWORDS:
-        if contains_any(text, keywords):
-            return kind
-    return "content"
-
-
-def contains_any(text: str, values: list[str]) -> bool:
-    return any(value.casefold() in text for value in values)
+def native_layout_kind(slide_source: str) -> str:
+    return NATIVE_LAYOUT_BY_SLIDE_ROLE.get(slide_role(slide_source), GENERIC_LAYOUT)
 
 
 def extract_notes(slide_source: str) -> str:
