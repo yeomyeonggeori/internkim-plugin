@@ -1,7 +1,7 @@
 import html
 import re
 
-from slide_source import remove_invisible_markup, slide_title, split_slide_sources
+from slide_source import extract_section_attribute, normalize_structure_text, remove_invisible_markup, slide_role, slide_title, split_slide_sources
 
 
 PREVIEW_CHARACTER_LIMIT = 180
@@ -57,14 +57,14 @@ def preview_text(text: str) -> str:
 def inspect_slide_structure(slide_source: str) -> dict[str, object]:
     class_names = extract_class_names(slide_source)
     title = slide_title(slide_source)
-    slide_role = extract_section_attribute(slide_source, "data-slide-role")
+    declared_role = slide_role(slide_source)
     visual_system = extract_section_attribute(slide_source, "data-visual-system")
     return {
         "title": title,
         "normalizedTitle": normalize_structure_text(title),
-        "slideRole": slide_role,
+        "slideRole": declared_role,
         "visualSystem": visual_system,
-        "hasSlideRole": bool(slide_role),
+        "hasSlideRole": bool(declared_role),
         "hasVisualSystem": bool(visual_system),
         "classNames": class_names,
         "hasTable": has_tag(slide_source, "table"),
@@ -91,21 +91,6 @@ def extract_class_names(slide_source: str) -> list[str]:
     for match in re.finditer(r"\bclass\s*=\s*([\"'])(.*?)\1", slide_source, flags=re.IGNORECASE | re.DOTALL):
         names.extend(value.strip().lower() for value in re.split(r"\s+", match.group(2)) if value.strip())
     return names
-
-
-def extract_section_attribute(slide_source: str, attribute_name: str) -> str:
-    section_match = re.search(r"<section\b[^>]*>", slide_source, flags=re.IGNORECASE | re.DOTALL)
-    if not section_match:
-        return ""
-    attribute_pattern = rf"\b{re.escape(attribute_name)}\s*=\s*([\"'])(.*?)\1"
-    attribute_match = re.search(attribute_pattern, section_match.group(0), flags=re.IGNORECASE | re.DOTALL)
-    if not attribute_match:
-        return ""
-    return normalize_structure_text(html.unescape(attribute_match.group(2)))
-
-
-def normalize_structure_text(value: str) -> str:
-    return re.sub(r"\s+", " ", value).strip().casefold()
 
 
 def has_tag(slide_source: str, tag_name: str) -> bool:
