@@ -80,7 +80,7 @@ Good for launch readiness, GTM planning, and multi-team execution.
 
 - Use one central launch readiness strip: product, sales, support, risk, decision.
 - Give each lane a status, owner, next checkpoint, and blocker.
-- Make the final ask feel like clearing a launch gate, not a generic approval slide.
+- Make the final ask feel like clearing a launch gate.
 
 ## Field Report
 
