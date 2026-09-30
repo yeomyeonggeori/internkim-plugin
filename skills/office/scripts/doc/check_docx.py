@@ -8,13 +8,12 @@ from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml.ns import qn
 from docx.text.paragraph import Paragraph
 
-from doc_definitions import BROKEN_INTERNAL_REFERENCE, EAST_ASIA_FONT_MISSING, PLACEHOLDER_LEFT, STALE_TABLE_OF_CONTENTS, TRACKED_CHANGES_PRESENT
+from doc_definitions import BROKEN_INTERNAL_REFERENCE, EAST_ASIA_FONT_MISSING, STALE_TABLE_OF_CONTENTS, TRACKED_CHANGES_PRESENT
 from docx_blocks import PARAGRAPH_TAG, body_block_elements, element_text, heading_level
 from office_result import Issue, OfficeArgumentParser, Result, run_command
-from text_checks import contains_korean
+from text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN, contains_korean
 
 
-PLACEHOLDER_PATTERN = re.compile(r"\{\{.*?\}\}|\{%.*?%\}")
 FIELD_REFERENCE_PATTERN = re.compile(r"^\s*(?:REF|PAGEREF|NOTEREF)\s+(\S+)", re.IGNORECASE)
 MERGE_FIELD_PATTERN = re.compile(r"^\s*MERGEFIELD\s+(\S+)", re.IGNORECASE)
 TABLE_OF_CONTENTS_PATTERN = re.compile(r"^\s*TOC\b", re.IGNORECASE)
