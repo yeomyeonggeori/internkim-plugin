@@ -189,6 +189,10 @@ TEMPLATE_SYNTAX_ERROR = IssueKind("TEMPLATE_SYNTAX_ERROR", ERROR, "the template'
 
 MERGE_ISSUE_KINDS = (UNRESOLVED_PLACEHOLDER, UNUSED_VALUE, TEMPLATE_SYNTAX_ERROR)
 
+IMAGE_UNAVAILABLE = IssueKind("IMAGE_UNAVAILABLE", WARNING, "a Markdown image is not a readable local file, so its alt text was written instead", "fix the image path relative to the Markdown file, or save a remote image locally first")
+
+EXPORT_ISSUE_KINDS = (IMAGE_UNAVAILABLE,)
+
 GUIDE_INPUTS = (
     ("doc create --spec <file>", DOCUMENT_SPECIFICATION),
     ("doc create --table <file>", TABLE_FILE),
@@ -197,6 +201,7 @@ GUIDE_INPUTS = (
     ("doc merge <template.docx> <values.json> <output.docx>: values", MERGE_VALUES),
 )
 GUIDE_ISSUES = (
+    ("doc export", EXPORT_ISSUE_KINDS),
     ("doc validate", VALIDATE_ISSUE_KINDS),
     ("doc check", CHECK_ISSUE_KINDS),
     ("doc apply", OPERATION_ISSUE_KINDS),
