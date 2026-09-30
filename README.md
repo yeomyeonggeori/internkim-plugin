@@ -93,7 +93,7 @@ at that layout and adds nothing to it.
 | Codex | `.agents/plugins/marketplace.json` lists the repository root, and Codex reads `plugin.json`, `skills/` and `mcp.json` there natively (openai/codex#36544). |
 | Claude Code | `.claude-plugin/marketplace.json` lists the repository root with `strict: false`, naming `./skills` and `./mcp.json`, because Claude Code reads its own manifest format. |
 | Pi | Ships no MCP client. The community extensions `pi-agent-plugins` (an Agent Plugins 1.0.0 client) and `pi-mcp-adapter` load the layout: `pi install npm:pi-mcp-adapter`, `pi install npm:pi-agent-plugins`, then place a checkout under `.pi/plugins/`. |
-| Bluecollar | The ACP host passes the servers in `mcp.json` when it opens a session; the loop itself owns no tools. |
+| [Bluecollar](https://github.com/yeomyeonggeori/bluecollar) | The ACP host passes the servers in `mcp.json` when it opens a session; the loop itself owns no tools. |
 
 ## Paths
 
