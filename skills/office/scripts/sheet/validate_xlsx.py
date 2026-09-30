@@ -5,6 +5,7 @@ from openpyxl import load_workbook
 
 from office_result import Issue, OfficeArgumentParser, Result, run_command
 from sheet_definitions import AUTO_FILTER_MISSING, BLANK_HEADER_CELLS, HEADER_NOT_FROZEN
+from sheet_styling import header_row_index
 
 
 FORMULA_CELL_LIMIT = 50
@@ -42,20 +43,6 @@ def summarize_sheet(worksheet) -> dict:
         "autoFilter": bool(worksheet.auto_filter.ref),
         "blankHeaderCount": sum(1 for value in header_values if value is None or str(value).strip() == ""),
     }
-
-
-def header_row_index(worksheet) -> int:
-    if worksheet.max_row < 2:
-        return 1
-    first_row_values = [cell.value for cell in worksheet[1]]
-    second_row_values = [cell.value for cell in worksheet[2]]
-    if non_blank_count(first_row_values) == 1 and non_blank_count(second_row_values) > 1:
-        return 2
-    return 1
-
-
-def non_blank_count(values: list) -> int:
-    return sum(1 for value in values if value is not None and str(value).strip())
 
 
 def is_formula(value: object) -> bool:

@@ -36,13 +36,13 @@ OPERATIONS = Variant(
     "one edit of sheet apply; operations run in order and each sees the workbook the ones before it left, and the batch applies whole or not at all",
     "op",
     (
-        Record("set_cell", "write one cell", (
+        Record("set_cell", "write one cell; an unstyled cell in or touching a table of at least two rows and two columns takes the table's default style, the one sheet create gives every cell", (
             SHEET_NAME,
             Field("cell", CELL_ADDRESS, "cell address such as B7", required=True),
             Field("value", CellValue(), "number, text or true/false; text starting with = is a formula; omit or null to clear the cell"),
             VALUE_TYPE,
         )),
-        Record("set_range", "write a block of values from its top-left cell", (
+        Record("set_range", "write a block of values from its top-left cell; unstyled cells take the table's default style as set_cell describes", (
             SHEET_NAME,
             Field("cell", CELL_ADDRESS, "top-left cell address", required=True),
             Field("values", ROWS, "rows of values; each item follows set_cell's value", required=True),
