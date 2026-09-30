@@ -214,6 +214,12 @@ def plan_structure(axis: str, sign: int, noun: str, verb: str):
     return plan
 
 
+def plan_recalculate(workbook, operation: dict, location: str) -> Change:
+    def change() -> str:
+        return "stored freshly computed values for every formula the workbook can compute"
+    return change
+
+
 def plan_add_chart(workbook, operation: dict, location: str) -> Change:
     worksheet = sheet_of(workbook, operation, location)
     chart = build_chart(worksheet, operation, location)
@@ -238,5 +244,6 @@ SHEET_OPERATIONS = OperationSet(OPERATIONS, {
     "delete_rows": plan_structure(ROW_AXIS, -1, "rows", "deleted"),
     "insert_columns": plan_structure(COLUMN_AXIS, 1, "columns", "inserted"),
     "delete_columns": plan_structure(COLUMN_AXIS, -1, "columns", "deleted"),
+    "recalculate": plan_recalculate,
     "add_chart": plan_add_chart,
 }, sequential=True)
