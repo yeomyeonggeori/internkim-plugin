@@ -16,16 +16,11 @@ from native_rendering import (
     timeline_lines,
     visible_card_count,
 )
+from skill_runtime import HANGUL_FONT_PATHS
 from slide_images import slide_image_filename
 from slide_model import SlideModel
 
 
-SHARED_PREVIEW_FONT_PATHS = (
-    "/System/Library/Fonts/AppleSDGothicNeo.ttc",
-    "/Library/Fonts/Arial Unicode.ttf",
-    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-)
 BOLD_FALLBACK_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 REGULAR_FALLBACK_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
@@ -53,14 +48,17 @@ def write_native_review_images(slide_models: list[SlideModel], design: dict[str,
 
 
 def preview_font(image_font_module, size: int, is_bold: bool):
-    candidates = [*SHARED_PREVIEW_FONT_PATHS, BOLD_FALLBACK_FONT_PATH if is_bold else REGULAR_FALLBACK_FONT_PATH]
-    for candidate in candidates:
+    for candidate in preview_font_candidates(is_bold):
         try:
             if pathlib.Path(candidate).exists():
                 return image_font_module.truetype(candidate, size)
         except OSError:
             continue
     return image_font_module.load_default()
+
+
+def preview_font_candidates(is_bold: bool) -> list[str]:
+    return [*HANGUL_FONT_PATHS, BOLD_FALLBACK_FONT_PATH if is_bold else REGULAR_FALLBACK_FONT_PATH]
 
 
 def draw_native_preview_slide(draw, model: SlideModel, colors: dict[str, str], fonts: dict[str, object]) -> None:

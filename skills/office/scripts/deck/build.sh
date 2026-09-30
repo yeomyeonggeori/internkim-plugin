@@ -179,5 +179,5 @@ if [ ! -f "$HTML_EXPORT_SCRIPT" ]; then
   echo "Error: html_export.py not found. Cannot export HTML-first deck." >&2
   exit 1
 fi
-python3 "$HTML_EXPORT_SCRIPT" "$SOURCE_PATH" "$NAME" "$BUILD_PATH" "$FORMATS" "$RENDER_REVIEW_SCRIPT" "$HTML_RENDER_SCRIPT"
+PYTHONPATH="${SCRIPT_DIRECTORY}/..${PYTHONPATH:+:$PYTHONPATH}" python3 "$HTML_EXPORT_SCRIPT" "$SOURCE_PATH" "$NAME" "$BUILD_PATH" "$FORMATS" "$RENDER_REVIEW_SCRIPT" "$HTML_RENDER_SCRIPT"
 echo "[stage] build_formats_done $(date +%s)" >&2

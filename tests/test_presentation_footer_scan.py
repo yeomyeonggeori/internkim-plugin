@@ -5,6 +5,7 @@ from unittest import mock
 
 
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"
+sys.path.insert(0, str(SCRIPTS_PATH.parent))
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 import footer_warnings  # noqa: E402
