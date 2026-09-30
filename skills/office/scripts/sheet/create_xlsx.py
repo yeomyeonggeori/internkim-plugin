@@ -2,6 +2,7 @@
 import csv
 import os
 from pathlib import Path
+import unicodedata
 
 from cell_values import typed_cell_value
 from office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
@@ -109,11 +110,20 @@ def apply_default_formatting(worksheet, sheet_specification, alignment_class, bo
             cell.border = thin_border
             apply_number_format(cell)
     for column_cells in worksheet.columns:
-        content_width = max(len(str(cell.value or "")) for cell in column_cells)
+        content_width = max(display_width(cell.value) for cell in column_cells)
         column_letter = get_column_letter(column_cells[0].column)
         worksheet.column_dimensions[column_letter].width = min(max(content_width + 2, 10), 48)
     apply_column_widths(worksheet, sheet_specification)
     apply_column_number_formats(worksheet, sheet_specification)
+
+
+def display_width(value):
+    lines = str(value or "").split("\n")
+    return max(sum(character_width(character) for character in line) for line in lines)
+
+
+def character_width(character):
+    return 2 if unicodedata.east_asian_width(character) in ("W", "F") else 1
 
 
 def create_thin_border(border_class, side_class):
