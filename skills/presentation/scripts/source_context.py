@@ -1,7 +1,7 @@
 import re
 
-from slide_source import split_slide_sources
-from slide_structure import extract_section_attribute, visible_slide_text
+from slide_source import slide_role, split_slide_sources
+from slide_structure import visible_slide_text
 
 
 TINY_FONT_SIZE_PIXELS = 16
@@ -19,7 +19,7 @@ def design_document_body(design_document_text: str) -> str:
 
 def inspect_source_context(source_text: str, design_document_text: str, slide_count: int) -> dict[str, object]:
     slide_sources = split_slide_sources(source_text)
-    slide_role_count = sum(1 for slide_source in slide_sources if extract_section_attribute(slide_source, "data-slide-role"))
+    slide_role_count = sum(1 for slide_source in slide_sources if slide_role(slide_source))
     visual_system_count = source_text.casefold().count("data-visual-system")
     return {
         "hasVisualSystemAttribute": visual_system_count > 0,
