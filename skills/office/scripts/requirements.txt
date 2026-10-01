@@ -2,6 +2,7 @@ docxtpl
 fpdf2
 openpyxl
 pandas<3
+pdfplumber
 Pillow
 pypdf
 pypdfium2

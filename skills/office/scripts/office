@@ -25,16 +25,17 @@ def main(arguments: list[str]) -> int:
         return print_guide(arguments[1:])
     if arguments[0] == "python":
         return run_python(arguments[1:])
-    command = find_command(arguments[:2])
+    command = find_command(arguments)
     if command is None:
         return run_command(lambda: reject_unknown_command(arguments[:2]))
-    return run_office_command(command, arguments[2:])
+    return run_office_command(command, arguments[len(command.words):])
 
 
 def usage() -> str:
     width = max(len(command.name) for command in COMMANDS)
     lines = [
         "usage: office <format> <verb> [arguments]",
+        "       office convert <input> <output>",
         "       office guide <format> [verb]",
         "       office python <script.py> [arguments]",
         "",

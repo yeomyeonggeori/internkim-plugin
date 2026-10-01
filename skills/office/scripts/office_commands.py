@@ -12,8 +12,12 @@ class Command:
     needs_packages: bool = True
 
     @property
+    def words(self) -> list[str]:
+        return [self.format_name, self.verb] if self.verb else [self.format_name]
+
+    @property
     def name(self) -> str:
-        return f"{self.format_name} {self.verb}"
+        return " ".join(self.words)
 
 
 @dataclass(frozen=True)
@@ -29,6 +33,7 @@ FORMATS = (
     Format("sheet", "workbooks (.xlsx)", "sheet/sheet_definitions.py"),
     Format("deck", "slide decks built from slides.html, and .pptx files to read, edit and check", "deck/deck_definitions.py"),
     Format("paperwork", "Korean company forms and contracts on letterhead", "paperwork/paperwork_definitions.py"),
+    Format("convert", "conversions between office formats", "convert/convert_definitions.py"),
 )
 
 COMMANDS = (
@@ -63,12 +68,13 @@ COMMANDS = (
     Command("deck", "image", "deck/fetch_image.py", "download a public-domain photo for a search query", needs_packages=False),
     Command("paperwork", "render", "paperwork/render_paperwork.py", "render a company form to PDF on letterhead"),
     Command("paperwork", "fill", "paperwork/fill_template.py", "fill a standard contract template to .docx"),
+    Command("convert", "", "convert/convert_file.py", "convert a file to another format, such as docx to md, pdf to docx, or xlsx to csv"),
     Command("paperwork", "check", "paperwork/check_amounts.py", "report row amounts, totals, VAT and the amount in words of a priced form, never rewriting it", needs_packages=False),
 )
 
 
 def find_command(words: list[str]) -> Command | None:
-    return next((command for command in COMMANDS if [command.format_name, command.verb] == words), None)
+    return next((command for command in COMMANDS if words[:len(command.words)] == command.words), None)
 
 
 def find_format(name: str) -> Format | None:

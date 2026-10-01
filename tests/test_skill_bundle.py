@@ -69,7 +69,7 @@ class OfficeEntryTest(unittest.TestCase):
     def test_route_table_lists_every_command(self):
         skill_text = (SKILLS_PATH / "office" / "SKILL.md").read_text(encoding="utf-8")
         route_table = skill_text.split("## Route the work")[1].split("\n## ")[0]
-        listed_names = set(re.findall(r"`([a-z]+ [a-z]+)`", route_table))
+        listed_names = set(re.findall(r"`([a-z]+(?: [a-z]+)?)`", route_table))
         command_names = {command.name for command in office_command_table()}
         self.assertEqual(command_names ^ listed_names, set())
 
