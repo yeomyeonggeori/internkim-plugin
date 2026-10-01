@@ -91,7 +91,7 @@ def html_document(blocks: list, title: str) -> str:
     )
 
 
-def html_blocks(blocks: list, chart_font_family: str = CHART_FONT_FAMILY) -> list[str]:
+def html_blocks(blocks: list, chart_font_family: str = CHART_FONT_FAMILY, headings_on_new_page: frozenset[int] = frozenset()) -> list[str]:
     parts = []
     index = 0
     while index < len(blocks):
@@ -103,7 +103,12 @@ def html_blocks(blocks: list, chart_font_family: str = CHART_FONT_FAMILY) -> lis
             parts.append(html_list(blocks[index:end]))
             index = end
             continue
-        parts.append(chart_html(block, chart_font_family) if isinstance(block, Chart) else html_block(block))
+        if isinstance(block, Chart):
+            parts.append(chart_html(block, chart_font_family))
+        elif index in headings_on_new_page:
+            parts.append(f'<h{block.level} style="break-before:page">{inline_html(block.text)}</h{block.level}>')
+        else:
+            parts.append(html_block(block))
         index += 1
     return parts
 

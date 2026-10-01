@@ -6,6 +6,7 @@ from PIL import Image as PillowImage, UnidentifiedImageError
 
 from block_writers import SizedImage, html_blocks
 from doc_definitions import GLYPH_NOT_COVERED, IMAGE_UNAVAILABLE, PDF_RENDERER_FAILED
+from document_pagination import MAXIMUM_PAGINATION_PASSES, stranded_heading
 from fontTools.ttLib import TTFont
 
 from markdown_blocks import Image, Paragraph, Table, local_image_problem
@@ -42,20 +43,29 @@ def render_document_pdf(blocks: list, output_path: Path, source_directory: Path,
     sized = [sized_image(block, source_directory, issues) if isinstance(block, Image) else block for block in blocks]
     fallback = fallback_font()
     fonts = chosen_fonts(font_path, issues) + fallback_fonts(fallback)
-    request = render_request(sized, output_path, title, fonts)
     missing = uncovered_characters(markdown_source_text(blocks), fonts)
     if missing:
         issues.append(GLYPH_NOT_COVERED.issue(f"no bundled or installed font draws {' '.join(missing)}; each shows as an empty box", "".join(missing)))
     try:
-        render_pdf(request)
+        render_keeping_headings_with_their_text(sized, output_path, title, fonts)
     except (RendererUnavailable, RenderFailed) as reason:
         raise OfficeFailure(PDF_RENDERER_FAILED.issue(f"{output_path.name} was not drawn: {reason}", str(output_path)))
     return issues
 
 
-def render_request(blocks: list, output_path: Path, title: str, fonts: list[tuple[str, int, Path]]) -> DocumentPdfRequest:
+def render_keeping_headings_with_their_text(blocks: list, output_path: Path, title: str, fonts: list[tuple[str, int, Path]]) -> None:
+    headings_on_new_page: frozenset[int] = frozenset()
+    for _ in range(MAXIMUM_PAGINATION_PASSES):
+        render_pdf(render_request(blocks, output_path, title, fonts, headings_on_new_page))
+        stranded = stranded_heading(output_path, blocks, headings_on_new_page)
+        if stranded is None:
+            return
+        headings_on_new_page |= {stranded}
+
+
+def render_request(blocks: list, output_path: Path, title: str, fonts: list[tuple[str, int, Path]], headings_on_new_page: frozenset[int] = frozenset()) -> DocumentPdfRequest:
     return DocumentPdfRequest(
-        html="\n".join(html_blocks(blocks, fonts[0][0])),
+        html="\n".join(html_blocks(blocks, fonts[0][0], headings_on_new_page)),
         css=CSS_PATH.read_text(encoding="utf-8"),
         output_path=output_path,
         title=title,
