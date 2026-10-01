@@ -62,7 +62,7 @@ const devToolsBrowsers = [
   { program: "moli", argumentsFor: (port) => ["serve", "--layout", "--resource", "--port", String(port)] },
   ...["google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"].map((program) => ({
     program,
-    argumentsFor: (port, profilePath) => ["--headless=new", `--remote-debugging-port=${port}`, `--user-data-dir=${profilePath}`, "--no-first-run", "--no-default-browser-check", "--disable-gpu", "--no-sandbox"],
+    argumentsFor: (port, profilePath) => ["--headless=new", `--remote-debugging-port=${port}`, `--user-data-dir=${profilePath}`, "--no-first-run", "--no-default-browser-check", "--password-store=basic", "--use-mock-keychain", "--disable-gpu", "--no-sandbox"],
   })),
 ];
 
