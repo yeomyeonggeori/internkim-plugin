@@ -47,6 +47,23 @@ class AcceptanceTest(unittest.TestCase):
         self.assertTrue(rounds[-1].verdict.startswith("STOP FIXING"))
         self.assertEqual(repeated.fix_round, FIX_ROUNDS_ALLOWED)
 
+    def test_rounds_count_fixes_since_the_last_acceptable_build_not_all_history(self):
+        with tempfile.TemporaryDirectory() as directory:
+            build_path = Path(directory)
+            clean = [self.judge(build_path, f"<section>accepted {number}</section>", []) for number in range(3)]
+            defective = self.judge(build_path, "<section>user edit with an overlap</section>", [OVERLAP])
+        self.assertTrue(all(acceptance.acceptable for acceptance in clean))
+        self.assertEqual(defective.fix_round, 0)
+        self.assertTrue(defective.verdict.startswith(f"FIX ROUND 1 OF {FIX_ROUNDS_ALLOWED}"))
+
+    def test_a_change_after_fixing_stopped_starts_new_rounds(self):
+        with tempfile.TemporaryDirectory() as directory:
+            build_path = Path(directory)
+            for number in range(FIX_ROUNDS_ALLOWED + 1):
+                self.judge(build_path, f"<section>attempt {number}</section>", [OVERLAP])
+            next_request = self.judge(build_path, "<section>the user's next change</section>", [OVERLAP])
+        self.assertEqual(next_request.fix_round, 0)
+
     def test_an_unmeasured_build_is_never_called_acceptable(self):
         with tempfile.TemporaryDirectory() as directory:
             acceptance = self.judge(Path(directory), "<section>a</section>", [], measured=False)
