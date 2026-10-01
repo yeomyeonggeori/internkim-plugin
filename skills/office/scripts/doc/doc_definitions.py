@@ -172,7 +172,7 @@ REVISION_SELECTOR = (
 
 OPERATIONS = Variant(
     "operation",
-    "one edit of doc apply; every index refers to the document as doc read showed it before the batch, and the batch applies whole or not at all",
+    "one edit of doc apply; every index refers to the document as doc read showed it before the batch, and the batch applies whole or not at all unless --mode says otherwise",
     "op",
     (
         Record("replace_text", "replace every occurrence of text, keeping the formatting of the run the match starts in", (

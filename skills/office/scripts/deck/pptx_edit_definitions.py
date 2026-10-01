@@ -294,7 +294,7 @@ DECK_OPERATIONS = (
 OPERATIONS = Variant(
     "operation",
     "one edit of deck apply; slide numbers, shape indexes and table rows refer to the deck as deck read showed it before the batch, "
-    "operations run in order, and the batch applies whole or not at all; a slide added in the batch is edited in the next batch; "
+    "operations run in order, and the batch applies whole or not at all unless --mode says otherwise; a slide added in the batch is edited in the next batch; "
     f"a length is EMU ({EMU_PER_INCH} per inch, {EMU_PER_POINT} per point) or text with a unit such as {LENGTH_EXAMPLES} of the slide",
     "op",
     TEXT_OPERATIONS + ELEMENT_OPERATIONS + ARRANGE_OPERATIONS + INSERT_OPERATIONS + TABLE_AND_CHART_OPERATIONS + SLIDE_OPERATIONS + SECTION_OPERATIONS + DECK_OPERATIONS,

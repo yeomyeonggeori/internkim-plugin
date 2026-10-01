@@ -10,6 +10,7 @@ from deck.pptx_edit_definitions import OPERATIONS
 from deck.pptx_element_operations import ELEMENT_PLANNERS
 from deck.pptx_footer_operations import FOOTER_PLANNERS
 from deck.pptx_insert_operations import INSERT_PLANNERS
+from deck.pptx_lengths import normalized_operation
 from deck.pptx_link_operations import LINK_PLANNERS
 from deck.pptx_package_fidelity import preserve_unchanged_parts
 from deck.pptx_section_operations import SECTION_PLANNERS
@@ -29,6 +30,11 @@ def save_editing(editing: PptxEditing, path: str) -> None:
         output.write(preserve_unchanged_parts(editing.original_package, rewritten.getvalue()))
 
 
+def operation_in_emu(editing: PptxEditing, operation: dict, index: int) -> dict:
+    slide_size = (editing.presentation.slide_width, editing.presentation.slide_height)
+    return normalized_operation(OPERATIONS, operation, index, slide_size)
+
+
 PPTX_OPERATIONS = OperationSet(OPERATIONS, {
     **TEXT_PLANNERS,
     **ELEMENT_PLANNERS,
@@ -42,4 +48,4 @@ PPTX_OPERATIONS = OperationSet(OPERATIONS, {
     **FOOTER_PLANNERS,
     **SECTION_PLANNERS,
     **DECK_PLANNERS,
-})
+}, prepare=operation_in_emu)

@@ -126,7 +126,7 @@ PIVOT_TOP = Record("top items", "a top or bottom filter on a row or column heade
 
 OPERATIONS = Variant(
     "operation",
-    "one edit of sheet apply; operations run in order and each sees the workbook the ones before it left, and the batch applies whole or not at all",
+    "one edit of sheet apply; operations run in order and each sees the workbook the ones before it left, and the batch applies whole or not at all unless --mode says otherwise",
     "op",
     (
         Record("set_cell", "write one cell; an unstyled cell in or touching a table of at least two rows and two columns takes the table's default style, the one sheet create gives every cell", (
