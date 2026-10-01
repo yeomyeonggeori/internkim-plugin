@@ -64,6 +64,12 @@ class ThematicBreak:
 
 
 @dataclass(frozen=True)
+class CodeBlock:
+    text: str
+    language: str = ""
+
+
+@dataclass(frozen=True)
 class Equation:
     latex: str
 
@@ -85,6 +91,10 @@ def parse_markdown(markdown_text: str) -> list:
             continue
         if stripped.lower() == CHART_FENCE_OPENING:
             block, index = chart_block(lines, index)
+            blocks.append(block)
+            continue
+        if stripped.startswith(FENCE):
+            block, index = code_block(lines, index)
             blocks.append(block)
             continue
         if stripped.startswith(DISPLAY_MATH_FENCE):
@@ -116,6 +126,13 @@ def equation_block(lines: list[str], index: int):
 def chart_block(lines: list[str], index: int):
     end = next((position for position in range(index + 1, len(lines)) if lines[position].strip() == FENCE), len(lines))
     return parse_chart_fence(lines[index + 1:end], index + 1), end + 1
+
+
+def code_block(lines: list[str], index: int):
+    indent = len(lines[index]) - len(lines[index].lstrip())
+    end = next((position for position in range(index + 1, len(lines)) if lines[position].strip() == FENCE), len(lines))
+    body = [line[indent:] if not line[:indent].strip() else line.lstrip() for line in lines[index + 1:end]]
+    return CodeBlock("\n".join(body), lines[index].strip()[len(FENCE):].strip()), end + 1
 
 
 def next_block(lines: list[str], index: int, list_match, list_indents: list[int]):
@@ -167,7 +184,7 @@ def paragraph_block(lines: list[str], index: int):
 
 def continues_paragraph(line: str) -> bool:
     stripped = line.strip()
-    if not stripped or HEADING_PATTERN.match(stripped) or is_table_line(line) or stripped.lower() == CHART_FENCE_OPENING or THEMATIC_BREAK_PATTERN.match(line) or stripped.startswith(DISPLAY_MATH_FENCE):
+    if not stripped or HEADING_PATTERN.match(stripped) or is_table_line(line) or stripped.startswith(FENCE) or THEMATIC_BREAK_PATTERN.match(line) or stripped.startswith(DISPLAY_MATH_FENCE):
         return False
     return not LIST_PATTERN.match(line) and not IMAGE_LINE_PATTERN.match(line)
 

@@ -8,10 +8,10 @@ from fonts.registry import MONOSPACE, SANS_BODY, default_family
 from charts.look import OFFICE_SERIES_COLORS
 from charts.svg import chart_svg
 from doc.docx_charts import specification
-from doc.markdown_charts import Chart
+from doc.markdown_charts import FENCE, Chart
 from doc.latex_math import LatexNotReadable, latex_html
 from render.office_preview import data_uri
-from doc.markdown_blocks import Equation, Heading, Image, ListItem, Quote, Table, ThematicBreak, inline_segments, link_parts, math_latex
+from doc.markdown_blocks import CodeBlock, Equation, Heading, Image, ListItem, Quote, Table, ThematicBreak, inline_segments, link_parts, math_latex
 
 
 LIST_INDENT = "   "
@@ -33,7 +33,7 @@ class SizedImage:
     @property
     def source(self) -> str:
         return file_data_uri(self.data, f"image{self.suffix}")
-HTML_STYLE = f'body{{font-family:"{BODY_FONT_FAMILY}",sans-serif;line-height:1.6;max-width:46rem;margin:2rem auto;padding:0 1rem;color:#1a1a1a}}code{{font-family:"{CODE_FONT_FAMILY}",monospace}}\n' + """table{border-collapse:collapse;margin:1rem 0}th,td{border:1px solid #999;padding:.3rem .6rem;text-align:left;vertical-align:top}th{background:#eef2f7}
+HTML_STYLE = f'body{{font-family:"{BODY_FONT_FAMILY}",sans-serif;line-height:1.6;max-width:46rem;margin:2rem auto;padding:0 1rem;color:#1a1a1a}}code{{font-family:"{CODE_FONT_FAMILY}",monospace}}\n' + """pre{background:#f2f4f7;padding:.6rem .8rem;white-space:pre-wrap}table{border-collapse:collapse;margin:1rem 0}th,td{border:1px solid #999;padding:.3rem .6rem;text-align:left;vertical-align:top}th{background:#eef2f7}
 img{max-width:100%}hr{border:0;border-top:1px solid #8c959f;margin:1rem 0}.equation{text-align:center;margin:1rem 0}blockquote{margin:1rem 0;padding-left:1rem;border-left:3px solid #ccc;color:#444}"""
 
 
@@ -66,6 +66,8 @@ def markdown_lines(block) -> list[str]:
         return ["---"]
     if isinstance(block, Equation):
         return [block.text]
+    if isinstance(block, CodeBlock):
+        return [f"{FENCE}{block.language}", *block.text.split("\n"), FENCE]
     return block.text.split("\n")
 
 
@@ -142,6 +144,8 @@ def html_block(block) -> str:
         return "<hr>"
     if isinstance(block, Equation):
         return f'<div class="equation">{math_html(block.latex, block.text, display=True)}</div>'
+    if isinstance(block, CodeBlock):
+        return f"<pre><code>{html.escape(block.text)}</code></pre>"
     return f"<p>{inline_html(block.text)}</p>"
 
 

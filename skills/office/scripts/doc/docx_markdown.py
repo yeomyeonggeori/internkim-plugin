@@ -10,14 +10,14 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
 from doc.doc_definitions import IMAGE_UNAVAILABLE
-from doc.docx_defaults import CODE_FONT, DOCUMENT_FONT, apply_korean_defaults, set_page
+from doc.docx_defaults import CODE_FONT, DOCUMENT_FONT, apply_korean_defaults, name_fonts, set_page
 from doc.docx_format_operations import ALIGNMENTS
 from doc.docx_tables import add_space_after_table, format_table
 from doc.docx_lists import add_list_paragraph, start_list
 from doc.docx_charts import add_chart_part, drawing_run, next_drawing_id, specification
 from doc.markdown_charts import Chart
 from doc.latex_math import OMML_NAMESPACE, LatexNotReadable, latex_omml
-from doc.markdown_blocks import Equation, Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, inline_segments, link_parts, local_image_problem, math_latex
+from doc.markdown_blocks import CodeBlock, Equation, Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, inline_segments, link_parts, local_image_problem, math_latex
 from core.office_result import Issue
 from core.office_theme import HYPERLINK_COLOR
 
@@ -27,6 +27,8 @@ MAXIMUM_IMAGE_WIDTH = Inches(6)
 CHART_HEIGHT_RATIO = 0.56
 RULE_COLOR = "8C959F"
 RULE_EIGHTHS_OF_A_POINT = "6"
+CODE_SIZE_POINTS = 9.5
+CODE_BACKGROUND = "F2F4F7"
 
 
 def markdown_document(blocks: list, font_name: str, font_size: float, source_directory: Path) -> tuple[Document, list[Issue]]:
@@ -67,7 +69,29 @@ def add_block(document: Document, block, source_directory: Path, list_ids: dict[
         add_rule(document)
     elif isinstance(block, Equation):
         add_display_equation(document, block)
+    elif isinstance(block, CodeBlock):
+        add_code_block(document, block)
     return []
+
+
+def add_code_block(document: Document, block: CodeBlock) -> None:
+    paragraph = document.add_paragraph()
+    shading = OxmlElement("w:shd")
+    for name, value in (("w:val", "clear"), ("w:color", "auto"), ("w:fill", CODE_BACKGROUND)):
+        shading.set(qn(name), value)
+    paragraph._p.get_or_add_pPr().append(shading)
+    lines = block.text.split("\n")
+    for position, line in enumerate(lines):
+        run = code_run(paragraph, line)
+        if position < len(lines) - 1:
+            run.add_break()
+
+
+def code_run(paragraph, text: str):
+    run = paragraph.add_run(text)
+    name_fonts(run._r.get_or_add_rPr(), CODE_FONT)
+    run.font.size = Pt(CODE_SIZE_POINTS)
+    return run
 
 
 def add_display_equation(document: Document, equation: Equation) -> None:
@@ -146,9 +170,7 @@ def add_inline_runs(paragraph, text: str) -> None:
         elif segment.startswith("*") and segment.endswith("*") and len(segment) > 2:
             paragraph.add_run(segment[1:-1]).italic = True
         elif segment.startswith("`") and segment.endswith("`") and len(segment) > 2:
-            run = paragraph.add_run(segment[1:-1])
-            run.font.name = CODE_FONT
-            run.font.size = Pt(9.5)
+            code_run(paragraph, segment[1:-1])
         else:
             paragraph.add_run(segment)
 

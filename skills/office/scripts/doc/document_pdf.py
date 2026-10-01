@@ -10,7 +10,7 @@ from doc.document_pagination import MAXIMUM_PAGINATION_PASSES, stranded_heading
 from fontTools.ttLib import TTFont
 
 from doc.latex_math import math_text, text_with_math_drawn
-from doc.markdown_blocks import Equation, Image, Paragraph, Table, local_image_problem
+from doc.markdown_blocks import CodeBlock, Equation, Image, Paragraph, Table, local_image_problem
 from fonts.registry import MONOSPACE, SANS_BODY, BundledFamily, default_family
 from core.office_result import BOLD_FONT_UNAVAILABLE, Issue, OfficeFailure
 from fonts.pdf_registration import bold_sibling
@@ -127,4 +127,6 @@ def block_texts(block) -> list[str]:
         return [text_with_math_drawn(cell) for row in block.rows for cell in row]
     if isinstance(block, Equation):
         return [math_text(block.latex, display=True)]
+    if isinstance(block, CodeBlock):
+        return [block.text]
     return [text_with_math_drawn(getattr(block, "text", ""))]

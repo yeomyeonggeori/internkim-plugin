@@ -6,6 +6,9 @@ import zipfile
 from doc_fixture import run_office, run_office_python
 from report_fixture import pdf_text
 
+from doc.block_writers import markdown_text  # noqa: E402
+from doc.markdown_blocks import CodeBlock, parse_markdown  # noqa: E402
+
 
 PROPOSAL = """# 도입 제안서
 
@@ -140,6 +143,58 @@ class MathTest(unittest.TestCase):
         self.assertNotIn("$a^2", text)
         self.assertIn("4ac", text)
         self.assertIn("$100에서 $200 사이", text)
+
+
+CODE_NOTE = """# 배포 절차
+
+아래 명령을 실행합니다.
+
+```bash
+cd /srv/app
+make build   # 빌드
+    ./deploy --env production
+```
+
+끝.
+"""
+
+
+class CodeBlockTest(unittest.TestCase):
+    def setUp(self):
+        self.temporary_directory = tempfile.TemporaryDirectory()
+        self.directory = Path(self.temporary_directory.name)
+        (self.directory / "절차.md").write_text(CODE_NOTE, encoding="utf-8")
+
+    def tearDown(self):
+        self.temporary_directory.cleanup()
+
+    def export(self, output_name):
+        envelope = run_office(["doc", "export", "절차.md", "--output", output_name], self.directory)
+        self.assertEqual(envelope["status"], "ok", envelope["issues"])
+
+    def test_a_code_fence_is_read_as_written_and_written_back_as_a_fence(self):
+        blocks = parse_markdown(CODE_NOTE)
+        self.assertIn(CodeBlock("cd /srv/app\nmake build   # 빌드\n    ./deploy --env production", "bash"), blocks)
+        self.assertEqual(parse_markdown(markdown_text(blocks)), blocks)
+
+    def test_a_code_fence_becomes_one_shaded_paragraph_in_the_code_font(self):
+        self.export("절차.docx")
+        with zipfile.ZipFile(self.directory / "절차.docx") as archive:
+            document = archive.read("word/document.xml").decode()
+        self.assertNotIn("```", document)
+        code = document[document.index("cd /srv/app") - 600:document.index("production") + 20]
+        self.assertIn('w:fill="F2F4F7"', code)
+        self.assertIn('w:eastAsia="D2Coding"', code)
+        self.assertEqual(code.count("<w:br/>"), 2)
+        self.assertIn("    ./deploy", document)
+
+    def test_the_pdf_and_html_keep_the_code_as_written(self):
+        self.export("절차.pdf")
+        text = pdf_text("절차.pdf", self.directory)
+        self.assertNotIn("```", text)
+        self.assertIn("make build", text)
+        run_office(["convert", "절차.md", "절차.html"], self.directory)
+        self.assertIn("<pre><code>cd /srv/app\nmake build   # 빌드\n    ./deploy --env production</code></pre>", (self.directory / "절차.html").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
