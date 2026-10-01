@@ -108,7 +108,15 @@ def available_shapes(shapes: list, prefix: str = "") -> str:
 def require_kind(target: ShapeTarget, kinds: tuple[str, ...], location: str, purpose: str) -> None:
     if target.kind in kinds:
         return
-    raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}.shape: {target.label} is a {target.kind}; {purpose}", f"{location}.shape", "pick a shape of the kind deck read shows for it"))
+    raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}.shape: {target.label} is a {target.kind}; {purpose}", f"{location}.shape", shapes_of_kind_suggestion(target, kinds)))
+
+
+def shapes_of_kind_suggestion(target: ShapeTarget, kinds: tuple[str, ...]) -> str:
+    wanted = " or ".join(kinds)
+    addresses = [str(index) for index, shape in enumerate(target.slide.shapes) if shape_kind(shape._element) in kinds]
+    if addresses:
+        return f"use shape {' or '.join(addresses)}, the {wanted} of slide {target.slide_number}"
+    return f"slide {target.slide_number} holds no {wanted}; run deck read to find the slide that does"
 
 
 def text_body(element):

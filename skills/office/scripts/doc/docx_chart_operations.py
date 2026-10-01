@@ -9,7 +9,7 @@ from docx.shared import Inches
 from docx_charts import ROUND_KINDS, ChartSpecification, add_chart_part, document_charts, drawing_run, next_drawing_id, read_specification, rewrite_chart_part, specification
 from docx_editing import DocxEditing, placement
 from docx_tracking import mark_block_inserted
-from office_operations import TARGET_NOT_FOUND, Change
+from office_operations import TARGET_NOT_FOUND, Change, chart_indexes_suggestion
 from office_result import INVALID_VALUE, OfficeFailure
 
 
@@ -63,7 +63,7 @@ def resolve_chart(editing: DocxEditing, index: int, location: str):
     charts = document_charts(editing.document, editing.elements)
     if index >= len(charts):
         available = f"charts run 0-{len(charts) - 1}" if charts else "the document has no charts"
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.chart: chart {index} does not exist; {available}", f"{location}.chart", suggestion="doc read lists each chart's index"))
+        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.chart: chart {index} does not exist; {available}", f"{location}.chart", suggestion=chart_indexes_suggestion("the document", len(charts), "insert_chart")))
     return charts[index]
 
 

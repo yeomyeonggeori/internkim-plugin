@@ -232,6 +232,14 @@ class ChartTest(OperationFixture):
         issue = self.refused([{"op": "delete_chart", "chart": 0}])
         self.assertIn("has 0 charts", issue["message"])
 
+    def test_a_chart_index_beyond_the_sheet_names_the_indexes_it_has(self):
+        self.edit([{"op": "add_chart", "type": "bar", "range": "A1:C4"}])
+        issue = self.refused([{"op": "edit_chart", "chart": 3, "title": "After"}])
+        self.assertIn("use chart 0", issue["suggestion"])
+        self.edit([{"op": "delete_chart", "chart": 0}])
+        issue = self.refused([{"op": "edit_chart", "chart": 3, "title": "After"}])
+        self.assertIn("add_chart", issue["suggestion"])
+
 
 class SparklineTest(OperationFixture):
     def test_sparklines_are_written_and_survive_another_edit(self):

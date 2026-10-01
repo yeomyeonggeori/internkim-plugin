@@ -216,6 +216,13 @@ class TableAndChartOperationTest(KoreanDeckFixture):
         self.assertEqual((chart["type"], chart["title"], chart["categories"]), ("column_clustered", "매출", ["2분기", "3분기"]))
         self.assertEqual(chart["series"], [{"name": "매출", "values": [110.0, 131.0]}])
 
+    def test_chart_data_on_a_shape_that_is_no_chart_names_the_chart_to_use(self):
+        envelope = self.apply([{"op": "set_chart_data", "slide": 3, "shape": 0, "series": [{"name": "매출", "values": [1, 2, 3]}]}])
+        self.assertEqual(codes(envelope), ["OPERATION_NOT_APPLICABLE"])
+        self.assertIn("use shape 1", envelope["issues"][0]["suggestion"])
+        envelope = self.apply([{"op": "set_chart_data", "slide": 2, "shape": 0, "series": [{"name": "매출", "values": [1, 2, 3]}]}])
+        self.assertIn("slide 2 holds no chart", envelope["issues"][0]["suggestion"])
+
 
 class SlideOperationTest(KoreanDeckFixture):
     def test_a_slide_added_from_a_layout_is_filled_and_placed(self):
