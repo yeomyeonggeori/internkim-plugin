@@ -255,31 +255,3 @@ def formula_references(formula: str) -> list[str]:
     if not formula.startswith("="):
         return []
     return [token.value for token in Tokenizer(formula).items if token.type == Token.OPERAND and token.subtype == Token.RANGE]
-
-
-def referenced_names(formula: str) -> list[str]:
-    return [reference for reference in formula_references(formula) if is_bare_name(reference)]
-
-
-def is_bare_name(reference: str) -> bool:
-    if "!" in reference or "[" in reference or ":" in reference:
-        return False
-    return parse_end(reference) is None
-
-
-def formula_has_error_operand(formula: str) -> bool:
-    if not formula.startswith("="):
-        return False
-    return any(is_error_operand(token) for token in Tokenizer(formula).items)
-
-
-def is_error_operand(token: Token) -> bool:
-    if token.type != Token.OPERAND:
-        return False
-    return token.subtype == Token.ERROR or (token.subtype == Token.RANGE and token.value.endswith(REFERENCE_ERROR))
-
-
-def formula_function_names(formula: str) -> list[str]:
-    if not formula.startswith("="):
-        return []
-    return [token.value[:-1].upper() for token in Tokenizer(formula).items if token.type == Token.FUNC and token.subtype == Token.OPEN]
