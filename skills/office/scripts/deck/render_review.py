@@ -11,18 +11,16 @@ from content_warnings import (
 )
 from deck_definitions import LAYOUT_RENDER_SOURCE
 from design_tokens import read_design_tokens
-from design_warnings import apply_deck_design_warnings
+from design_warnings import apply_render_source_warning
 from office_result import Issue, Result
 from fit_review import attach_fit_review_metadata, create_fit_reviews
 from geometry_checks import apply_geometry_not_measured_warning, read_geometry
-from footer_warnings import apply_footer_baseline_warning, apply_unpinned_footer_warning
 from render_evidence import read_contact_sheets, read_page_pixels, read_render_source
 from review_report import write_review_outputs
 from slide_images import rendered_slide_image_paths
 from slide_render_checks import review_slides
 from slide_source import read_optional_text, split_slide_sources
 from slide_structure import read_slide_texts
-from source_context import inspect_source_context
 
 
 REVIEW_DETAIL_FIELDS = ("visualEvidenceReliable", "renderSource", "slideCount", "renderedSlideCount", "geometryMeasured")
@@ -45,11 +43,10 @@ def build_review_report(source_path: pathlib.Path, deck_name: str, review_direct
     source_text = source_path.read_text(encoding="utf-8")
     design = read_design_tokens(read_optional_text(source_path.parent / "DESIGN.md"))
     slide_count = max(len(split_slide_sources(source_text)), len(image_paths))
-    source_context = inspect_source_context(source_text)
     slide_texts = read_slide_texts(source_text, slide_count)
     geometry = read_geometry(review_directory_path)
-    slides = review_slides(image_paths, read_page_pixels(review_directory_path), design, slide_texts, geometry)
-    apply_deck_warnings(slides, slide_texts, source_text, source_context, render_source, required_texts, geometry)
+    slides = review_slides(image_paths, read_page_pixels(review_directory_path), slide_texts, geometry)
+    apply_deck_warnings(slides, slide_texts, source_text, render_source, required_texts, geometry)
     issues = located_review_issues(slides)
     replace_warnings_with_messages(slides)
     contact_sheets = read_contact_sheets(review_directory_path)
@@ -90,16 +87,13 @@ def apply_deck_warnings(
     slides: list[dict[str, object]],
     slide_texts: list[dict[str, object]],
     source_text: str,
-    source_context: dict[str, object],
     render_source: str,
     required_texts: tuple[str, ...],
     geometry: list[dict[str, object]] | None,
 ) -> None:
-    apply_deck_design_warnings(slides, source_context, render_source)
+    apply_render_source_warning(slides, render_source)
     apply_geometry_not_measured_warning(slides, geometry)
     apply_language_mismatch_warning(slides, slide_texts)
     apply_unsourced_current_date_warning(slides, slide_texts, required_texts)
     apply_emoji_icon_warning(slides, slide_texts)
-    apply_footer_baseline_warning(slides)
-    apply_unpinned_footer_warning(slides, source_text)
     apply_missing_speaker_notes_warning(slides, source_text)

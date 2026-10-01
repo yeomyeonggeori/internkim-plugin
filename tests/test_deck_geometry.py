@@ -101,7 +101,6 @@ class GeometryReviewTest(unittest.TestCase):
         report, issues = self.review(MEASURED_SLIDES[:1] + MEASURED_SLIDES[:1])
         self.assertGreater(report["slides"][0]["textCharacterCount"], 900)
         self.assertEqual({issue.kind.code for issue in issues} & (GEOMETRY_CODES | {"TEXT_OVERFLOW_RISK"}), set())
-        self.assertNotIn("textOverflowRisk", report["slides"][0]["risks"])
 
 
 class RenderedGeometryTest(unittest.TestCase):

@@ -2,15 +2,7 @@ from __future__ import annotations
 
 import re
 
-from deck_definitions import (
-    LAYOUT_RENDER_SOURCE,
-    ABSOLUTE_FOOTER,
-    GHOST_CARD,
-    REPEATED_COMPOSITION,
-    SIDE_STRIPE,
-    TOPIC_TITLE,
-    UNRELIABLE_VISUAL_EVIDENCE,
-)
+from deck_definitions import LAYOUT_RENDER_SOURCE, TOPIC_TITLE, UNRELIABLE_VISUAL_EVIDENCE
 from office_result import Issue
 
 
@@ -46,51 +38,9 @@ def strip_parenthetical(title: str) -> str:
     return re.sub(r"\s*[(（][^)）]*[)）]\s*", " ", title).strip()
 
 
-def apply_deck_design_warnings(slides: list[dict[str, object]], source_context: dict[str, object], render_source: str) -> None:
-    for warning in deck_design_warnings(slides, source_context, render_source):
-        append_deck_warning(slides, warning)
-
-
-def deck_design_warnings(slides: list[dict[str, object]], source_context: dict[str, object], render_source: str) -> list[Issue]:
-    warnings = []
+def apply_render_source_warning(slides: list[dict[str, object]], render_source: str) -> None:
     if render_source != LAYOUT_RENDER_SOURCE:
-        warnings.append(UNRELIABLE_VISUAL_EVIDENCE.deck_issue("review images were not drawn from the deck's layout"))
-    if source_context["usesDeckKit"]:
-        return warnings
-    return warnings + source_pattern_warnings(source_context) + composition_warnings(slides)
-
-
-def source_pattern_warnings(source_context: dict[str, object]) -> list[Issue]:
-    warnings = []
-    if source_context["hasSideStripePattern"]:
-        warnings.append(SIDE_STRIPE.deck_issue("thick left or right border accents are doing the visual-identity work"))
-    if source_context["hasGhostCardPattern"]:
-        warnings.append(GHOST_CARD.deck_issue("thin-bordered boxes with soft shadows read as a default template surface"))
-    if int(source_context["absoluteTextFooterSlideCount"]) >= 2:
-        warnings.append(ABSOLUTE_FOOTER.deck_issue(
-            "an absolutely positioned bottom strip carries text on multiple slides and can overlap the body; make header, body, and footer sibling flow children"
-        ))
-    return warnings
-
-
-def composition_warnings(slides: list[dict[str, object]]) -> list[Issue]:
-    repeated_composition_count = repeated_composition_slide_count(slides)
-    if repeated_composition_count < 3:
-        return []
-    return [REPEATED_COMPOSITION.deck_issue(f"{repeated_composition_count} slides share the same composition classes; vary slide composition")]
-
-
-def repeated_composition_slide_count(slides: list[dict[str, object]]) -> int:
-    if len(slides) < 3:
-        return 0
-    signatures = [frozenset(slide["structure"]["classNames"]) for slide in slides]
-    universal_classes = frozenset.intersection(*signatures)
-    distinctive_signatures = [signature - universal_classes for signature in signatures]
-    counts: dict[frozenset, int] = {}
-    for signature in distinctive_signatures:
-        if signature:
-            counts[signature] = counts.get(signature, 0) + 1
-    return max(counts.values(), default=0)
+        append_deck_warning(slides, UNRELIABLE_VISUAL_EVIDENCE.deck_issue("review images were not drawn from the deck's layout"))
 
 
 def append_deck_warning(slides: list[dict[str, object]], warning: Issue) -> None:

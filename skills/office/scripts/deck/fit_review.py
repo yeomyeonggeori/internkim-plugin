@@ -36,7 +36,6 @@ def fit_review_slide(slide: dict[str, object]) -> dict[str, object]:
         "textLineCount": slide["textLineCount"],
         "textPreview": slide["textPreview"],
         "warnings": slide["warnings"],
-        "risks": slide["risks"],
         "structure": slide["structure"],
     }
 
