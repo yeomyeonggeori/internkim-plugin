@@ -18,7 +18,6 @@ OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from fonts.registry import FAMILIES, resolved_face  # noqa: E402
-from text_checks import without_subset_tag  # noqa: E402
 
 KOREAN_TEXT = "일금 일백만원整 다람쥐 헌 쳇바퀴에 타고파"
 DECK_SOURCE = f"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>글꼴</title>
@@ -43,7 +42,7 @@ def embedded_font_names(pdf_path: Path) -> set[str]:
             font = fonts[key].get_object()
             descendants = font.get("/DescendantFonts")
             face = descendants[0].get_object() if descendants else font
-            names.add(without_subset_tag(str(face["/BaseFont"]).lstrip("/")))
+            names.add(str(face["/BaseFont"]).lstrip("/").split("+", 1)[-1])
     return names
 
 

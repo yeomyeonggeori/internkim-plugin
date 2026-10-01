@@ -8,6 +8,7 @@ from pypdf import PdfReader
 from office_inputs import add_password_argument, office_file, require_unlocked_pdf
 from office_result import Issue, OfficeArgumentParser, Result, run_command
 from pdf_definitions import (
+    KOREAN_FONT_MISSING,
     KOREAN_FONT_NOT_EMBEDDED,
     NO_FONT_RESOURCES,
     NO_TEXT_LAYER,
@@ -17,7 +18,10 @@ from pdf_definitions import (
     TOO_FEW_PAGES,
     TOO_MANY_PAGES,
 )
-from text_checks import contains_korean, korean_font_issues, text_presence_issues
+from text_checks import contains_korean, text_presence_issues
+
+
+KOREAN_CHARACTER_COLLECTION = "Korea1"
 
 
 def main() -> Result:
@@ -25,13 +29,14 @@ def main() -> Result:
     require_unlocked_pdf(arguments.pdf_path, arguments.password)
     source_path = Path(arguments.pdf_path)
     reader = PdfReader(str(source_path), password=arguments.password)
-    extracted_text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    korean_fonts: list = []
+    extracted_text = "\n".join(page_text(page, korean_fonts) for page in reader.pages)
     font_summary = summarize_fonts(reader)
     issues = (
         layer_issues(reader, extracted_text, arguments)
         + text_presence_issues(extracted_text, arguments.required_text, arguments.forbidden_text)
-        + korean_font_issues(extracted_text, font_summary["baseFonts"])
-        + font_issues(font_summary, extracted_text, arguments.required_font_substring)
+        + korean_font_issues(korean_fonts)
+        + font_issues(font_summary, arguments.required_font_substring)
     )
     details = {
         "isPDF": source_path.read_bytes()[:4] == b"%PDF",
@@ -42,6 +47,37 @@ def main() -> Result:
         "fonts": font_summary,
     }
     return Result(summary=f"checked {source_path}: {len(issues)} issues", output_path=str(source_path), issues=tuple(issues), details=details)
+
+
+def page_text(page, korean_fonts: list) -> str:
+    def note_font(text, _matrix, _text_matrix, font, _size):
+        if font is not None and contains_korean(text) and not any(font is known for known in korean_fonts):
+            korean_fonts.append(font)
+
+    return page.extract_text(visitor_text=note_font) or ""
+
+
+def korean_font_issues(korean_fonts: list) -> list[Issue]:
+    unembedded = [font for font in korean_fonts if not is_embedded_font(font)]
+    undeclared = [font for font in unembedded if not declares_korean(font)]
+    if undeclared:
+        return [KOREAN_FONT_MISSING.issue(f"Korean text is drawn with {font_names(undeclared)}, which the PDF neither embeds nor declares as Korean", font_names(undeclared))]
+    if unembedded:
+        return [KOREAN_FONT_NOT_EMBEDDED.issue(f"Korean text is drawn with {font_names(unembedded)}, which the PDF does not embed", font_names(unembedded))]
+    return []
+
+
+def font_names(fonts: list) -> str:
+    return ", ".join(dict.fromkeys(clean_pdf_name(font.get("/BaseFont")) for font in fonts))
+
+
+def declares_korean(font) -> bool:
+    descendants = dereference(font.get("/DescendantFonts")) or []
+    for descendant in descendants:
+        system = dereference(dereference(descendant).get("/CIDSystemInfo"))
+        if system is not None and str(system.get("/Ordering")) == KOREAN_CHARACTER_COLLECTION:
+            return True
+    return False
 
 
 def collect_page_sizes(reader) -> list[dict]:
@@ -130,14 +166,12 @@ def layer_issues(reader, extracted_text: str, arguments) -> list[Issue]:
     return issues
 
 
-def font_issues(font_summary: dict, extracted_text: str, required_font_substring: str) -> list[Issue]:
+def font_issues(font_summary: dict, required_font_substring: str) -> list[Issue]:
     issues = []
     if required_font_substring and not any(required_font_substring.lower() in name.lower() for name in font_summary["baseFonts"]):
         issues.append(REQUIRED_FONT_MISSING.issue("PDF does not use a font containing: " + required_font_substring))
     if font_summary["count"] == 0:
         issues.append(NO_FONT_RESOURCES.issue("PDF has no inspectable font resources"))
-    if font_summary["count"] > 0 and font_summary["embeddedCount"] == 0 and contains_korean(extracted_text):
-        issues.append(KOREAN_FONT_NOT_EMBEDDED.issue("PDF contains Korean text but no embedded font resources were detected"))
     return issues
 
 

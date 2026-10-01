@@ -23,6 +23,43 @@ pdf.output("fixture.pdf")
 """
 
 
+KOREAN_FONT_PDF = """
+from pypdf import PdfWriter
+from pypdf.generic import ArrayObject, DecodedStreamObject, DictionaryObject, NameObject, NumberObject, TextStringObject
+
+def stream(data):
+    made = DecodedStreamObject()
+    made.set_data(data)
+    return made
+
+def korean_font(writer, ordering, embedded):
+    descriptor = DictionaryObject({NameObject("/Type"): NameObject("/FontDescriptor"), NameObject("/FontName"): NameObject("/Sample"), NameObject("/Flags"): NumberObject(4)})
+    if embedded:
+        descriptor[NameObject("/FontFile2")] = writer._add_object(stream(b"font program"))
+    system = DictionaryObject({NameObject("/Registry"): TextStringObject("Adobe"), NameObject("/Ordering"): TextStringObject(ordering), NameObject("/Supplement"): NumberObject(0)})
+    descendant = DictionaryObject({NameObject("/Type"): NameObject("/Font"), NameObject("/Subtype"): NameObject("/CIDFontType0"), NameObject("/BaseFont"): NameObject("/Sample"), NameObject("/CIDSystemInfo"): system, NameObject("/FontDescriptor"): writer._add_object(descriptor)})
+    to_unicode = stream(b"/CIDInit /ProcSet findresource begin 12 dict begin begincmap 1 begincodespacerange <0000> <FFFF> endcodespacerange 1 beginbfchar <0001> <AC00> endbfchar endcmap CMapName currentdict /CMap defineresource pop end end")
+    return DictionaryObject({NameObject("/Type"): NameObject("/Font"), NameObject("/Subtype"): NameObject("/Type0"), NameObject("/BaseFont"): NameObject("/Sample"), NameObject("/Encoding"): NameObject("/Identity-H"), NameObject("/DescendantFonts"): ArrayObject([writer._add_object(descendant)]), NameObject("/ToUnicode"): writer._add_object(to_unicode)})
+
+for name, ordering, embedded in (("embedded", "Identity", True), ("declared", "Korea1", False), ("undeclared", "Identity", False)):
+    writer = PdfWriter()
+    page = writer.add_blank_page(200, 200)
+    page[NameObject("/Resources")] = DictionaryObject({NameObject("/Font"): DictionaryObject({NameObject("/F1"): writer._add_object(korean_font(writer, ordering, embedded))})})
+    page[NameObject("/Contents")] = writer._add_object(stream(b"BT /F1 12 Tf 20 100 Td <0001> Tj ET"))
+    writer.write(f"{name}.pdf")
+"""
+
+
+class KoreanFontTest(unittest.TestCase):
+    def test_korean_text_needs_a_font_that_is_embedded_or_declared_korean(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run_office_python(KOREAN_FONT_PDF, Path(directory))
+            for name, expected in (("embedded", set()), ("declared", {"KOREAN_FONT_NOT_EMBEDDED"}), ("undeclared", {"KOREAN_FONT_MISSING"})):
+                with self.subTest(pdf=name):
+                    envelope = run_office(["pdf", "validate", f"{name}.pdf"], Path(directory))
+                    self.assertEqual({issue["code"] for issue in envelope["issues"]} & {"KOREAN_FONT_MISSING", "KOREAN_FONT_NOT_EMBEDDED"}, expected)
+
+
 class PdfFixture(unittest.TestCase):
     def setUp(self):
         self.temporary_directory = tempfile.TemporaryDirectory()

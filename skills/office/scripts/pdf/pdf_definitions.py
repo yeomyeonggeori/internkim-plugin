@@ -36,7 +36,8 @@ TOO_FEW_PAGES = IssueKind("TOO_FEW_PAGES", ERROR, "the PDF has fewer pages than 
 TOO_MANY_PAGES = IssueKind("TOO_MANY_PAGES", ERROR, "the PDF has more pages than --max-pages", "tighten the layout or cut content the user did not ask for")
 REQUIRED_FONT_MISSING = IssueKind("REQUIRED_FONT_MISSING", ERROR, "no font name contains --required-font-substring", "embed the required font")
 NO_FONT_RESOURCES = IssueKind("NO_FONT_RESOURCES", WARNING, "no page declares a font resource", "check whether the text was drawn as images")
-KOREAN_FONT_NOT_EMBEDDED = IssueKind("KOREAN_FONT_NOT_EMBEDDED", ERROR, "the PDF has Korean text but embeds no font", "embed a Korean-capable font so every reader shows the glyphs")
+KOREAN_FONT_MISSING = IssueKind("KOREAN_FONT_MISSING", ERROR, "Korean text is drawn with a font the PDF neither embeds nor declares as Korean, so a reader shows boxes or wrong glyphs", "rebuild the PDF with pdf create, doc export or convert, which embed a Korean font")
+KOREAN_FONT_NOT_EMBEDDED = IssueKind("KOREAN_FONT_NOT_EMBEDDED", WARNING, "Korean text is drawn with a declared Korean font the PDF does not embed, so each reader substitutes its own", "rebuild the PDF with pdf create, doc export or convert, which embed the font")
 
 PAGE_NOT_IN_DOCUMENT = IssueKind("PAGE_NOT_IN_DOCUMENT", ERROR, "--pages names a page the PDF does not have", "run pdf read to see the page count, then pass pages inside it")
 
@@ -57,6 +58,7 @@ VALIDATE_ISSUE_KINDS = (
     *TEXT_CHECK_ISSUE_KINDS,
     REQUIRED_FONT_MISSING,
     NO_FONT_RESOURCES,
+    KOREAN_FONT_MISSING,
     KOREAN_FONT_NOT_EMBEDDED,
 )
 
