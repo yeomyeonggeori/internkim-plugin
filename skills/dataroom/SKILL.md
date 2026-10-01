@@ -1,41 +1,81 @@
 ---
 name: dataroom
-description: Keep, file and search the company data room, the document archive behind every fact. Use for 데이터룸, 자료실, 문서 보관, 실사 자료, 증빙, 계약서 찾기, data room, due diligence, archive, evidence, "where is the document", filing a received contract or report, finding what a number rests on. Do not use to create documents (office owns generation) or to record numbers (company-data owns metrics).
-compatibility: Requires python3 and a terminal. In InternKim, also the tools of the internkim MCP server this plugin declares in mcp.json.
+description: File, find and share the company's document archive. Use for 데이터룸, 자료실, 문서 보관, 실사 자료, 증빙, 계약서 찾기, data room, due diligence, archive, evidence and filing received documents. Office creates documents; company-data records metrics.
+compatibility: Requires python3 and a terminal. In InternKim, use the internkim MCP server declared by this plugin.
 metadata:
-  kim.intern.tool-references: "company_info_get company_document_register company_document_update company_document_list company_document_search company_document_upload company_document_download bash"
+  kim.intern.tool-references: "company_dataroom_get company_dataroom_category_update company_dataroom_role_update company_dataroom_share_add company_dataroom_share_delete company_document_classify company_document_register company_document_update company_document_list company_document_search company_document_upload company_document_download bash"
 ---
 
+# Data room
 
-Command blocks below write `SKILL_DIR` where this skill's own directory belongs.
+The archive belongs to the company. InternKim's central record owns its
+categories, reader roles, document metadata and stored files. Blueclaw accesses
+it as the requester. A standalone export is a local tree with `company.json`
+and `INDEX.md`; its folders do not enforce access control.
 
-# Data Room
+Read `company_dataroom_get` when live categories or roles are needed. Codes
+are stable mnemonic letters: a parent has one, an intermediate category has
+two. Documents go in categories without children, including a parent with no
+children, or `X`, the unclassified inbox. Parents with children are not filing
+destinations.
+Classification follows the document's primary business function. File format
+and intended audience do not determine where it belongs.
 
-A data room is the company's document archive, filed by domain, where a domain is a folder and a clearance. It lives in one of two places:
+## File
 
-- **In InternKim, the record is the data room.** Each document is a row at its domain's clearance, its files sit in the company's asset store, and the `internkim` MCP server's `company_document_*` tools reach both. The host holds no tree unless someone exported one.
-- **Standalone, a tree is the data room**, and its `company.json` and `INDEX.md` are the map.
+1. Extract enough text to identify the document. Call `company_document_classify`
+   with its title and text or factual summary. It makes one decision-model
+   request against the requester's available company categories. Keep `X` when
+   context is insufficient. Never invent missing facts.
+2. For an export, run `python3 SKILL_DIR/scripts/dataroom.py ingest <dir> <file>
+   --category <code> --title <title> --summary <fact> --date <YYYY-MM-DD>`.
+   The helper preserves the original, hashes it, writes its metadata sidecar,
+   derives `.derived/<sha256>/content.txt` and regenerates catalogs. Inspect
+   its skipped derivations. Dependencies are managed by `skill_runtime.py`.
+3. Call `company_document_upload` with the same `categoryCode` and `sha256`.
+   PUT the original to the returned signed URL. Upload `content.txt` separately
+   with that `fileName`; upload additional derived parts as needed.
+   The original path is `<company>/dataroom/<categoryCode>/<sha256>`.
+4. Register with `company_document_register`, keeping that category, title,
+   factual summary, date, hash and storage path. Register after uploads finish.
+   Use `supersedesHint` for a replacement. Keep earlier versions.
+5. An administrator can reclassify existing documents with
+   `company_document_update`. Read the destination's reader roles first:
+   moving a document changes who can read it. Legacy numeric clearance
+   documents retain their previous access until individually reclassified.
 
-`references/domains.md` lists the fourteen domains, their clearances and where a document goes when subject and clearance disagree. `scripts/dataroom.py` keeps a tree in shape and bootstraps its own dependencies through `skill_runtime.py`; never run `pip install` directly.
+## Find
 
-## Finding
+Use `company_document_list` with `categoryCode` to browse a parent or
+intermediate category, or `company_document_search` for a natural question.
+Answer from summaries where possible. Download `content.txt` before the
+original when it can answer. Access is enforced by the record and file store.
 
-1. In InternKim, `company_document_list` with a `domain` shows what a domain holds, and `company_document_search` finds a document by what it says.
-2. In a tree, start from `company.json` and `INDEX.md`, then `python3 SKILL_DIR/scripts/dataroom.py search <dir> <query> [--path 03-finance/2026]`; never list the tree. Each hit is one line: path, id, date, title, summary.
-3. The summary carries the fact and its size; answer from it when it can.
-4. Read the sidecar `<file>.md` before the original, and the original only when the sidecar cannot answer. `company_document_download` with `documentHint`, or `storagePath` plus `fileName` for a derived part, answers a signed URL. An original goes to the requester alone, never onward.
+For an export, start with `company.json` and `INDEX.md`, then run
+`python3 SKILL_DIR/scripts/dataroom.py search <dir> <query> [--path <category-path>]`.
+Run `check <dir>` after filing and `index <dir>` to rebuild stale catalogs.
+`init <dir> --slug <slug> --name en=<name>` creates an empty template.
+Legacy exports require semantic reclassification; do not convert permissions
+by matching old folder names.
 
-## Filing
+## Share
 
-1. Choose the domain by clearance, then by subject: a term sheet is governance, an NDA is a contract. A domain at clearance 2 or 3 takes a person's confirmation before filing.
-2. Run `python3 SKILL_DIR/scripts/dataroom.py ingest <dir> <file> --domain <domain> --title <title> --kind <kind> --date <YYYY-MM-DD> --summary <fact>`. It copies the file to `<domain>/YYYY-MM-DD-slug.ext`, hashes it, derives text into the sidecar and the parts under `.derived/<sha256>/`, and regenerates the catalogs and index. Never copy a file into the tree by hand.
-3. Write the summary yourself, under 200 characters, when the derived opening is not the fact. Set `--supersedes <id>` for a new version; the old document stays and is marked superseded. Nothing is overwritten or edited in place.
-4. In internkim, `company_document_upload` with the domain's `clearance` and the file's `sha256` answers a `storagePath` of the form `<company>/dataroom/<clearance>/<sha256>` and a signed `uploadURL`: PUT the original, then each derived part with its `fileName`. Then `company_document_register` with the sidecar's title, summary, `domain`, `clearance`, `date`, `sha256` and `storagePath`, naming a replaced document with `supersedesHint`. A moved or renamed document is fixed with `company_document_update`.
-5. A domain above the requester's clearance takes a submission: pass `--clearance <theirs>` and the document waits in `inbox/`, registered at their clearance with `domain` set, until an administrator raises it. Say so to the requester.
-6. Publishing is an administrator's copy into `00-public` naming its source in `published`.
+Read roles and grants with `company_dataroom_get`. Assign an existing reader
+role with `company_dataroom_share_add` to the specified member, internal
+circle, external email or explicitly public audience. The recipient reads
+current and future documents in that role's categories. A parent grant also
+covers future children. An external email accepts the invitation using that
+verified email and remains a guest, outside company membership and circles.
+Return `/share/invitations/<shareID>` for an email invitation, or
+`/share/<companyID>` for a published room, using the company's web origin.
 
-## Keeping
+Use `company_dataroom_role_update` for a custom role's `readableCategories`.
+Read affected recipients before editing an existing role because access
+changes immediately. Reader roles do not grant editing or administrative
+rights. Public publication requires an explicit request and never includes
+`X`. Original downloads are separately enabled with `canDownload`.
+Revoke by exact `shareID`; other grants still apply and issued signed URLs
+expire within ten minutes.
 
-- `python3 SKILL_DIR/scripts/dataroom.py check <dir>` prints one line per departure from the standard and exits non-zero; fix every line. `index <dir>` regenerates `INDEX.md` and every catalog when check reports one stale.
-- `init <dir> --slug <slug> --name ko=<name> --name en=<name>` creates an empty tree with `company.json`; in internkim that file mirrors the record and is never edited by hand.
-- A number lives in the company metrics; the data room holds the document it came from, named by `id`.
+`assets/template.json` is the generated default template for exports. Live
+company configuration takes precedence. Load it only when creating a tree.

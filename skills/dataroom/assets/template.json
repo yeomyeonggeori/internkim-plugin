@@ -1,0 +1,562 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "code": "C",
+      "slug": "corporate",
+      "name": "Corporate",
+      "nameKO": "법인·지배구조",
+      "parent": null,
+      "description": "Legal entity, ownership and corporate decisions.",
+      "choiceGroup": 1
+    },
+    {
+      "code": "CR",
+      "slug": "registration",
+      "name": "Registration",
+      "nameKO": "설립·등록·정관",
+      "parent": "C",
+      "description": "Formation, articles, registrations and legal entity records.",
+      "choiceGroup": null
+    },
+    {
+      "code": "CO",
+      "slug": "ownership",
+      "name": "Ownership",
+      "nameKO": "주주·지분",
+      "parent": "C",
+      "description": "Shareholder registers, capitalization tables and ownership records.",
+      "choiceGroup": null
+    },
+    {
+      "code": "CG",
+      "slug": "governance",
+      "name": "Governance",
+      "nameKO": "이사회·주주총회",
+      "parent": "C",
+      "description": "Board and shareholder decisions, minutes and delegated authorities.",
+      "choiceGroup": null
+    },
+    {
+      "code": "H",
+      "slug": "human-resources",
+      "name": "Human resources",
+      "nameKO": "인사·조직",
+      "parent": null,
+      "description": "Employment, organization and employee records.",
+      "choiceGroup": 2
+    },
+    {
+      "code": "HO",
+      "slug": "organization",
+      "name": "Organization",
+      "nameKO": "조직·인원 현황",
+      "parent": "H",
+      "description": "Organization charts, job descriptions and aggregate workforce information.",
+      "choiceGroup": null
+    },
+    {
+      "code": "HP",
+      "slug": "policies",
+      "name": "Employment policies",
+      "nameKO": "인사 규정",
+      "parent": "H",
+      "description": "Employment rules, benefits policies and employee handbooks.",
+      "choiceGroup": null
+    },
+    {
+      "code": "HE",
+      "slug": "employment",
+      "name": "Employment records",
+      "nameKO": "고용·입퇴사",
+      "parent": "H",
+      "description": "Individual employment agreements, onboarding, leave and departure records. Payroll payments belong to FP.",
+      "choiceGroup": null
+    },
+    {
+      "code": "HR",
+      "slug": "recruiting",
+      "name": "Recruiting",
+      "nameKO": "채용",
+      "parent": "H",
+      "description": "Job postings, applications and hiring records.",
+      "choiceGroup": null
+    },
+    {
+      "code": "HA",
+      "slug": "appraisals",
+      "name": "Appraisals",
+      "nameKO": "평가",
+      "parent": "H",
+      "description": "Individual performance, disciplinary and development records.",
+      "choiceGroup": null
+    },
+    {
+      "code": "F",
+      "slug": "finance",
+      "name": "Finance",
+      "nameKO": "재무",
+      "parent": null,
+      "description": "Financial position, accounting, tax and payments.",
+      "choiceGroup": 1
+    },
+    {
+      "code": "FS",
+      "slug": "statements",
+      "name": "Financial statements",
+      "nameKO": "재무제표·감사보고서",
+      "parent": "F",
+      "description": "Financial statements, financial audit reports and consolidated results. Supporting accounting evidence belongs to FA.",
+      "choiceGroup": null
+    },
+    {
+      "code": "FB",
+      "slug": "budgets",
+      "name": "Budgets",
+      "nameKO": "예산·재무계획",
+      "parent": "F",
+      "description": "Budgets, financial forecasts and financial models.",
+      "choiceGroup": null
+    },
+    {
+      "code": "FT",
+      "slug": "tax",
+      "name": "Tax",
+      "nameKO": "세무",
+      "parent": "F",
+      "description": "Tax returns, assessments and tax authority correspondence. Employee withholding belongs to FP.",
+      "choiceGroup": null
+    },
+    {
+      "code": "FC",
+      "slug": "cash",
+      "name": "Cash and banking",
+      "nameKO": "은행·자금",
+      "parent": "F",
+      "description": "Bank statements, payments, treasury and account documentation. Excludes credentials and financing agreements, which belong to RA.",
+      "choiceGroup": null
+    },
+    {
+      "code": "FA",
+      "slug": "accounting",
+      "name": "Accounting evidence",
+      "nameKO": "회계장부·증빙",
+      "parent": "F",
+      "description": "Ledgers, invoices, receipts and accounting evidence. Underlying contracts follow the relationship.",
+      "choiceGroup": null
+    },
+    {
+      "code": "FP",
+      "slug": "payroll",
+      "name": "Payroll",
+      "nameKO": "급여·원천징수",
+      "parent": "F",
+      "description": "Payroll registers, payslips, payroll calculations and employee tax withholding. Employment terms belong to HE.",
+      "choiceGroup": null
+    },
+    {
+      "code": "S",
+      "slug": "sales",
+      "name": "Sales and marketing",
+      "nameKO": "영업·마케팅",
+      "parent": null,
+      "description": "Customers, commercial partnerships and market-facing work.",
+      "choiceGroup": 2
+    },
+    {
+      "code": "SS",
+      "slug": "sales",
+      "name": "Sales materials",
+      "nameKO": "영업자료·견적·제안",
+      "parent": "S",
+      "description": "Proposals, quotes, sales materials and commercial analysis. Fundraising presentations belong to RP.",
+      "choiceGroup": null
+    },
+    {
+      "code": "SM",
+      "slug": "marketing",
+      "name": "Marketing",
+      "nameKO": "브랜드·마케팅·시장조사",
+      "parent": "S",
+      "description": "Brand assets, campaigns, advertising and market research, including images and video.",
+      "choiceGroup": null
+    },
+    {
+      "code": "SC",
+      "slug": "customers",
+      "name": "Customer records",
+      "nameKO": "고객 거래·계약",
+      "parent": "S",
+      "description": "Customer agreements, orders, correspondence and service records. Invoice originals belong to FA.",
+      "choiceGroup": null
+    },
+    {
+      "code": "SP",
+      "slug": "partners",
+      "name": "Commercial partners",
+      "nameKO": "사업 파트너",
+      "parent": "S",
+      "description": "Distribution, referral and commercial partnership records. Procurement belongs to OS.",
+      "choiceGroup": null
+    },
+    {
+      "code": "P",
+      "slug": "product",
+      "name": "Products and services",
+      "nameKO": "제품·서비스",
+      "parent": null,
+      "description": "What the company delivers to customers.",
+      "choiceGroup": 2
+    },
+    {
+      "code": "PO",
+      "slug": "overview",
+      "name": "Product overview",
+      "nameKO": "제품소개·사용설명",
+      "parent": "P",
+      "description": "Product and service descriptions, catalogs and user-facing manuals. Persuasive sales materials belong to SS.",
+      "choiceGroup": null
+    },
+    {
+      "code": "PD",
+      "slug": "development",
+      "name": "Development",
+      "nameKO": "명세·설계·개발·로드맵",
+      "parent": "P",
+      "description": "Specifications, designs, architecture, roadmaps and development records.",
+      "choiceGroup": null
+    },
+    {
+      "code": "PQ",
+      "slug": "quality",
+      "name": "Quality",
+      "nameKO": "시험·품질",
+      "parent": "P",
+      "description": "Testing, quality control, defects and acceptance records. Formal certifications belong to LC.",
+      "choiceGroup": null
+    },
+    {
+      "code": "O",
+      "slug": "operations",
+      "name": "Operations",
+      "nameKO": "운영",
+      "parent": null,
+      "description": "Operating the company, facilities, procurement and internal systems.",
+      "choiceGroup": 2
+    },
+    {
+      "code": "OP",
+      "slug": "procedures",
+      "name": "Operating procedures",
+      "nameKO": "업무 절차",
+      "parent": "O",
+      "description": "Internal operating procedures and continuity plans. Employment rules belong to HP and security policies to LS.",
+      "choiceGroup": null
+    },
+    {
+      "code": "OA",
+      "slug": "assets",
+      "name": "Assets and facilities",
+      "nameKO": "시설·자산·임대차",
+      "parent": "O",
+      "description": "Asset registers, premises, leases, equipment and maintenance records.",
+      "choiceGroup": null
+    },
+    {
+      "code": "OS",
+      "slug": "suppliers",
+      "name": "Suppliers",
+      "nameKO": "구매·공급사·공급망",
+      "parent": "O",
+      "description": "Procurement, supplier agreements, correspondence and supply-chain records.",
+      "choiceGroup": null
+    },
+    {
+      "code": "OI",
+      "slug": "it",
+      "name": "Internal IT",
+      "nameKO": "사내 IT·시스템",
+      "parent": "O",
+      "description": "Internal IT administration, software subscriptions and routine incidents. Security incidents belong to LS. Never store credentials.",
+      "choiceGroup": null
+    },
+    {
+      "code": "I",
+      "slug": "ip",
+      "name": "Intellectual property",
+      "nameKO": "지식재산",
+      "parent": null,
+      "description": "Ownership, registration and licensing of intellectual property.",
+      "choiceGroup": 1
+    },
+    {
+      "code": "IR",
+      "slug": "rights",
+      "name": "IP rights",
+      "nameKO": "권리·등록",
+      "parent": "I",
+      "description": "Patents, trademarks, copyright ownership and intellectual property registrations.",
+      "choiceGroup": null
+    },
+    {
+      "code": "IL",
+      "slug": "licenses",
+      "name": "IP licenses",
+      "nameKO": "권리 양도·사용권",
+      "parent": "I",
+      "description": "Grants, assignments and acquisition of IP rights. Routine software subscriptions belong to OI.",
+      "choiceGroup": null
+    },
+    {
+      "code": "L",
+      "slug": "legal",
+      "name": "Legal and compliance",
+      "nameKO": "법무·준법",
+      "parent": null,
+      "description": "Legal obligations, regulation and risk.",
+      "choiceGroup": 1
+    },
+    {
+      "code": "LC",
+      "slug": "compliance",
+      "name": "Regulatory compliance",
+      "nameKO": "인허가·인증·규제",
+      "parent": "L",
+      "description": "Permits, certifications, regulatory filings and compliance assessments.",
+      "choiceGroup": null
+    },
+    {
+      "code": "LS",
+      "slug": "security",
+      "name": "Security and privacy",
+      "nameKO": "보안·개인정보",
+      "parent": "L",
+      "description": "Security and privacy policies, assessments and incidents.",
+      "choiceGroup": null
+    },
+    {
+      "code": "LD",
+      "slug": "disputes",
+      "name": "Disputes",
+      "nameKO": "분쟁·법률 자문",
+      "parent": "L",
+      "description": "Claims, litigation, legal opinions and dispute records.",
+      "choiceGroup": null
+    },
+    {
+      "code": "LI",
+      "slug": "insurance",
+      "name": "Insurance",
+      "nameKO": "보험",
+      "parent": "L",
+      "description": "Insurance policies, coverage and claims.",
+      "choiceGroup": null
+    },
+    {
+      "code": "R",
+      "slug": "fundraising",
+      "name": "Raising capital",
+      "nameKO": "자금 조달",
+      "parent": null,
+      "description": "Raising equity or debt and communicating with capital providers.",
+      "choiceGroup": 1
+    },
+    {
+      "code": "RP",
+      "slug": "presentations",
+      "name": "Financing presentations",
+      "nameKO": "투자·조달 발표자료",
+      "parent": "R",
+      "description": "Fundraising decks and investment or financing narratives. Source financial statements remain in FS.",
+      "choiceGroup": null
+    },
+    {
+      "code": "RA",
+      "slug": "agreements",
+      "name": "Financing agreements",
+      "nameKO": "투자·대출 계약·협상",
+      "parent": "R",
+      "description": "Equity and debt agreements, term sheets and financing negotiations. Resulting ownership registers belong to CO and resolutions to CG.",
+      "choiceGroup": null
+    },
+    {
+      "code": "RR",
+      "slug": "reporting",
+      "name": "Investor reporting",
+      "nameKO": "투자자·금융기관 보고",
+      "parent": "R",
+      "description": "Investor and lender updates and correspondence outside agreement negotiations.",
+      "choiceGroup": null
+    },
+    {
+      "code": "G",
+      "slug": "general",
+      "name": "General company records",
+      "nameKO": "전사 기록",
+      "parent": null,
+      "description": "Company-wide records outside a specific business function; not miscellaneous storage.",
+      "choiceGroup": 2
+    },
+    {
+      "code": "GP",
+      "slug": "profile",
+      "name": "Company profile",
+      "nameKO": "회사소개·연혁·전사 계획",
+      "parent": "G",
+      "description": "Company introductions, history, mission and general company plans. Financing presentations belong to RP.",
+      "choiceGroup": null
+    },
+    {
+      "code": "GC",
+      "slug": "communications",
+      "name": "Company communications",
+      "nameKO": "전사 공지·커뮤니케이션",
+      "parent": "G",
+      "description": "General company announcements and communication records.",
+      "choiceGroup": null
+    },
+    {
+      "code": "GE",
+      "slug": "events",
+      "name": "Company events",
+      "nameKO": "행사·문화 기록",
+      "parent": "G",
+      "description": "Company events and culture records, including event photos and recordings.",
+      "choiceGroup": null
+    },
+    {
+      "code": "X",
+      "slug": "inbox",
+      "name": "Inbox",
+      "nameKO": "분류 대기",
+      "parent": null,
+      "description": "Unclassified or ambiguous documents. Choose X when context does not identify a destination. Do not invent missing facts.",
+      "choiceGroup": null
+    }
+  ],
+  "roles": [
+    {
+      "code": "employee",
+      "name": "Employee",
+      "nameKO": "일반 구성원",
+      "readableCategories": [
+        "HO",
+        "HP",
+        "PO",
+        "GP",
+        "GC",
+        "GE"
+      ]
+    },
+    {
+      "code": "leadership",
+      "name": "Leadership",
+      "nameKO": "경영진",
+      "readableCategories": [
+        "C",
+        "H",
+        "F",
+        "S",
+        "P",
+        "O",
+        "I",
+        "L",
+        "R",
+        "G",
+        "X"
+      ]
+    },
+    {
+      "code": "finance",
+      "name": "Finance",
+      "nameKO": "재무 담당",
+      "readableCategories": [
+        "CR",
+        "F",
+        "SC",
+        "SP",
+        "OA",
+        "OS",
+        "LI",
+        "RA",
+        "RR"
+      ]
+    },
+    {
+      "code": "people",
+      "name": "People",
+      "nameKO": "인사 담당",
+      "readableCategories": [
+        "CR",
+        "H",
+        "FP",
+        "GP",
+        "GC",
+        "GE"
+      ]
+    },
+    {
+      "code": "investor",
+      "name": "Investor",
+      "nameKO": "투자자",
+      "readableCategories": [
+        "CR",
+        "CO",
+        "FS",
+        "FB",
+        "PO",
+        "RP",
+        "RR",
+        "GP"
+      ]
+    },
+    {
+      "code": "accountant",
+      "name": "Accountant",
+      "nameKO": "회계사·세무사",
+      "readableCategories": [
+        "CR",
+        "F",
+        "SC",
+        "SP",
+        "OA",
+        "OS",
+        "LI",
+        "RA"
+      ]
+    },
+    {
+      "code": "legal",
+      "name": "Legal adviser",
+      "nameKO": "법률 자문",
+      "readableCategories": [
+        "C",
+        "HP",
+        "HE",
+        "SC",
+        "SP",
+        "OA",
+        "OS",
+        "I",
+        "L",
+        "RA"
+      ]
+    },
+    {
+      "code": "lender",
+      "name": "Lender",
+      "nameKO": "금융기관",
+      "readableCategories": [
+        "CR",
+        "CO",
+        "FS",
+        "FB",
+        "FT",
+        "FC",
+        "RA",
+        "RR",
+        "GP"
+      ]
+    }
+  ]
+}
