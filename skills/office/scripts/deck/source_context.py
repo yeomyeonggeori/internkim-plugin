@@ -7,7 +7,6 @@ from slide_source import slide_role, split_slide_sources
 from slide_structure import visible_slide_text
 
 
-TINY_FONT_SIZE_PIXELS = 16
 SIDE_STRIPE_MINIMUM_PIXELS = 2
 
 
@@ -33,7 +32,6 @@ def inspect_source_context(source_text: str, design_document_text: str, slide_co
         "missingSlideRoleCount": max(0, len(slide_sources) - slide_role_count),
         "hasSideStripePattern": source_has_side_stripe(source_text),
         "hasGhostCardPattern": source_has_ghost_card_pattern(source_text),
-        "hasTinyTextPattern": source_has_tiny_text_pattern(source_text),
         "absoluteTextFooterSlideCount": absolute_text_footer_slide_count(source_text, slide_sources),
     }
 
@@ -74,11 +72,6 @@ def source_has_ghost_card_pattern(source_text: str) -> bool:
         if "box-shadow" in lowered and re.search(r"\bborder\s*:\s*1px\s+solid", lowered):
             return True
     return False
-
-
-def source_has_tiny_text_pattern(source_text: str) -> bool:
-    font_sizes = css_pixel_values(r"font-size\s*:\s*([0-9.]+)px", source_text)
-    return sum(1 for font_size in font_sizes if font_size < TINY_FONT_SIZE_PIXELS) >= 2
 
 
 def css_pixel_values(declaration_pattern: str, source_text: str) -> list[float]:

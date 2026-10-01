@@ -12,8 +12,10 @@ from deck_definitions import (
     OFF_PALETTE_COLOR,
     OUT_OF_FRAME,
     SLIDE_BLANK,
+    SLIDE_TOO_SPARSE,
     TEXT_OVERLAP,
     TINY_TEXT,
+    VERTICAL_DEAD_ZONE,
 )
 from office_result import Issue
 from text_checks import REQUIRED_TEXT_MISSING
@@ -29,6 +31,8 @@ OBJECTIVE_DEFECT_CODES = frozenset(
         TEXT_OVERLAP.kind,
         IMAGE_DISTORTED.kind,
         SLIDE_BLANK.kind,
+        SLIDE_TOO_SPARSE.kind,
+        VERTICAL_DEAD_ZONE.kind,
         TINY_TEXT.kind,
         MISSING_REQUIRED_TEXT.kind,
         REQUIRED_TEXT_MISSING,

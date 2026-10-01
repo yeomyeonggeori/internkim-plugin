@@ -43,6 +43,7 @@ SLIDE_TOO_CROWDED = review_check("SLIDE_TOO_CROWDED", "the slide is visually cro
 CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is larger than its box, so it is clipped or spills out", "enlarge the box, cut the content, or lower the type size")
 OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "move or resize the element so it sits inside the slide")
 TEXT_OVERLAP = review_check("TEXT_OVERLAP", "two pieces of text cover each other", "separate the two text blocks or shorten the one that spills")
+TINY_TEXT = review_check("TINY_TEXT", "rendered text is smaller than 1% of the slide width (16px on a 1600px slide)", "raise the text size, or shorten the slide so the kit does not shrink it")
 IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "set object-fit: cover or contain, or size the image to its ratio")
 GEOMETRY_NOT_MEASURED = review_check("GEOMETRY_NOT_MEASURED", "no renderer measured element geometry, so overflow, overlap and stretched images were not checked", "install bun or node 18 and build again, or say the layout was not measured")
 FRAME_FIT_RISK = review_check("FRAME_FIT_RISK", "content is close to the right or bottom frame edge", "check the contact sheet for clipped text", label="frameFitRisk")
@@ -52,7 +53,6 @@ WEAK_VISUAL_IDENTITY = review_check("WEAK_VISUAL_IDENTITY", "the deck declares n
 MISSING_SLIDE_ROLE = review_check("MISSING_SLIDE_ROLE", "a slide lacks data-slide-role", "give every slide section a data-slide-role", "missingSlideRoleWarning", 16)
 SIDE_STRIPE = review_check("SIDE_STRIPE", "thick side border accents carry the visual identity", "carry the identity through composition, type, and color instead", "sideStripeWarning", 14)
 GHOST_CARD = review_check("GHOST_CARD", "thin-bordered soft-shadow boxes read as a default template", "replace them with the deck's own surfaces", "ghostCardWarning", 14)
-TINY_TEXT = review_check("TINY_TEXT", "several CSS font sizes are below 16px", "raise text to at least 16px", "tinyTextWarning", 8)
 REPEATED_COMPOSITION = review_check("REPEATED_COMPOSITION", "three or more slides share one composition", "vary slide composition by role", "repeatedCompositionWarning", 14)
 RAW_STRUCTURE_PATTERN = review_check("RAW_STRUCTURE_PATTERN", "several slides are a raw table or bare list", "turn the tables and lists into designed compositions", "rawStructurePatternWarning", 12)
 RAW_TABLE = review_check("RAW_TABLE", "a raw table is the slide's main composition", "design the comparison instead of dropping in a table", "rawTableWarning", 10)
@@ -68,13 +68,12 @@ INCONSISTENT_FOOTER_BASELINE = review_check("INCONSISTENT_FOOTER_BASELINE", "the
 UNPINNED_FOOTER = review_check("UNPINNED_FOOTER", "the recurring footer is not pinned to the frame bottom", "give it margin-top: auto inside the flex column slide", "unpinnedFooterWarning", 10)
 MISSING_SPEAKER_NOTES = review_check("MISSING_SPEAKER_NOTES", "a slide has no speaker notes", 'add an <aside class="notes"> script to every slide', "missingSpeakerNotesWarning", 8)
 
-SLIDE_RENDER_CHECKS = (SLIDE_BLANK, SAFE_MARGIN_INTRUSION, EDGE_CLIPPING, SLIDE_TOO_SPARSE, SLIDE_TOO_CROWDED, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, IMAGE_DISTORTED, GEOMETRY_NOT_MEASURED, FRAME_FIT_RISK, UNRELIABLE_VISUAL_EVIDENCE)
+SLIDE_RENDER_CHECKS = (SLIDE_BLANK, SAFE_MARGIN_INTRUSION, EDGE_CLIPPING, SLIDE_TOO_SPARSE, SLIDE_TOO_CROWDED, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, IMAGE_DISTORTED, TINY_TEXT, GEOMETRY_NOT_MEASURED, FRAME_FIT_RISK, UNRELIABLE_VISUAL_EVIDENCE)
 DESIGN_CHECKS = (
     WEAK_VISUAL_IDENTITY,
     MISSING_SLIDE_ROLE,
     SIDE_STRIPE,
     GHOST_CARD,
-    TINY_TEXT,
     REPEATED_COMPOSITION,
     RAW_STRUCTURE_PATTERN,
     RAW_TABLE,

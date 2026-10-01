@@ -12,11 +12,12 @@ sys.path.insert(0, str(SCRIPTS_PATH))
 sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
 
 from acceptance import FIX_ROUNDS_ALLOWED, judge_build  # noqa: E402
-from deck_definitions import TEXT_OVERLAP, VERTICAL_DEAD_ZONE  # noqa: E402
+from deck_definitions import MISSING_SPEAKER_NOTES, TEXT_OVERLAP  # noqa: E402
+from render_fixture import can_render  # noqa: E402
 
 
 OVERLAP = TEXT_OVERLAP.issue("two text blocks cover each other", "slide 3")
-DEAD_ZONE = VERTICAL_DEAD_ZONE.issue("an empty band spans 29% of the slide height", "slide 8")
+NO_NOTES = MISSING_SPEAKER_NOTES.issue("slide 8 has no speaker notes", "slide 8")
 
 
 class AcceptanceTest(unittest.TestCase):
@@ -25,18 +26,18 @@ class AcceptanceTest(unittest.TestCase):
 
     def test_advice_alone_is_acceptable_and_says_not_to_redesign(self):
         with tempfile.TemporaryDirectory() as directory:
-            acceptance = self.judge(Path(directory), "<section>a</section>", [DEAD_ZONE])
+            acceptance = self.judge(Path(directory), "<section>a</section>", [NO_NOTES])
         self.assertTrue(acceptance.acceptable)
         self.assertTrue(acceptance.verdict.startswith("ACCEPTABLE"))
         self.assertIn("do not redesign", acceptance.verdict)
 
     def test_an_objective_defect_opens_a_fix_round_that_names_it(self):
         with tempfile.TemporaryDirectory() as directory:
-            acceptance = self.judge(Path(directory), "<section>a</section>", [OVERLAP, DEAD_ZONE])
+            acceptance = self.judge(Path(directory), "<section>a</section>", [OVERLAP, NO_NOTES])
         self.assertFalse(acceptance.acceptable)
         self.assertTrue(acceptance.verdict.startswith(f"FIX ROUND 1 OF {FIX_ROUNDS_ALLOWED}"))
         self.assertIn("TEXT_OVERLAP on slide 3", acceptance.verdict)
-        self.assertNotIn("VERTICAL_DEAD_ZONE", acceptance.verdict)
+        self.assertNotIn("MISSING_SPEAKER_NOTES", acceptance.verdict)
 
     def test_fixing_stops_after_the_allowed_rounds_and_a_rebuild_of_one_source_is_not_a_round(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -69,6 +70,24 @@ class AcceptanceTest(unittest.TestCase):
             acceptance = self.judge(Path(directory), "<section>a</section>", [], measured=False)
         self.assertFalse(acceptance.acceptable)
         self.assertTrue(acceptance.verdict.startswith("NOT MEASURED"))
+
+
+FREE_HTML_DECK = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>자유 형식</title>
+<style>section{width:1600px;height:900px;padding:80px;box-sizing:border-box;font-family:sans-serif;background:#fff} h1{font-size:64px} td{font-size:12px}</style></head><body>
+<section><h1>지역별 매출이 늘었습니다</h1><table><tr><td>수도권</td><td>58억</td></tr><tr><td>영남</td><td>31억</td></tr></table></section>
+</body></html>"""
+
+
+class FreeHtmlGateTest(unittest.TestCase):
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+    def test_a_deck_without_the_kit_is_held_to_the_measured_bar(self):
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory) / "slides.html").write_text(FREE_HTML_DECK, encoding="utf-8")
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build"], capture_output=True, text=True, cwd=directory)
+            acceptance = json.loads(completed.stdout)["details"]["acceptance"]
+        self.assertFalse(acceptance["acceptable"])
+        self.assertTrue(acceptance["verdict"].startswith("FIX ROUND 1"))
+        self.assertTrue({"TINY_TEXT", "VERTICAL_DEAD_ZONE"} <= {defect["code"] for defect in acceptance["defects"]})
 
 
 class BuildHelpTest(unittest.TestCase):

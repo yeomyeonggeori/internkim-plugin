@@ -13,7 +13,6 @@ from deck_definitions import (
     RAW_TABLE,
     REPEATED_COMPOSITION,
     SIDE_STRIPE,
-    TINY_TEXT,
     TOPIC_TITLE,
     UNRELIABLE_VISUAL_EVIDENCE,
     WEAK_VISUAL_IDENTITY,
@@ -103,8 +102,6 @@ def source_pattern_warnings(source_context: dict[str, object]) -> list[Issue]:
         warnings.append(SIDE_STRIPE.deck_issue("thick left or right border accents are doing the visual-identity work"))
     if source_context["hasGhostCardPattern"]:
         warnings.append(GHOST_CARD.deck_issue("thin-bordered boxes with soft shadows read as a default template surface"))
-    if source_context["hasTinyTextPattern"]:
-        warnings.append(TINY_TEXT.deck_issue("multiple CSS font sizes below 16px may be unreadable in review contact sheets"))
     if int(source_context["absoluteTextFooterSlideCount"]) >= 2:
         warnings.append(ABSOLUTE_FOOTER.deck_issue(
             "an absolutely positioned bottom strip carries text on multiple slides and can overlap the body; make header, body, and footer sibling flow children"
