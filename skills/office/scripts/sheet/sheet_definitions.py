@@ -4,7 +4,7 @@ from office_preview import PREVIEW_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
 from template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
-from office_schema import Boolean, CellValue, Choice, Field, ListOf, MapOf, Number, Record, Text, Variant
+from office_schema import AnyOf, Boolean, CellValue, Choice, Field, ListOf, MapOf, Number, Record, Text, Variant
 from text_checks import PLACEHOLDER_LEFT
 
 
@@ -49,6 +49,17 @@ CHART_FIELDS = (
     Field("width", Number(minimum=4, maximum=60), "width in centimetres, default 16"),
     Field("height", Number(minimum=3, maximum=40), "height in centimetres, default 8"),
 )
+
+PIVOT_FUNCTIONS = ("sum", "count", "average", "max", "min")
+PIVOT_FIELDS = AnyOf((Text(non_empty=True), ListOf(Text(non_empty=True), non_empty=True)), name="header name or list of header names")
+PIVOT_VALUE = AnyOf((Text(non_empty=True), Record("pivot value", "one summarized value of a pivot", (
+    Field("field", Text(non_empty=True), "header to summarize; with formula, the new value's name", required=True),
+    Field("function", Choice(PIVOT_FUNCTIONS), "how it combines, default the pivot's function"),
+    Field("showAs", Choice(("value", "percent_of_total", "percent_of_row", "percent_of_column")), "value (default) or a share of the grand, row or column total"),
+    Field("formula", Text(non_empty=True), "calculated value over other headers with + - * / ^ and parentheses, such as amount-cost; quote names with spaces: 'Unit Price'*qty"),
+    Field("label", Text(non_empty=True), "caption, default Sum of <field> and so on"),
+    Field("numberFormat", Text(non_empty=True), "number format, default the pivot's, or 0.0% for a percent"),
+))), name="header name or pivot value")
 
 OPERATIONS = Variant(
     "operation",
@@ -338,14 +349,15 @@ OPERATIONS = Variant(
         Record("add_pivot_table", "summarize a block with a header row into a native pivot table whose numbers are filled in already", (
             SHEET_NAME,
             Field("range", CELL_ADDRESS, "source block including its header row", required=True),
-            Field("row", Text(non_empty=True), "header name whose values become the rows", required=True),
-            Field("column", Text(non_empty=True), "header name whose values become the columns; needs exactly one value"),
-            Field("values", ListOf(Text(non_empty=True), non_empty=True), "header names to summarize", required=True),
-            Field("function", Choice(("sum", "count", "average", "max", "min")), "how values combine, default sum"),
+            Field("row", PIVOT_FIELDS, "header whose values become the rows; a list nests them, outer first, with a subtotal row per outer item", required=True),
+            Field("column", PIVOT_FIELDS, "header whose values become the columns, or a list, outer first; needs exactly one value"),
+            Field("filters", ListOf(Text(non_empty=True)), "headers shown as report filters above the pivot, every item selected"),
+            Field("values", ListOf(PIVOT_VALUE, non_empty=True), "what to summarize: header names, or objects for a per-value function, percent or formula", required=True),
+            Field("function", Choice(PIVOT_FUNCTIONS), "how values given by name combine, default sum"),
+            Field("groupDates", MapOf(Choice(("month", "quarter", "year")), key="row or column header"), "group a date header by month, quarter or year; every row needs a date"),
             Field("targetSheet", Text(non_empty=True), "sheet the pivot goes on, created when missing, default a new sheet named Pivot"),
             Field("targetCell", CELL_ADDRESS, "top-left cell of the pivot, default A3"),
             Field("name", Text(non_empty=True), "pivot table name, default PivotTable1, PivotTable2 and so on"),
-            Field("valueLabels", ListOf(Text(non_empty=True)), "captions of the value columns, default Sum of <header> and so on"),
             Field("totalLabel", Text(non_empty=True), "caption of the total row and column, default Grand Total"),
             Field("numberFormat", Text(non_empty=True), "number format of the values, default #,##0"),
         )),
