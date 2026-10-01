@@ -32,10 +32,11 @@ def main() -> Result:
         "truncated": arguments.start + len(shown) < len(elements),
         "blocks": blocks,
         "sections": [describe_section(section, index) for index, section in enumerate(document.sections)],
-        "paragraphStyles": style_names(document, WD_STYLE_TYPE.PARAGRAPH),
-        "tableStyles": style_names(document, WD_STYLE_TYPE.TABLE),
         "comments": describe_comment_threads(document, elements),
     }
+    if arguments.styles:
+        details["paragraphStyles"] = style_names(document, WD_STYLE_TYPE.PARAGRAPH)
+        details["tableStyles"] = style_names(document, WD_STYLE_TYPE.TABLE)
     charts = [describe_chart(chart) for chart in document_charts(document, elements)]
     if charts:
         details["charts"] = charts
@@ -125,6 +126,7 @@ def parse_arguments():
     parser.add_argument("--start", type=int, default=0, help="first block index to show")
     parser.add_argument("--revisions", action="store_true", help="list every tracked change with its id, type, author, date, block and text")
     parser.add_argument("--limit", type=int, default=DEFAULT_BLOCK_LIMIT, help=f"most blocks to show, default {DEFAULT_BLOCK_LIMIT}")
+    parser.add_argument("--styles", action="store_true", help="also list every paragraph and table style name the document defines")
     return parser.parse_args()
 
 
