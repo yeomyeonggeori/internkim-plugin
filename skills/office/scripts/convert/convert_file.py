@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass, field, replace
+import json
 import mimetypes
 from pathlib import Path
 import tempfile
@@ -125,7 +126,7 @@ def docx_to_pdf(conversion: Conversion) -> None:
 
 
 def workbook_to_pdf(conversion: Conversion) -> None:
-    draw_workbook_pdf(conversion, conversion.input_path, conversion.sheet)
+    conversion.issues.extend(draw_workbook_pdf(conversion, conversion.input_path, conversion.sheet))
 
 
 def delimited_to_pdf(conversion: Conversion) -> None:
@@ -133,14 +134,16 @@ def delimited_to_pdf(conversion: Conversion) -> None:
     with tempfile.TemporaryDirectory(prefix="office-convert-") as directory:
         workbook_path = Path(directory) / f"{conversion.input_path.stem}.xlsx"
         conversion.issues.extend(delimited_to_workbook(conversion.input_path, workbook_path, delimiter))
-        draw_workbook_pdf(conversion, workbook_path, None)
+        print_issues = draw_workbook_pdf(conversion, workbook_path, None)
+    conversion.issues.extend(CONVERSION_APPROXIMATED.issue(issue.message, conversion.input_path.name, f"convert it to .xlsx, run sheet apply with {json.dumps(list(issue.fix), ensure_ascii=False)}, then convert the workbook to .pdf") for issue in print_issues)
 
 
-def draw_workbook_pdf(conversion: Conversion, workbook_path: Path, sheet: str | None) -> None:
-    preview, fonts, _ = xlsx_preview(workbook_path, sheet)
+def draw_workbook_pdf(conversion: Conversion, workbook_path: Path, sheet: str | None) -> list[Issue]:
+    preview, fonts, _, print_issues = xlsx_preview(workbook_path, sheet)
     report_simplified(conversion, preview)
     with tempfile.TemporaryDirectory(prefix="office-convert-") as directory:
         draw_pdf(conversion, write_preview(preview, Path(directory)), PAGE_SELECTOR, fonts)
+    return print_issues
 
 
 def presentation_to_pdf(conversion: Conversion) -> None:

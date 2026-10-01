@@ -463,6 +463,7 @@ VALUE_STORED_AS_TEXT = IssueKind("VALUE_STORED_AS_TEXT", WARNING, "a cell holds 
 CHART_REFERENCE_BROKEN = IssueKind("CHART_REFERENCE_BROKEN", ERROR, "a chart series reads a sheet the workbook does not have, a range with no values, or values that hold no number, so the chart draws nothing for it", "read the sheet and point the chart at its data with edit_chart and range")
 CHART_COLUMN_LEFT_OUT = IssueKind("CHART_COLUMN_LEFT_OUT", WARNING, "a column of a chart's range, other than its first, holds no number, so the chart leaves it out instead of drawing an empty series", "apply the operations in fix: numbers stored as text are converted and the chart rebuilt, and a text column is left out of the range; or leave it as it is", suggestion_applies_fix=True)
 PIVOT_VALUES_EMPTY = IssueKind("PIVOT_VALUES_EMPTY", ERROR, "a pivot table's value cells are all empty, which is what summing a column of numbers stored as text gives", "convert the source column to numbers with the operations in its VALUE_STORED_AS_TEXT fix, delete the pivot's sheet with delete_sheet, and add the pivot again")
+SHEET_PRINTS_WIDE = IssueKind("SHEET_PRINTS_WIDE", WARNING, "a sheet's columns print across more than one page wide, so each printed row is cut apart onto separate sheets of paper", "apply the set_page_setup in fix: it shrinks the columns onto one page wide", suggestion_applies_fix=True)
 NUMBER_TOO_WIDE = IssueKind("NUMBER_TOO_WIDE", ERROR, "a number is wider than its column and Excel shows it as ####", "apply the set_column_width in fix", suggestion_applies_fix=True)
 
 VALIDATE_ISSUE_KINDS = (
@@ -483,6 +484,7 @@ CHECK_ISSUE_KINDS = (
     PLACEHOLDER_LEFT,
     CIRCULAR_REFERENCE,
     FORMULA_NOT_EVALUATED,
+    SHEET_PRINTS_WIDE,
 )
 
 GUIDE_INPUTS = (
@@ -514,6 +516,6 @@ GUIDE_ISSUES = (
     ("sheet apply", WRITE_ISSUE_KINDS + EDIT_ISSUE_KINDS + OPERATION_ISSUE_KINDS),
     ("sheet check", CHECK_ISSUE_KINDS),
     ("sheet validate", VALIDATE_ISSUE_KINDS),
-    ("sheet render", PREVIEW_ISSUE_KINDS),
+    ("sheet render", PREVIEW_ISSUE_KINDS + (SHEET_PRINTS_WIDE,)),
     ("sheet merge", PACKAGE_MERGE_ISSUE_KINDS + WRITE_ISSUE_KINDS),
 )

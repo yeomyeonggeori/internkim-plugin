@@ -143,10 +143,14 @@ workbook.save("charts.xlsx")
 """
 
 
+def chart_issues(issues):
+    return [issue for issue in issues if issue["code"] != "SHEET_PRINTS_WIDE"]
+
+
 class ChartReferenceTest(WorkbookFixture):
     def test_a_chart_reading_an_empty_range_is_reported_and_one_with_data_is_not(self):
         run_office_python(CHART_FIXTURE, self.directory)
-        issues = run_office(["sheet", "check", "charts.xlsx"], self.directory)["issues"]
+        issues = chart_issues(run_office(["sheet", "check", "charts.xlsx"], self.directory)["issues"])
         self.assertEqual([(issue["code"], issue["location"]) for issue in issues], [("CHART_REFERENCE_BROKEN", "Sales chart 1")])
         self.assertIn("$H$2:$H$3", issues[0]["message"])
 
@@ -167,7 +171,7 @@ class ChartValueTest(WorkbookFixture):
             sheet.add_chart(chart, "E2")
             workbook.save("charts.xlsx")
         """, self.directory)
-        issues = run_office(["sheet", "check", "charts.xlsx"], self.directory)["issues"]
+        issues = chart_issues(run_office(["sheet", "check", "charts.xlsx"], self.directory)["issues"])
         self.assertEqual([(issue["code"], issue["location"]) for issue in issues], [("CHART_REFERENCE_BROKEN", "실적 chart 0")])
         self.assertIn("$B$2:$B$3, which holds text and no number", issues[0]["message"])
 
