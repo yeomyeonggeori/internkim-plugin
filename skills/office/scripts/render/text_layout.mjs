@@ -364,13 +364,14 @@ export function extractTextLayout({ exportedTextAttribute, exportedListAttribute
     const singleLine = lineCountOf(rects) === 1;
     const anchor = isPure ? measuredAnchor(lines, content) : "";
     const fitsContent = isPure && anchor;
-    const box = fitsContent ? padding : { left: content.left, right: content.right, top: lines.top, bottom: lines.bottom };
     const alignment = isPure && singleLine ? measuredAlignment(declaredAlignment, lines, content) : declaredAlignment;
+    const textLeft = alignment === "l" ? Math.max(content.left, lines.left) : content.left;
+    const box = fitsContent ? padding : { left: textLeft, right: content.right, top: lines.top, bottom: lines.bottom };
     return {
       box,
       insets: fitsContent ? insets : { left: 0, top: 0, right: 0, bottom: 0 },
       anchor: anchor || "t",
-      noWrap: style.whiteSpace === "nowrap" || style.whiteSpace === "pre",
+      noWrap: singleLine || style.whiteSpace === "nowrap" || style.whiteSpace === "pre",
       keepWords: style.wordBreak === "keep-all",
       firstLineHalfLeading: round(lineBoxes[0].halfLeading),
       paragraphs: [paragraphOf(items, container, section, { alignment, lineHeightPx: round(lineHeightPx), spaceBeforePx: 0, bullet: null })],
