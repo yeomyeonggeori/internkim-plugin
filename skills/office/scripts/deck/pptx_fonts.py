@@ -35,10 +35,11 @@ class EmbeddedFont:
 
 @functools.lru_cache(maxsize=None)
 def deck_faces() -> dict[int, TrueTypeFace]:
-    return {
-        weight: read_truetype_face(PAPERLOGY_FONT_PATH / pathlib.Path(file_name).with_suffix(".ttf").name)
-        for weight, file_name in VENDORED_PAPERLOGY_FONTS
-    }
+    return {weight: read_truetype_face(path) for weight, path in deck_face_paths().items()}
+
+
+def deck_face_paths() -> dict[int, pathlib.Path]:
+    return {weight: PAPERLOGY_FONT_PATH / pathlib.Path(file_name).with_suffix(".ttf").name for weight, file_name in VENDORED_PAPERLOGY_FONTS}
 
 
 def run_font(family: str, weight: int) -> RunFont:

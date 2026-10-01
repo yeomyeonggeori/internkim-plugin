@@ -8,9 +8,9 @@ import subprocess
 from PIL import ImageFont
 from pptx.oxml.ns import qn
 
-from pptx_fonts import PAPERLOGY_FONT_PATH
+from pptx_fonts import PAPERLOGY_FONT_PATH, deck_face_paths, deck_faces
 from pptx_geometry import EMU_PER_POINT, Box
-from pptx_style import DEFAULT_SIZE, ParagraphLevel, has_east_asian, is_east_asian, paragraph_chain, run_style
+from pptx_style import DEFAULT_SIZE, PERCENT_SCALE, ParagraphLevel, has_east_asian, is_east_asian, paragraph_chain, run_style
 
 
 MEASURE_SIZE = 200
@@ -18,7 +18,6 @@ DEFAULT_INSETS = {"lIns": 91440, "rIns": 91440, "tIns": 45720, "bIns": 45720}
 FALLBACK_REGULAR = PAPERLOGY_FONT_PATH / "Paperlogy-4Regular.ttf"
 FALLBACK_BOLD = PAPERLOGY_FONT_PATH / "Paperlogy-7Bold.ttf"
 FONT_MATCH_TIMEOUT_SECONDS = 10
-PERCENT_SCALE = 100000
 METRIC_SUBSTITUTES = {
     "calibri": ("Carlito",),
     "cambria": ("Caladea",),
@@ -67,6 +66,9 @@ class TextFit:
 
 @functools.lru_cache(maxsize=None)
 def font_face(family: str, bold: bool, east_asian: bool) -> FontFace:
+    bundled = bundled_deck_face(family, bold)
+    if bundled is not None:
+        return bundled
     requested = matched_font(family, bold, east_asian)
     if requested is not None and not requested.substituted:
         return requested
@@ -77,6 +79,14 @@ def font_face(family: str, bold: bool, east_asian: bool) -> FontFace:
     if requested is not None:
         return requested
     return FontFace(str(FALLBACK_BOLD if bold else FALLBACK_REGULAR), 0, "Paperlogy", True, bold)
+
+
+def bundled_deck_face(family: str, bold: bool) -> FontFace | None:
+    paths = deck_face_paths()
+    weight = next((weight for weight, face in deck_faces().items() if face.family.casefold() == family.casefold()), None)
+    if weight is None:
+        return None
+    return FontFace(str(paths[weight]), 0, deck_faces()[weight].family, False, bold)
 
 
 def matched_font(family: str, bold: bool, east_asian: bool) -> FontFace | None:
@@ -235,7 +245,8 @@ def run_atoms(context, shape_element, paragraph, run, font_scale: float, faces: 
         typeface = style.font_for(piece).value
         face = font_face(typeface, style.bold.value, has_east_asian(piece))
         faces.add((typeface, face))
-        atoms.append(Atom(piece, text_width_points(face, piece, size), line_height_points(face, size), piece.isspace(), len(piece) == 1 and is_east_asian(piece) and not is_hangul(piece)))
+        width = text_width_points(face, piece, size) + style.character_spacing.value * font_scale * len(piece)
+        atoms.append(Atom(piece, width, line_height_points(face, size), piece.isspace(), len(piece) == 1 and is_east_asian(piece) and not is_hangul(piece)))
     return atoms
 
 

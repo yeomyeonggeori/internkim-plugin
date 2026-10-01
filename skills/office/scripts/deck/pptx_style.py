@@ -36,6 +36,7 @@ class RunStyle:
     bold: Styled
     italic: Styled
     color: Styled
+    character_spacing: Styled = Styled(0.0, "default")
 
     def font_for(self, text: str) -> Styled:
         return self.east_asian_font if has_east_asian(text) else self.latin_font
@@ -102,8 +103,9 @@ def run_style(context: SlideContext | None, shape_element, paragraph_element, ru
     latin = first_typeface(levels, "a:latin", DEFAULT_LATIN_FONT)
     east_asian = first_typeface(levels, "a:ea", DEFAULT_EAST_ASIAN_FONT)
     color = first_color(levels, shape_element)
+    character_spacing = first_attribute(levels, "spc", lambda value: int(value) / 100, 0.0)
     if context is None:
-        return RunStyle(latin, east_asian, size, bold, italic, color)
+        return RunStyle(latin, east_asian, size, bold, italic, color, character_spacing)
     return RunStyle(
         resolve_typeface(context, latin, ""),
         resolve_typeface(context, east_asian, HANGUL_SCRIPT),
@@ -111,6 +113,7 @@ def run_style(context: SlideContext | None, shape_element, paragraph_element, ru
         bold,
         italic,
         Styled(resolve_color(context, color.value), color.origin) if color.value is not None else color,
+        character_spacing,
     )
 
 

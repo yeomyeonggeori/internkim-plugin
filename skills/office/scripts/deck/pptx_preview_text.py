@@ -156,6 +156,7 @@ def segment_html(paint: TextPaint, text: str, style, run_properties, layout: Bod
         "text-decoration": "underline" if run_properties is not None and run_properties.get("u", "none") != "none" else None,
         "color": color or "#000000",
         "line-height": f"{point_pixels(line_height)}px",
+        "letter-spacing": f"{point_pixels(style.character_spacing.value * layout.font_scale)}px" if style.character_spacing.value else None,
     }
     return element("span", properties, html.escape(text))
 
