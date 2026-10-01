@@ -142,6 +142,27 @@ class ChartReferenceTest(WorkbookFixture):
         self.assertIn("$H$2:$H$3", issues[0]["message"])
 
 
+class ChartValueTest(WorkbookFixture):
+    def test_a_series_that_reads_only_text_is_reported(self):
+        run_office_python("""
+            from openpyxl import Workbook
+            from openpyxl.chart import BarChart, Reference
+            workbook = Workbook()
+            sheet = workbook.active
+            sheet.title = "실적"
+            for row in [["담당자", "지역", "1월"], ["이샘플", "수도권", 120], ["박예시", "영남", 90]]:
+                sheet.append(row)
+            chart = BarChart()
+            chart.add_data(Reference(sheet, min_col=2, max_col=3, min_row=1, max_row=3), titles_from_data=True)
+            chart.set_categories(Reference(sheet, min_col=1, min_row=2, max_row=3))
+            sheet.add_chart(chart, "E2")
+            workbook.save("charts.xlsx")
+        """, self.directory)
+        issues = run_office(["sheet", "check", "charts.xlsx"], self.directory)["issues"]
+        self.assertEqual([(issue["code"], issue["location"]) for issue in issues], [("CHART_REFERENCE_BROKEN", "실적 chart 0")])
+        self.assertIn("$B$2:$B$3, which holds text and no number", issues[0]["message"])
+
+
 class FormulaVisibilityTest(WorkbookFixture):
     def create(self):
         self.create_workbook([
@@ -194,6 +215,7 @@ class FormulaVisibilityTest(WorkbookFixture):
         """, self.directory)
         self.assertEqual([(code, issue["location"]) for code, issue in self.issues().items()], [("CIRCULAR_REFERENCE", "S!B1")])
 
+
 class TextValueTest(WorkbookFixture):
     def check(self):
         return run_office(["sheet", "check", "book.xlsx"], self.directory)
@@ -227,3 +249,4 @@ class TextValueTest(WorkbookFixture):
         self.assertEqual(load_workbook(self.directory / "book.xlsx")["S"]["A3"].value, "2026-09-02")
         issues = self.text_issues()
         self.assertEqual([(issue["location"], issue["suggestion"][0]["value"]) for issue in issues], [("S!A4", "2026-09-03")])
+

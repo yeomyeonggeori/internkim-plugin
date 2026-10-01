@@ -39,6 +39,7 @@ class SheetEditing:
     record: EditRecord = field(default_factory=EditRecord)
     package_patches: list = field(default_factory=list)
     reserved_names: set = field(default_factory=set)
+    warnings: list = field(default_factory=list)
 
 
 def load_editing(path: str, allows_loss: bool = False) -> SheetEditing:
@@ -57,7 +58,7 @@ def save_editing(editing: SheetEditing, path: str) -> list:
     if lost and not editing.allows_loss:
         raise OfficeFailure(CONTENT_WOULD_BE_LOST.issue(f"saving would drop what the editor cannot carry: {', '.join(lost)}", lost[0]))
     write_package(output, path)
-    return issues + ([CONTENT_DROPPED.issue(f"dropped what the editor cannot carry: {', '.join(lost)}", lost[0])] if lost else [])
+    return issues + editing.warnings + ([CONTENT_DROPPED.issue(f"dropped what the editor cannot carry: {', '.join(lost)}", lost[0])] if lost else [])
 
 
 def refuse_new_circular_references(editing: SheetEditing, evaluation) -> None:
@@ -216,8 +217,8 @@ SHEET_OPERATIONS = OperationSet(OPERATIONS, {
     "insert_columns": plan_structure(COLUMN_AXIS, 1, "columns", "inserted"),
     "delete_columns": plan_structure(COLUMN_AXIS, -1, "columns", "deleted"),
     "recalculate": on_workbook(plan_recalculate),
-    "add_chart": on_workbook(plan_add_chart),
-    "edit_chart": on_workbook(plan_edit_chart),
+    "add_chart": plan_add_chart,
+    "edit_chart": plan_edit_chart,
     "delete_chart": on_workbook(plan_delete_chart),
     "merge_cells": on_workbook(plan_merge_cells),
     "unmerge_cells": on_workbook(plan_unmerge_cells),

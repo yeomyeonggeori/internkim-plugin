@@ -25,6 +25,17 @@ class RenderedPagesTest(WorkbookFixture):
         self.assertIn(">0.5<", svg)
         self.assertIn(">margin<", svg)
 
+    def test_a_pie_is_drawn_in_the_slice_colors_it_was_given(self):
+        self.create_workbook([{"title": "Sales", "rows": MONTHS}])
+        self.apply([{"op": "add_chart", "type": "pie", "range": "A1:B5", "anchor": "E2", "colors": ["111111", "222222", "333333", "444444"]}])
+        _, preview = self.render()
+        fills = re.findall(r'fill="(#[0-9a-f]{6})"', self.chart_svgs(preview)[0])
+        self.assertEqual([color for color in ("#111111", "#222222", "#333333", "#444444") if color in fills], ["#111111", "#222222", "#333333", "#444444"])
+        self.apply([{"op": "add_chart", "type": "bar", "range": "A1:C5", "anchor": "E20", "colors": ["AA0000", "00AA00"]}])
+        _, preview = self.render()
+        bar_fills = set(re.findall(r'fill="(#[0-9a-f]{6})"', self.chart_svgs(preview)[1]))
+        self.assertTrue({"#aa0000", "#00aa00"} <= bar_fills, bar_fills)
+
     def test_horizontal_stacked_bars_stay_horizontal_and_stacked(self):
         self.create_workbook([{"title": "Sales", "rows": [["team", "won", "lost"], ["North", 4, 2], ["South", 3, 5]]}])
         self.apply([{"op": "add_chart", "type": "bar", "range": "A1:C3", "anchor": "E2", "horizontal": True, "stacked": True}])

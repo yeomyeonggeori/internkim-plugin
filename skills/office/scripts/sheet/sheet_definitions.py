@@ -4,7 +4,7 @@ from office_preview import PREVIEW_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
 from template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
-from office_schema import AnyOf, Boolean, CellValue, Choice, Field, ListOf, MapOf, Number, Record, Text, Variant
+from office_schema import AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Text, Variant
 from text_checks import PLACEHOLDER_LEFT
 
 
@@ -46,6 +46,7 @@ CHART_FIELDS = (
     Field("yTitle", Text(), "value axis title"),
     Field("legend", Choice(("bottom", "right", "top", "none")), "legend position, default bottom; none hides it"),
     Field("dataLabels", Boolean(), "show each point's value"),
+    Field("colors", ListOf(HexColor()), "one color per series in order, or per slice of a pie or doughnut, such as [\"1F4E79\", \"F59E0B\"]; series past the list take the default palette"),
     Field("width", Number(minimum=4, maximum=60), "width in centimetres, default 16"),
     Field("height", Number(minimum=3, maximum=40), "height in centimetres, default 8"),
 )
@@ -304,7 +305,7 @@ OPERATIONS = Variant(
             COUNT,
         )),
         Record("recalculate", "store a freshly computed value for every formula the workbook can compute", ()),
-        Record("add_chart", "add a chart of a block whose first column holds the categories and whose first row names the series; scatter uses the first column as x values", (
+        Record("add_chart", "add a chart of a block whose first column holds the categories and whose first row names the series; a column with no number is left out with a warning, and a block with none is refused; scatter uses the first column as x values", (
             SHEET_NAME,
             Field("type", Choice(CHART_TYPES), "chart kind; combo draws the first series as bars and the last ones as lines", required=True),
             Field("range", CELL_ADDRESS, "data block including its header row and category column, such as A1:C7", required=True),
@@ -384,7 +385,8 @@ BROKEN_DEFINED_NAME = IssueKind("BROKEN_DEFINED_NAME", ERROR, "a defined name po
 CONTENT_WOULD_BE_LOST = IssueKind("CONTENT_WOULD_BE_LOST", ERROR, "the workbook holds content the editor cannot carry through a save, such as form controls, embedded objects or an unknown extension, so nothing was written", "pass --allow-loss to save without it, or leave this workbook to Excel")
 CONTENT_DROPPED = IssueKind("CONTENT_DROPPED", WARNING, "--allow-loss saved the workbook without content the editor cannot carry", "tell the user what was dropped")
 VALUE_STORED_AS_TEXT = IssueKind("VALUE_STORED_AS_TEXT", WARNING, "a cell holds text that reads as a number, a date or a formula missing its =, so sums, sorting, filters and charts treat it as words", "apply the suggested operations: they write the typed value or formula and keep how it looked")
-CHART_REFERENCE_BROKEN = IssueKind("CHART_REFERENCE_BROKEN", ERROR, "a chart series reads a sheet the workbook does not have or a range with no values, so the chart draws nothing for it", "read the sheet and point the chart at its data with edit_chart and range")
+CHART_REFERENCE_BROKEN = IssueKind("CHART_REFERENCE_BROKEN", ERROR, "a chart series reads a sheet the workbook does not have, a range with no values, or values that hold no number, so the chart draws nothing for it", "read the sheet and point the chart at its data with edit_chart and range")
+CHART_COLUMN_LEFT_OUT = IssueKind("CHART_COLUMN_LEFT_OUT", WARNING, "a column of a chart's range, other than its first, holds no number, so the chart leaves it out instead of drawing an empty series", "start the range at the column that should label the categories, or leave it as it is")
 NUMBER_TOO_WIDE = IssueKind("NUMBER_TOO_WIDE", ERROR, "a number is wider than its column and Excel shows it as ####", "apply the suggested set_column_width")
 
 VALIDATE_ISSUE_KINDS = (
@@ -425,6 +427,6 @@ def behavior_lines() -> list[str]:
 
 GUIDE_SECTIONS = (("How the sheet commands behave", behavior_lines),)
 
-WRITE_ISSUE_KINDS = (FORMULA_SYNTAX, CIRCULAR_REFERENCE, FORMULA_NOT_EVALUATED)
+WRITE_ISSUE_KINDS = (FORMULA_SYNTAX, CIRCULAR_REFERENCE, FORMULA_NOT_EVALUATED, CHART_COLUMN_LEFT_OUT)
 EDIT_ISSUE_KINDS = (CONTENT_WOULD_BE_LOST, CONTENT_DROPPED)
 GUIDE_ISSUES = (("sheet create, sheet edit and sheet apply", WRITE_ISSUE_KINDS), ("sheet edit and sheet apply", EDIT_ISSUE_KINDS), ("sheet check", CHECK_ISSUE_KINDS), ("sheet validate", VALIDATE_ISSUE_KINDS), ("sheet apply", OPERATION_ISSUE_KINDS), ("sheet render", PREVIEW_ISSUE_KINDS), ("sheet merge", PACKAGE_MERGE_ISSUE_KINDS + WRITE_ISSUE_KINDS))

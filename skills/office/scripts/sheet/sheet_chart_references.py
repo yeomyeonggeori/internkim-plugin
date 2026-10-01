@@ -3,7 +3,7 @@ from __future__ import annotations
 from openpyxl.utils.cell import range_boundaries
 
 from office_result import Issue
-from sheet_charts import anchor_cell
+from sheet_charts import anchor_cell, holds_number
 from sheet_definitions import CHART_REFERENCE_BROKEN
 
 
@@ -25,12 +25,18 @@ def data_source_formula(source) -> str | None:
 
 
 def series_formulas(chart) -> list[str]:
-    formulas = []
+    return [formula for formula, _ in series_sources(chart)]
+
+
+def series_sources(chart) -> list[tuple[str, bool]]:
+    sources = []
     for part in chart._charts:
         for series in part.series:
-            sources = (series.val, series.cat, series.xVal, series.yVal)
-            formulas.extend(formula for formula in map(data_source_formula, sources) if formula)
-    return formulas
+            for source, holds_values in ((series.val, True), (series.cat, False), (series.xVal, False), (series.yVal, True)):
+                formula = data_source_formula(source)
+                if formula:
+                    sources.append((formula, holds_values))
+    return sources
 
 
 def describe_charts(worksheet) -> list[dict]:
@@ -47,13 +53,12 @@ def split_formula(formula: str) -> tuple[str, str]:
     return sheet, cells.replace("$", "")
 
 
-def holds_values(worksheet, cells: str) -> bool:
+def range_cells(worksheet, cells: str) -> list:
     min_column, min_row, max_column, max_row = range_boundaries(cells)
-    rows = worksheet.iter_rows(min_row=min_row, max_row=max_row, min_col=min_column, max_col=max_column, values_only=True)
-    return any(value not in (None, "") for row in rows for value in row)
+    return [cell for row in worksheet.iter_rows(min_row=min_row, max_row=max_row, min_col=min_column, max_col=max_column) for cell in row]
 
 
-def reference_problem(workbook, formula: str) -> str | None:
+def reference_problem(workbook, formula: str, holds_values: bool) -> str | None:
     sheet, cells = split_formula(formula)
     if sheet and sheet not in workbook.sheetnames:
         return f"reads sheet {sheet!r}, which the workbook does not have"
@@ -61,8 +66,13 @@ def reference_problem(workbook, formula: str) -> str | None:
         range_boundaries(cells)
     except ValueError:
         return f"reads {formula}, which is not a cell range"
-    if sheet and not holds_values(workbook[sheet], cells):
+    if not sheet:
+        return None
+    found = range_cells(workbook[sheet], cells)
+    if not any(cell.value not in (None, "") for cell in found):
         return f"reads {formula}, which holds no values"
+    if holds_values and not any(holds_number(cell) for cell in found):
+        return f"reads {formula}, which holds text and no number, so its series draws nothing"
     return None
 
 
@@ -71,6 +81,6 @@ def chart_reference_issues(workbook) -> list[Issue]:
     for worksheet in workbook.worksheets:
         for index, chart in enumerate(worksheet._charts):
             location = f"{worksheet.title} chart {index}"
-            problems = dict.fromkeys(problem for problem in (reference_problem(workbook, formula) for formula in series_formulas(chart)) if problem)
+            problems = dict.fromkeys(problem for problem in (reference_problem(workbook, formula, holds_values) for formula, holds_values in series_sources(chart)) if problem)
             issues.extend(CHART_REFERENCE_BROKEN.issue(f"{location} {problem}", location) for problem in problems)
     return issues

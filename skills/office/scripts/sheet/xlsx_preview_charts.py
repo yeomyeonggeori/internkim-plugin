@@ -56,7 +56,7 @@ def absolute(box: Box) -> dict:
 
 def chart_html(chart, box: Box, values_workbook, palette: tuple, preview) -> str:
     model = chart_model(chart, values_workbook, preview)
-    colors = round_colors(palette) if model.is_round else tuple(series_color(item, palette, index) for index, item in enumerate(chart_items(chart)))
+    colors = point_colors(chart_items(chart), palette) if model.is_round else tuple(series_color(item, palette, index) for index, item in enumerate(chart_items(chart)))
     return f"<div{style_attribute(absolute(box))}>{chart_svg(model, box.width, box.height, KOREAN_FALLBACK_FAMILY, colors or round_colors(palette))}</div>"
 
 
@@ -109,6 +109,23 @@ def series_name(item, values_workbook, index: int) -> str:
     return str(names[0]) if names else (item.tx.v if item.tx is not None and item.tx.v else f"계열 {index + 1}")
 
 
+def point_colors(items: list, palette: tuple) -> tuple:
+    points = list(getattr(items[0], "dPt", None) or []) if items else []
+    painted = {point.idx: solid_color(point.graphicalProperties) for point in points}
+    if not any(painted.values()):
+        return round_colors(palette)
+    defaults = round_colors(palette)
+    count = max(painted) + 1
+    return tuple(painted.get(index) or defaults[index % len(defaults)] for index in range(count))
+
+
+def solid_color(properties) -> str | None:
+    fill = getattr(properties, "solidFill", None) if properties is not None else None
+    rgb = getattr(fill, "srgbClr", None) if fill is not None else None
+    value = rgb if isinstance(rgb, str) else getattr(rgb, "val", None)
+    return f"#{value.lower()}" if value else None
+
+
 def round_colors(palette: tuple) -> tuple:
     return tuple(f"#{palette[slot].lower()}" for slot in ACCENT_SLOTS)
 
@@ -127,16 +144,9 @@ def reference_values(reference: str | None, values_workbook) -> list:
 
 def series_color(item, palette: tuple, index: int) -> str:
     properties = getattr(item, "graphicalProperties", None) or getattr(item, "spPr", None)
-    fill = getattr(properties, "solidFill", None) if properties is not None else None
-    rgb = getattr(fill, "srgbClr", None) if fill is not None else None
-    value = getattr(rgb, "val", None) if rgb is not None else None
-    if value:
-        return f"#{value.lower()}"
-    line = getattr(properties, "line", None) if properties is not None else None
-    line_fill = getattr(line, "solidFill", None) if line is not None else None
-    line_rgb = getattr(getattr(line_fill, "srgbClr", None), "val", None) if line_fill is not None else None
-    if line_rgb:
-        return f"#{line_rgb.lower()}"
+    color = solid_color(properties) or solid_color(getattr(properties, "line", None))
+    if color:
+        return color
     slots = list(ACCENT_SLOTS)
     return f"#{palette[slots[index % len(slots)]].lower()}"
 

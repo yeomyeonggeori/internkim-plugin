@@ -1,3 +1,4 @@
+import re
 import unittest
 import zipfile
 
@@ -196,6 +197,36 @@ class ChartTest(OperationFixture):
         self.edit([{"op": "add_chart", "type": "bar", "range": "A1:C4", "dataLabels": True}])
         labels = self.chart_xml(1).split("<dLbls>")[1].split("</dLbls>")[0]
         self.assertEqual(labels, '<showLegendKey val="0"/><showVal val="1"/><showCatName val="0"/><showSerName val="0"/><showPercent val="0"/><showBubbleSize val="0"/>')
+
+    def test_a_text_column_inside_the_range_is_left_out_with_a_warning(self):
+        envelope = self.edit([{"op": "add_chart", "type": "combo", "range": "A1:D4"}])
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("CHART_COLUMN_LEFT_OUT", "ops[0].range")])
+        self.assertIn("B2:B4 (product) holds no number", envelope["issues"][0]["message"])
+        chart = self.workbook()["Sales"]._charts[0]
+        self.assertEqual([series.val.numRef.f for plot in chart._charts for series in plot.series], ["'Sales'!$C$2:$C$4", "'Sales'!$D$2:$D$4"])
+
+    def test_a_range_without_a_number_is_refused_before_anything_is_written(self):
+        original = (self.directory / "book.xlsx").read_bytes()
+        issue = self.refused([{"op": "add_chart", "type": "bar", "range": "F1:H5"}])
+        self.assertEqual((issue["code"], issue["location"]), ("OPERATION_NOT_APPLICABLE", "ops[0].range"))
+        self.assertIn("would be empty", issue["message"])
+        issue = self.refused([{"op": "add_chart", "type": "bar", "range": "D1:D7"}])
+        self.assertIn('"range": "C1:D7"', issue["suggestion"])
+        self.assertEqual((self.directory / "book.xlsx").read_bytes(), original)
+
+    def test_each_series_and_each_slice_takes_the_color_it_is_given(self):
+        self.edit([
+            {"op": "add_chart", "type": "bar", "range": "B1:D4", "colors": ["1F4E79", "#f59e0b"]},
+            {"op": "add_chart", "type": "pie", "range": "B1:C4", "anchor": "H30", "colors": ["111111", "222222"]},
+        ])
+        bars = self.chart_xml(1)
+        self.assertLess(bars.index('<a:srgbClr val="1F4E79"/>'), bars.index('<a:srgbClr val="F59E0B"/>'))
+        pie = self.chart_xml(2)
+        self.assertEqual(re.findall(r'<dPt><idx val="(\d)"/><spPr><a:solidFill[^>]*><a:srgbClr val="(\w+)"/>', pie), [("0", "111111"), ("1", "222222"), ("2", "10B981")])
+        self.edit([{"op": "edit_chart", "chart": 0, "colors": ["AA0000"]}])
+        self.assertIn('<a:srgbClr val="AA0000"/>', self.chart_xml(1))
+        issue = self.refused([{"op": "edit_chart", "chart": 0, "colors": ["red"]}])
+        self.assertEqual((issue["code"], issue["location"]), ("INVALID_VALUE", "ops[0].colors[0]"))
 
     def test_a_chart_index_beyond_the_sheet_is_refused(self):
         issue = self.refused([{"op": "delete_chart", "chart": 0}])
