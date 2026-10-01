@@ -7,6 +7,7 @@ from docx.oxml.ns import qn
 
 from docx_blocks import block_kind, body_block_elements, element_text, has_page_break, heading_level, table_cell_texts, wrap_block
 from docx_comments import describe_comment_threads
+from docx_reference_operations import bookmark_names, describe_notes
 from docx_revisions import collect_revisions
 from docx_text import visible_text
 from office_result import OfficeArgumentParser, Result, run_command
@@ -33,6 +34,12 @@ def main() -> Result:
         "tableStyles": style_names(document, WD_STYLE_TYPE.TABLE),
         "comments": describe_comment_threads(document, elements),
     }
+    bookmarks = sorted(bookmark_names(document) - {"_GoBack"})
+    if bookmarks:
+        details["bookmarks"] = bookmarks
+    notes = describe_notes(document)
+    if notes:
+        details["notes"] = notes
     revisions = collect_revisions(document.element.body, elements)
     details["revisionCount"] = len(revisions)
     if arguments.revisions:
@@ -83,11 +90,18 @@ def has_merged_cells(table) -> bool:
 def describe_section(section, index: int) -> dict:
     return {
         "index": index,
+        "orientation": "landscape" if section.page_width and section.page_height and section.page_width > section.page_height else "portrait",
+        "pageInches": [inches(section.page_width), inches(section.page_height)],
+        "marginsInches": [inches(section.top_margin), inches(section.right_margin), inches(section.bottom_margin), inches(section.left_margin)],
         "header": limited(part_text(section.header)),
         "footer": limited(part_text(section.footer)),
         "headerLinkedToPrevious": section.header.is_linked_to_previous,
         "footerLinkedToPrevious": section.footer.is_linked_to_previous,
     }
+
+
+def inches(length) -> float | None:
+    return round(length.inches, 2) if length is not None else None
 
 
 def part_text(header_or_footer) -> str:

@@ -10,6 +10,7 @@ from docx.text.paragraph import Paragraph
 from doc_definitions import BROKEN_INTERNAL_REFERENCE, EAST_ASIA_FONT_MISSING, EAST_ASIA_LANGUAGE_NOT_KOREAN, STALE_TABLE_OF_CONTENTS, TRACKED_CHANGES_PRESENT
 from docx_defaults import KOREAN_LANGUAGE
 from docx_language import effective_east_asia_language
+from docx_reference_operations import bookmark_names
 from docx_revisions import collect_revisions, describe_pending
 from docx_styles import run_styles
 from docx_blocks import PARAGRAPH_TAG, body_block_elements, element_text, heading_level
@@ -95,10 +96,6 @@ def field_instructions(element) -> list[str]:
             complex_fields.append("".join(current))
             current = None
     return simple + complex_fields
-
-
-def bookmark_names(document) -> set[str]:
-    return {bookmark.get(qn("w:name")) for bookmark in document.element.body.iter(qn("w:bookmarkStart"))}
 
 
 def reference_issues(document, elements: list) -> list[Issue]:

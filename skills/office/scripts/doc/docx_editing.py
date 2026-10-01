@@ -13,6 +13,8 @@ from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND
 from office_result import INVALID_VALUE, OfficeFailure
 
 
+
+
 @dataclass
 class DocxEditing:
     document: Document

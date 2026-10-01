@@ -96,6 +96,41 @@ TARGET_BLOCK = Field("block", BLOCK_INDEX, "block index from doc read", required
 TABLE_BLOCK = Field("block", BLOCK_INDEX, "index of a table block from doc read", required=True)
 ROW_INDEX = Number(minimum=0, integer=True)
 
+ALIGNMENT = Choice(("left", "center", "right", "justify"))
+HIGHLIGHT_COLORS = ("yellow", "green", "cyan", "pink", "blue", "red", "gray", "none")
+PAPER_NAMES = ("A3", "A4", "A5", "B5", "Letter", "Legal")
+CELL_RANGE = (
+    TABLE_BLOCK,
+    Field("row", ROW_INDEX, "first row index", required=True),
+    Field("column", ROW_INDEX, "first column index", required=True),
+    Field("toRow", ROW_INDEX, "last row index, default row"),
+    Field("toColumn", ROW_INDEX, "last column index, default column"),
+)
+CHARACTER_FORMAT = (
+    Field("bold", Boolean(), "bold"),
+    Field("italic", Boolean(), "italic"),
+    Field("underline", Boolean(), "underline"),
+    Field("color", Text(non_empty=True), "text color #RRGGBB"),
+    Field("size", Number(1, 400), "size in points"),
+    Field("font", Text(non_empty=True), "font name for Latin and Korean text"),
+)
+PARAGRAPH_FORMAT = (
+    Field("align", ALIGNMENT, "alignment"),
+    Field("spaceBeforePoints", Number(minimum=0), "space above"),
+    Field("spaceAfterPoints", Number(minimum=0), "space below"),
+)
+AFTER_TEXT = Field("afterText", Text(non_empty=True), "exact text in the block the mark follows; default the block's end")
+NOTE_FIELDS = (
+    TARGET_BLOCK,
+    Field("text", Text(non_empty=True), "note text", required=True),
+    AFTER_TEXT,
+)
+HEADER_FOOTER_FIELDS = (
+    Field("text", Text(), "the text", required=True),
+    Field("section", Number(minimum=0, integer=True), "section index, default 0"),
+    Field("page", Choice(("default", "first", "even")), "which pages: first turns on a different first page, even a different even page; default every page"),
+    Field("align", ALIGNMENT, "alignment"),
+)
 COMMENT_ID = Field("comment", Number(minimum=0, integer=True), "comment id from doc read", required=True)
 REVISION_SELECTOR = (
     Field("all", Boolean(), "every tracked change"),
@@ -164,13 +199,100 @@ OPERATIONS = Variant(
             TABLE_BLOCK,
             Field("row", ROW_INDEX, "row index", required=True),
         )),
-        Record("set_header", "replace a section's header text", (
-            Field("text", Text(), "header text", required=True),
-            Field("section", Number(minimum=0, integer=True), "section index, default 0"),
+        Record("insert_table_column", "insert a column copying the formatting of the column it follows; the table keeps its width", (
+            TABLE_BLOCK,
+            Field("after", Number(minimum=-1, integer=True), "insert after this column index; -1 inserts first", required=True),
+            Field("cells", ListOf(CellValue()), "one value per row, header first; missing cells stay empty"),
         )),
-        Record("set_footer", "replace a section's footer text", (
-            Field("text", Text(), "footer text", required=True),
-            Field("section", Number(minimum=0, integer=True), "section index, default 0"),
+        Record("delete_table_column", "delete a column; the others widen to keep the table's width", (
+            TABLE_BLOCK,
+            Field("column", ROW_INDEX, "column index", required=True),
+        )),
+        Record("merge_cells", "merge a rectangle of cells into one, keeping each cell's text", CELL_RANGE),
+        Record("format_cells", "shade, bold or align a rectangle of cells", CELL_RANGE + (
+            Field("fill", Text(non_empty=True), "background color #RRGGBB"),
+            Field("bold", Boolean(), "bold text"),
+            Field("align", ALIGNMENT, "horizontal alignment"),
+            Field("verticalAlign", Choice(("top", "center", "bottom")), "vertical alignment"),
+        )),
+        Record("format_text", "set character formatting on a block, on every occurrence of exact text, or both", (
+            Field("block", BLOCK_INDEX, "only this block; give block, find, or both"),
+            Field("find", Text(non_empty=True), "exact text to format; default the whole block"),
+            *CHARACTER_FORMAT,
+            Field("strike", Boolean(), "strikethrough"),
+            Field("highlight", Choice(HIGHLIGHT_COLORS), "highlighter color; none removes it"),
+        )),
+        Record("set_paragraph_format", "set a paragraph's alignment, spacing, indents and pagination", (
+            TARGET_BLOCK,
+            *PARAGRAPH_FORMAT,
+            Field("lineSpacing", Number(0.5, 5), "line spacing as a multiple, such as 1.15"),
+            Field("indentLeftInches", Number(minimum=0), "left indent"),
+            Field("firstLineIndentInches", Number(), "first-line indent; negative hangs"),
+            Field("keepWithNext", Boolean(), "keep on the same page as the next paragraph"),
+            Field("pageBreakBefore", Boolean(), "start the paragraph on a new page"),
+        )),
+        Record("define_style", "create a paragraph or character style, or change the given fields of an existing one; later operations in the batch can use it", (
+            Field("name", Text(non_empty=True), "style name", required=True),
+            Field("type", Choice(("paragraph", "character")), "default paragraph"),
+            Field("basedOn", Text(non_empty=True), "style it inherits from, such as Normal"),
+            *CHARACTER_FORMAT,
+            *PARAGRAPH_FORMAT,
+        )),
+        Record("insert_image", "insert a picture as its own paragraph, scaled down to the text width unless a size is given", (
+            INSERT_AFTER,
+            INSERT_BEFORE,
+            Field("path", Text(non_empty=True), "PNG, JPEG, GIF, BMP or TIFF file", required=True),
+            Field("widthInches", Number(minimum=0.1), "width; the height keeps the aspect ratio unless also given"),
+            Field("heightInches", Number(minimum=0.1), "height"),
+            Field("align", ALIGNMENT, "paragraph alignment"),
+            Field("description", Text(), "alt text read aloud by screen readers"),
+        )),
+        Record("insert_table_of_contents", "insert a table of contents field listing the headings now in the document; Word fills in page numbers when the file opens", (
+            INSERT_AFTER,
+            INSERT_BEFORE,
+            Field("levels", Number(1, 9, integer=True), "deepest heading level listed, default 3"),
+            Field("title", Text(), "title paragraph above the list"),
+        )),
+        Record("add_bookmark", "name a paragraph so links and cross-references, also later in the batch, can point at it", (
+            TARGET_BLOCK,
+            Field("name", Text(non_empty=True), "a letter, then letters, digits or _, at most 40 characters", required=True),
+        )),
+        Record("insert_link", "make exact text inside a block a link to a web address or a bookmark", (
+            TARGET_BLOCK,
+            Field("find", Text(non_empty=True), "exact text that becomes the link", required=True),
+            Field("url", Text(non_empty=True), "web address; give url or bookmark"),
+            Field("bookmark", Text(non_empty=True), "bookmark name in this document"),
+        )),
+        Record("insert_cross_reference", "insert a field showing a bookmarked paragraph's text, page or number", (
+            TARGET_BLOCK,
+            Field("bookmark", Text(non_empty=True), "bookmark name from add_bookmark", required=True),
+            Field("show", Choice(("text", "page", "number")), "default text"),
+            AFTER_TEXT,
+        )),
+        Record("insert_footnote", "add a footnote whose mark goes in a block", NOTE_FIELDS),
+        Record("insert_endnote", "add an endnote whose mark goes in a block", NOTE_FIELDS),
+        Record("set_header", "replace a section's header text; {PAGE} and {NUMPAGES} become page number fields", HEADER_FOOTER_FIELDS),
+        Record("set_footer", "replace a section's footer text; {PAGE} and {NUMPAGES} become page number fields", HEADER_FOOTER_FIELDS),
+        Record("set_page_setup", "set paper size, orientation, margins and text columns", (
+            Field("section", Number(minimum=0, integer=True), "section index; default every section"),
+            Field("paper", Choice(PAPER_NAMES), "paper size"),
+            Field("orientation", Choice(("portrait", "landscape")), "page orientation"),
+            Field("marginInches", Number(minimum=0), "every margin"),
+            Field("marginTopInches", Number(minimum=0), "top margin"),
+            Field("marginBottomInches", Number(minimum=0), "bottom margin"),
+            Field("marginLeftInches", Number(minimum=0), "left margin"),
+            Field("marginRightInches", Number(minimum=0), "right margin"),
+            Field("columns", Number(1, 4, integer=True), "text columns"),
+        )),
+        Record("insert_section_break", "start a new section after a block, so the pages after it can have their own orientation, margins, headers and footers", (
+            Field("after", BLOCK_INDEX, "block index the current section ends with", required=True),
+            Field("type", Choice(("nextPage", "continuous", "evenPage", "oddPage")), "where the new section starts, default nextPage"),
+            Field("orientation", Choice(("portrait", "landscape")), "orientation of the new section"),
+        )),
+        Record("set_watermark", "put large diagonal text such as 대외비 or DRAFT behind every page", (
+            Field("text", Text(), "watermark text; empty removes the watermark", required=True),
+            Field("color", Text(non_empty=True), "color #RRGGBB, default light gray"),
+            Field("section", Number(minimum=0, integer=True), "section index; default every section"),
         )),
         Record("add_comment", "start a comment thread on a paragraph, or on exact text inside it; the document text is untouched", (
             TARGET_BLOCK,

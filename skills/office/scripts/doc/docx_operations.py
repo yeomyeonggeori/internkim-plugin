@@ -11,8 +11,15 @@ from docx.text.paragraph import Paragraph
 
 from doc_definitions import OPERATIONS
 from docx_language import make_east_asia_language_korean
+from docx_format_operations import plan_define_style, plan_format_text, plan_set_paragraph_format
+from docx_page_operations import plan_insert_image, plan_insert_section_break, plan_set_footer, plan_set_header, plan_set_page_setup, plan_set_watermark
+from docx_reference_operations import (
+    plan_add_bookmark, plan_insert_cross_reference, plan_insert_endnote, plan_insert_footnote, plan_insert_link, plan_insert_table_of_contents,
+)
+from docx_table_operations import plan_delete_table_column, plan_format_cells, plan_insert_table_column, plan_merge_cells
 from docx_comments import plan_add_comment, plan_delete_comment, plan_reply_comment, plan_resolve_comment
 from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, paragraph_runs
+from docx_settings import request_field_update
 from docx_editing import DocxEditing, load_editing, placement, require_style, resolve_block, resolve_paragraph, resolve_table, save_editing
 from docx_revision_operations import plan_accept_revisions, plan_reject_revisions
 from docx_text import REMOVED_RUN_CONTAINER_TAGS
@@ -26,12 +33,6 @@ from run_replacement import joined_text, replace_in_runs
 
 
 RUN_WRAPPER_TAGS = tuple(qn(f"w:{name}") for name in ("hyperlink", "ins", "moveTo", "smartTag", "customXml"))
-SETTINGS_AFTER_UPDATE_FIELDS = (
-    "hdrShapeDefaults", "footnotePr", "endnotePr", "compat", "docVars", "rsids", "mathPr", "attachedSchema",
-    "themeFontLang", "clrSchemeMapping", "doNotIncludeSubdocsInStats", "doNotAutoCompressPictures", "forceUpgrade",
-    "captions", "readModeInkLockDown", "smartTagType", "schemaLibrary", "shapeDefaults", "doNotEmbedSmartTags",
-    "decimalSymbol", "listSeparator",
-)
 
 
 def plan_replace_text(editing: DocxEditing, operation: dict, location: str) -> Change:
@@ -285,34 +286,6 @@ def plan_delete_table_row(editing: DocxEditing, operation: dict, location: str) 
     return change
 
 
-def plan_set_header(editing: DocxEditing, operation: dict, location: str) -> Change:
-    return plan_header_or_footer(editing, operation, location, "header")
-
-
-def plan_set_footer(editing: DocxEditing, operation: dict, location: str) -> Change:
-    return plan_header_or_footer(editing, operation, location, "footer")
-
-
-def plan_header_or_footer(editing: DocxEditing, operation: dict, location: str, part_name: str) -> Change:
-    section_index = operation.get("section") or 0
-    sections = editing.document.sections
-    if section_index >= len(sections):
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.section: the document has {len(sections)} sections", f"{location}.section"))
-    part = getattr(sections[section_index], part_name)
-
-    def change() -> str:
-        part.is_linked_to_previous = False
-        paragraphs = part.paragraphs
-        if not paragraphs:
-            part.add_paragraph(operation["text"])
-        else:
-            set_paragraph_text(paragraphs[0], operation["text"])
-            for paragraph in paragraphs[1:]:
-                paragraph._p.getparent().remove(paragraph._p)
-        return f"set the {part_name} of section {section_index}"
-    return change
-
-
 def plan_set_east_asia_font(editing: DocxEditing, operation: dict, location: str) -> Change:
     def change() -> str:
         run_fonts = default_run_fonts(editing.document)
@@ -351,23 +324,9 @@ def child_or_create(parent, tag: str, first: bool):
 
 def plan_update_fields_on_open(editing: DocxEditing, operation: dict, location: str) -> Change:
     def change() -> str:
-        settings = editing.document.settings.element
-        update_fields = settings.find(qn("w:updateFields"))
-        if update_fields is None:
-            update_fields = OxmlElement("w:updateFields")
-            insert_before_successor(settings, update_fields)
-        update_fields.set(qn("w:val"), "true")
+        request_field_update(editing.document)
         return "asked Word to update fields when the file opens"
     return change
-
-
-def insert_before_successor(settings, element) -> None:
-    successor_tags = {qn(f"w:{name}") for name in SETTINGS_AFTER_UPDATE_FIELDS}
-    successor = next((child for child in settings if child.tag in successor_tags), None)
-    if successor is None:
-        settings.append(element)
-    else:
-        successor.addprevious(element)
 
 
 DOCX_OPERATIONS = OperationSet(OPERATIONS, {
@@ -385,6 +344,23 @@ DOCX_OPERATIONS = OperationSet(OPERATIONS, {
     "delete_table_row": plan_delete_table_row,
     "set_header": plan_set_header,
     "set_footer": plan_set_footer,
+    "set_page_setup": plan_set_page_setup,
+    "insert_section_break": plan_insert_section_break,
+    "set_watermark": plan_set_watermark,
+    "insert_image": plan_insert_image,
+    "insert_table_column": plan_insert_table_column,
+    "delete_table_column": plan_delete_table_column,
+    "merge_cells": plan_merge_cells,
+    "format_cells": plan_format_cells,
+    "format_text": plan_format_text,
+    "set_paragraph_format": plan_set_paragraph_format,
+    "define_style": plan_define_style,
+    "insert_table_of_contents": plan_insert_table_of_contents,
+    "add_bookmark": plan_add_bookmark,
+    "insert_link": plan_insert_link,
+    "insert_cross_reference": plan_insert_cross_reference,
+    "insert_footnote": plan_insert_footnote,
+    "insert_endnote": plan_insert_endnote,
     "add_comment": plan_add_comment,
     "reply_comment": plan_reply_comment,
     "resolve_comment": plan_resolve_comment,

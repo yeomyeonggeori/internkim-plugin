@@ -3,13 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from docx.opc.constants import RELATIONSHIP_TYPE
-from docx.opc.packuri import PackURI
 from docx.opc.part import Part
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.text.run import Run
 from lxml import etree
 
+from docx_parts import create_part, read_root, related_part, write_root
 from docx_editing import DocxEditing, resolve_paragraph
 from docx_text import REMOVED_RUN_CONTAINER_TAGS, RUN_TAG, live_runs, run_text, visible_text
 from docx_tracking import runs_between, split_runs_at
@@ -45,23 +45,11 @@ def comments_element(document):
 
 
 def extended_part(document, create: bool) -> Part | None:
-    try:
-        return document.part.part_related_by(COMMENTS_EXTENDED_RELATIONSHIP)
-    except KeyError:
-        if not create:
-            return None
+    part = related_part(document, COMMENTS_EXTENDED_RELATIONSHIP)
+    if part is not None or not create:
+        return part
     root = etree.Element(f"{{{WORD_2012_NAMESPACE}}}commentsEx", nsmap={"w15": WORD_2012_NAMESPACE})
-    part = Part(PackURI(COMMENTS_EXTENDED_PART_NAME), COMMENTS_EXTENDED_CONTENT_TYPE, etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True), document.part.package)
-    document.part.relate_to(part, COMMENTS_EXTENDED_RELATIONSHIP)
-    return part
-
-
-def extended_root(part: Part):
-    return etree.fromstring(part.blob)
-
-
-def write_extended_root(part: Part, root) -> None:
-    part._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+    return create_part(document, COMMENTS_EXTENDED_RELATIONSHIP, COMMENTS_EXTENDED_PART_NAME, COMMENTS_EXTENDED_CONTENT_TYPE, root)
 
 
 def thread_infos(document) -> dict[str, CommentThreadInfo]:
@@ -70,7 +58,7 @@ def thread_infos(document) -> dict[str, CommentThreadInfo]:
         return {}
     return {
         entry.get(EXTENDED_PARAGRAPH_IDENTIFIER): CommentThreadInfo(entry.get(EXTENDED_PARENT_IDENTIFIER), entry.get(EXTENDED_DONE) in ("1", "true"))
-        for entry in extended_root(part).iter(COMMENT_EXTENDED_TAG)
+        for entry in read_root(part).iter(COMMENT_EXTENDED_TAG)
     }
 
 
@@ -234,7 +222,7 @@ def thread_root(editing: DocxEditing, comment):
 def set_extended_entry(editing: DocxEditing, comment, parent_identifier: str | None = None, done: bool | None = None) -> None:
     paragraph_identifier = ensure_paragraph_identifier(editing.document, comment)
     part = extended_part(editing.document, create=True)
-    root = extended_root(part)
+    root = read_root(part)
     entry = next((entry for entry in root.iter(COMMENT_EXTENDED_TAG) if entry.get(EXTENDED_PARAGRAPH_IDENTIFIER) == paragraph_identifier), None)
     if entry is None:
         entry = etree.SubElement(root, COMMENT_EXTENDED_TAG)
@@ -244,7 +232,7 @@ def set_extended_entry(editing: DocxEditing, comment, parent_identifier: str | N
         entry.set(EXTENDED_PARENT_IDENTIFIER, parent_identifier)
     if done is not None:
         entry.set(EXTENDED_DONE, "1" if done else "0")
-    write_extended_root(part, root)
+    write_root(part, root)
 
 
 def plan_reply_comment(editing: DocxEditing, operation: dict, location: str) -> Change:
@@ -333,8 +321,8 @@ def remove_extended_entry(editing: DocxEditing, paragraph_identifier: str | None
     part = extended_part(editing.document, create=False)
     if part is None or paragraph_identifier is None:
         return
-    root = extended_root(part)
+    root = read_root(part)
     for entry in list(root.iter(COMMENT_EXTENDED_TAG)):
         if entry.get(EXTENDED_PARAGRAPH_IDENTIFIER) == paragraph_identifier:
             root.remove(entry)
-    write_extended_root(part, root)
+    write_root(part, root)
