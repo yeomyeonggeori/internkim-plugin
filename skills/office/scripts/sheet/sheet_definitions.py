@@ -373,6 +373,7 @@ WORKBOOK_SPECIFICATION = Record("workbook", "the --spec file of sheet create", (
 
 FORMULA_NOT_EVALUATED = IssueKind("FORMULA_NOT_EVALUATED", WARNING, "a formula could not be computed here, so the file holds no value for it until Excel recalculates", "read the cells the formula uses; the formula itself was kept as written")
 CIRCULAR_REFERENCE = IssueKind("CIRCULAR_REFERENCE", ERROR, "a formula reads its own cell, directly or through other formulas, so Excel warns on open and shows 0; sheet create, edit and apply write nothing when their own cells make one", "point the formula at the cells beside it, such as =SUM(A2:A9) in A10")
+FORMULA_SYNTAX = IssueKind("FORMULA_SYNTAX", ERROR, "a formula does not parse: a ( or { left open, a ) that closes nothing, an operator with nothing on one side, or an unclosed quote, so nothing was written", "fix the formula where the message says, or keep it as literal text with \"type\": \"text\"")
 HEADER_NOT_FROZEN = IssueKind("HEADER_NOT_FROZEN", WARNING, "a data table, a sheet with at least two header cells and at least 10 rows under them, has a header row that is not frozen", "freeze the pane under the header row")
 AUTO_FILTER_MISSING = IssueKind("AUTO_FILTER_MISSING", WARNING, "a data table, a sheet with at least two header cells and at least 10 rows under them, has no auto filter", "add a filter over the header and data rows")
 BLANK_HEADER_CELLS = IssueKind("BLANK_HEADER_CELLS", WARNING, "header cells are blank", "name every column")
@@ -422,6 +423,6 @@ def behavior_lines() -> list[str]:
 
 GUIDE_SECTIONS = (("How the sheet commands behave", behavior_lines),)
 
-WRITE_ISSUE_KINDS = (CIRCULAR_REFERENCE, FORMULA_NOT_EVALUATED)
+WRITE_ISSUE_KINDS = (FORMULA_SYNTAX, CIRCULAR_REFERENCE, FORMULA_NOT_EVALUATED)
 EDIT_ISSUE_KINDS = (CONTENT_WOULD_BE_LOST, CONTENT_DROPPED)
 GUIDE_ISSUES = (("sheet create, sheet edit and sheet apply", WRITE_ISSUE_KINDS), ("sheet edit and sheet apply", EDIT_ISSUE_KINDS), ("sheet check", CHECK_ISSUE_KINDS), ("sheet validate", VALIDATE_ISSUE_KINDS), ("sheet apply", OPERATION_ISSUE_KINDS), ("sheet render", PREVIEW_ISSUE_KINDS), ("sheet merge", PACKAGE_MERGE_ISSUE_KINDS + WRITE_ISSUE_KINDS))

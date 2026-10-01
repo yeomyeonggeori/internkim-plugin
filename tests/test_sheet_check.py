@@ -174,6 +174,12 @@ class FormulaVisibilityTest(WorkbookFixture):
         self.assertEqual((envelope["status"], envelope["outputPath"], [issue["location"] for issue in envelope["issues"]]), ("error", None, ["S!B1"]))
         self.assertFalse((self.directory / "book.xlsx").exists())
 
+    def test_a_spec_formula_that_does_not_parse_creates_nothing(self):
+        write_json(self.directory / "spec.json", {"sheets": [{"title": "S", "rows": [["a", "b"], [1, 2], ["total", "=SUM(B2:B2))"]]}]})
+        envelope = run_office(["sheet", "create", "book.xlsx", "--spec", "spec.json"], self.directory)
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("FORMULA_SYNTAX", "spec.sheets[0].rows[2][1]")])
+        self.assertFalse((self.directory / "book.xlsx").exists())
+
     def test_a_formula_reading_its_own_cell_is_reported_as_circular(self):
         run_office_python("""
             from openpyxl import Workbook

@@ -27,6 +27,7 @@ from workbook_fidelity import EditRecord, preserve_source_content
 from workbook_package import Package, read_package, write_package
 from workbook_structure import isolate_column, rename_sheet_references, shift_workbook
 from workbook_values import evaluate_workbook
+from written_cells import require_writable
 
 
 @dataclass
@@ -85,6 +86,7 @@ def store_value(cell, value, value_type) -> None:
 def plan_set_cell(workbook, operation: dict, location: str) -> Change:
     worksheet = sheet_of(workbook, operation, location)
     row, column = parse_cell(operation["cell"], f"{location}.cell")
+    require_writable(operation.get("value"), f"{location}.value", keeps_text=operation.get("type") == "text")
 
     def change() -> str:
         existing = data_bounds(worksheet)
@@ -98,6 +100,9 @@ def plan_set_cell(workbook, operation: dict, location: str) -> Change:
 def plan_set_range(workbook, operation: dict, location: str) -> Change:
     worksheet = sheet_of(workbook, operation, location)
     first_row, first_column = parse_cell(operation["cell"], f"{location}.cell")
+    for row_offset, values in enumerate(operation["values"]):
+        for column_offset, value in enumerate(values):
+            require_writable(value, f"{location}.values[{row_offset}][{column_offset}]", keeps_text=operation.get("type") == "text")
 
     def change() -> str:
         existing = data_bounds(worksheet)

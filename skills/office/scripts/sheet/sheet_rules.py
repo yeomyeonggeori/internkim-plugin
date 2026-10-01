@@ -14,6 +14,7 @@ from office_operations import OPERATION_NOT_APPLICABLE, Change
 from office_result import MISSING_FIELD, OfficeFailure
 from sheet_formatting import require_colors
 from workbook_access import parse_range, sheet_of
+from written_cells import require_writable
 
 
 HIGHLIGHT_FILL = "FFC7CE"
@@ -100,12 +101,18 @@ def conditional_rule(operation: dict, location: str):
         return Rule(type="aboveAverage", aboveAverage=rule == "above_average", dxf=highlight_style(operation))
     if rule == "formula":
         require(operation, "formula", location, "a formula rule needs the formula")
-        return FormulaRule(formula=[stored_formula(ensure_equals(operation["formula"]))[1:]], font=highlight_style(operation).font, fill=highlight_style(operation).fill)
+        return FormulaRule(formula=[rule_formula(operation["formula"], f"{location}.formula")], font=highlight_style(operation).font, fill=highlight_style(operation).fill)
     return visual_rule(operation)
 
 
 def ensure_equals(formula: str) -> str:
     return formula if formula.startswith("=") else "=" + formula
+
+
+def rule_formula(text: str, location: str) -> str:
+    formula = ensure_equals(text)
+    require_writable(formula, location)
+    return stored_formula(formula)[1:]
 
 
 def comparison_rule(operation: dict, location: str):
@@ -181,7 +188,7 @@ def validation_from(operation: dict, location: str) -> DataValidation:
         validation.formula1 = list_source(operation, location)
     elif kind == "custom":
         require(operation, "formula", location, "a custom validation needs the formula")
-        validation.formula1 = stored_formula(ensure_equals(operation["formula"]))[1:]
+        validation.formula1 = rule_formula(operation["formula"], f"{location}.formula")
     else:
         bound_validation(validation, operation, location)
     return validation
@@ -189,7 +196,7 @@ def validation_from(operation: dict, location: str) -> DataValidation:
 
 def list_source(operation: dict, location: str) -> str:
     if operation.get("source"):
-        return stored_formula(ensure_equals(operation["source"]))[1:]
+        return rule_formula(operation["source"], f"{location}.source")
     require(operation, "values", location, "a list needs values, or source naming a range of choices")
     if any("," in value for value in operation["values"]):
         raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}.values: a choice cannot hold a comma; put the choices in cells and pass source", f"{location}.values"))

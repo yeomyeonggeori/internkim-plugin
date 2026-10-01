@@ -191,6 +191,23 @@ class BatchTest(WorkbookEditTest):
         self.assertEqual(envelope["status"], "ok", envelope)
         self.assertEqual(load_workbook(self.directory / "fixture.xlsx")["Sales"]["A2"].value, "renamed")
 
+    def test_a_formula_that_does_not_parse_is_refused_where_it_is(self):
+        original = (self.directory / "fixture.xlsx").read_bytes()
+        cases = (
+            ({"op": "set_cell", "sheet": "Sales", "cell": "A3", "value": "=SUM(Z1:Z3"}, "ops[0].value", "leaves SUM( open"),
+            ({"op": "set_range", "sheet": "Sales", "cell": "F1", "values": [[1], ["=B2+"]]}, "ops[0].values[1][0]", "ends with the operator +"),
+            ({"op": "set_cell", "sheet": "Sales", "cell": "A3", "value": "=SUM(B2:B4))"}, "ops[0].value", "a ) that closes nothing"),
+            ({"op": "set_cell", "sheet": "Sales", "cell": "A3", "value": "=B2+*B3"}, "ops[0].value", "nothing before the operator *"),
+            ({"op": "add_conditional_format", "sheet": "Sales", "range": "B2:B4", "rule": "formula", "formula": '=$B2>"a'}, "ops[0].formula", "never closes"),
+        )
+        for operation, location, problem in cases:
+            with self.subTest(operation=operation):
+                envelope = self.apply([operation], name="fixture.xlsx")
+                self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("FORMULA_SYNTAX", location)])
+                self.assertIn(problem, envelope["summary"])
+        self.assertEqual((self.directory / "fixture.xlsx").read_bytes(), original)
+        self.edit([{"op": "set_cell", "sheet": "Sales", "cell": "A3", "value": "=SUM(Z1:Z3", "type": "text"}])
+
     def test_a_dry_run_reports_each_change_and_writes_nothing(self):
         original = (self.directory / "fixture.xlsx").read_bytes()
         envelope = self.apply([{"op": "insert_rows", "sheet": "Sales", "at": 2}, {"op": "delete_columns", "sheet": "Sales", "at": "A"}], "--dry-run", name="fixture.xlsx")

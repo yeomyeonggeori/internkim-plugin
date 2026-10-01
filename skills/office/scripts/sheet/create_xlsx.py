@@ -13,6 +13,7 @@ from office_schema import require_valid
 from sheet_definitions import WORKBOOK_SPECIFICATION
 from sheet_operations import SHEET_OPERATIONS, SheetEditing, save_editing
 from sheet_styling import style_table
+from written_cells import require_writable_rows
 
 
 def optional_text(value):
@@ -43,17 +44,18 @@ def create_workbook(specification):
     if workbook_title:
         workbook.properties.title = workbook_title
 
-    for sheet_specification in specification["sheets"]:
-        worksheet = add_sheet(workbook, sheet_specification, get_column_letter)
+    for index, sheet_specification in enumerate(specification["sheets"]):
+        worksheet = add_sheet(workbook, sheet_specification, get_column_letter, f"spec.sheets[{index}]")
         apply_default_formatting(worksheet, sheet_specification)
 
     return workbook
 
 
-def add_sheet(workbook, sheet_specification, get_column_letter):
+def add_sheet(workbook, sheet_specification, get_column_letter, location):
     title = sheet_specification["title"].strip()
     worksheet = workbook.create_sheet(title=title[:31])
     rows = read_rows(sheet_specification)
+    require_writable_rows(rows, sheet_specification["csvPath"].strip() if sheet_specification.get("csvPath") else f"{location}.rows")
     heading = optional_text(sheet_specification.get("heading"))
     if heading:
         worksheet.append([heading])

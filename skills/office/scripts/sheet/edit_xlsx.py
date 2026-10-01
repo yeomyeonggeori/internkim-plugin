@@ -10,15 +10,19 @@ from office_result import OfficeArgumentParser, Result, read_json_file, run_comm
 from office_schema import require_valid
 from sheet_definitions import ROWS
 from sheet_operations import load_editing, save_editing
+from written_cells import require_writable_rows
 
 
 def main() -> Result:
     arguments = parse_arguments()
     json_rows = load_rows(arguments.rows) if arguments.rows else []
+    argument_rows = [parse_row(row_string) for row_string in arguments.row]
+    require_writable_rows(argument_rows, "--row")
+    require_writable_rows(json_rows, "rows")
     workbook_path = resolve_document_path(arguments.workbook_path, "xlsx")
     editing = load_editing(workbook_path, arguments.allow_loss)
     worksheet = resolve_worksheet(editing.workbook, arguments.sheet)
-    for row in [parse_row(row_string) for row_string in arguments.row] + json_rows:
+    for row in argument_rows + json_rows:
         worksheet.append([written_value(value) for value in row])
     issues = save_atomically(lambda temporary_path: save_editing(editing, temporary_path), workbook_path)
     return Result(summary=f"appended rows to {workbook_path}", output_path=workbook_path, issues=tuple(issues))
