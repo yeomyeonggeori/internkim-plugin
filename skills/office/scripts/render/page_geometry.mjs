@@ -1,5 +1,5 @@
 export function measurePageGeometry(pages, thresholds) {
-  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth } = thresholds;
+  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, backgroundShareOfSlide } = thresholds;
 
   const isMeasurable = (element) => {
     const style = getComputedStyle(element);
@@ -125,6 +125,8 @@ export function measurePageGeometry(pages, thresholds) {
 
   const mediaTags = new Set(["IMG", "SVG", "CANVAS", "VIDEO", "PICTURE", "OBJECT", "EMBED", "IFRAME"]);
 
+  const coveringMedia = new Set(["IMG", "CANVAS", "VIDEO", "PICTURE", "OBJECT", "EMBED", "IFRAME"]);
+
   const intersection = (first, second) => ({
     left: Math.max(first.left, second.left),
     top: Math.max(first.top, second.top),
@@ -141,13 +143,104 @@ export function measurePageGeometry(pages, thresholds) {
     return clip;
   };
 
+  const isBackground = (rect, page) => {
+    const frame = page.getBoundingClientRect();
+    return area(rect) >= frame.width * frame.height * backgroundShareOfSlide;
+  };
+
+  const stackingKey = (element, page, order) => {
+    for (let current = element; current && current !== page; current = current.parentElement) {
+      const style = getComputedStyle(current);
+      if (style.position === "static") continue;
+      const zIndex = parseInt(style.zIndex, 10);
+      return [Number.isNaN(zIndex) ? 0 : zIndex, 1, order];
+    }
+    return [0, 0, order];
+  };
+
+  const paintsAbove = (first, second) => {
+    for (let index = 0; index < first.length; index += 1) {
+      if (first[index] !== second[index]) return first[index] > second[index];
+    }
+    return false;
+  };
+
+  const paintedBoxes = (page, elements) =>
+    elements
+      .map((element, order) => ({ element, order, rect: element.getBoundingClientRect() }))
+      .filter(({ element, rect }) => (paintsBox(getComputedStyle(element)) || coveringMedia.has(element.tagName.toUpperCase())) && area(rect) > 0 && !isBackground(rect, page))
+      .map((box) => ({ ...box, key: stackingKey(box.element, page, box.order) }));
+
+  const coveredText = (page) => {
+    const elements = elementsOf(page).slice(1);
+    const boxes = paintedBoxes(page, elements);
+    return elements.flatMap((element, order) => {
+      const rects = ownTextRects(element);
+      if (!rects.length) return [];
+      const text = unionRect(rects);
+      const key = stackingKey(element, page, order);
+      const covers = (box) => !box.element.contains(element) && !element.contains(box.element) && paintsAbove(box.key, key) && area(intersection(text, box.rect)) >= overlapRatioMinimum * area(text);
+      const cover = boxes.find(covers);
+      return cover ? [{ text: describe(element), box: describe(cover.element), ratio: roundRatio(area(intersection(text, cover.rect)) / area(text)) }] : [];
+    });
+  };
+
+  const footerOf = (page) => Array.from(page.children).filter((child) => child.tagName === "FOOTER" && isMeasurable(child)).pop();
+
+  const crossesInto = (rect, footerRect) =>
+    rect.bottom > footerRect.top + pixelTolerance && rect.top < footerRect.bottom && rect.right > footerRect.left + pixelTolerance && rect.left < footerRect.right - pixelTolerance;
+
+  const footerCrossings = (page) => {
+    const footer = footerOf(page);
+    if (!footer) return [];
+    const footerRect = footer.getBoundingClientRect();
+    const top = page.getBoundingClientRect().top;
+    return Array.from(page.children)
+      .filter((child) => child !== footer && child.tagName !== "ASIDE" && isMeasurable(child))
+      .map((child) => ({ child, rect: child.getBoundingClientRect() }))
+      .filter(({ rect }) => area(rect) > 0 && !isBackground(rect, page) && crossesInto(rect, footerRect))
+      .map(({ child, rect }) => ({ ...describe(child), bottom: round(rect.bottom - top), footerTop: round(footerRect.top - top) }));
+  };
+
+  const descendantTextRects = (element) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const rects = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.textContent.trim()) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      rects.push(...Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0));
+    }
+    return rects;
+  };
+
+  const lineCount = (rects) => {
+    const centers = rects.map((rect) => ({ center: (rect.top + rect.bottom) / 2, height: rect.bottom - rect.top })).sort((first, second) => first.center - second.center);
+    let count = 0;
+    let lineCenter = -Infinity;
+    for (const { center, height } of centers) {
+      if (center - lineCenter > height * 0.4) {
+        count += 1;
+        lineCenter = center;
+      }
+    }
+    return count;
+  };
+
+  const longTitles = (page) =>
+    Array.from(page.children)
+      .filter((child) => ["H1", "H2"].includes(child.tagName) && isMeasurable(child))
+      .map((title) => ({ title, lines: lineCount(descendantTextRects(title)) }))
+      .filter(({ lines }) => lines > titleLineMaximum)
+      .map(({ title, lines }) => ({ ...describe(title), lines, maximum: titleLineMaximum }));
+
   const contentRects = (page) => {
     const frame = page.getBoundingClientRect();
     const slideArea = frame.width * frame.height;
     return elementsOf(page).slice(1).flatMap((element) => {
       const rect = element.getBoundingClientRect();
       const isMedia = mediaTags.has(element.tagName.toUpperCase());
-      const isBox = paintsBox(getComputedStyle(element)) && rect.width * rect.height < slideArea * 0.9;
+      const isBox = paintsBox(getComputedStyle(element)) && rect.width * rect.height < slideArea * backgroundShareOfSlide;
       const clip = visibleClipOf(element, page);
       if (isMedia || isBox) return [intersection(rect, clip)];
       const style = getComputedStyle(element);
@@ -180,5 +273,8 @@ export function measurePageGeometry(pages, thresholds) {
     overlaps: overlappingText(page),
     distortedImages: distortedImages(page),
     smallText: smallText(page),
+    coveredText: coveredText(page),
+    footerCrossings: footerCrossings(page),
+    longTitles: longTitles(page),
   }));
 }

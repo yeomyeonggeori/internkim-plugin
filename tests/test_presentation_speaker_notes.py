@@ -8,7 +8,6 @@ sys.path.insert(0, str(SCRIPTS_PATH.parent))
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from content_warnings import apply_missing_speaker_notes_warning  # noqa: E402
-from footer_warnings import last_direct_child  # noqa: E402
 from slide_model import create_slide_models, extract_notes  # noqa: E402
 from slide_structure import visible_slide_text  # noqa: E402
 
@@ -33,9 +32,6 @@ class SpeakerNotesTest(unittest.TestCase):
         apply_missing_speaker_notes_warning(slides, SIDEBAR_SLIDE + NOTES_SLIDE)
         self.assertEqual(len(slides[0]["warnings"]), 1)
         self.assertIn("slide 1 lacks", slides[0]["warnings"][0].message)
-
-    def test_a_footnote_can_be_the_slide_footer(self):
-        self.assertEqual(last_direct_child(FOOTNOTE_SLIDE), ("div", {"class": "footnotes"}))
 
 
 if __name__ == "__main__":

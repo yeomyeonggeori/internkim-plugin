@@ -33,45 +33,31 @@ def review_check(code: str, meaning: str, suggestion: str) -> ReviewCheck:
 
 
 SLIDE_BLANK = review_check("SLIDE_BLANK", "the slide render shows no content", "check that the slide's content is not hidden or outside the frame")
-SAFE_MARGIN_INTRUSION = review_check("SAFE_MARGIN_INTRUSION", "content reaches inside the DESIGN.md safe margin", "pull content back inside layout.margin")
-EDGE_CLIPPING = review_check("EDGE_CLIPPING", "content touches the slide edge", "keep content off the frame edge so nothing is clipped")
-SLIDE_TOO_SPARSE = review_check("SLIDE_TOO_SPARSE", "the slide is nearly empty", "give the slide enough content to justify it, or merge it")
-SLIDE_TOO_CROWDED = review_check("SLIDE_TOO_CROWDED", "the slide is visually crowded", "cut or split the content")
 CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is larger than its box, so it is clipped or spills out", "enlarge the box, cut the content, or lower the type size")
 OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "move or resize the element so it sits inside the slide")
 TEXT_OVERLAP = review_check("TEXT_OVERLAP", "two pieces of text cover each other", "separate the two text blocks or shorten the one that spills")
+TEXT_COVERED = review_check("TEXT_COVERED", "a box painted over text hides part of it", "shorten the slide's body so each part stays in its own place, or split the slide in two")
+FOOTER_CROSSED = review_check("FOOTER_CROSSED", "slide content reaches into the footer band", "shorten or split the content so it ends above the footer")
+TITLE_TOO_LONG = review_check("TITLE_TOO_LONG", "a slide title runs past three lines", "state the conclusion in one short sentence and move the detail into the body or the speaker notes")
 TINY_TEXT = review_check("TINY_TEXT", "rendered text is smaller than 1% of the slide width (16px on a 1600px slide)", "raise the text size, or shorten the slide so the kit does not shrink it")
 IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "set object-fit: cover or contain, or size the image to its ratio")
 GEOMETRY_NOT_MEASURED = review_check("GEOMETRY_NOT_MEASURED", "no renderer measured element geometry, so overflow, overlap and stretched images were not checked", "install bun or node 18 and build again, or say the layout was not measured")
-FRAME_FIT_RISK = review_check("FRAME_FIT_RISK", "content is close to the right or bottom frame edge", "check the contact sheet for clipped text")
 UNRELIABLE_VISUAL_EVIDENCE = review_check("UNRELIABLE_VISUAL_EVIDENCE", "review images were not drawn from the deck's layout", "treat the previews as approximate and say so when delivering")
 
-SIDE_STRIPE = review_check("SIDE_STRIPE", "thick side border accents carry the visual identity", "carry the identity through composition, type, and color instead")
-GHOST_CARD = review_check("GHOST_CARD", "thin-bordered soft-shadow boxes read as a default template", "replace them with the deck's own surfaces")
-REPEATED_COMPOSITION = review_check("REPEATED_COMPOSITION", "three or more slides share one composition", "vary slide composition by role")
 TOPIC_TITLE = review_check("TOPIC_TITLE", "the title is a topic label, not a claim", "write the title as the slide's conclusion")
 LANGUAGE_MISMATCH = review_check("LANGUAGE_MISMATCH", "slide titles are Latin-only in a Korean deck", "write the titles in the request language")
 UNSOURCED_CURRENT_DATE = review_check("UNSOURCED_CURRENT_DATE", "a slide shows today's date that the source does not", "show only dates from the source material")
 VERTICAL_DEAD_ZONE = review_check("VERTICAL_DEAD_ZONE", "an empty band spans much of the slide height, between content or under the body", "distribute content to fill the frame")
-ABSOLUTE_FOOTER = review_check("ABSOLUTE_FOOTER", "an absolutely positioned bottom strip carries text", "make header, body, and footer sibling flow children")
 EMOJI_ICON = review_check("EMOJI_ICON", "a slide uses emoji glyphs", "use text labels, CSS markers, or inline SVG")
-INCONSISTENT_FOOTER_BASELINE = review_check("INCONSISTENT_FOOTER_BASELINE", "the content bottom edge varies across slides", "keep the footer on one baseline")
-UNPINNED_FOOTER = review_check("UNPINNED_FOOTER", "the recurring footer is not pinned to the frame bottom", "give it margin-top: auto inside the flex column slide")
 MISSING_SPEAKER_NOTES = review_check("MISSING_SPEAKER_NOTES", "a slide has no speaker notes", 'add an <aside class="notes"> script to every slide')
 
-SLIDE_RENDER_CHECKS = (SLIDE_BLANK, SAFE_MARGIN_INTRUSION, EDGE_CLIPPING, SLIDE_TOO_SPARSE, SLIDE_TOO_CROWDED, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, IMAGE_DISTORTED, TINY_TEXT, GEOMETRY_NOT_MEASURED, FRAME_FIT_RISK, UNRELIABLE_VISUAL_EVIDENCE)
+SLIDE_RENDER_CHECKS = (SLIDE_BLANK, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, TEXT_COVERED, FOOTER_CROSSED, TITLE_TOO_LONG, IMAGE_DISTORTED, TINY_TEXT, GEOMETRY_NOT_MEASURED, UNRELIABLE_VISUAL_EVIDENCE)
 DESIGN_CHECKS = (
-    SIDE_STRIPE,
-    GHOST_CARD,
-    REPEATED_COMPOSITION,
     TOPIC_TITLE,
     LANGUAGE_MISMATCH,
     UNSOURCED_CURRENT_DATE,
     VERTICAL_DEAD_ZONE,
-    ABSOLUTE_FOOTER,
     EMOJI_ICON,
-    INCONSISTENT_FOOTER_BASELINE,
-    UNPINNED_FOOTER,
     MISSING_SPEAKER_NOTES,
 )
 REVIEW_ISSUE_KINDS = tuple(check.kind for check in SLIDE_RENDER_CHECKS + DESIGN_CHECKS)
@@ -126,25 +112,6 @@ BUILD_ISSUE_KINDS = (
     FONT_NOT_EMBEDDED,
     TEXT_KEPT_AS_PICTURE,
 )
-
-SLIDE_EMPTY = IssueKind("SLIDE_EMPTY", WARNING, "a slide has no text", "check that the slide exported")
-SLIDE_TITLE_MISSING = IssueKind("SLIDE_TITLE_MISSING", WARNING, "a slide has no title", "give every slide a title")
-TOO_MANY_SHAPES = IssueKind("TOO_MANY_SHAPES", WARNING, "a slide has more than 40 shapes that hold text, pictures, tables or charts", "simplify the slide")
-DEFAULT_FONT_REMAINS = IssueKind("DEFAULT_FONT_REMAINS", WARNING, "text still uses Aptos or Calibri", "set the deck's own font")
-THEME_FONT_INHERITED = IssueKind("THEME_FONT_INHERITED", WARNING, "text runs inherit the theme font", "set the font on every run")
-OVERLAY_WITHOUT_BACKGROUND = IssueKind("OVERLAY_WITHOUT_BACKGROUND", WARNING, "editable overlays have no hybrid background image", "add the background image or remove the overlays")
-OVERLAY_OUT_OF_BOUNDS = IssueKind("OVERLAY_OUT_OF_BOUNDS", WARNING, "an editable overlay extends past the slide", "move the overlay inside the slide")
-
-VALIDATE_ISSUE_KINDS = (SLIDE_EMPTY, SLIDE_TITLE_MISSING, TOO_MANY_SHAPES, DEFAULT_FONT_REMAINS, THEME_FONT_INHERITED, OVERLAY_WITHOUT_BACKGROUND, OVERLAY_OUT_OF_BOUNDS)
-
-REVIEW_REPORT_MISSING = IssueKind("REVIEW_REPORT_MISSING", ERROR, "slide-review.json is absent from the review directory", "run office deck build first")
-REVIEW_DECISION_MISSING = IssueKind("REVIEW_DECISION_MISSING", WARNING, "review-decision.json is absent", "attach the usable deck with the review report notes if the requested file exists")
-CONTACT_SHEETS_NOT_INSPECTED = IssueKind("CONTACT_SHEETS_NOT_INSPECTED", WARNING, "inspectedEvidence omits contact sheets", "open every contact sheet and list it in inspectedEvidence")
-WARNINGS_NOT_ADDRESSED = IssueKind("WARNINGS_NOT_ADDRESSED", WARNING, "review warnings are not addressed in the decision", "list them in acceptedWarnings, remainingNotes, or issues, or rebuild a clean deck")
-DECISION_SUMMARY_MISSING = IssueKind("DECISION_SUMMARY_MISSING", WARNING, "the review decision has no summary", "write a one-line summary")
-DECISION_FIELD_NOT_LIST = IssueKind("DECISION_FIELD_NOT_LIST", WARNING, "a review decision field is not a list", "write the field as a JSON array")
-
-ACCEPT_ISSUE_KINDS = (REVIEW_REPORT_MISSING, REVIEW_DECISION_MISSING, CONTACT_SHEETS_NOT_INSPECTED, WARNINGS_NOT_ADDRESSED, DECISION_SUMMARY_MISSING, DECISION_FIELD_NOT_LIST)
 
 IMAGE_SEARCH_FAILED = IssueKind("IMAGE_SEARCH_FAILED", ERROR, "the image search could not be reached", "skip imagery or try a simpler English query")
 NO_IMAGE_FOUND = IssueKind("NO_IMAGE_FOUND", ERROR, "no usable public-domain image matched", "try a simpler English query or skip imagery")
@@ -215,8 +182,12 @@ CHART_ATTRIBUTES = (
     "data-labels: category names separated by commas",
     "data-values: one number per label, for a single series",
     "data-series: \"name: 1, 2, 3; other: 4, 5, 6\" for several series, each with one number per label",
-    "data-unit: text after every value, such as 억, %, 건",
-    "data-highlight: one label drawn in the accent color while the others are muted (single series)",
+    "combo: the last series is a line on its own axis, the ones before it are columns",
+    "scatter: two series, the horizontal axis first and the vertical second; each label names one point",
+    "stacked100: each column shows its series as shares of the column's total",
+    "area: the series stacked as bands over the labels, a total over time and what it is made of",
+    "data-unit: text after every value, such as 억, %, 건; combo and scatter take one per axis, \"억, %\"",
+    "data-highlight: one label drawn in the accent color while the others are muted (single series, or a scatter point)",
     "data-center, data-center-label: the text in a donut's hole; default the first slice's share",
     "data-zero: true starts a line chart's axis at zero",
     "<figcaption>: the unit, period and source under the chart",
@@ -262,11 +233,9 @@ GUIDE_INPUTS = (
 )
 GUIDE_ISSUES = (
     ("deck build", BUILD_ISSUE_KINDS + REVIEW_ISSUE_KINDS),
-    ("deck validate", VALIDATE_ISSUE_KINDS),
     ("deck apply", OPERATION_ISSUE_KINDS + APPLY_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS),
     ("deck check", SOURCE_CHECK_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS + PPTX_CHECK_ISSUE_KINDS),
     ("deck merge", PACKAGE_MERGE_ISSUE_KINDS),
     ("deck restore", (NO_SLIDE_SECTIONS,)),
-    ("deck accept", ACCEPT_ISSUE_KINDS),
     ("deck image", IMAGE_ISSUE_KINDS),
 )

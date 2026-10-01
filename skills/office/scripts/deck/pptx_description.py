@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pptx.chart.plot import PlotTypeInspector
 from pptx.oxml.ns import qn
 
 from pptx_comments import slide_comments
@@ -179,12 +180,34 @@ def table_details(shape, detail: bool) -> dict:
 
 def chart_details(chart) -> dict:
     plots = list(chart.plots)
-    details = {"type": chart.chart_type.name.lower() if chart.chart_type is not None else "unknown"}
+    plot_types = [plot_type(plot) for plot in plots]
+    details = {"type": "+".join(dict.fromkeys(plot_types)) if plots else "unknown"}
     if chart.has_title and chart.chart_title.has_text_frame:
         details["title"] = frame_text(chart.chart_title.text_frame)
     details["categories"] = list(plots[0].categories) if plots else []
-    details["series"] = [{"name": series.name, "values": list(series.values)} for plot in plots for series in plot.series]
+    details["series"] = [series_details(series, kind, len(plots) > 1) for plot, kind in zip(plots, plot_types) for series in plot.series]
     return details
+
+
+def plot_type(plot) -> str:
+    return PlotTypeInspector.chart_type(plot).name.lower()
+
+
+def series_details(series, kind: str, names_plot: bool) -> dict:
+    details = {"name": series.name, "values": list(series.values)}
+    horizontal = series._element.find(qn("c:xVal"))
+    if horizontal is not None:
+        details["x"] = cached_numbers(horizontal)
+    if names_plot:
+        details["plot"] = kind
+    return details
+
+
+def cached_numbers(reference) -> list[float | None]:
+    points = {int(point.get("idx")): point.findtext(qn("c:v")) for point in reference.iter(qn("c:pt"))}
+    count = reference.find(f".//{qn('c:ptCount')}")
+    length = int(count.get("val")) if count is not None else len(points)
+    return [float(points[index]) if points.get(index) not in (None, "") else None for index in range(length)]
 
 
 def picture_details(picture) -> dict:

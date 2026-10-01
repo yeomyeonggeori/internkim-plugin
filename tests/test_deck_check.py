@@ -70,6 +70,21 @@ class DeckCheckTest(unittest.TestCase):
         self.assertEqual(issue.suggestion["didYouMean"], "kpi")
         self.assertIn("timeline", issue.suggestion["available"])
 
+    def test_every_structural_error_is_reported_in_one_pass(self):
+        typo_with_one_kpi = '<section data-layout="kpii"><h2>지표가 좋습니다</h2><div class="kpi"><p class="value">1</p><p class="label">매출</p></div></section>'
+        typo_with_short_values = '<section data-layout="chart"><h2>매출이 늘었습니다</h2><figure data-chart="colum" data-labels="1Q, 2Q, 3Q" data-values="1, 2"></figure></section>'
+        result = self.check(kit_deck(COVER, typo_with_one_kpi, typo_with_short_values, CLOSING))
+        errors = [(issue.kind.code, issue.location) for issue in result.issues if issue.kind.severity == "error"]
+        self.assertEqual(errors, [("LAYOUT_UNKNOWN", "slide 2"), ("LAYOUT_PART_MISSING", "slide 2"), ("CHART_DATA_INVALID", "slide 3"), ("CHART_DATA_INVALID", "slide 3")])
+        chart_type = next(issue for issue in result.issues if 'colum"' in issue.message)
+        self.assertEqual(chart_type.suggestion["didYouMean"], "column")
+        for issue in result.issues:
+            self.assertIn(issue.message, result.summary)
+
+    def test_a_layout_typo_counts_as_the_layout_it_names_for_repetition(self):
+        typo = STATEMENT.replace('data-layout="statement"', 'data-layout="statment"')
+        self.assertIn(("LAYOUT_REPEATED", "slide 3"), self.codes(kit_deck(COVER, STATEMENT, typo, STATEMENT)))
+
     def test_an_unknown_theme_names_the_closest_one(self):
         result = self.check(kit_deck(COVER, theme="midnite"))
         issue = next(issue for issue in result.issues if issue.kind.code == "THEME_UNKNOWN")
@@ -92,10 +107,11 @@ class DeckCheckTest(unittest.TestCase):
         codes = self.codes(kit_deck(COVER, STATEMENT, STATEMENT, STATEMENT))
         self.assertIn(("LAYOUT_REPEATED", "slide 3"), codes)
 
-    def test_charts_of_different_kinds_in_a_row_are_not_a_repeat(self):
+    def test_three_chart_slides_in_a_row_are_a_repeat_whatever_their_chart_kinds(self):
         line = CHART.replace('data-chart="column"', 'data-chart="line"')
         bar = CHART.replace('data-chart="column"', 'data-chart="bar"')
-        self.assertNotIn("LAYOUT_REPEATED", [code for code, _ in self.codes(kit_deck(COVER, CHART, line, bar))])
+        self.assertIn(("LAYOUT_REPEATED", "slide 3"), self.codes(kit_deck(COVER, CHART, line, bar)))
+        self.assertNotIn("LAYOUT_REPEATED", [code for code, _ in self.codes(kit_deck(COVER, CHART, line, STATEMENT, bar))])
 
     def test_a_long_deck_needs_three_layouts(self):
         codes = self.codes(kit_deck(STATEMENT, KPI, STATEMENT, KPI, STATEMENT, KPI))
@@ -140,6 +156,20 @@ class DeckCheckTest(unittest.TestCase):
         self.assertIn("radar", " ".join(messages["slide 4"]))
         self.assertIn("positive shares", " ".join(messages["slide 5"]))
         self.assertIn("data-highlight", " ".join(messages["slide 5"]))
+
+    def test_two_axis_and_stacking_charts_need_their_own_data_shape(self):
+        shaped = (
+            '<section data-layout="chart"><h2>콤보는 두 계열이 필요합니다</h2><figure data-chart="combo" data-labels="1Q, 2Q" data-values="1, 2"></figure></section>',
+            '<section data-layout="chart"><h2>산점도는 두 축이 필요합니다</h2><figure data-chart="scatter" data-labels="가, 나" data-series="x: 1, 2; y: 3, 4; z: 5, 6"></figure></section>',
+            '<section data-layout="chart"><h2>쌓는 차트는 음수를 받지 않습니다</h2><figure data-chart="area" data-labels="1Q, 2Q" data-series="가: 1, -2; 나: 3, 4"></figure></section>',
+            '<section data-layout="chart"><h2>제대로 된 산점도입니다</h2><figure data-chart="scatter" data-labels="가, 나" data-series="매출: 1, 2; 이익률: 3, 4" data-unit="억, %"></figure></section>',
+        )
+        result = self.check(kit_deck(COVER, *shaped))
+        messages = {issue.location: issue.message for issue in result.issues if issue.kind.code == "CHART_DATA_INVALID"}
+        self.assertIn("column series first and the line series last", messages["slide 2"])
+        self.assertIn("exactly two series", messages["slide 3"])
+        self.assertIn("zero or more", messages["slide 4"])
+        self.assertNotIn("slide 5", messages)
 
     def test_grouped_thousands_are_one_number_when_values_are_comma_space_separated(self):
         grouped = '<section data-layout="chart"><h2>매출이 늘었습니다</h2><figure data-chart="column" data-labels="1월, 2월" data-values="1,200, 1,350" data-unit="만원"></figure></section>'

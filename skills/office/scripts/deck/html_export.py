@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import pathlib
-import sys
-import time
 
 from acceptance import judge_build
 from check_deck import CheckRequest, check_deck
@@ -97,13 +95,10 @@ def write_derived_outputs(request: ExportRequest, html_output_path: pathlib.Path
     issues = render_deck(request, html_output_path, slide_models, design)
     pptx_details = None
     if "pptx" in request.formats:
-        print_stage("pptx")
         pptx_details, pptx_issues = write_pptx(request, slide_models, design)
         issues.extend(pptx_issues)
     if "notes" in request.formats:
-        print_stage("notes")
         write_notes(slide_sources, request.output_path("-notes.txt"))
-    print_stage("review")
     review = review_deck(request.source_path, request.deck_name, request.review_path, request.check.required_text)
     issues.extend(review.issues)
     return DerivedOutputs(issues, pptx_details, review)
@@ -149,7 +144,6 @@ def deck_render_request(request: ExportRequest, html_output_path: pathlib.Path) 
 
 
 def render_deck(request: ExportRequest, html_output_path: pathlib.Path, slide_models: list[SlideModel], design: dict[str, str]) -> list[Issue]:
-    print_stage("render")
     clear_stale_render_evidence(request.review_path, request.deck_name)
     try:
         rendered = render_html(deck_render_request(request, html_output_path))
@@ -185,6 +179,7 @@ def editable_pptx_details(written: EditablePptx, layers_path: pathlib.Path) -> d
         "textBoxes": written.text_box_count,
         "shapes": written.shape_count,
         "charts": written.chart_count,
+        "tables": written.table_count,
         "boxesKeptAsPicture": written.boxes_kept_as_picture,
         "embeddedFonts": list(written.embedded_typefaces),
         "unembeddedFonts": list(written.unembedded_families),
@@ -209,10 +204,6 @@ def write_notes(slide_sources: list[str], notes_path: pathlib.Path) -> None:
         if notes:
             note_blocks.append(f"Slide {index}\n{notes}")
     notes_path.write_text("\n\n".join(note_blocks) + ("\n" if note_blocks else ""), encoding="utf-8")
-
-
-def print_stage(stage_name: str) -> None:
-    print(f"[stage] {stage_name} {int(time.time())}", file=sys.stderr, flush=True)
 
 
 def build_summary(request: ExportRequest, derived: DerivedOutputs) -> str:

@@ -364,6 +364,26 @@ class LayoutAuditTest(KoreanDeckFixture):
         self.assertNotIn("slide 2 shape 3", [issue["location"] for issue in fixed["issues"] if issue["code"] == "OUT_OF_FRAME"])
         self.assertTrue(all(isinstance(issue["suggestion"], dict) for issue in fixed["issues"] if issue["code"] in ("OUT_OF_FRAME", "CONTENT_OVERFLOW")))
 
+    def test_each_suggested_operation_clears_its_issue_or_the_issue_says_no_single_operation_can(self):
+        moderate = "3분기 매출은 128억 원으로 전년 동기 대비 23% 성장했고, 신규 고객 42곳과 재구매율 68%가 함께 성장을 이끌었습니다.\n" * 3
+        endless = "이 문장은 상자에 비해 훨씬 길어서 슬라이드 아래로 넘칠 것입니다. " * 30
+        scenarios = {"moderate": (moderate, "none"), "endless": (endless, "none"), "endless growing": (endless, "resize")}
+        for name, (text, autofit) in scenarios.items():
+            with self.subTest(name):
+                shutil.copy(self.deck_bytes_path, self.directory / "deck.pptx")
+                envelope = self.apply([{"op": "set_text", "slide": 2, "shape": 3, "text": text}, {"op": "set_text_frame", "slide": 2, "shape": 3, "autofit": autofit, "wrap": True}])
+                found = [issue for issue in envelope["issues"] if issue["location"] == "slide 2 shape 3" and issue["code"] in ("CONTENT_OVERFLOW", "OUT_OF_FRAME")]
+                self.assertTrue(found)
+                for issue in found:
+                    if not isinstance(issue["suggestion"], dict):
+                        self.assertIn("no single operation", issue["suggestion"])
+                        continue
+                    shutil.copy(self.directory / "deck.pptx", self.directory / "before.pptx")
+                    after = self.apply([issue["suggestion"]])
+                    remaining = [(other["code"], other["location"]) for other in after["issues"]]
+                    self.assertNotIn((issue["code"], issue["location"]), remaining, issue["suggestion"])
+                    shutil.copy(self.directory / "before.pptx", self.directory / "deck.pptx")
+
     def test_check_without_a_preview_reports_the_same_findings(self):
         self.apply([{"op": "set_transform", "slide": 3, "shape": 1, "y": 3600000}])
         envelope = run_office(["deck", "check", "deck.pptx", "--no-preview", "--slides", "3"], self.directory)

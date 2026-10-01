@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 import math
 
@@ -11,6 +12,7 @@ from pptx_geometry import EMU_PER_POINT, SLIDE_FRAME, Box, Frame, child_frame, l
 from pptx_inheritance import slide_context
 from pptx_shape_kinds import shape_address, shape_kind
 from pptx_text_measure import TextFit, grown_box, grows_with_text, largest_text_size, measure_text, wraps
+from pptx_text_operations import apply_run_style, character_properties
 
 
 EDGE_TOLERANCE = EMU_PER_POINT
@@ -25,6 +27,7 @@ SHRINK_STEPS = 10
 MEDIA_KINDS = {"picture", "chart", "table", "diagram", "media", "object"}
 MEASURABLE_IMAGE_TYPES = {"image/png", "image/jpeg", "image/gif", "image/bmp", "image/tiff"}
 CROP_SCALE = 100000
+NO_SINGLE_OPERATION = "no single operation fits this text at a legible size: shorten it, or split it across slides"
 
 
 @dataclass(frozen=True)
@@ -201,16 +204,18 @@ def points(emu: int) -> int:
     return round(emu / EMU_PER_POINT)
 
 
-def taller_box_or_smaller_text(entry: Entry, area: SlideArea, entries: list[Entry]) -> dict:
-    grown = inside(Box(entry.box.x, entry.box.y, entry.box.w, entry.box.h + entry.fit.height_overflow + SUGGESTION_SLACK), area)
-    if grown.h > entry.box.h and not collides(grown, entry, entries):
+def taller_box_or_smaller_text(entry: Entry, area: SlideArea, entries: list[Entry]) -> dict | str:
+    needed = entry.box.h + entry.fit.height_overflow
+    grown = inside(Box(entry.box.x, entry.box.y, entry.box.w, needed + SUGGESTION_SLACK), area)
+    if grown.h >= needed and not collides(grown, entry, entries):
         return transform_suggestion(entry, area, grown)
     return smaller_text(entry, area, lambda fit: fit.height_overflow <= 0)
 
 
-def wider_box_or_smaller_text(entry: Entry, area: SlideArea, entries: list[Entry]) -> dict:
-    grown = inside(Box(entry.box.x, entry.box.y, entry.box.w + entry.fit.width_overflow + SUGGESTION_SLACK, entry.box.h), area)
-    if grown.w > entry.box.w and not collides(grown, entry, entries):
+def wider_box_or_smaller_text(entry: Entry, area: SlideArea, entries: list[Entry]) -> dict | str:
+    needed = entry.box.w + entry.fit.width_overflow
+    grown = inside(Box(entry.box.x, entry.box.y, needed + SUGGESTION_SLACK, entry.box.h), area)
+    if grown.w >= needed and not collides(grown, entry, entries):
         return transform_suggestion(entry, area, grown)
     return smaller_text(entry, area, lambda fit: fit.width_overflow <= 0)
 
@@ -226,15 +231,23 @@ def is_content(entry: Entry) -> bool:
     return entry.has_text or entry.kind in MEDIA_KINDS or entry.kind == "shape"
 
 
-def smaller_text(entry: Entry, area: SlideArea, fits) -> dict:
+def smaller_text(entry: Entry, area: SlideArea, fits) -> dict | str:
     largest = largest_text_size(entry.context, entry.element)
     for step in range(1, SHRINK_STEPS + 1):
         size = math.floor(largest * (1 - step * SHRINK_STEP))
         if size < SMALLEST_SUGGESTED_SIZE:
             break
-        if fits(measure_text(entry.context, entry.element, entry.box, size / largest)):
+        if fits(measure_text(entry.context, restyled(entry.element, size), entry.box)):
             return {"op": "set_text_style", "slide": area.number, "shape": shape_reference(entry.address), "size": size}
-    return {"op": "set_text_style", "slide": area.number, "shape": shape_reference(entry.address), "size": SMALLEST_SUGGESTED_SIZE}
+    return NO_SINGLE_OPERATION
+
+
+def restyled(element, size: int):
+    copied = copy.deepcopy(element)
+    for paragraph in copied.iter(qn("a:p")):
+        for properties in character_properties(paragraph):
+            apply_run_style(properties, {"size": size})
+    return copied
 
 
 def distortion_issues(entry: Entry, area: SlideArea) -> list[Issue]:

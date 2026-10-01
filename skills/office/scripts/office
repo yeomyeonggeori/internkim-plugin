@@ -82,7 +82,12 @@ def run_text_command(command) -> int:
 
 
 def reject_unknown_command(words: list[str]):
-    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"office: unknown command {' '.join(words)!r}", " ".join(words)))
+    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"office: unknown command {' '.join(words)!r}", " ".join(words), suggestion=format_commands_suggestion(words[:1])))
+
+
+def format_commands_suggestion(format_words: list[str]) -> str | None:
+    commands = [command.name for command in COMMANDS if command.words[:1] == format_words]
+    return f"run one of {', '.join(commands)}" if commands else None
 
 
 def reject_missing_dependencies():

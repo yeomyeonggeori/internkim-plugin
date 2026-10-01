@@ -17,6 +17,7 @@ LABEL_SIZE = 13
 DEFAULT_GAP_WIDTH = 150
 DEFAULT_HOLE_PERCENT = 50
 QUOTED_LITERAL = re.compile(r'"([^"]*)"')
+HORIZONTAL_POSITIONS = {"b", "t"}
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,7 @@ class PointLabel:
     format_code: str
     position: str
     text: TextLook
+    custom_text: str = ""
 
 
 @dataclass(frozen=True)
@@ -59,6 +61,9 @@ class ChartLook:
     hole_percent: int
     value_limits: tuple[float | None, float | None]
     major_unit: float | None
+    series_plots: list[str] = field(default_factory=list)
+    secondary_limits: tuple[float | None, float | None] = (None, None)
+    horizontal_limits: tuple[float | None, float | None] = (None, None)
 
     def color_of(self, series: int, point: int) -> str:
         return self.point_colors[series].get(point, self.series_colors[series])
@@ -69,18 +74,19 @@ class ChartLook:
 
 def chart_look(chart, context) -> ChartLook:
     space = chart._chartSpace
-    plot = next(child for child in space.find(f"{qn('c:chart')}/{qn('c:plotArea')}") if child.tag.endswith("Chart"))
+    plot_area = space.find(f"{qn('c:chart')}/{qn('c:plotArea')}")
+    plots = [child for child in plot_area if child.tag.endswith("Chart")]
+    plot = plots[0]
     base_text = text_look(context, space.find(qn("c:txPr")), TextLook())
-    series = plot.findall(qn("c:ser"))
+    plotted = [(owner, entry) for owner in plots for entry in owner.findall(qn("c:ser"))]
     theme_colors = ["#" + (theme_slot_color(context, slot) or FALLBACK_ACCENT).lstrip("#") for slot in ACCENT_SLOTS]
-    value_axis = space.find(f".//{qn('c:valAx')}")
+    value_axis = plot_value_axis(plot_area, plot)
     category_axis = space.find(f".//{qn('c:catAx')}")
-    plot_labels = plot.find(qn("c:dLbls"))
     return ChartLook(
-        series_colors=[series_color(context, entry, theme_colors[index % len(theme_colors)]) for index, entry in enumerate(series)],
-        point_colors=[point_colors(context, entry) for entry in series],
+        series_colors=[series_color(context, entry, theme_colors[index % len(theme_colors)]) for index, (_, entry) in enumerate(plotted)],
+        point_colors=[point_colors(context, entry) for _, entry in plotted],
         theme_colors=theme_colors,
-        labels=[label_look(context, first_present(entry.find(qn("c:dLbls")), plot_labels), base_text) for entry in series],
+        labels=[label_look(context, first_present(entry.find(qn("c:dLbls")), owner.find(qn("c:dLbls"))), base_text) for owner, entry in plotted],
         text=base_text,
         legend_position=legend_position(space),
         value_axis_shown=value_axis is not None and setting(value_axis, "c:delete", "0") != "1",
@@ -89,9 +95,25 @@ def chart_look(chart, context) -> ChartLook:
         reversed_categories=setting(category_axis, "c:scaling/c:orientation", "minMax") == "maxMin",
         gap_width=int(setting(plot, "c:gapWidth", str(DEFAULT_GAP_WIDTH))),
         hole_percent=int(setting(plot, "c:holeSize", str(DEFAULT_HOLE_PERCENT))),
-        value_limits=(number_setting(value_axis, "c:scaling/c:min"), number_setting(value_axis, "c:scaling/c:max")),
+        value_limits=axis_limits(value_axis),
         major_unit=number_setting(value_axis, "c:majorUnit"),
+        series_plots=[owner.tag.rsplit("}", 1)[-1] for owner, _ in plotted],
+        secondary_limits=axis_limits(plot_value_axis(plot_area, plots[-1])) if len(plots) > 1 else (None, None),
+        horizontal_limits=axis_limits(plot_value_axis(plot_area, plot, HORIZONTAL_POSITIONS)),
     )
+
+
+def plot_value_axis(plot_area, plot, positions: set[str] | None = None):
+    axis_ids = {axis.get("val") for axis in plot.findall(qn("c:axId"))}
+    axes = [axis for axis in plot_area.findall(qn("c:valAx")) if setting(axis, "c:axId", "") in axis_ids]
+    if positions is None:
+        positions = {"l", "r"} if len(axes) > 1 else None
+    matching = [axis for axis in axes if positions is None or setting(axis, "c:axPos", "l") in positions]
+    return matching[0] if matching else None
+
+
+def axis_limits(axis) -> tuple[float | None, float | None]:
+    return number_setting(axis, "c:scaling/c:min"), number_setting(axis, "c:scaling/c:max")
 
 
 def first_present(*elements):
@@ -121,13 +143,14 @@ def solid_color(context, properties, *path: str) -> str | None:
 
 def series_color(context, series, theme_color: str) -> str:
     properties = series.find(qn("c:spPr"))
-    return solid_color(context, properties) or solid_color(context, properties, "a:ln") or theme_color
+    marker = series.find(f"{qn('c:marker')}/{qn('c:spPr')}")
+    return solid_color(context, properties) or solid_color(context, properties, "a:ln") or solid_color(context, marker) or theme_color
 
 
 def point_colors(context, series) -> dict[int, str]:
     colors = {}
     for point in series.findall(qn("c:dPt")):
-        color = solid_color(context, point.find(qn("c:spPr")))
+        color = solid_color(context, point.find(qn("c:spPr"))) or solid_color(context, point.find(f"{qn('c:marker')}/{qn('c:spPr')}"))
         if color:
             colors[int(setting(point, "c:idx", "0"))] = color
     return colors
@@ -160,8 +183,17 @@ def point_label(context, element, fallback: PointLabel) -> PointLabel:
         show_percent=show_percent,
         format_code=number_format.get("formatCode", fallback.format_code) if number_format is not None else fallback.format_code,
         position=setting(element, "c:dLblPos", fallback.position),
-        text=text_look(context, element.find(qn("c:txPr")), fallback.text),
+        text=text_look(context, element.find(qn("c:txPr")), rich_text_look(context, element, fallback.text)),
+        custom_text="".join(node.text or "" for node in element.iterfind(f"{qn('c:tx')}//{qn('a:t')}")),
     )
+
+
+def rich_text_look(context, element, fallback: TextLook) -> TextLook:
+    properties = element.find(f"{qn('c:tx')}//{qn('a:rPr')}")
+    if properties is None:
+        return fallback
+    size = properties.get("sz")
+    return TextLook(color=solid_color(context, properties) or fallback.color, size=point_pixels(int(size) / 100) if size else fallback.size)
 
 
 def legend_position(space) -> str | None:

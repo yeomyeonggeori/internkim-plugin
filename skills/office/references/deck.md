@@ -80,7 +80,13 @@ Choose each slide's layout from its content. Three slides in a row never share a
 
 ## Charts
 
-A chart is data in attributes; the kit draws it with value labels and the theme's colors. `data-chart` is `column`, `bar`, `stacked`, `line`, `donut` or `pie`. Give `data-labels` and `data-values` with one number per label, separated by a comma and a space (`1,200, 1,350`), or several series as `data-series="2025: 82, 96; 2026: 90, 110"`. The unit goes in `data-unit`, never in the numbers. `data-highlight="3Q26"` draws one label in the accent and mutes the rest. Put the unit, period and source in `<figcaption>`. Keep one unit and one source per chart.
+A chart is data in attributes; the kit draws it with value labels and the theme's colors. `data-chart` is `column`, `bar`, `stacked`, `stacked100` (shares of each column), `line`, `area` (stacked bands over time), `combo`, `scatter`, `donut` or `pie`. Give `data-labels` and `data-values` with one number per label, separated by a comma and a space (`1,200, 1,350`), or several series as `data-series="2025: 82, 96; 2026: 90, 110"`. The unit goes in `data-unit`, never in the numbers. `data-highlight="3Q26"` draws one label in the accent and mutes the rest. Put the unit, period and source in `<figcaption>`. Keep one unit and one source per chart.
+
+Two charts have two axes and take one unit per axis. In a `combo`, the last series is a line on its own axis over columns of the others; in a `scatter`, the first series runs across, the second up, and each label names a point:
+
+```html
+<figure data-chart="combo" data-labels="1Q, 2Q, 3Q, 4Q" data-series="매출: 96, 104, 113, 128; 영업이익률: 11.2, 12.5, 13.1, 14.2" data-unit="억, %"><figcaption>분기 매출(억 원)과 영업이익률(%)</figcaption></figure>
+```
 
 ## Build and deliver
 
@@ -92,10 +98,10 @@ Run from `artifacts/<deck-slug>`, passing the slide count the user asked for and
 
 It writes `build/<deck-slug>.pdf`; add `--format pptx` for PowerPoint or `--format all` for both. `<skill>/scripts/office deck check` runs its first stage alone.
 
-1. The build first checks the markup of `slides.html`: an unknown layout, a missing part, a repeated layout, a placeholder such as `XX` or `TODO`, a missing required fact, a wrong slide count, chart numbers that do not parse, or a missing image stops it. Each issue names the slide and the fix.
+1. The build first checks the markup of `slides.html`: an unknown layout, a missing part, a repeated layout, a placeholder such as `XX` or `TODO`, a missing required fact, a wrong slide count, chart numbers that do not parse, or a missing image stops it. Every such problem is listed at once, each naming the slide and the fix.
 2. It then renders and measures every slide. The summary starts with the verdict:
    - `ACCEPTABLE`: deliver the file it names. Other issues are advice; do not redesign a slide that is clean.
-   - `FIX ROUND 1 OF 2` or `2 OF 2`: fix only the listed defects (text that overflows or overlaps, content off the slide, a missing fact, an off-palette color, tiny text, a mostly empty slide) by shortening, splitting or filling, then build again.
+   - `FIX ROUND 1 OF 2` or `2 OF 2`: fix only the listed defects (text that overflows, overlaps or hides under a box, content off the slide or in the footer, a title over three lines, a missing fact, an off-palette color, tiny text, a mostly empty slide) by shortening, splitting or filling, then build again.
    - `STOP FIXING`: deliver and name the defects that remain.
    - `NOT MEASURED`: neither bun nor node 18 could draw the slides, so there is no PDF and a requested PPTX holds only the slide text in stock layouts; deliver the file the verdict names and say the layout was not checked.
 3. Before attaching, open `build/review/contact-sheet-01.png` once and confirm the slides read as intended.
@@ -106,12 +112,12 @@ Use a photo only when it shows what the slide is about, in a `cover` or `image` 
 
 ## Custom design
 
-A brand that needs more than `data-accent` adds a `<style>` that sets the theme tokens (`--accent`, `--accent-2`, `--ink`, `--bg`, `--surface`) on `:root`. A `DESIGN.md` beside `slides.html` is optional; the colors in its front matter join the palette. The check reports any other color as `OFF_PALETTE_COLOR`.
+A brand that needs more than `data-accent` adds a `<style>` that sets the theme tokens (`--accent`, `--accent-2`, `--ink`, `--bg`, `--surface`) on `:root`; they replace those of the `data-theme` it names. A `DESIGN.md` beside `slides.html` is optional; the colors in its front matter join the palette. The check reports any other color as `OFF_PALETTE_COLOR`.
 
 ## PPTX
 
-The PPTX is built from the rendered slides: every word is an editable text box, boxes are native shapes, each kit chart is a native chart with its data, and Paperlogy is embedded.
+The PPTX is built from the rendered slides: every word is an editable text box, boxes are native shapes, each kit chart is a native chart with its data, each table is a native table, and Paperlogy is embedded.
 
 ## Editing a delivered .pptx
 
-When the user hands over a .pptx, or asks for a change to one with no `slides.html` beside it, run `<skill>/scripts/office deck read <file.pptx>`: each shape's index, kind, box and text style, with tables, charts and notes. Write the change as one batch for `deck apply <file.pptx> <ops.json>` with every number taken from that read; `<skill>/scripts/office guide deck apply` lists the operations. The batch applies whole or not at all; pass `--dry-run` to preview and `--output` to keep the original. Each layout problem the result reports carries a `suggestion` that is an operation to apply as it is. Before delivering, run `deck check <file.pptx>` and look at its contact sheet; if it reports `PPTX_NOT_RENDERED`, say the slides were not seen. Text a built deck kept as a picture cannot be edited this way; for a larger change to a built deck, edit `slides.html` and rebuild, or recover it with `deck restore`.
+When the user hands over a .pptx, or asks for a change to one with no `slides.html` beside it, run `<skill>/scripts/office deck read <file.pptx>`: each shape's index, kind, box and text style, with tables, charts and notes. Write the change as one batch for `deck apply <file.pptx> <ops.json>` with every number taken from that read; `<skill>/scripts/office guide deck apply` lists the operations. The batch applies whole or not at all; pass `--dry-run` to preview and `--output` to keep the original. Each layout problem the result reports carries a `suggestion`: an operation to apply as it is, or, when no single operation fits the text, a note to shorten or split it. Before delivering, run `deck check <file.pptx>` and look at its contact sheet; if it reports `PPTX_NOT_RENDERED`, say the slides were not seen. Text a built deck kept as a picture cannot be edited this way; for a larger change to a built deck, edit `slides.html` and rebuild, or recover it with `deck restore`.

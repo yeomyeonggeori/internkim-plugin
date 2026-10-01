@@ -76,7 +76,7 @@ class PdfImageTest(unittest.TestCase):
             subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path)
             layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
         chart = layout["slides"][1]["charts"][0]
-        self.assertEqual((chart["series"][0]["values"], chart["unit"]), ([1200, 1350], "만원"))
+        self.assertEqual((chart["series"][0]["values"], chart["units"]), ([1200, 1350], ["만원"]))
 
 
 if __name__ == "__main__":

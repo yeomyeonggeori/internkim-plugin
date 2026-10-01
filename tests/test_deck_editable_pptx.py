@@ -71,6 +71,10 @@ def text_box_texts(slide_xml: ElementTree.Element) -> list[str]:
     return ["".join(text.text or "" for text in shape.iterfind(".//a:t", NAMESPACES)) for shape in slide_xml.iterfind(".//p:sp", NAMESPACES)]
 
 
+def table_cell_texts(slide_xml: ElementTree.Element) -> list[str]:
+    return ["".join(text.text or "" for text in cell.iterfind(".//a:t", NAMESPACES)) for cell in slide_xml.iterfind(".//a:tc", NAMESPACES)]
+
+
 def without_whitespace(text: str) -> str:
     return re.sub(r"\s+", "", text)
 
@@ -266,17 +270,6 @@ class EditablePptxPackageTest(unittest.TestCase):
         frame = shape_frames(ElementTree.fromstring(archive.read("ppt/slides/slide1.xml")))[-1]
         self.assertEqual(frame[2], 800 * EMU_PER_PIXEL)
 
-    def test_validate_counts_the_shapes_that_hold_content_and_not_the_rules_between_them(self):
-        rules = [{"geometry": "line", "from": {"x": 100, "y": 100 + row * 10}, "to": {"x": 900, "y": 100 + row * 10}, "line": {"color": "rgb(216, 212, 203)", "opacity": 1, "widthPx": 1}} for row in range(60)]
-        directory = Path(self.temporary_directory())
-        write_layers(directory / "review", [layout_block([layout_run("표 제목")], {"left": 100, "top": 20, "right": 900, "bottom": 70})], rules)
-        write_editable_pptx(read_text_layers(directory / "review", 1), [""], directory / "deck.pptx")
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "validate", str(directory / "deck.pptx")], capture_output=True, text=True)
-        envelope = json.loads(completed.stdout)
-        self.assertEqual(envelope["details"]["slides"][0]["shapeCount"], 62)
-        self.assertEqual(envelope["details"]["slides"][0]["contentShapeCount"], 2)
-        self.assertNotIn("TOO_MANY_SHAPES", [issue["code"] for issue in envelope["issues"]])
-
     def test_an_unknown_family_is_named_as_rendered_and_reported_unembedded(self):
         archive, written = self.write([layout_block([layout_run("Hello", fontFamily="Georgia")], {"left": 100, "top": 100, "right": 900, "bottom": 150})])
         self.assertEqual(written.unembedded_families, ("Georgia",))
@@ -313,6 +306,8 @@ class RenderedEditablePptxTest(unittest.TestCase):
             backgrounds = [read_png(deck_path / "build" / "review" / "pptx-layers" / f"background.{number:03}.png") for number in range(1, len(slides) + 1)]
         self.assertEqual(envelope["details"]["pptx"]["textKeptAsPicture"], ["잠정"])
         self.assertEqual(notes, ["표지 노트", None, "표 노트"])
+        self.assertEqual(table_cell_texts(slides[2]), ["지역", "3분기", "수도권", "₩25억"])
+        self.assertNotIn("수도권", "".join(text_box_texts(slides[2])))
         self.assert_boxes_are_shapes_and_left_the_picture(slides, backgrounds)
         narrow, = [lines for lines in paragraph_lines(slides[1]) if "".join(lines).startswith("연간물류비")]
         self.assertGreater(len(narrow), 1)
@@ -322,8 +317,8 @@ class RenderedEditablePptxTest(unittest.TestCase):
                 visible = without_whitespace(measured["visibleText"])
                 for picture_text in measured["pictureTexts"]:
                     visible = visible.replace(without_whitespace(picture_text), "", 1)
-                self.assertEqual(without_whitespace("".join(text_box_texts(slide))), visible)
-                measured_lines = [[without_whitespace(line["text"]) for line in paragraph["lines"]] for block in measured["blocks"] for paragraph in block["paragraphs"]]
+                self.assertEqual(without_whitespace("".join(text_box_texts(slide) + table_cell_texts(slide))), visible)
+                measured_lines = [[without_whitespace(line["text"]) for line in paragraph["lines"]] for block in measured["blocks"] if not block["cell"] for paragraph in block["paragraphs"]]
                 self.assertEqual(paragraph_lines(slide), measured_lines)
                 for properties in run_properties(slide):
                     self.assertTrue(properties.find("a:latin", NAMESPACES).get("typeface").startswith("Paperlogy "))

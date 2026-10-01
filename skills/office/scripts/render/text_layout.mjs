@@ -48,7 +48,7 @@ export function renderedFamilyResolver() {
   };
 }
 
-export function extractTextLayout({ exportedTextAttribute, exportedListAttribute, markerProbeAttribute, markerProbeHostId, pages }) {
+export function extractTextLayout({ exportedTextAttribute, exportedListAttribute, markerProbeAttribute, markerProbeHostId, nativeCellAttribute, pages }) {
   const skippedTags = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "TEXTAREA", "SELECT", "OPTION"]);
   const linkProtocols = new Set(["http:", "https:", "mailto:", "tel:"]);
   const alignments = { left: "l", start: "l", right: "r", end: "r", center: "ctr", justify: "just", "-webkit-center": "ctr" };
@@ -453,6 +453,8 @@ export function extractTextLayout({ exportedTextAttribute, exportedListAttribute
     }
   };
 
+  const cellOf = (container) => (nativeCellAttribute && container.closest(`[${nativeCellAttribute}]`)?.getAttribute(nativeCellAttribute)) || null;
+
   const describeSlide = (section) => {
     const origin = section.getBoundingClientRect();
     const { pieces, pictureTexts } = collectTextNodes(section);
@@ -476,12 +478,12 @@ export function extractTextLayout({ exportedTextAttribute, exportedListAttribute
         handledLists.add(list);
         list.setAttribute(exportedListAttribute, "");
         listItems.forEach((item) => markExported(itemsByContainer.get(item)));
-        blocks.push(describeList(list, listItems, itemsByContainer, section));
+        blocks.push({ ...describeList(list, listItems, itemsByContainer, section), cell: cellOf(list) });
         continue;
       }
       const isPure = !containers.some((other) => other !== container && container.contains(other));
       markExported(itemsByContainer.get(container));
-      blocks.push(describeBlock(container, itemsByContainer.get(container), section, isPure));
+      blocks.push({ ...describeBlock(container, itemsByContainer.get(container), section, isPure), cell: cellOf(container) });
     }
     return {
       width: round(origin.width),

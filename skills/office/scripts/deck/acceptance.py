@@ -7,13 +7,15 @@ import pathlib
 
 from deck_definitions import (
     CONTENT_OVERFLOW,
+    FOOTER_CROSSED,
     IMAGE_DISTORTED,
     OFF_PALETTE_COLOR,
     OUT_OF_FRAME,
     SLIDE_BLANK,
-    SLIDE_TOO_SPARSE,
+    TEXT_COVERED,
     TEXT_OVERLAP,
     TINY_TEXT,
+    TITLE_TOO_LONG,
     VERTICAL_DEAD_ZONE,
 )
 from office_result import Issue
@@ -28,9 +30,11 @@ OBJECTIVE_DEFECT_CODES = frozenset(
         CONTENT_OVERFLOW.kind,
         OUT_OF_FRAME.kind,
         TEXT_OVERLAP.kind,
+        TEXT_COVERED.kind,
+        FOOTER_CROSSED.kind,
+        TITLE_TOO_LONG.kind,
         IMAGE_DISTORTED.kind,
         SLIDE_BLANK.kind,
-        SLIDE_TOO_SPARSE.kind,
         VERTICAL_DEAD_ZONE.kind,
         TINY_TEXT.kind,
         REQUIRED_TEXT_MISSING,
