@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import base64
 from dataclasses import dataclass
 
 from openpyxl.utils import range_boundaries
 
 from chart_svg import ChartModel, ChartSeries, chart_svg
-from office_preview import emu_to_pixels, pixels, style_attribute
+from office_preview import data_uri, emu_to_pixels, pixels, style_attribute
 from preview_fonts import KOREAN_FALLBACK_FAMILY
 
 
@@ -60,7 +59,7 @@ def is_whole(box: Box, page_width: float, page_height: float) -> bool:
 def image_html(image, box: Box) -> str:
     data = image._data()
     kind = (getattr(image, "format", None) or "png").lower()
-    return f'<img src="data:image/{kind};base64,{base64.b64encode(data).decode("ascii")}"{style_attribute(absolute(box))}>'
+    return f'<img src="{data_uri(f"image/{kind}", data)}"{style_attribute(absolute(box))}>'
 
 
 def absolute(box: Box) -> dict:

@@ -8,6 +8,9 @@ from template_merge import LIST_NEEDS_A_ROW, MERGE_VALUES, TEMPLATE_SYNTAX_ERROR
 from text_checks import FORBIDDEN_TEXT_PRESENT, PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
 
 
+PICTURE_FORMATS = "PNG, JPEG, GIF, BMP or TIFF"
+
+
 REVISION_TYPES = ("insertion", "deletion", "move", "formatting")
 TABLE_ROWS = ListOf(ListOf(CellValue()), non_empty=True)
 
@@ -277,7 +280,7 @@ OPERATIONS = Variant(
             INSERT_AFTER,
             INSERT_BEFORE,
             INSERT_AT,
-            Field("path", Text(non_empty=True), "PNG, JPEG, GIF, BMP or TIFF file", required=True),
+            Field("path", Text(non_empty=True), f"{PICTURE_FORMATS} file", required=True),
             Field("widthInches", Number(minimum=0.1), "width; the height keeps the aspect ratio unless also given"),
             Field("heightInches", Number(minimum=0.1), "height"),
             Field("align", ALIGNMENT, "paragraph alignment"),
@@ -408,7 +411,7 @@ OPERATIONS = Variant(
         )),
         Record("set_watermark", "put large diagonal text such as 대외비 or DRAFT, or a picture such as a logo, behind every page; give text or image", (
             Field("text", Text(), "watermark text; empty removes the watermark"),
-            Field("image", Text(non_empty=True), "PNG, JPEG, GIF, BMP or TIFF file centered behind the body"),
+            Field("image", Text(non_empty=True), f"{PICTURE_FORMATS} file centered behind the body"),
             Field("scale", Number(minimum=1, maximum=1000), "picture size as a percent of its natural size; default fit inside the margins"),
             Field("washout", Boolean(), "fade the picture the way Word's washout does, default true"),
             Field("color", HexColor(), "text color, default light gray"),

@@ -33,7 +33,7 @@ from deck_source import Element, find_all, normalized_text, parse_source, style_
 from design_tokens import design_front_matter
 from office_inputs import PPTX, require_kind
 from office_result import ERROR, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
-from office_schema import closest_name
+from office_schema import closest_name, listed_names, names_suggestion
 from resource_inlining import resolve_resource_path
 from text_checks import DRAFT_PLACEHOLDER_PATTERN, PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
 
@@ -118,18 +118,18 @@ def theme_issues(root: Element) -> list[Issue]:
     theme = body_theme(root)
     if theme is None or theme in theme_palettes():
         return []
-    return [THEME_UNKNOWN.issue(f'data-theme="{theme}" is not a kit theme', "body", suggestion=name_suggestion(theme, tuple(theme_palettes())))]
+    return [THEME_UNKNOWN.issue(f'data-theme="{theme}" is not a kit theme', "body", suggestion=names_suggestion(theme, tuple(theme_palettes())))]
 
 
 def layout_issues(slides: list[Slide]) -> list[Issue]:
     issues = []
     for slide in slides:
         if not slide.layout:
-            issues.append(LAYOUT_MISSING.issue(f"{slide.location} has no data-layout", slide.location, suggestion=f"give the <section> a data-layout, one of: {', '.join(KIT_LAYOUT_NAMES)}"))
+            issues.append(LAYOUT_MISSING.issue(f"{slide.location} has no data-layout", slide.location, suggestion=f"give the <section> a data-layout; {listed_names(KIT_LAYOUT_NAMES)}"))
             continue
         layout = kit_layout(slide.layout)
         if layout is None:
-            issues.append(LAYOUT_UNKNOWN.issue(f'{slide.location} uses data-layout="{slide.layout}"', slide.location, suggestion=name_suggestion(slide.layout, KIT_LAYOUT_NAMES)))
+            issues.append(LAYOUT_UNKNOWN.issue(f'{slide.location} uses data-layout="{slide.layout}"', slide.location, suggestion=names_suggestion(slide.layout, KIT_LAYOUT_NAMES)))
             layout = kit_layout(slide.intended_layout)
         if layout is not None:
             issues += part_issues(slide, layout)
@@ -188,7 +188,7 @@ def chart_issues(slide: Slide) -> list[Issue]:
         if "data-chart" in figure.attributes:
             chart_type = figure.attributes["data-chart"].strip()
             if chart_type not in chart_types():
-                issues.append(CHART_DATA_INVALID.issue(f'{slide.location}: data-chart="{chart_type}" is not one of {", ".join(chart_types())}', slide.location, suggestion=name_suggestion(chart_type, chart_types())))
+                issues.append(CHART_DATA_INVALID.issue(f'{slide.location}: data-chart="{chart_type}" is not one of {", ".join(chart_types())}', slide.location, suggestion=names_suggestion(chart_type, chart_types())))
                 chart_type = closest_name(chart_type, chart_types()) or ""
             issues += [CHART_DATA_INVALID.issue(f"{slide.location}: {problem}", slide.location) for problem in chart_problems(chart_type, figure.attributes)]
     return issues
@@ -371,12 +371,6 @@ def body_theme(root: Element) -> str | None:
     if body is None or "data-theme" not in body.attributes:
         return None
     return body.attributes["data-theme"].strip()
-
-
-def name_suggestion(name: str, available: tuple[str, ...]) -> str:
-    match = closest_name(name, available)
-    listed = f"use one of: {', '.join(available)}"
-    return f"did you mean {match!r}? {listed}" if match else listed
 
 
 def layout_parts(layout: KitLayout) -> str:

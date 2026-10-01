@@ -11,7 +11,7 @@ import tempfile
 SCRIPTS_PATH = Path(__file__).resolve().parents[1]
 sys.path[1:1] = [str(SCRIPTS_PATH / "doc"), str(SCRIPTS_PATH / "sheet"), str(SCRIPTS_PATH / "deck")]
 
-from block_writers import data_uri, html_document, markdown_text  # noqa: E402
+from block_writers import file_data_uri, html_document, markdown_text  # noqa: E402
 from convert_definitions import (  # noqa: E402
     CONVERSION_APPROXIMATED, PAGE_WITHOUT_TEXT, ROUTES, TABLE_NOT_FOUND, UNSUPPORTED_CONVERSION, Route, find_route, normalized_extension,
 )
@@ -359,14 +359,14 @@ def embedded(block, source_directory: Path):
     image_path = source_directory / block.source
     if block.source.startswith(("http://", "https://", "data:")) or not image_path.is_file():
         return block
-    return replace(block, source=data_uri(image_path.read_bytes(), image_path.name))
+    return replace(block, source=file_data_uri(image_path.read_bytes(), image_path.name))
 
 
 def with_data_source(block, media: dict):
     if not isinstance(block, Image):
         return block
     name = Path(block.source).name
-    return replace(block, source=data_uri(media[name], name)) if name in media else block
+    return replace(block, source=file_data_uri(media[name], name)) if name in media else block
 
 
 def decoded(block, media_directory: Path):

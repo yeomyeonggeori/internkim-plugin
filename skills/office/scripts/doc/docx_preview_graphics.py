@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 import io
 import re
 
@@ -12,7 +11,7 @@ from docx_charts import read_specification
 from docx_page_operations import PICTURE_WATERMARK_PREFIX
 from docx_preview_model import BoxItem, ChartItem, ImageItem
 from docx_preview_tables import TableLayers
-from office_preview import emu_to_pixels, inches_to_pixels, points_to_pixels
+from office_preview import data_uri, emu_to_pixels, inches_to_pixels, points_to_pixels
 
 
 NAMESPACES = {
@@ -111,7 +110,7 @@ def washed_out(blob: bytes) -> str:
     white = Image.new("RGBA", opaque.size, (255, 255, 255, 255))
     stream = io.BytesIO()
     Image.blend(opaque, white, WASHOUT_WHITE_SHARE).save(stream, format="PNG")
-    return f"data:image/png;base64,{base64.b64encode(stream.getvalue()).decode('ascii')}"
+    return data_uri("image/png", stream.getvalue())
 
 
 def vml_size(style: str) -> tuple[float, float]:
@@ -123,4 +122,4 @@ def image_data_uri(part, relationship_id: str | None) -> str | None:
     if part is None or not relationship_id or relationship_id not in part.rels:
         return None
     target = part.rels[relationship_id].target_part
-    return f"data:{target.content_type};base64,{base64.b64encode(target.blob).decode('ascii')}"
+    return data_uri(target.content_type, target.blob)
