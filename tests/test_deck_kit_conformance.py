@@ -12,7 +12,8 @@ sys.path.insert(0, str(OFFICE_PATH / "scripts"))
 from charts.kinds import DOCUMENT_CHART_KINDS, KIT_CHART_NAMES, KIT_STACKED_CHARTS  # noqa: E402
 from charts.numbers import GROUPED_NUMBER_PATTERN  # noqa: E402
 from deck.deck_definitions import KIT_LAYOUT_NAMES, KIT_LAYOUTS, kit_layout  # noqa: E402
-from deck.deck_kit import chart_types  # noqa: E402
+from deck.deck_kit import chart_types, kit_length, slide_size  # noqa: E402
+from deck.layout_thresholds import SMALLEST_TEXT_SHARE_OF_WIDTH  # noqa: E402
 from deck.kit_fixes import DEAD_ZONE_ADVICE, LIST_ADVICE, PART_LABELS  # noqa: E402
 from core.text_script import HANGUL_RANGES  # noqa: E402
 from deck.slide_render_checks import CENTERED_KIT_LAYOUTS  # noqa: E402
@@ -70,6 +71,12 @@ class KitConformanceTest(unittest.TestCase):
         part_names = set(re.findall(r'\["[^"]+", "(\w+)"\]', constant(KIT_SCRIPT, "capacityPartNames")))
         self.assertLessEqual(set(PART_LABELS), part_names)
         self.assertLessEqual(set(DEAD_ZONE_ADVICE) | set(LIST_ADVICE), set(KIT_LAYOUT_NAMES))
+
+    def test_no_kit_text_is_set_below_the_floor_the_tiny_text_check_holds(self):
+        literal = [int(size) for size in re.findall(r"font-size: (?:calc\()?(\d+)px", KIT_STYLE)]
+        tokens = [kit_length(name) for name in re.findall(r"font-size: (?:calc\()?var\(--([a-z-]+)\)", KIT_STYLE)]
+        self.assertGreaterEqual(min(literal + tokens), kit_length("size-floor"))
+        self.assertAlmostEqual(SMALLEST_TEXT_SHARE_OF_WIDTH * slide_size()[0], kit_length("size-floor"))
 
 
 if __name__ == "__main__":

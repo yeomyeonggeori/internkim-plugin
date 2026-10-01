@@ -111,7 +111,7 @@ UNCROWDED_KIT_FIXES = {
     TEXT_OVERLAP: overlap_fix,
     TEXT_COVERED: covered_fix,
     FOOTER_CROSSED: lambda finding: placement_fix(f"{element_label(finding)} reaches into the footer"),
-    TINY_TEXT: lambda finding: size_fix(),
+    TINY_TEXT: lambda finding: size_fix(finding["minimum"]),
 }
 
 
@@ -153,7 +153,7 @@ def describe_distorted_image(finding: dict[str, object]) -> str:
 
 
 def describe_small_text(finding: dict[str, object]) -> str:
-    return f"{element_label(finding)} is {finding['fontSize']}px, below the {finding['minimum']}px minimum ({SMALLEST_TEXT_SHARE_OF_WIDTH:.0%} of the slide width)"
+    return f"{element_label(finding)} is {finding['fontSize']}px, below the {finding['minimum']}px minimum ({SMALLEST_TEXT_SHARE_OF_WIDTH:.2%} of the slide width)"
 
 
 GEOMETRY_FINDINGS = (

@@ -42,7 +42,7 @@ TEXT_OVERLAP = review_check("TEXT_OVERLAP", "two pieces of text cover each other
 TEXT_COVERED = review_check("TEXT_COVERED", "a box painted over text hides part of it", "follow the suggestion, which names the cause: rows, items or text that do not fit, or a custom style that moves a part over another")
 FOOTER_CROSSED = review_check("FOOTER_CROSSED", "slide content reaches into the footer band", "shorten or split the content so it ends above the footer")
 TITLE_TOO_LONG = review_check("TITLE_TOO_LONG", f"a slide title runs past {TITLE_LINE_MAXIMUM} lines", "state the conclusion in one short sentence and move the detail into the body or the speaker notes")
-TINY_TEXT = review_check("TINY_TEXT", f"rendered text is smaller than {SMALLEST_TEXT_SHARE_OF_WIDTH:.0%} of the slide width ({SMALLEST_TEXT_SHARE_OF_WIDTH * slide_size()[0]:g}px on a {slide_size()[0]}px slide)", "shorten the slide so the kit does not shrink its type; the suggestion says how much fits at full size")
+TINY_TEXT = review_check("TINY_TEXT", f"rendered text is smaller than {SMALLEST_TEXT_SHARE_OF_WIDTH * slide_size()[0]:g}px on a {slide_size()[0]}px slide ({SMALLEST_TEXT_SHARE_OF_WIDTH:.2%} of its width)", "shorten the slide so the kit does not shrink its type; the suggestion says how much fits at full size")
 IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "put the photo in a cover or image slide, which crops it to its frame; in a .pptx, apply the set_transform the suggestion names")
 GEOMETRY_NOT_MEASURED = review_check("GEOMETRY_NOT_MEASURED", "no renderer measured element geometry, so overflow, overlap and stretched images were not checked", "install bun or node 18 and build again, or say the layout was not measured")
 UNRELIABLE_VISUAL_EVIDENCE = review_check("UNRELIABLE_VISUAL_EVIDENCE", "review images were not drawn from the deck's layout", "treat the previews as approximate and say so when delivering")
@@ -50,7 +50,7 @@ UNRELIABLE_VISUAL_EVIDENCE = review_check("UNRELIABLE_VISUAL_EVIDENCE", "review 
 TOPIC_TITLE = review_check("TOPIC_TITLE", "the title is a topic label, not a claim", "write the title as the slide's conclusion")
 LANGUAGE_MISMATCH = review_check("LANGUAGE_MISMATCH", "slide titles are Latin-only in a Korean deck", "write the titles in the request language")
 UNSOURCED_CURRENT_DATE = review_check("UNSOURCED_CURRENT_DATE", "a slide shows today's date that the source does not", "show only dates from the source material")
-VERTICAL_DEAD_ZONE = review_check("VERTICAL_DEAD_ZONE", "an empty band spans much of the slide height, between content or under the body", "give the body what its layout holds, such as a .takeaway band, more items or an .insight, or move the content to a layout that fills the frame")
+VERTICAL_DEAD_ZONE = review_check("VERTICAL_DEAD_ZONE", "an empty band spans much of the slide height, between content, under the body or inside a card", "give the body what its layout holds, such as a .takeaway band, more items or an .insight, or move the content to a layout that fills the frame")
 EMOJI_ICON = review_check("EMOJI_ICON", "a slide uses emoji glyphs", "write a .label word instead; the kit draws list markers and numbers itself")
 MISSING_SPEAKER_NOTES = review_check("MISSING_SPEAKER_NOTES", "a slide has no speaker notes", 'add an <aside class="notes"> script to every slide')
 
