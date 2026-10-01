@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from cell_values import typed_cell_value
 from documents_folder import resolve_document_path
+from excel_functions import written_value
 from formula_cache import save_workbook_with_values
 from office_operations import save_atomically
 from office_result import OfficeArgumentParser, Result, read_json_file, run_command
@@ -17,10 +18,8 @@ def main() -> Result:
     workbook_path = resolve_document_path(arguments.workbook_path, "xlsx")
     workbook = open_workbook(workbook_path)
     worksheet = resolve_worksheet(workbook, arguments.sheet)
-    for row_string in arguments.row:
-        worksheet.append(parse_row(row_string))
-    for row in json_rows:
-        worksheet.append(row)
+    for row in [parse_row(row_string) for row_string in arguments.row] + json_rows:
+        worksheet.append([written_value(value) for value in row])
     issues = save_atomically(lambda temporary_path: save_workbook_with_values(workbook, temporary_path), workbook_path)
     return Result(summary=f"appended rows to {workbook_path}", output_path=workbook_path, issues=tuple(issues))
 

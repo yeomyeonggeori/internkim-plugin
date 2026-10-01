@@ -6,6 +6,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import column_index_from_string, get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
 
+from excel_functions import written_value
 from formula_cache import save_workbook_with_values
 from formula_references import COLUMN_AXIS, ROW_AXIS, Shift
 from office_operations import Change, OperationSet
@@ -53,10 +54,12 @@ def validate_sheet_name(workbook, name: str, location: str, renaming: str | None
 
 
 def store_value(cell, value, value_type) -> None:
-    cell.value = value
     if value_type == "text" and isinstance(value, str) and value.startswith("="):
+        cell.value = value
         cell.data_type = "s"
         cell.quotePrefix = True
+        return
+    cell.value = written_value(value)
 
 
 def plan_set_cell(workbook, operation: dict, location: str) -> Change:

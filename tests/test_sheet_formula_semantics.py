@@ -35,6 +35,7 @@ class FormulaSemanticsTest(WorkbookFixture):
             actual = (None, None) if stored["value"] is None else ({"n": "n", None: "n", "str": "str", "b": "b", "e": "e"}[stored["type"]], stored["value"])
             if actual != (cell_type, text):
                 mismatches.append((formula, actual, (cell_type, text)))
+        self.maxDiff = None
         self.assertEqual(mismatches, [])
 
 

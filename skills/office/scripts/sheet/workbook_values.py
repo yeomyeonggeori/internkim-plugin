@@ -1,33 +1,21 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
 from dataclasses import dataclass, field
-import datetime
-import logging
 import math
 import os
 import tempfile
-import warnings
 
 from openpyxl import load_workbook
-from openpyxl.utils.datetime import to_excel
-from openpyxl.utils.formulas import FORMULAE
-from xlcalculator import Evaluator, ModelCompiler
-from xlcalculator.parser import FormulaParser
-from xlcalculator.xltypes import XLFormula
-from xlcalculator.xlfunctions import func_xltypes, xlerrors
+from openpyxl.utils import get_column_letter
+from openpyxl.utils.cell import range_boundaries
+from openpyxl.worksheet.formula import ArrayFormula
 
-from formula_references import (
-    formula_function_names,
-    formula_has_error_operand,
-    formula_references,
-    join_parts,
-    reference_parts,
-    referenced_names,
-    referenced_sheet_names,
-    rewrite_formula,
-)
-from sheet_functions import NAME_ERROR_FUNCTION, REFERENCE_ERROR_FUNCTION, SUPPORTED_FUNCTIONS, UNCOMPUTABLE_FUNCTION
+from dynamic_arrays import dynamic_array_cell_metadata, mark_array_formula
+from excel_functions import is_dynamic_array_formula
+from formula_dependencies import DependencyReader, cell_position, propagate
+from formula_references import is_bare_name, join_parts, quote_sheet_name, reference_parts, rewrite_formula
+from ironcalc_compatibility import is_divergent_criteria, needs_criteria_probe, prepare
+from workbook_package import main_tag, read_package, worksheet_parts, write_package
 
 
 NUMBER = "n"
@@ -35,17 +23,11 @@ TEXT = "str"
 BOOLEAN = "b"
 ERROR = "e"
 EXACT_INTEGER_LIMIT = 1e15
-EVALUATOR_FAILURES = (RuntimeError, ValueError, KeyError, IndexError, AttributeError, TypeError, AssertionError)
-
-ERROR_CODES = {
-    xlerrors.DivZeroExcelError: "#DIV/0!",
-    xlerrors.ValueExcelError: "#VALUE!",
-    xlerrors.RefExcelError: "#REF!",
-    xlerrors.NameExcelError: "#NAME?",
-    xlerrors.NumExcelError: "#NUM!",
-    xlerrors.NaExcelError: "#N/A",
-    xlerrors.NullExcelError: "#NULL!",
-}
+EXCEL_ERROR_CODES = frozenset((
+    "#NULL!", "#DIV/0!", "#VALUE!", "#REF!", "#NAME?", "#NUM!", "#N/A", "#GETTING_DATA", "#SPILL!", "#CALC!",
+    "#FIELD!", "#BLOCKED!", "#UNKNOWN!", "#CONNECT!", "#BUSY!",
+))
+PROBE_SHEET = "InternKimProbe"
 
 
 @dataclass(frozen=True)
@@ -59,9 +41,17 @@ class CachedValue:
 
 
 @dataclass
+class ArrayResult:
+    reference: str
+    is_dynamic: bool
+    cells: dict = field(default_factory=dict)
+
+
+@dataclass
 class Evaluation:
     values: dict = field(default_factory=dict)
     not_evaluated: list = field(default_factory=list)
+    arrays: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -69,174 +59,163 @@ class FormulaCell:
     sheet: str
     coordinate: str
     formula: str
+    array_reference: str | None
+
+    @property
+    def key(self) -> tuple[str, str]:
+        return self.sheet, self.coordinate
+
+
+@dataclass
+class EvaluationPlan:
+    preparations: dict = field(default_factory=dict)
+    roots: set = field(default_factory=set)
+    dynamic: set = field(default_factory=set)
+    arrays: dict = field(default_factory=dict)
 
 
 def formula_cells(workbook) -> list[FormulaCell]:
-    return [
-        FormulaCell(worksheet.title, cell.coordinate, cell.value)
-        for worksheet in workbook.worksheets
-        for row in worksheet.iter_rows()
-        for cell in row
-        if cell.data_type == "f" and isinstance(cell.value, str)
-    ]
+    cells = []
+    for worksheet in workbook.worksheets:
+        for row in worksheet.iter_rows():
+            for cell in row:
+                if cell.data_type != "f":
+                    continue
+                if isinstance(cell.value, ArrayFormula):
+                    cells.append(FormulaCell(worksheet.title, cell.coordinate, cell.value.text or "=", cell.value.ref))
+                elif isinstance(cell.value, str):
+                    cells.append(FormulaCell(worksheet.title, cell.coordinate, cell.value, None))
+    return cells
 
 
-def array_formula_coordinates(workbook) -> list[tuple[str, str]]:
-    return [
-        (worksheet.title, cell.coordinate)
-        for worksheet in workbook.worksheets
-        for row in worksheet.iter_rows()
-        for cell in row
-        if cell.data_type == "f" and not isinstance(cell.value, str)
-    ]
+def dynamic_cells_in_file(path: str) -> set:
+    package = read_package(path)
+    marked = set()
+    for part, sheet in worksheet_parts(package).items():
+        root = package.xml(part)
+        marked.update((sheet, cell.get("r")) for cell in root.iter(main_tag("c")) if cell.get("cm") and cell.find(main_tag("f")) is not None)
+    return marked
 
 
-def evaluate_workbook(path: str) -> Evaluation:
+def evaluate_workbook(path: str, writes_dynamic_arrays: bool = False) -> Evaluation:
     workbook = load_workbook(path)
     cells = formula_cells(workbook)
-    evaluation = Evaluation(not_evaluated=array_formula_coordinates(workbook))
-    scope = FormulaScope(
-        sheet_names={name.casefold() for name in workbook.sheetnames},
-        defined_names=defined_name_set(workbook),
-        allows_user_functions=os.path.splitext(path)[1].lower() == ".xlsm",
-    )
+    evaluation = Evaluation()
+    if not cells:
+        return evaluation
+    marked = set() if writes_dynamic_arrays else dynamic_cells_in_file(path)
+    plan = plan_evaluation(workbook, cells, marked, writes_dynamic_arrays, path.lower().endswith(".xlsm"))
     for cell in cells:
-        fixed = fixed_error(cell.formula, scope)
-        workbook[cell.sheet][cell.coordinate].value = evaluation_formula(cell, fixed)
-        if fixed:
-            evaluation.values[(cell.sheet, cell.coordinate)] = CachedValue(ERROR, fixed)
-    computed = compute_with_evaluator(workbook, [cell for cell in cells if (cell.sheet, cell.coordinate) not in evaluation.values])
-    for key, value in computed.items():
-        if value is None:
-            evaluation.not_evaluated.append(key)
-        else:
-            evaluation.values[key] = value
-    return evaluation
-
-
-def evaluation_formula(cell: FormulaCell, fixed: str | None) -> str:
-    if fixed:
-        return fixed_error_formula(fixed)
-    relative = relative_formula(cell.formula)
-    return relative if is_computable(cell, relative) else f"={UNCOMPUTABLE_FUNCTION}()"
-
-
-def is_computable(cell: FormulaCell, relative: str) -> bool:
-    if any(name.removeprefix("_XLFN.") not in SUPPORTED_FUNCTIONS for name in formula_function_names(cell.formula)):
-        return False
-    return evaluator_can_parse(relative, cell.sheet)
-
-
-def evaluator_can_parse(formula: str, sheet_name: str) -> bool:
-    try:
-        XLFormula(formula, sheet_name)
-        FormulaParser().parse(formula, {})
-    except EVALUATOR_FAILURES:
-        return False
-    return True
-
-
-@dataclass(frozen=True)
-class FormulaScope:
-    sheet_names: set
-    defined_names: set
-    allows_user_functions: bool
-
-
-def defined_name_set(workbook) -> set:
-    names = {name.casefold() for name in workbook.defined_names}
-    for worksheet in workbook.worksheets:
-        names.update(name.casefold() for name in worksheet.defined_names)
-    return names
-
-
-def fixed_error(formula: str, scope: FormulaScope) -> str | None:
-    if formula_has_error_operand(formula):
-        return "#REF!"
-    if any(name.casefold() not in scope.sheet_names for reference in formula_references(formula) for name in referenced_sheet_names(reference)):
-        return "#REF!"
-    if any(name.casefold() not in scope.defined_names for name in referenced_names(formula)):
-        return "#NAME?"
-    if not scope.allows_user_functions and any(is_unknown_function(name) for name in formula_function_names(formula)):
-        return "#NAME?"
-    return None
-
-
-def is_unknown_function(name: str) -> bool:
-    return name not in FORMULAE and not name.startswith("_XL")
-
-
-def fixed_error_formula(code: str) -> str:
-    function_name = REFERENCE_ERROR_FUNCTION if code == "#REF!" else NAME_ERROR_FUNCTION
-    return f"={function_name}()"
-
-
-def relative_formula(formula: str) -> str:
-    return rewrite_formula(formula, without_absolute_markers)
-
-
-def without_absolute_markers(reference: str) -> str:
-    parts = reference_parts(reference)
-    if parts is None:
-        return reference
-    return ":".join(join_parts(part.prefix, part.rest.replace("$", "")) for part in parts)
-
-
-def compute_with_evaluator(workbook, cells: list[FormulaCell]) -> dict:
+        fixed_error = plan.preparations[cell.key].fixed_error
+        if fixed_error:
+            evaluation.values[cell.key] = CachedValue(ERROR, fixed_error)
     with tempfile.TemporaryDirectory() as directory:
         evaluation_path = os.path.join(directory, "evaluation.xlsx")
         workbook.save(evaluation_path)
-        with quiet_evaluator_output():
-            evaluator = build_evaluator(evaluation_path)
-            return {(cell.sheet, cell.coordinate): evaluate_cell(evaluator, cell) if evaluator else None for cell in cells}
+        prepare_evaluation_package(evaluation_path, plan.dynamic)
+        computed = compute_with_ironcalc(evaluation_path, cells, plan, directory)
+    if computed is None:
+        evaluation.not_evaluated = sorted(cell.key for cell in cells if cell.key not in evaluation.values)
+        return evaluation
+    values, arrays, probe_roots = computed
+    roots = plan.roots | probe_roots | {key for key, value in values.items() if value is None}
+    unevaluated = propagate(roots, {cell.key: cell.formula for cell in cells}, DependencyReader(workbook))
+    for key, value in values.items():
+        if key not in unevaluated and key not in evaluation.values:
+            evaluation.values[key] = value
+    evaluation.arrays = {key: array for key, array in arrays.items() if key not in unevaluated}
+    evaluation.not_evaluated = sorted(key for key in unevaluated if key not in evaluation.values)
+    return evaluation
 
 
-def build_evaluator(path: str) -> Evaluator | None:
-    try:
-        model = ModelCompiler().read_and_parse_archive(path)
-    except EVALUATOR_FAILURES:
+def plan_evaluation(workbook, cells: list[FormulaCell], marked: set, writes_dynamic_arrays: bool, allows_user_functions: bool) -> EvaluationPlan:
+    plan = EvaluationPlan()
+    for cell in cells:
+        preparation = prepare(cell.formula, allows_user_functions)
+        plan.preparations[cell.key] = preparation
+        if not preparation.is_computable:
+            plan.roots.add(cell.key)
+        worksheet_cell = workbook[cell.sheet][cell.coordinate]
+        if is_dynamic_array_formula(cell.formula) and not preparation.fixed_error:
+            if not writes_dynamic_arrays and cell.key not in marked:
+                plan.roots.add(cell.key)
+            if cell.array_reference is not None:
+                clear_array_area(workbook[cell.sheet], cell.array_reference, cell.coordinate)
+            plan.dynamic.add(cell.key)
+            worksheet_cell.value = preparation.formula
+        elif cell.array_reference is not None:
+            plan.arrays[cell.key] = cell.array_reference
+            worksheet_cell.value = ArrayFormula(cell.array_reference, preparation.formula)
+        else:
+            worksheet_cell.value = preparation.formula
+    return plan
+
+
+def clear_array_area(worksheet, reference: str, anchor: str) -> None:
+    min_column, min_row, max_column, max_row = range_boundaries(reference)
+    for row in worksheet.iter_rows(min_row=min_row, max_row=max_row, min_col=min_column, max_col=max_column):
+        for spilled in row:
+            if spilled.coordinate != anchor:
+                spilled.value = None
+
+
+def prepare_evaluation_package(path: str, dynamic: set) -> None:
+    package = read_package(path)
+    cell_metadata = dynamic_array_cell_metadata(package) if dynamic else None
+    for part, sheet in worksheet_parts(package).items():
+        root = package.xml(part)
+        for cell in root.iter(main_tag("c")):
+            if len(cell) == 0:
+                # IronCalc 0.8.3 reads a typed cell without a value, such as openpyxl's styled <c t="n"/>, as 0 or ""
+                cell.attrib.pop("t", None)
+            elif (sheet, cell.get("r")) in dynamic and cell.find(main_tag("f")) is not None:
+                mark_array_formula(cell, cell.get("r"), cell_metadata)
+        package.set_xml(part, root)
+    write_package(package, path)
+
+
+def compute_with_ironcalc(path: str, cells: list[FormulaCell], plan: EvaluationPlan, directory: str):
+    model = loaded_model(path)
+    if model is None:
         return None
-    for model_cell in model.cells.values():
-        if model_cell.formula is None and model_cell.value == "":
-            model_cell.value = None
-    return Evaluator(model)
+    sheet_indexes = {properties["name"]: index for index, properties in enumerate(model.get_worksheets_properties())}
+    values = {
+        cell.key: computed_value(model, sheet_indexes[cell.sheet], *cell_position(cell.coordinate))
+        for cell in cells
+        if not plan.preparations[cell.key].fixed_error
+    }
+    arrays = read_arrays(model, sheet_indexes, plan, directory)
+    return values, arrays, criteria_roots(model, cells, plan)
 
 
-@contextmanager
-def quiet_evaluator_output():
-    logging.disable(logging.WARNING)
+def loaded_model(path: str):
+    import ironcalc
+
     try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            yield
-    finally:
-        logging.disable(logging.NOTSET)
-
-
-def evaluate_cell(evaluator: Evaluator, cell: FormulaCell) -> CachedValue | None:
-    try:
-        return cached_value(evaluator.evaluate(f"{cell.sheet}!{cell.coordinate}"))
-    except EVALUATOR_FAILURES:
+        model = ironcalc.load_from_xlsx(path, "en", "UTC")
+        model.evaluate()
+        return model
+    except ironcalc.WorkbookError:
+        return None
+    except BaseException as error:
+        if type(error).__name__ != "PanicException":
+            raise
         return None
 
 
-def cached_value(result) -> CachedValue | None:
-    if isinstance(result, xlerrors.ExcelError):
-        return CachedValue(ERROR, ERROR_CODES.get(type(result), "#VALUE!"))
-    if isinstance(result, func_xltypes.Blank):
-        return CachedValue(NUMBER, "0")
-    if isinstance(result, func_xltypes.DateTime):
-        return number_value(float(result))
-    if isinstance(result, func_xltypes.ExcelType):
-        return cached_value(result.value)
-    if isinstance(result, bool):
-        return CachedValue(BOOLEAN, "1" if result else "0")
-    if isinstance(result, (int, float)):
-        return number_value(float(result))
-    if isinstance(result, str):
-        return CachedValue(TEXT, result)
-    if isinstance(result, (datetime.datetime, datetime.date)):
-        return number_value(float(to_excel(result)))
+def computed_value(model, sheet_index: int, row: int, column: int) -> CachedValue | None:
+    from ironcalc import CellType
+
+    value = model.get_cell_value(sheet_index, row, column)
+    kind = model.get_cell_type(sheet_index, row, column)
+    if kind == CellType.ErrorValue:
+        return CachedValue(ERROR, value) if value in EXCEL_ERROR_CODES else None
+    if kind == CellType.Text:
+        return CachedValue(TEXT, value)
+    if kind == CellType.LogicalValue:
+        return CachedValue(BOOLEAN, "1" if value else "0")
+    if kind == CellType.Number:
+        return number_value(float(value or 0))
     return None
 
 
@@ -246,3 +225,71 @@ def number_value(number: float) -> CachedValue:
     if number.is_integer() and abs(number) < EXACT_INTEGER_LIMIT:
         return CachedValue(NUMBER, str(int(number)))
     return CachedValue(NUMBER, repr(number))
+
+
+def read_arrays(model, sheet_indexes: dict, plan: EvaluationPlan, directory: str) -> dict:
+    references = dict(plan.arrays)
+    if plan.dynamic:
+        references.update(spill_references(model, plan.dynamic, directory))
+    arrays = {}
+    for key, reference in references.items():
+        array = ArrayResult(reference, key in plan.dynamic)
+        min_column, min_row, max_column, max_row = range_boundaries(reference)
+        for row in range(min_row, max_row + 1):
+            for column in range(min_column, max_column + 1):
+                coordinate = f"{get_column_letter(column)}{row}"
+                if coordinate != key[1]:
+                    array.cells[coordinate] = computed_value(model, sheet_indexes[key[0]], row, column)
+        arrays[key] = array
+    return arrays
+
+
+def spill_references(model, dynamic: set, directory: str) -> dict:
+    saved_path = os.path.join(directory, "spilled.xlsx")
+    model.save_to_xlsx(saved_path)
+    package = read_package(saved_path)
+    references = {}
+    for part, sheet in worksheet_parts(package).items():
+        for cell in package.xml(part).iter(main_tag("c")):
+            formula = cell.find(main_tag("f"))
+            if (sheet, cell.get("r")) in dynamic and formula is not None:
+                references[(sheet, cell.get("r"))] = formula.get("ref") or cell.get("r")
+    return {key: references.get(key, key[1]) for key in dynamic}
+
+
+def criteria_roots(model, cells: list[FormulaCell], plan: EvaluationPlan) -> set:
+    probes = [
+        (cell.key, pair)
+        for cell in cells
+        for pair in plan.preparations[cell.key].criteria
+        if cell.key not in plan.roots and needs_criteria_probe(pair)
+    ]
+    if not probes:
+        return set()
+    model.add_sheet(PROBE_SHEET)
+    probe_index = len(model.get_worksheets_properties()) - 1
+    for position, (key, pair) in enumerate(probes):
+        criteria_range = qualified(pair.range_text, key[0])
+        model.set_user_input(probe_index, 2 * position + 1, 1, f'=ROWS({criteria_range})*COLUMNS({criteria_range})-COUNTIF({criteria_range},"*")')
+        model.set_user_input(probe_index, 2 * position + 2, 1, f"={qualified(pair.criteria_text, key[0])}")
+    model.evaluate()
+    roots = set()
+    for position, (key, _) in enumerate(probes):
+        cells_without_text = model.get_cell_value(probe_index, 2 * position + 1, 1)
+        criteria = model.get_cell_value(probe_index, 2 * position + 2, 1)
+        if not isinstance(cells_without_text, (int, float)) or cells_without_text > 0 and is_divergent_criteria(criteria):
+            roots.add(key)
+    return roots
+
+
+def qualified(expression: str, host_sheet: str) -> str:
+    return rewrite_formula("=" + expression, lambda reference: qualified_reference(reference, host_sheet))[1:]
+
+
+def qualified_reference(reference: str, host_sheet: str) -> str:
+    if is_bare_name(reference) or "[" in reference:
+        return reference
+    parts = reference_parts(reference)
+    if parts is None or parts[0].prefix is not None:
+        return reference
+    return join_parts(quote_sheet_name(host_sheet), reference)
