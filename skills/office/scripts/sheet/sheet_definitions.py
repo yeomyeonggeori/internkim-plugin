@@ -312,6 +312,20 @@ GUIDE_INPUTS = (
     ("sheet edit --rows <file>", ROWS),
     ("sheet apply <file.xlsx> <ops.json>", OPERATION_BATCH),
 )
+def behavior_lines() -> list[str]:
+    return [
+        "  formulas are stored exactly as written: write each reference for the row it lands in, counting a heading row",
+        "  each formula also stores the value it computes, so viewers that never recalculate show numbers; a formula that cannot be computed here keeps no value and is reported as FORMULA_NOT_EVALUATED",
+        "  the spec title is document metadata; nothing is added to the sheet unless you write it, such as a heading",
+        "  CSV and --row values become numbers when they are plain integers or decimals and dates when they are YYYY-MM-DD; 007, +82, 1,500 and anything over 15 digits stay text",
+        "  sheet apply writes the whole batch or nothing; --dry-run lists the changes and --output leaves the source alone",
+        "  inserting, deleting and renaming rewrite every formula, defined name, filter, merged range, table, chart series, sparkline and shape that points at the cells; a reference into a deleted row becomes #REF!",
+        "  edits keep macros, sparklines, slicers, shapes, Excel extensions and unknown parts; content no edit can carry stops the save with CONTENT_WOULD_BE_LOST",
+    ]
+
+
+GUIDE_SECTIONS = (("How the sheet commands behave", behavior_lines),)
+
 WRITE_ISSUE_KINDS = (FORMULA_NOT_EVALUATED,)
 EDIT_ISSUE_KINDS = (CONTENT_WOULD_BE_LOST, CONTENT_DROPPED)
 GUIDE_ISSUES = (("sheet create, sheet edit and sheet apply", WRITE_ISSUE_KINDS), ("sheet edit and sheet apply", EDIT_ISSUE_KINDS), ("sheet check", CHECK_ISSUE_KINDS), ("sheet validate", VALIDATE_ISSUE_KINDS), ("sheet apply", OPERATION_ISSUE_KINDS))
