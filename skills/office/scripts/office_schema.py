@@ -254,10 +254,47 @@ class Variant(Shape):
 def closest_name(written: object, candidates) -> str | None:
     if not isinstance(written, str):
         return None
-    matches = difflib.get_close_matches(written.casefold(), {candidate.casefold(): candidate for candidate in candidates}, n=1, cutoff=0.6)
-    if not matches:
+    agreeing = [candidate for candidate in candidates if words_agree(written, candidate)]
+    ranked = sorted(agreeing, key=lambda candidate: name_similarity(written, candidate), reverse=True)
+    if not ranked:
         return None
-    return next(candidate for candidate in candidates if candidate.casefold() == matches[0])
+    if len(ranked) > 1 and name_similarity(written, ranked[0]) == name_similarity(written, ranked[1]):
+        return None
+    return ranked[0]
+
+
+def words_agree(written: str, candidate: str) -> bool:
+    written_words, candidate_words = name_words(written), name_words(candidate)
+    if not written_words:
+        return False
+    if difflib.SequenceMatcher(None, "".join(written_words), "".join(candidate_words)).ratio() >= 0.85:
+        return True
+    if len(candidate_words) > len(written_words) + 1:
+        return False
+    return all(any(words_are_close(written_word, candidate_word) for candidate_word in candidate_words) for written_word in written_words)
+
+
+def name_words(name: str) -> list[str]:
+    separated = re.sub(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])", " ", name)
+    return [word.casefold() for word in re.split(r"[\s_.-]+", separated) if word]
+
+
+def words_are_close(first: str, second: str) -> bool:
+    return difflib.SequenceMatcher(None, first, second).ratio() >= 0.75 or edit_distance(first, second) <= 1
+
+
+def edit_distance(first: str, second: str) -> int:
+    previous = list(range(len(second) + 1))
+    for first_index, first_character in enumerate(first, start=1):
+        current = [first_index]
+        for second_index, second_character in enumerate(second, start=1):
+            current.append(min(previous[second_index] + 1, current[second_index - 1] + 1, previous[second_index - 1] + (first_character != second_character)))
+        previous = current
+    return previous[-1]
+
+
+def name_similarity(written: str, candidate: str) -> float:
+    return difflib.SequenceMatcher(None, written.casefold(), candidate.casefold()).ratio()
 
 
 def did_you_mean(written: object, candidates) -> str:
