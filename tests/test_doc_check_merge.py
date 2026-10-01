@@ -1,7 +1,7 @@
 import unittest
 import zipfile
 
-from doc_fixture import DocumentFixture, block_texts, run_office, run_office_python, write_json
+from doc_fixture import DocumentFixture, block_texts, read_details, run_office, run_office_python, write_json
 
 
 class CheckTest(DocumentFixture):
@@ -65,6 +65,35 @@ class MergeTest(DocumentFixture):
         envelope = run_office(["doc", "merge", "fixture.docx", "values.json", "merged.docx"], self.directory)
         self.assertEqual(envelope["status"], "ok")
         self.assertIn(("paragraph", "계약자: 이샘플, 첫 품목: 연간 유지보수"), block_texts(self.directory, "merged.docx"))
+
+    def test_a_table_row_naming_a_list_repeats_once_per_item_as_in_a_deck(self):
+        run_office_python("""
+            from docx import Document
+            document = Document("fixture.docx")
+            table = document.add_table(rows=2, cols=2)
+            table.cell(0, 0).text, table.cell(0, 1).text = "품목", "금액"
+            run = table.cell(1, 0).paragraphs[0]
+            run.add_run("{{ items.na"); run.add_run("me }}")
+            table.cell(1, 1).text = "{{ items.amount }}"
+            document.save("fixture.docx")
+        """, self.directory)
+        write_json(self.directory / "values.json", {"customer_name": "박예시", "items": [{"name": "노트북", "amount": 1200000}, {"name": "모니터", "amount": 300000}]})
+        envelope = run_office(["doc", "merge", "fixture.docx", "values.json", "merged.docx"], self.directory)
+        self.assertEqual(envelope["status"], "ok", envelope["issues"])
+        tables = [block for block in read_details(self.directory, "merged.docx")["blocks"] if block.get("cells")]
+        self.assertEqual(tables[-1]["cells"], [["품목", "금액"], ["노트북", "1200000"], ["모니터", "300000"]])
+
+    def test_a_list_outside_a_table_row_names_the_list(self):
+        run_office_python("""
+            from docx import Document
+            document = Document("fixture.docx")
+            document.add_paragraph("품목: {{ items.name }}")
+            document.save("fixture.docx")
+        """, self.directory)
+        write_json(self.directory / "values.json", {"customer_name": "박예시", "items": [{"name": "노트북"}]})
+        envelope = run_office(["doc", "merge", "fixture.docx", "values.json", "merged.docx"], self.directory)
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("LIST_NEEDS_A_ROW", "values.items")])
+        self.assertFalse((self.directory / "merged.docx").exists())
 
 
 if __name__ == "__main__":

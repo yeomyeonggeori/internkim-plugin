@@ -17,7 +17,7 @@ MERGE_VALUES = MapOf(AnyOf((CellValue(), ListOf(CellValue()), MapOf(CellValue(),
 UNRESOLVED_PLACEHOLDER = IssueKind("UNRESOLVED_PLACEHOLDER", ERROR, "the template uses a placeholder the values file does not give", "add the value to the values file")
 UNUSED_VALUE = IssueKind("UNUSED_VALUE", WARNING, "the values file gives a name the template never uses", "check the name's spelling against the template")
 TEMPLATE_SYNTAX_ERROR = IssueKind("TEMPLATE_SYNTAX_ERROR", ERROR, "the template's placeholder syntax does not parse", "fix the {{ }} or {% %} tag the message names")
-LIST_NEEDS_A_ROW = IssueKind("LIST_NEEDS_A_ROW", ERROR, "a placeholder names a list outside a repeatable row, so there is no single value to write", "name one item such as {{ items.0.name }}, or put the placeholder in a pptx table row so the row repeats per item")
+LIST_NEEDS_A_ROW = IssueKind("LIST_NEEDS_A_ROW", ERROR, "a placeholder names a list outside a repeatable row, so there is no single value to write", "name one item such as {{ items.0.name }}, or put the placeholder in a table row so the row repeats once per item")
 
 PACKAGE_MERGE_ISSUE_KINDS = (UNRESOLVED_PLACEHOLDER, UNUSED_VALUE, LIST_NEEDS_A_ROW)
 
@@ -90,6 +90,33 @@ def fill_text_nodes(nodes: list, report: MergeReport, location: str, scope: dict
         if value is not MISSING:
             replace_span(nodes, match.start(), match.end(), text_of(value))
     return True
+
+
+def repeated_list_name(text: str, values: dict) -> str | None:
+    for path in placeholder_paths(text):
+        name, _, rest = path.partition(".")
+        if isinstance(values.get(name), list) and rest and not rest.split(".", 1)[0].isdigit():
+            return name
+    return None
+
+
+def index_list_placeholders(nodes: list, list_name: str, index: int) -> None:
+    joined = "".join(node.text or "" for node in nodes)
+    for node in nodes:
+        node.text = node.text or ""
+    for match in reversed(list(PLACEHOLDER.finditer(joined))):
+        name, _, rest = match.group(1).partition(".")
+        if name == list_name and rest and not rest.split(".", 1)[0].isdigit():
+            replace_span(nodes, match.start(), match.end(), f"{{{{ {list_name}.{index}.{rest} }}}}")
+
+
+def list_outside_row_issues(text: str, values: dict, where: str) -> list[Issue]:
+    issues = []
+    for path in placeholder_paths(text):
+        name, _, rest = path.partition(".")
+        if isinstance(values.get(name), list) and not (rest and rest.split(".", 1)[0].isdigit()):
+            issues.append(LIST_NEEDS_A_ROW.issue(f"{where}: {{{{ {path} }}}} names the list {name!r} outside a table row, so there is no single value to write", f"values.{name}"))
+    return issues
 
 
 def whole_placeholder(text: str) -> str | None:

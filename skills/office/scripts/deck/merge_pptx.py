@@ -12,7 +12,7 @@ from office_operations import save_atomically
 from office_inputs import office_file
 from office_result import OfficeArgumentParser, Result, read_json_file, run_command
 from office_schema import require_valid
-from template_merge import MERGE_VALUES, MergeReport, fill_text_nodes, placeholder_paths, write_package
+from template_merge import MERGE_VALUES, MergeReport, fill_text_nodes, repeated_list_name, write_package
 
 
 DRAWING_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/main"
@@ -63,7 +63,7 @@ def paragraph_text_nodes(paragraph) -> list:
 
 
 def repeat_rows(row, location: str, report: MergeReport) -> bool:
-    list_name = repeated_list_name(row, report.values)
+    list_name = repeated_list_name("".join(node.text or "" for node in row.iter(drawing("t"))), report.values)
     if list_name is None:
         return False
     items = report.values[list_name]
@@ -76,15 +76,6 @@ def repeat_rows(row, location: str, report: MergeReport) -> bool:
     grow_table_frame(row, len(items) - 1)
     row.getparent().remove(row)
     return True
-
-
-def repeated_list_name(row, values: dict) -> str | None:
-    text = "".join(node.text or "" for node in row.iter(drawing("t")))
-    for path in placeholder_paths(text):
-        name, _, rest = path.partition(".")
-        if isinstance(values.get(name), list) and rest and not rest.split(".", 1)[0].isdigit():
-            return name
-    return None
 
 
 def grow_table_frame(row, added_rows: int) -> None:
