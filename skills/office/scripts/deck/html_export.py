@@ -9,23 +9,25 @@ import sys
 import time
 
 from browser_render import clear_stale_render_evidence, try_html_render, write_render_source
+from check_deck import CheckRequest, add_check_arguments, check_deck, check_request
 from deck_definitions import BROWSER_RENDER_UNAVAILABLE, FONT_NOT_EMBEDDED, PPTX_WITHOUT_DESIGN, REVIEW_FAILED, REVIEW_ISSUE_KINDS, TEXT_KEPT_AS_PICTURE, UNKNOWN_FORMAT
 from deck_kit import inject_deck_kit
 from design_tokens import read_design_tokens
 from editable_pptx import EditablePptx, read_text_layers, text_layers_path, write_editable_pptx
 from native_pptx import write_native_text_pptx
 from native_preview import write_native_review_images
-from office_result import INPUT_NOT_FOUND, INVALID_ARGUMENTS, Issue, OfficeFailure, Result, issue_from_json, run_command
+from office_result import INPUT_NOT_FOUND, INVALID_ARGUMENTS, Issue, OfficeArgumentParser, OfficeFailure, Result, issue_from_json, run_command
 from resource_inlining import inject_vendored_paperlogy_fallback, inline_local_fonts, inline_local_images
 from slide_images import rendered_slide_image_paths
 from slide_model import SlideModel, create_slide_models, extract_notes
 from slide_source import read_optional_text
 from slide_viewer import inject_screen_slide_viewer
-from source_preflight import preflight_issues, read_checked_source
+from source_preflight import read_checked_source
 
 
 ALLOWED_FORMATS = {"html", "pdf", "pptx", "notes", "review"}
-USAGE = "usage: html_export.py <source.html> <deck-name> <build-dir> <formats> <render-review-script> <html-render-script>"
+USAGE = "usage: html_export.py <source.html> <deck-name> <build-dir> <formats> <render-review-script> <html-render-script> [--slide-count N] [--required-text TEXT ...]"
+POSITIONAL_ARGUMENT_COUNT = 7
 
 
 @dataclass(frozen=True)
@@ -36,6 +38,7 @@ class ExportRequest:
     formats: set[str]
     render_review_script: pathlib.Path
     html_render_script: pathlib.Path
+    check: CheckRequest
 
     @property
     def review_path(self) -> pathlib.Path:
@@ -53,11 +56,13 @@ class DerivedOutputs:
 
 
 def main() -> Result:
-    if len(sys.argv) != 7:
+    if len(sys.argv) < POSITIONAL_ARGUMENT_COUNT:
         raise OfficeFailure(INVALID_ARGUMENTS.issue(USAGE))
     request = parse_export_request(sys.argv)
     source_text, slide_sources = read_checked_source(request.source_path)
-    issues = preflight_issues(request.source_path, source_text, len(slide_sources))
+    check = check_deck(request.check)
+    if check.status == "error":
+        return check
     request.build_path.mkdir(parents=True, exist_ok=True)
     html_output_path = request.output_path(".html")
     html_output_path.write_text(deck_html_text(request.source_path), encoding="utf-8")
@@ -65,20 +70,28 @@ def main() -> Result:
     return Result(
         summary=build_summary(request, derived),
         output_path=str(html_output_path),
-        issues=tuple(issues + derived.issues),
+        issues=tuple(list(check.issues) + derived.issues),
         details=build_details(request, derived),
     )
 
 
 def parse_export_request(arguments: list[str]) -> ExportRequest:
+    source_path = pathlib.Path(arguments[1]).resolve()
     return ExportRequest(
-        source_path=pathlib.Path(arguments[1]).resolve(),
+        source_path=source_path,
         deck_name=arguments[2],
         build_path=pathlib.Path(arguments[3]).resolve(),
         formats=enabled_formats(arguments[4]),
         render_review_script=pathlib.Path(arguments[5]).resolve(),
         html_render_script=pathlib.Path(arguments[6]).resolve(),
+        check=check_options(source_path, arguments[POSITIONAL_ARGUMENT_COUNT:]),
     )
+
+
+def check_options(source_path: pathlib.Path, arguments: list[str]) -> CheckRequest:
+    parser = OfficeArgumentParser(prog="html_export.py")
+    add_check_arguments(parser)
+    return check_request(source_path, parser.parse_args(arguments))
 
 
 def write_derived_outputs(request: ExportRequest, html_output_path: pathlib.Path, slide_sources: list[str]) -> DerivedOutputs:

@@ -109,5 +109,5 @@ chmod 700 "$XDG_RUNTIME_DIR" 2>/dev/null || true
 rm -f "${BUILD_PATH}/${NAME}.html" "${BUILD_PATH}/${NAME}.pptx" "${BUILD_PATH}/${NAME}.pdf" "${BUILD_PATH}/${NAME}-notes.txt"
 
 echo "[stage] build_formats_start $(date +%s)" >&2
-PYTHONPATH="${SCRIPT_DIRECTORY}/..${PYTHONPATH:+:$PYTHONPATH}" python3 "$HTML_EXPORT_SCRIPT" "$SOURCE_PATH" "$NAME" "$BUILD_PATH" "$FORMATS" "$RENDER_REVIEW_SCRIPT" "$HTML_RENDER_SCRIPT"
+PYTHONPATH="${SCRIPT_DIRECTORY}/..${PYTHONPATH:+:$PYTHONPATH}" python3 "$HTML_EXPORT_SCRIPT" "$SOURCE_PATH" "$NAME" "$BUILD_PATH" "$FORMATS" "$RENDER_REVIEW_SCRIPT" "$HTML_RENDER_SCRIPT" "$@"
 echo "[stage] build_formats_done $(date +%s)" >&2

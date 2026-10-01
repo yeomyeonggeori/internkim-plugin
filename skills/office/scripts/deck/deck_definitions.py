@@ -8,6 +8,7 @@ from template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
 from office_result import ERROR, WARNING, Issue, IssueKind
 from office_schema import ListOf
 from pptx_edit_definitions import OPERATIONS
+from text_checks import PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
 
 
 DECK_LOCATION = "deck"
@@ -89,30 +90,50 @@ DESIGN_CHECKS = (
 DESIGN_WARNING_WEIGHTS = {check.kind.code: check.weight for check in DESIGN_CHECKS}
 REVIEW_ISSUE_KINDS = tuple(check.kind for check in SLIDE_RENDER_CHECKS + DESIGN_CHECKS)
 
-SOURCE_NOT_HTML = IssueKind("SOURCE_NOT_HTML", ERROR, "the deck source is not an .html file", "write slides.html, or set SRC to an .html file")
+SOURCE_NOT_HTML = IssueKind("SOURCE_NOT_HTML", ERROR, "the deck source is not an .html file", "write slides.html, or pass --source with an .html file")
 NO_SLIDE_SECTIONS = IssueKind("NO_SLIDE_SECTIONS", ERROR, "the HTML has no <section> slides", "put each slide in its own <section>")
 UNKNOWN_FORMAT = IssueKind("UNKNOWN_FORMAT", ERROR, "FORMATS names a format the build cannot write", "use html, pdf, pptx, notes, review, or all")
 REVIEW_FAILED = IssueKind("REVIEW_FAILED", ERROR, "the slide review stopped before writing its report", "read the review's error output above the result")
-DESIGN_DOCUMENT_MISSING = IssueKind("DESIGN_DOCUMENT_MISSING", WARNING, "DESIGN.md is absent beside the source", "write DESIGN.md before building")
-DESIGN_SOURCE_MARKER_MISSING = IssueKind("DESIGN_SOURCE_MARKER_MISSING", WARNING, "the source does not name design-source: DESIGN.md", "add the design-source: DESIGN.md comment to the source")
-DECK_BRIEF_MISSING = IssueKind("DECK_BRIEF_MISSING", WARNING, "deck-brief.md is absent, so the slide count is not cross-checked", "write deck-brief.md with the requested slide count")
-REQUIRED_TEXT_LEDGER_MISSING = IssueKind("REQUIRED_TEXT_LEDGER_MISSING", WARNING, "required-visible-text.txt is absent, so source facts are not checked", "list the source facts in required-visible-text.txt")
-SLIDE_COUNT_MISMATCH = IssueKind("SLIDE_COUNT_MISMATCH", WARNING, "the slide count differs from deck-brief.md", "fix slides.html if the user asked for an exact count; otherwise update deck-brief.md")
 BROWSER_RENDER_UNAVAILABLE = IssueKind("BROWSER_RENDER_UNAVAILABLE", WARNING, "no browser rendered the deck", "say that the PDF and screenshots are missing, or deliver from a host with a browser")
 PPTX_WITHOUT_DESIGN = IssueKind("PPTX_WITHOUT_DESIGN", WARNING, "no browser rendered the deck, so the PPTX re-lays the slide text into stock layouts", "say the PPTX does not carry the deck's design, or build where a browser renders it")
 FONT_NOT_EMBEDDED = IssueKind("FONT_NOT_EMBEDDED", WARNING, "the PPTX names a font it could not embed, so the recipient sees a substitute unless that font is installed", "use Paperlogy, or tell the recipient which font to install")
 TEXT_KEPT_AS_PICTURE = IssueKind("TEXT_KEPT_AS_PICTURE", WARNING, "some slide text is drawn into the slide picture, so the recipient cannot edit it", "name that text when delivering; rotated, skewed, filtered, gradient-clipped and SVG text stays a picture")
 
-BUILD_ISSUE_KINDS = (
+LAYOUT_UNKNOWN = IssueKind("LAYOUT_UNKNOWN", ERROR, "a slide's data-layout is not one of the kit's layouts", "use a layout office guide deck lists")
+LAYOUT_MISSING = IssueKind("LAYOUT_MISSING", ERROR, "a slide in a kit deck has no data-layout", "give every <section> a data-layout")
+THEME_UNKNOWN = IssueKind("THEME_UNKNOWN", ERROR, "the body's data-theme is not one of the kit's themes", "use a theme office guide deck lists")
+LAYOUT_PART_MISSING = IssueKind("LAYOUT_PART_MISSING", ERROR, "a slide lacks a part its layout needs, as a direct child of the <section>", "add the part the message names; office guide deck lists each layout's parts")
+LAYOUT_PART_EXCESS = IssueKind("LAYOUT_PART_EXCESS", ERROR, "a slide holds more of one part than its layout can lay out", "split the slide in two, or move the detail to a table slide")
+LAYOUT_REPEATED = IssueKind("LAYOUT_REPEATED", ERROR, "three slides in a row use the same layout", "change the middle slide to another layout that fits its content")
+TOO_FEW_LAYOUTS = IssueKind("TOO_FEW_LAYOUTS", ERROR, "a deck of six or more slides uses fewer than three layouts", "pick each slide's layout from its content: one number, metrics, comparison, sequence, table or chart")
+SLIDE_COUNT_MISMATCH = IssueKind("SLIDE_COUNT_MISMATCH", ERROR, "the slide count differs from --slide-count", "add or remove slides until the count matches the request")
+SLIDE_WITHOUT_CONTENT = IssueKind("SLIDE_WITHOUT_CONTENT", ERROR, "a slide has no visible text, image or chart", "give the slide its content or delete it")
+CHART_DATA_INVALID = IssueKind("CHART_DATA_INVALID", ERROR, "a chart's data attributes do not parse or do not line up", "give data-labels and data-values (or data-series) the same number of plain numbers")
+IMAGE_NOT_FOUND = IssueKind("IMAGE_NOT_FOUND", ERROR, "an image is remote or its file does not exist, so the slide would show an empty box", "download it with office deck image and point src at the local file, or remove the image")
+OFF_PALETTE_COLOR = IssueKind("OFF_PALETTE_COLOR", WARNING, "the source uses colors outside the theme or DESIGN.md palette", "use the theme tokens such as var(--accent) and var(--ink), or name the brand color in DESIGN.md colors")
+
+SOURCE_CHECK_ISSUE_KINDS = (
     SOURCE_NOT_HTML,
     NO_SLIDE_SECTIONS,
+    LAYOUT_UNKNOWN,
+    LAYOUT_MISSING,
+    THEME_UNKNOWN,
+    LAYOUT_PART_MISSING,
+    LAYOUT_PART_EXCESS,
+    LAYOUT_REPEATED,
+    TOO_FEW_LAYOUTS,
+    SLIDE_COUNT_MISMATCH,
+    SLIDE_WITHOUT_CONTENT,
+    CHART_DATA_INVALID,
+    IMAGE_NOT_FOUND,
+    PLACEHOLDER_LEFT,
+    REQUIRED_TEXT_MISSING,
+    OFF_PALETTE_COLOR,
+)
+
+BUILD_ISSUE_KINDS = (
     UNKNOWN_FORMAT,
     REVIEW_FAILED,
-    DESIGN_DOCUMENT_MISSING,
-    DESIGN_SOURCE_MARKER_MISSING,
-    DECK_BRIEF_MISSING,
-    REQUIRED_TEXT_LEDGER_MISSING,
-    SLIDE_COUNT_MISMATCH,
     BROWSER_RENDER_UNAVAILABLE,
     PPTX_WITHOUT_DESIGN,
     FONT_NOT_EMBEDDED,
@@ -148,7 +169,7 @@ PICTURE_UNREADABLE = IssueKind("PICTURE_UNREADABLE", ERROR, "an image file given
 PPTX_NOT_RENDERED = IssueKind("PPTX_NOT_RENDERED", WARNING, "no image of the slides was drawn, so nobody looked at them", "say the slides were checked by measurement only and not seen")
 
 APPLY_ISSUE_KINDS = (PICTURE_UNREADABLE,)
-CHECK_ISSUE_KINDS = (PPTX_NOT_RENDERED,)
+PPTX_CHECK_ISSUE_KINDS = (PPTX_NOT_RENDERED,)
 
 @dataclass(frozen=True)
 class LayoutPart:
@@ -257,7 +278,7 @@ GUIDE_ISSUES = (
     ("deck build", BUILD_ISSUE_KINDS + REVIEW_ISSUE_KINDS),
     ("deck validate", VALIDATE_ISSUE_KINDS),
     ("deck apply", OPERATION_ISSUE_KINDS + APPLY_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS),
-    ("deck check", LAYOUT_AUDIT_ISSUE_KINDS + CHECK_ISSUE_KINDS),
+    ("deck check", SOURCE_CHECK_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS + PPTX_CHECK_ISSUE_KINDS),
     ("deck merge", PACKAGE_MERGE_ISSUE_KINDS),
     ("deck restore", (NO_SLIDE_SECTIONS,)),
     ("deck accept", ACCEPT_ISSUE_KINDS),

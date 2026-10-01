@@ -6,6 +6,7 @@ from office_result import ERROR, Issue, IssueKind
 
 
 PLACEHOLDER_PATTERN = re.compile(r"\{\{.*?\}\}|\{%.*?%\}")
+DRAFT_PLACEHOLDER_PATTERN = re.compile(PLACEHOLDER_PATTERN.pattern + r"|(?i:lorem ipsum)|\b(?:TODO|TBD|FIXME)\b|(?<![A-Za-z])X{2,}(?![A-Za-z])|○○|(?i:\[(?:insert|placeholder)[^\]]*\])")
 KOREAN_FONT_NAME_FRAGMENTS = (
     "noto",
     "nanum",
