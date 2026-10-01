@@ -3,11 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from docx import Document
 from docx.oxml.ns import qn
 from docx.text.paragraph import Paragraph as DocxParagraph
 
 from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, heading_level
+from docx_package import open_document
 from docx_text import live_runs, run_text, visible_text
 from docx_charts import RELATIONSHIP_NAMESPACE, chart_references, read_specification
 from markdown_charts import Chart
@@ -50,7 +50,7 @@ def cell_alignment(cell) -> str:
 
 
 def read_docx_blocks(path: Path, media_directory_name: str) -> DocumentReading:
-    document = Document(str(path))
+    document = open_document(str(path))
     reading = DocumentReading()
     numbering = numbering_formats(document)
     for element in document.element.body.iterchildren():

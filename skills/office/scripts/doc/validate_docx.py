@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import re
 
-from docx import Document
 from docx.oxml.ns import qn
 
 from doc_definitions import (
@@ -20,6 +19,7 @@ from doc_definitions import (
     TABLE_TOO_WIDE,
 )
 from docx_language import east_asia_font_issues
+from docx_package import open_document
 from docx_text import paragraph_text, visible_text
 from office_inputs import office_file
 from office_result import Issue, OfficeArgumentParser, Result, run_command
@@ -32,7 +32,7 @@ MARGIN_SIDES = ["topMarginInches", "rightMarginInches", "bottomMarginInches", "l
 
 def main() -> Result:
     arguments = parse_arguments()
-    document = Document(arguments.document_path)
+    document = open_document(arguments.document_path)
     paragraphs = [text for text in (paragraph_text(paragraph._p) for paragraph in document.paragraphs) if text.strip()]
     table_texts = [text for text in (cell_text(cell) for table in document.tables for row in table.rows for cell in row.cells) if text.strip()]
     document_text = "\n".join(paragraphs + table_texts)

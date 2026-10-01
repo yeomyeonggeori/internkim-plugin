@@ -120,5 +120,51 @@ class DocumentPreviewTest(unittest.TestCase):
             self.assertLessEqual(used, available + 0.5)
 
 
+GRIDLESS_TABLE_AND_BLANK_PAGE = """
+from docx import Document
+from docx.enum.text import WD_BREAK
+from docx.oxml.ns import qn
+
+document = Document()
+document.add_paragraph("표 위 문장")
+table = document.add_table(rows=3, cols=4)
+table.style = "Table Grid"
+for row, values in zip(table.rows, [["구분", "상반기", "", "하반기"], ["매출", "100", "200", "300"], ["비용", "50", "60", "70"]]):
+    for cell, value in zip(row.cells, values):
+        cell.text = value
+table.cell(0, 1).merge(table.cell(0, 2))
+grid = table._tbl.find(qn("w:tblGrid"))
+grid.getparent().remove(grid)
+breaks = document.add_paragraph()
+breaks.add_run().add_break(WD_BREAK.PAGE)
+breaks.add_run().add_break(WD_BREAK.PAGE)
+document.add_paragraph("마지막 쪽 문장")
+document.save("빈쪽.docx")
+"""
+
+
+class PreviewDefectTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.temporary_directory = tempfile.TemporaryDirectory()
+        cls.directory = Path(cls.temporary_directory.name)
+        run_office_python(GRIDLESS_TABLE_AND_BLANK_PAGE, cls.directory)
+        cls.envelope = run_office(["doc", "render", "빈쪽.docx"], cls.directory)
+        cls.html = (cls.directory / "빈쪽-preview" / "preview.html").read_text(encoding="utf-8")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.temporary_directory.cleanup()
+
+    def test_a_table_without_a_grid_takes_its_columns_from_every_row(self):
+        columns = re.search(r"grid-template-columns:([^;]*);", self.html).group(1).split()
+        self.assertEqual(len(columns), 4)
+        self.assertEqual(len(set(columns)), 1, columns)
+
+    def test_a_page_with_nothing_in_its_body_is_reported_by_number(self):
+        blank = [issue for issue in self.envelope["issues"] if issue["code"] == "BLANK_PAGE"]
+        self.assertEqual([issue["location"] for issue in blank], ["page 2"])
+
+
 if __name__ == "__main__":
     unittest.main()

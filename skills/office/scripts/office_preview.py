@@ -18,9 +18,9 @@ PAGE_SELECTOR = "section[data-page]"
 PREVIEW_APPROXIMATED = IssueKind("PREVIEW_APPROXIMATED", WARNING, "the preview leaves out or simplifies something the file has; the message names what", "check those parts in the file itself, or say they were not seen")
 PAGES_NOT_RENDERED = IssueKind("PAGES_NOT_RENDERED", WARNING, "only the preview HTML was written; the renderer could not draw page images from it", "install bun or node 18 and run again, or read preview.html for structure and say the pages were not seen")
 
-BLANK_PAGE = IssueKind("BLANK_PAGE", WARNING, "a printed page shows nothing but its header and footer; the message names each such page", "remove what pushes content onto it, or limit what prints to the content")
+BLANK_PAGE = IssueKind("BLANK_PAGE", WARNING, "a page shows nothing in its body; the message names each such page", "delete the page break, empty paragraphs or far-off cell that adds the page, then render again")
 
-PREVIEW_ISSUE_KINDS = (PREVIEW_APPROXIMATED, PAGES_NOT_RENDERED)
+PREVIEW_ISSUE_KINDS = (PREVIEW_APPROXIMATED, PAGES_NOT_RENDERED, BLANK_PAGE)
 
 
 @dataclass(frozen=True)
@@ -120,10 +120,10 @@ def approximation_issues(preview: Preview, location: str) -> list:
     return [PREVIEW_APPROXIMATED.issue(f"the preview simplifies {listed}", location)]
 
 
-def blank_page_issues(preview: Preview, location: str, suggestion: str | None = None) -> list:
+def blank_page_issues(preview: Preview, suggestion: str | None = None) -> list:
     if not preview.blank_pages:
         return []
-    return [BLANK_PAGE.issue(f"{len(preview.blank_pages)} of {len(preview.pages)} printed pages show nothing: {', '.join(preview.blank_pages)}", location, suggestion)]
+    return [BLANK_PAGE.issue(f"{len(preview.blank_pages)} of {len(preview.pages)} printed pages show nothing: {', '.join(preview.blank_pages)}", ', '.join(preview.blank_pages), suggestion)]
 
 
 def drawn_page_details(rendered: RenderedPages) -> dict:

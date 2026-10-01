@@ -4,6 +4,7 @@ from __future__ import annotations
 from pypdf import PdfReader
 
 from office_inputs import add_password_argument, office_file, require_unlocked_pdf
+from pdf_definitions import PAGE_WITHOUT_TEXT, page_reading_suggestion
 from office_result import OfficeArgumentParser, Result, run_command
 
 
@@ -26,7 +27,14 @@ def main() -> Result:
         "isEncrypted": bool(reader.is_encrypted),
         "pages": pages,
     }
-    return Result(summary=f"read {len(pages)} of {page_count} pages from {arguments.pdf_path}", output_path=arguments.pdf_path, details=details)
+    return Result(summary=f"read {len(pages)} of {page_count} pages from {arguments.pdf_path}", output_path=arguments.pdf_path, issues=tuple(scanned_page_issues(arguments.pdf_path, pages)), details=details)
+
+
+def scanned_page_issues(pdf_path: str, pages: list[dict]) -> list:
+    scanned = ",".join(str(page["page"]) for page in pages if not page["hasText"])
+    if not scanned:
+        return []
+    return [PAGE_WITHOUT_TEXT.issue(f"pages {scanned} have no text layer", f"pages {scanned}", suggestion=page_reading_suggestion(pdf_path, scanned))]
 
 
 def describe_page(page, number: int) -> dict:

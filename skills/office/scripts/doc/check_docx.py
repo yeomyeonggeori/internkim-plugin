@@ -3,13 +3,14 @@ from __future__ import annotations
 
 import re
 
-from docx import Document
 from docx.oxml.ns import qn
 from docx.text.paragraph import Paragraph
 
 from doc_definitions import BROKEN_INTERNAL_REFERENCE, EAST_ASIA_FONT_MISSING, EAST_ASIA_LANGUAGE_NOT_KOREAN, STALE_TABLE_OF_CONTENTS, TRACKED_CHANGES_PRESENT
+from docx_content_checks import chart_empty_issues, field_result_issues, heading_issues, missing_image_issues, unresolved_comment_issues
 from docx_defaults import KOREAN_LANGUAGE
 from docx_language import east_asia_font_issues, effective_east_asia_language
+from docx_package import open_document
 from docx_reference_operations import bookmark_names
 from docx_revisions import collect_revisions, describe_pending
 from docx_styles import run_styles
@@ -27,7 +28,7 @@ CONTENTS_HEADING_DEPTH = 3
 
 def main() -> Result:
     arguments = parse_arguments()
-    document = Document(arguments.document_path)
+    document = open_document(arguments.document_path)
     elements = body_block_elements(document)
     issues = (
         placeholder_issues(elements)
@@ -37,6 +38,11 @@ def main() -> Result:
         + east_asia_font_issues(document)
         + east_asia_language_issues(document)
         + tracked_change_issues(document, elements)
+        + missing_image_issues(document, elements)
+        + chart_empty_issues(document, elements)
+        + heading_issues(document, elements)
+        + unresolved_comment_issues(document, elements)
+        + field_result_issues(elements, fields_update_on_open(document))
     )
     return Result(summary=f"checked {arguments.document_path}: {len(issues)} issues", output_path=arguments.document_path, issues=tuple(issues))
 
@@ -159,7 +165,7 @@ def tracked_change_issues(document, elements: list) -> list[Issue]:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Check a .docx for placeholders left, broken internal references, a stale table of contents, missing East Asian fonts, a wrong East Asian language, and tracked changes. Issues suggest a doc apply operation where one fixes them.")
+    parser = OfficeArgumentParser(description="Check a .docx for placeholders left, broken internal references, a stale table of contents, missing East Asian fonts, a wrong East Asian language, tracked changes, missing pictures, empty charts, empty or skipped headings, open comments and fields without a result. Issues suggest a doc apply operation where one fixes them.")
     parser.add_argument("document_path", type=office_file("docx"))
     return parser.parse_args()
 

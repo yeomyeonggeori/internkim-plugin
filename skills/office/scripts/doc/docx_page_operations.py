@@ -11,6 +11,7 @@ from docx.oxml.ns import qn
 from docx.shared import Emu, Inches, Mm
 from docx.text.paragraph import Paragraph
 
+from docx_drawing_operations import align_drawing, set_wrap
 from docx_editing import DocxEditing, placement, resolve_block
 from docx_format_operations import ALIGNMENTS
 from docx_text import PARAGRAPH_TAG
@@ -254,9 +255,12 @@ def plan_insert_image(editing: DocxEditing, operation: dict, location: str) -> C
         fit_to_text_width(editing, picture, width, height)
         if operation.get("description"):
             picture._inline.docPr.set("descr", operation["description"])
-        paragraph = picture._inline.getparent().getparent().getparent()
+        drawing = picture._inline.getparent()
+        paragraph = drawing.getparent().getparent()
+        if operation.get("wrap"):
+            set_wrap(editing.document, drawing, operation["wrap"])
         if operation.get("align"):
-            Paragraph(paragraph, None).alignment = ALIGNMENTS[operation["align"]]
+            align_drawing(Paragraph(paragraph, None), drawing, operation["align"])
         place(paragraph)
         if editing.tracking is not None:
             mark_block_inserted(paragraph, editing.tracking)

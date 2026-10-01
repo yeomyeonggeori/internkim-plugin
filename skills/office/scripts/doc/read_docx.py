@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml.ns import qn
 
 from docx_blocks import block_kind, body_block_elements, element_text, has_page_break, heading_level, table_cell_texts, wrap_block
 from docx_charts import chart_references, describe as describe_chart, document_charts
 from docx_comments import describe_comment_threads
+from docx_package import open_document
 from docx_reference_operations import bookmark_names, describe_notes
 from docx_revisions import collect_revisions
 from docx_text import visible_text
@@ -15,6 +15,7 @@ from office_inputs import office_file
 from office_result import OfficeArgumentParser, Result, run_command
 
 
+MATH_TAG = "{http://schemas.openxmlformats.org/officeDocument/2006/math}oMath"
 DEFAULT_BLOCK_LIMIT = 300
 TABLE_ROW_LIMIT = 60
 TEXT_CHARACTER_LIMIT = 4000
@@ -22,7 +23,7 @@ TEXT_CHARACTER_LIMIT = 4000
 
 def main() -> Result:
     arguments = parse_arguments()
-    document = Document(arguments.document_path)
+    document = open_document(arguments.document_path)
     elements = body_block_elements(document)
     shown = elements[arguments.start:arguments.start + arguments.limit]
     blocks = [describe_block(element, document, arguments.start + offset) for offset, element in enumerate(shown)]
@@ -71,6 +72,8 @@ def describe_block(element, document, index: int) -> dict:
         description["pageBreak"] = True
     if next(element.iter(qn("w:drawing")), None) is not None:
         description["chart" if chart_references(element) else "picture"] = True
+    if next(element.iter(MATH_TAG), None) is not None:
+        description["equation"] = True
     return description
 
 

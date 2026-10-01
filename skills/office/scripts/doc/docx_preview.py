@@ -3,14 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from docx import Document
-
 from chart_svg import DEFAULT_PALETTE
 from docx.oxml.ns import qn
 from lxml import etree
 
+from docx_package import open_document
 from docx_preview_css import DEFAULT_FONT_SIZE_POINTS, HIGHLIGHT_COLORS, hex_color, text_decoration
 from docx_preview_graphics import GRAPHIC_TAGS, graphic_items
+from docx_preview_math import MATH_TAGS, linear_math
 from docx_preview_model import (
     FieldItem, LineBreakItem, NoteReferenceItem, PageBreakBlock, PageBreakItem, ParagraphBlock, SectionModel, TabItem, TextItem, TextStyle,
 )
@@ -57,7 +57,7 @@ class InlineState:
 
 class DocxModelBuilder:
     def __init__(self, path: Path):
-        self.document = Document(str(path))
+        self.document = open_document(str(path))
         theme = self.theme_root()
         self.styles = StyleSheet(self.document.styles.element, theme)
         self.chart_palette = theme_accents(theme)
@@ -206,6 +206,9 @@ class DocxModelBuilder:
             return items
         if element.tag == qn("w:fldSimple") and Field(element.get(qn("w:instr")) or "").kind():
             return [FieldItem(Field(element.get(qn("w:instr"))).kind(), self.text_style(base_run))]
+        if element.tag in MATH_TAGS:
+            self.preview.approximate("equations drawn as linear text")
+            return [TextItem(linear_math(element), self.text_style(base_run))]
         if element.tag == qn("w:sdt"):
             content = element.find(qn("w:sdtContent"))
             return self.inline_items(list(content) if content is not None else [], part, state, base_run)

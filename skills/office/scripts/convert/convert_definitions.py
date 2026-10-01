@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from office_result import ERROR, WARNING, IssueKind
+from pdf.pdf_definitions import PAGE_WITHOUT_TEXT
 from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE
 
 
@@ -26,6 +27,7 @@ ROUTES = (
     Route("html", "md", "same content as html to docx"),
     Route("pdf", "docx", "text PDFs only: paragraphs, headings by font size, lists, ruled tables, images and two-column reading order; page layout is reflowed"),
     Route("pdf", "md", "same content as pdf to docx"),
+    Route("pdf", "pptx", "one slide per page at the page's size: text lines as text boxes, ruled tables as tables, images as pictures; a page with drawn shapes or no text becomes one picture with its text in the notes"),
     Route("xlsx", "csv", "cached values; one file per sheet unless --sheet picks one; UTF-8 with BOM so Excel reads Korean"),
     Route("xlsx", "tsv", "same as xlsx to csv, tab-separated"),
     Route("csv", "xlsx", "typed cells, styled header, frozen header row and filter, as sheet create"),
@@ -39,7 +41,6 @@ EXTENSION_ALIASES = {"markdown": "md", "htm": "html", "xlsm": "xlsx"}
 
 UNSUPPORTED_CONVERSION = IssueKind("UNSUPPORTED_CONVERSION", ERROR, "no route converts the input's format to the output's", "pick an output extension office guide convert lists for this input")
 CONVERSION_APPROXIMATED = IssueKind("CONVERSION_APPROXIMATED", WARNING, "the output keeps the content but not everything the source had; the message says what changed", "render the output and compare it with the source before delivering")
-PAGE_WITHOUT_TEXT = IssueKind("PAGE_WITHOUT_TEXT", WARNING, "a PDF page has no text layer, so it was kept as a picture whose words cannot be edited", "say which pages are pictures; reading their text needs OCR")
 TABLE_NOT_FOUND = IssueKind("TABLE_NOT_FOUND", ERROR, "the PDF has no ruled table to turn into sheets, so no workbook was written", "convert it to .md to read its text, or pdf render the page and read the table from the image")
 FORMULA_VALUE_MISSING = IssueKind("FORMULA_VALUE_MISSING", WARNING, "a formula cell has no saved value, so its CSV cell is empty", "run sheet apply with recalculate, then convert again")
 

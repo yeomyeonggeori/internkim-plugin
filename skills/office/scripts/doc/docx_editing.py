@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from docx import Document
+from docx.document import Document
 from docx.table import Table
 from docx.oxml.ns import qn
 from docx.text.paragraph import Paragraph
 
 from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, body_block_elements
+from docx_package import open_document
 from docx_tracking import Tracking, start_tracking
 from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND
 from office_result import INVALID_VALUE, OfficeFailure
@@ -27,7 +28,7 @@ class DocxEditing:
 
 
 def load_editing(path: str, tracking_author: str | None = None) -> DocxEditing:
-    document = Document(path)
+    document = open_document(path)
     tracking = start_tracking(tracking_author, document.element) if tracking_author else None
     return DocxEditing(document, body_block_elements(document), tracking=tracking)
 

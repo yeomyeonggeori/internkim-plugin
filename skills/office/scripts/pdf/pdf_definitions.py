@@ -39,7 +39,10 @@ KOREAN_FONT_NOT_EMBEDDED = IssueKind("KOREAN_FONT_NOT_EMBEDDED", ERROR, "the PDF
 
 PAGE_NOT_IN_DOCUMENT = IssueKind("PAGE_NOT_IN_DOCUMENT", ERROR, "--pages names a page the PDF does not have", "run pdf read to see the page count, then pass pages inside it")
 
+PAGE_WITHOUT_TEXT = IssueKind("PAGE_WITHOUT_TEXT", WARNING, "a PDF page has no text layer: it is a scan or a picture, and this skill has no OCR", "render those pages with pdf render --pages and --scale 2, read each page PNG with your own image tool, and say which pages were read that way")
+
 RENDER_ISSUE_KINDS = (PAGE_NOT_IN_DOCUMENT,)
+READ_ISSUE_KINDS = (PAGE_WITHOUT_TEXT,)
 
 VALIDATE_ISSUE_KINDS = (
     PDF_ENCRYPTED,
@@ -58,6 +61,11 @@ GUIDE_INPUTS = (
     ("pdf edit --section <file>", SECTION),
 )
 GUIDE_ISSUES = (
+    ("pdf read", READ_ISSUE_KINDS),
     ("pdf render", RENDER_ISSUE_KINDS),
     ("pdf validate", VALIDATE_ISSUE_KINDS),
 )
+
+
+def page_reading_suggestion(pdf_path, pages: str) -> str:
+    return f"pdf render {pdf_path} --pages {pages} --scale 2, then read each page PNG with your own image tool; this skill has no OCR"

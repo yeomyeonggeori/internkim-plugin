@@ -194,3 +194,47 @@ def set_cell_fill(cell, color: str) -> None:
     shading.set(qn("w:val"), "clear")
     shading.set(qn("w:color"), "auto")
     shading.set(qn("w:fill"), color)
+
+
+def plan_split_table_cell(editing: DocxEditing, operation: dict, location: str) -> Change:
+    table = resolve_table(editing, operation["block"], f"{location}.block")
+    positions = cell_range(table, {"row": operation["row"], "column": operation["column"]}, location)
+    merged = table.cell(*positions[0])._tc
+    if merged.grid_span == 1 and merged.bottom - merged.top == 1:
+        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}: cell ({operation['row']}, {operation['column']}) is not merged; split_table_cell undoes a merge", location))
+    top, bottom, left, span = merged.top, merged.bottom, merged.left, merged.grid_span
+
+    def change() -> str:
+        widths = [int(column.get(qn("w:w"), "0")) for column in table._tbl.tblGrid.findall(qn("w:gridCol"))]
+        for row in table._tbl.tr_lst[top:bottom]:
+            split_horizontally(row.tc_at_grid_offset(left), widths[left:left + span])
+        return f"split cell ({top}, {left}) of block {operation['block']} into {(bottom - top) * span} cells"
+    return change
+
+
+def split_horizontally(cell_element, widths: list[int]) -> None:
+    properties = cell_element.get_or_add_tcPr()
+    for tag in ("w:gridSpan", "w:vMerge"):
+        found = properties.find(qn(tag))
+        if found is not None:
+            properties.remove(found)
+    set_cell_width(properties, widths[0])
+    previous = cell_element
+    for width in widths[1:]:
+        added = OxmlElement("w:tc")
+        added_properties = copy.deepcopy(properties)
+        set_cell_width(added_properties, width)
+        added.append(added_properties)
+        added.append(copy.deepcopy(cell_element.find(PARAGRAPH_TAG)) if cell_element.find(PARAGRAPH_TAG) is not None else OxmlElement("w:p"))
+        set_cell_element_text(added, "")
+        previous.addnext(added)
+        previous = added
+
+
+def set_cell_width(properties, width: int) -> None:
+    cell_width = properties.find(qn("w:tcW"))
+    if cell_width is None:
+        cell_width = OxmlElement("w:tcW")
+        properties.insert(0, cell_width)
+    cell_width.set(qn("w:w"), str(width))
+    cell_width.set(qn("w:type"), "dxa")

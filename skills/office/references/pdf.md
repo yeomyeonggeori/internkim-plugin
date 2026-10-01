@@ -4,7 +4,7 @@ Read, extract, merge, split, lightly edit, or create layout-critical PDFs in `~/
 
 ## Workflow
 
-1. For an earlier or uploaded PDF, run `<skill>/scripts/office pdf read <file>` first: text and size per page, and which pages are scans without text.
+1. For an earlier or uploaded PDF, run `<skill>/scripts/office pdf read <file>` first: text and size per page, and which pages are scans without text. There is no OCR: read a scanned page from its `pdf render --pages <n> --scale 2` PNG with your own image tool.
 2. For a short source-backed PDF, use `pdf create`, with a spec or a task-local script through `office python` only when tables or precise placement require it; `<skill>/scripts/office guide pdf` lists the spec fields. Merge and split with pypdf in a task-local script.
 3. Validate with `<skill>/scripts/office pdf validate ~/documents/<title>.pdf`: it checks page count, extractable text, required and forbidden facts, encryption, embedded fonts, and Korean-capable fonts. Fix its failures before delivery.
 
@@ -16,7 +16,7 @@ Use readable margins, wrapped text, clear headings, real tables, and consistent 
 
 ## Editing
 
-To append a section page, use `pdf edit` and save in place. To rework a PDF's words, `<skill>/scripts/office convert <file.pdf> <file.docx>` and edit that. For custom layout, write a task-local script and run it through `office python`; preserve existing pages, metadata, encryption state, and source facts unless the user requests a change.
+To append a section page, use `pdf edit` and save in place. To rework a PDF's words, `<skill>/scripts/office convert <file.pdf> <file.docx>`, or `<file.pptx>` for one slide per page, and edit that. For custom layout, write a task-local script and run it through `office python`; preserve existing pages, metadata, encryption state, and source facts unless the user requests a change.
 
 ## Final check
 
