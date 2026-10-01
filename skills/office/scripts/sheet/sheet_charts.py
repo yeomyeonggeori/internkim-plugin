@@ -80,8 +80,25 @@ def column_label(worksheet, bounds: tuple[int, int, int, int], column: int) -> s
     return f"{letter}{bounds[0] + 1}:{letter}{bounds[2]}{named}"
 
 
+def require_header_row(worksheet, bounds: tuple[int, int, int, int], location: str) -> None:
+    min_row, min_column, max_row, max_column = bounds
+    series_columns = range(min_column + 1, max_column + 1)
+    if min_row == 1 or not all(holds_number(worksheet.cell(row=min_row, column=column)) for column in series_columns):
+        return
+    above = [worksheet.cell(row=min_row - 1, column=column) for column in series_columns]
+    if not all(isinstance(cell.value, str) and cell.value.strip() and not holds_or_reads_as_number(cell) for cell in above):
+        return
+    corrected = range_text((min_row - 1, min_column, max_row, max_column))
+    raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(
+        f"{location}.range: row {min_row} holds numbers where the series names belong, so the chart would name its series by them and leave that row out; the names are in row {min_row - 1}",
+        f"{location}.range",
+        f"start the range at the header row: \"range\": \"{corrected}\"",
+    ))
+
+
 def drawn_columns(worksheet, bounds: tuple[int, int, int, int], operation: dict, location: str) -> list[int]:
     require_block(worksheet, bounds, location)
+    require_header_row(worksheet, bounds, location)
     columns = number_columns(worksheet, bounds)
     if not columns:
         first, last = get_column_letter(bounds[1] + 1), get_column_letter(bounds[3])

@@ -234,6 +234,13 @@ class ChartTest(OperationFixture):
         self.assertEqual((issue["code"], issue["fix"]), ("CHART_COLUMN_LEFT_OUT", []))
         self.assertNotEqual(issue["suggestion"], CHART_COLUMN_LEFT_OUT.suggestion)
 
+    def test_a_range_that_starts_under_its_header_is_refused_with_the_range_that_holds_it(self):
+        original = (self.directory / "book.xlsx").read_bytes()
+        issue = self.refused([{"op": "add_chart", "type": "bar", "range": "B2:D4"}])
+        self.assertEqual((issue["code"], issue["location"]), ("OPERATION_NOT_APPLICABLE", "ops[0].range"))
+        self.assertIn('"range": "B1:D4"', issue["suggestion"])
+        self.assertEqual((self.directory / "book.xlsx").read_bytes(), original)
+
     def test_one_category_column_is_widened_to_the_number_columns_beside_it(self):
         issue = self.refused([{"op": "add_chart", "type": "bar", "range": "A1:A7"}])
         self.assertIn('"range": "A1:D7"', issue["suggestion"])
