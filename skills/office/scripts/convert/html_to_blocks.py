@@ -3,7 +3,7 @@ from __future__ import annotations
 from html.parser import HTMLParser
 import re
 
-from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table
+from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak
 
 
 HEADING_TAGS = {"h1": 1, "h2": 2, "h3": 3, "h4": 4, "h5": 4, "h6": 4}
@@ -48,6 +48,9 @@ class BlockParser(HTMLParser):
             self.cell = []
         elif tag == "br":
             self.write("<br>" if self.cell is not None else "\n")
+        elif tag == "hr":
+            self.flush()
+            self.blocks.append(ThematicBreak())
         elif tag == "img":
             self.flush()
             self.blocks.append(Image(attributes.get("alt") or "", attributes.get("src") or ""))
@@ -89,7 +92,7 @@ class BlockParser(HTMLParser):
             self.flush()
 
     def handle_data(self, data):
-        self.write(data)
+        self.write(WHITESPACE.sub(" ", data))
 
     def write(self, text: str) -> None:
         if self.skip_depth:
@@ -111,7 +114,7 @@ class BlockParser(HTMLParser):
         elif self.quote_depth:
             self.blocks.append(Quote(text))
         else:
-            self.blocks.extend(Paragraph(line) for line in text.split("\n") if line.strip())
+            self.blocks.append(Paragraph(text))
 
 
 def clean(text: str) -> str:

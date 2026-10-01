@@ -16,7 +16,7 @@ from docx_tables import add_space_after_table, format_table
 from docx_lists import add_list_paragraph, start_list
 from docx_charts import add_chart_part, drawing_run, next_drawing_id, specification
 from markdown_charts import Chart
-from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, inline_segments, link_parts, local_image_problem
+from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, inline_segments, link_parts, local_image_problem
 from office_result import Issue
 
 
@@ -25,6 +25,8 @@ DEFAULT_DOCUMENT_FONT_SIZE = 10.5
 MAXIMUM_IMAGE_WIDTH = Inches(6)
 LINK_COLOR = "0563C1"
 CHART_HEIGHT_RATIO = 0.56
+RULE_COLOR = "8C959F"
+RULE_EIGHTHS_OF_A_POINT = "6"
 
 
 def markdown_document(blocks: list, font_name: str, font_size: float, source_directory: Path) -> tuple[Document, list[Issue]]:
@@ -61,7 +63,18 @@ def add_block(document: Document, block, source_directory: Path, list_ids: dict[
         add_chart(document, block)
     elif isinstance(block, Paragraph):
         add_inline_runs(document.add_paragraph(), block.text)
+    elif isinstance(block, ThematicBreak):
+        add_rule(document)
     return []
+
+
+def add_rule(document: Document) -> None:
+    border = OxmlElement("w:bottom")
+    for name, value in (("w:val", "single"), ("w:sz", RULE_EIGHTHS_OF_A_POINT), ("w:space", "1"), ("w:color", RULE_COLOR)):
+        border.set(qn(name), value)
+    borders = OxmlElement("w:pBdr")
+    borders.append(border)
+    document.add_paragraph()._p.get_or_add_pPr().append(borders)
 
 
 def add_chart(document: Document, chart: Chart) -> None:

@@ -9,6 +9,7 @@ from markdown_charts import FENCE, parse_chart_fence
 
 HEADING_PATTERN = re.compile(r"^(#{1,4})\s+(.*)$")
 LIST_PATTERN = re.compile(r"^(\s*)([-*]|\d+[.)])\s+(.*)$")
+THEMATIC_BREAK_PATTERN = re.compile(r"^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$")
 IMAGE_LINE_PATTERN = re.compile(r"^\s*!\[([^\]]*)\]\(([^)\s]+)\)\s*$")
 LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
 CHART_FENCE_OPENING = f"{FENCE}chart"
@@ -54,6 +55,11 @@ class Paragraph:
     text: str
 
 
+@dataclass(frozen=True)
+class ThematicBreak:
+    pass
+
+
 def parse_markdown(markdown_text: str) -> list:
     lines = markdown_text.splitlines()
     blocks = []
@@ -68,6 +74,11 @@ def parse_markdown(markdown_text: str) -> list:
         if stripped.lower() == CHART_FENCE_OPENING:
             block, index = chart_block(lines, index)
             blocks.append(block)
+            continue
+        if THEMATIC_BREAK_PATTERN.match(line):
+            blocks.append(ThematicBreak())
+            list_indents = []
+            index += 1
             continue
         list_match = LIST_PATTERN.match(line)
         if not list_match:
@@ -126,12 +137,12 @@ def paragraph_block(lines: list[str], index: int):
     while index < len(lines) and continues_paragraph(lines[index]):
         paragraph_lines.append(lines[index].strip())
         index += 1
-    return Paragraph(" ".join(paragraph_lines)), index
+    return Paragraph("\n".join(paragraph_lines)), index
 
 
 def continues_paragraph(line: str) -> bool:
     stripped = line.strip()
-    if not stripped or HEADING_PATTERN.match(stripped) or is_table_line(line) or stripped.lower() == CHART_FENCE_OPENING:
+    if not stripped or HEADING_PATTERN.match(stripped) or is_table_line(line) or stripped.lower() == CHART_FENCE_OPENING or THEMATIC_BREAK_PATTERN.match(line):
         return False
     return not LIST_PATTERN.match(line) and not IMAGE_LINE_PATTERN.match(line)
 

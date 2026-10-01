@@ -11,7 +11,7 @@ from docx_package import open_document
 from docx_text import live_runs, run_text, visible_text
 from docx_charts import RELATIONSHIP_NAMESPACE, chart_references, read_specification
 from markdown_charts import Chart
-from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table
+from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak
 
 
 MARKDOWN_HEADING_LEVELS = 4
@@ -70,6 +70,8 @@ def add_paragraph(reading: DocumentReading, paragraph: DocxParagraph, numbering:
     reading.blocks.extend(paragraph_charts(paragraph))
     text = inline_markdown(paragraph).strip()
     if not text:
+        if has_bottom_border(paragraph):
+            reading.blocks.append(ThematicBreak())
         return
     level = heading_level(paragraph)
     if level is not None:
@@ -81,6 +83,12 @@ def add_paragraph(reading: DocumentReading, paragraph: DocxParagraph, numbering:
         return
     style_name = paragraph.style.name if paragraph.style is not None else ""
     reading.blocks.append(Quote(text) if style_name in QUOTE_STYLES else Paragraph(text))
+
+
+def has_bottom_border(paragraph: DocxParagraph) -> bool:
+    properties = paragraph._p.pPr
+    border = properties.find(f"{qn('w:pBdr')}/{qn('w:bottom')}") if properties is not None else None
+    return border is not None and border.get(qn("w:val")) not in ("nil", "none")
 
 
 def paragraph_charts(paragraph: DocxParagraph) -> list[Chart]:
@@ -155,6 +163,10 @@ def emphasis(run) -> str:
 
 
 def emphasized(marker: str, text: str) -> str:
+    return "\n".join(emphasized_line(marker, line) for line in text.split("\n"))
+
+
+def emphasized_line(marker: str, text: str) -> str:
     core = text.strip()
     if not marker or not core:
         return text

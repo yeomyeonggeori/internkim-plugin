@@ -8,7 +8,7 @@ import mimetypes
 from chart_svg import chart_svg
 from docx_charts import specification
 from markdown_charts import Chart
-from markdown_blocks import Heading, Image, ListItem, Quote, Table, inline_segments, link_parts
+from markdown_blocks import Heading, Image, ListItem, Quote, Table, ThematicBreak, inline_segments, link_parts
 
 
 LIST_INDENT = "   "
@@ -30,7 +30,7 @@ class SizedImage:
         return data_uri(self.data, f"image{self.suffix}")
 HTML_STYLE = """body{font-family:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR","Nanum Gothic",sans-serif;line-height:1.6;max-width:46rem;margin:2rem auto;padding:0 1rem;color:#1a1a1a}
 table{border-collapse:collapse;margin:1rem 0}th,td{border:1px solid #999;padding:.3rem .6rem;text-align:left;vertical-align:top}th{background:#eef2f7}
-img{max-width:100%}blockquote{margin:1rem 0;padding-left:1rem;border-left:3px solid #ccc;color:#444}"""
+img{max-width:100%}hr{border:0;border-top:1px solid #8c959f;margin:1rem 0}blockquote{margin:1rem 0;padding-left:1rem;border-left:3px solid #ccc;color:#444}"""
 
 
 def markdown_text(blocks: list) -> str:
@@ -58,7 +58,9 @@ def markdown_lines(block) -> list[str]:
         return [f"![{block.alt}]({block.source})"]
     if isinstance(block, Chart):
         return block.source().split("\n")
-    return [block.text]
+    if isinstance(block, ThematicBreak):
+        return ["---"]
+    return block.text.split("\n")
 
 
 def table_markdown(rows: list[list[str]], alignments: tuple[str, ...] = ()) -> list[str]:
@@ -129,6 +131,8 @@ def html_block(block) -> str:
         return f"<blockquote>{inline_html(block.text)}</blockquote>"
     if isinstance(block, Image):
         return f"<p><img src=\"{html.escape(block.source, quote=True)}\" alt=\"{html.escape(block.alt, quote=True)}\"></p>"
+    if isinstance(block, ThematicBreak):
+        return "<hr>"
     return f"<p>{inline_html(block.text)}</p>"
 
 
@@ -173,7 +177,7 @@ def inline_html(text: str) -> str:
         elif segment.startswith("`") and segment.endswith("`") and len(segment) > 2:
             parts.append(f"<code>{html.escape(segment[1:-1])}</code>")
         else:
-            parts.append(html.escape(segment).replace("&lt;br&gt;", "<br>"))
+            parts.append(html.escape(segment).replace("&lt;br&gt;", "<br>").replace("\n", "<br>"))
     return "".join(parts)
 
 
