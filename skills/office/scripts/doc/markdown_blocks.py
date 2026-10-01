@@ -227,10 +227,6 @@ def strip_inline_markers(text: str) -> str:
     return re.sub(r"\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`", lambda match: next(group for group in match.groups() if group is not None), text)
 
 
-def has_link(text: str) -> bool:
-    return bool(LINK_PATTERN.search(text))
-
-
 def local_image_problem(source: str, image_path: Path) -> str | None:
     if source.startswith(("http://", "https://")):
         return "is a remote URL, which export does not download"

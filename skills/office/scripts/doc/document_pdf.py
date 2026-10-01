@@ -5,7 +5,7 @@ from pathlib import Path
 from PIL import Image as PillowImage, UnidentifiedImageError
 
 from doc.block_writers import SizedImage, html_blocks
-from doc.doc_definitions import GLYPH_NOT_COVERED, IMAGE_UNAVAILABLE, PDF_RENDERER_FAILED
+from doc.doc_definitions import GLYPH_NOT_COVERED, IMAGE_UNAVAILABLE
 from doc.document_pagination import MAXIMUM_PAGINATION_PASSES, stranded_heading
 from fontTools.ttLib import TTFont
 
@@ -14,7 +14,7 @@ from doc.markdown_blocks import CodeBlock, Equation, Image, Paragraph, Table, lo
 from fonts.registry import MONOSPACE, SANS_BODY, BundledFamily, default_family
 from core.office_result import BOLD_FONT_UNAVAILABLE, Issue, OfficeFailure
 from fonts.pdf_registration import bold_sibling
-from render.renderer import DocumentPdfRequest, FontFile, RenderFailed, RendererUnavailable, javascript_runtime, render_document_pdf as render_pdf
+from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE, DocumentPdfRequest, FontFile, RenderFailed, RendererUnavailable, render_document_pdf as render_pdf
 from core.page_sizes import DEFAULT_PAPER
 from core.units import CSS_PIXELS_PER_INCH
 
@@ -26,14 +26,6 @@ SIDE_MARGIN_PIXELS = 64
 DEFAULT_DOTS_PER_INCH = 96
 
 
-def can_render() -> bool:
-    try:
-        javascript_runtime()
-    except RendererUnavailable:
-        return False
-    return True
-
-
 def render_document_pdf(blocks: list, output_path: Path, source_directory: Path, title: str, font_path: Path | None = None) -> list[Issue]:
     issues: list[Issue] = []
     sized = [sized_image(block, source_directory, issues) if isinstance(block, Image) else block for block in blocks]
@@ -43,8 +35,10 @@ def render_document_pdf(blocks: list, output_path: Path, source_directory: Path,
         issues.append(GLYPH_NOT_COVERED.issue(f"no font the PDF carries draws {' '.join(missing)}; each shows as an empty box", "".join(missing)))
     try:
         render_keeping_headings_with_their_text(sized, output_path, title, fonts)
-    except (RendererUnavailable, RenderFailed) as reason:
-        raise OfficeFailure(PDF_RENDERER_FAILED.issue(f"{output_path.name} was not drawn: {reason}", str(output_path)))
+    except RendererUnavailable as reason:
+        raise OfficeFailure(RENDERER_UNAVAILABLE.issue(f"{output_path.name} was not written: {reason}", str(output_path)))
+    except RenderFailed as reason:
+        raise OfficeFailure(RENDER_FAILED.issue(f"{output_path.name} was not drawn: {reason}", str(output_path)))
     return issues
 
 

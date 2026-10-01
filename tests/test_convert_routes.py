@@ -8,7 +8,7 @@ import unittest
 from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, block_texts, run_office, run_office_python
 from pdf_fixture import STATEMENT_ROWS, newsletter_pdf_code, statement_pdf_code, with_fonts
 from pptx_edit_fixture import build_korean_deck
-from render_fixture import can_render, pdf_page_count
+from render_fixture import can_render, pdf_page_count, run_office_without_renderer
 from report_fixture import CHART_IMAGE, REPORT_MARKDOWN
 
 
@@ -259,6 +259,21 @@ class LegacyWorkbookTest(unittest.TestCase):
 
         values = [xls_value(Book(), Cell(ctype, value)) for ctype, value in ((xlrd.XL_CELL_NUMBER, 3.0), (xlrd.XL_CELL_NUMBER, 2.5), (xlrd.XL_CELL_DATE, 46296.0), (xlrd.XL_CELL_BOOLEAN, 1), (xlrd.XL_CELL_TEXT, "영업"), (xlrd.XL_CELL_EMPTY, ""))]
         self.assertEqual([str(value) for value in values], ["3", "2.5", "2026-10-01", "True", "영업", "None"])
+
+
+class WithoutRendererTest(ConversionFixture):
+    def test_every_route_to_pdf_refuses_and_writes_nothing(self):
+        (self.directory / "웹.html").write_text("<h1>분기 보고서</h1><p>3분기 매출은 128억 원입니다.</p>", encoding="utf-8")
+        (self.directory / "실적.csv").write_text("월,매출\n1월,1200\n", encoding="utf-8")
+        before = sorted(self.directory.iterdir())
+        for source in ("보고서.md", "웹.html", "실적.csv"):
+            with self.subTest(source=source):
+                completed = run_office_without_renderer(["convert", source, "결과.pdf"], self.directory)
+                envelope = json.loads(completed.stdout)
+                self.assertEqual(completed.returncode, 1)
+                self.assertEqual(completed.stderr, "")
+                self.assertEqual([issue["code"] for issue in envelope["issues"]], ["RENDERER_UNAVAILABLE"])
+                self.assertEqual(sorted(self.directory.iterdir()), before)
 
 
 ODS_CONTENT = """<?xml version="1.0" encoding="UTF-8"?>

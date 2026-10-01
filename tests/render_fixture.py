@@ -1,7 +1,9 @@
 from pathlib import Path
 import re
 import struct
+import subprocess
 import sys
+import tempfile
 
 
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
@@ -20,6 +22,12 @@ def can_render() -> bool:
     except RendererUnavailable:
         return False
     return True
+
+
+def run_office_without_renderer(arguments: list[str], directory: Path) -> subprocess.CompletedProcess:
+    with tempfile.TemporaryDirectory() as home:
+        environment = {"HOME": home, "PATH": f"{Path(sys.executable).parent}:/usr/bin:/bin"}
+        return subprocess.run([sys.executable, str(SCRIPTS_PATH / "office"), *arguments], capture_output=True, text=True, cwd=directory, env=environment)
 
 
 def png_size(path) -> tuple[int, int]:

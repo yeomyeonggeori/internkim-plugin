@@ -115,7 +115,7 @@ def markdown_to_html(conversion: Conversion) -> None:
 
 
 def markdown_to_pdf(conversion: Conversion) -> None:
-    conversion.issues.extend(export_pdf(markdown_blocks(conversion), conversion.output_path, conversion.input_path.parent, "", BODY_SIZE_POINTS))
+    conversion.issues.extend(export_pdf(markdown_blocks(conversion), conversion.output_path, conversion.input_path.parent, ""))
 
 
 def docx_to_pdf(conversion: Conversion) -> None:
@@ -194,7 +194,7 @@ def html_to_docx(conversion: Conversion) -> None:
 def html_to_pdf(conversion: Conversion) -> None:
     with tempfile.TemporaryDirectory(prefix="office-convert-") as media_directory:
         blocks = html_blocks(read_text(conversion.input_path), Path(media_directory))
-        conversion.issues.extend(export_pdf(blocks, conversion.output_path, conversion.input_path.parent, "", BODY_SIZE_POINTS))
+        conversion.issues.extend(export_pdf(blocks, conversion.output_path, conversion.input_path.parent, ""))
 
 
 def html_blocks(html: str, media_directory: Path) -> list:

@@ -7,6 +7,7 @@ import tempfile
 import unittest
 
 from doc_fixture import OFFICE_ENTRY, run_office, run_office_python
+from render_fixture import run_office_without_renderer
 from report_fixture import CHART_IMAGE, REPORT_MARKDOWN, pdf_text
 
 
@@ -59,12 +60,16 @@ class DocumentPdfTest(unittest.TestCase):
         self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("GLYPH_NOT_COVERED", "😀")])
 
 
-    def test_without_bun_the_plain_renderer_draws_the_pdf_and_says_so(self):
-        environment = {"HOME": str(self.directory), "PATH": f"{Path(sys.executable).parent}:/usr/bin:/bin"}
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "doc", "export", "보고서.md", "--output", "보고서.pdf"], capture_output=True, text=True, cwd=self.directory, env=environment)
+    def test_without_a_renderer_the_export_refuses_and_writes_nothing(self):
+        before = sorted(self.directory.iterdir())
+        completed = run_office_without_renderer(["doc", "export", "보고서.md", "--output", "보고서.pdf"], self.directory)
         envelope = json.loads(completed.stdout)
-        self.assertEqual(envelope["issues"][0]["code"], "PDF_RENDERER_UNAVAILABLE")
-        self.assertTrue((self.directory / "보고서.pdf").exists())
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stderr, "")
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["RENDERER_UNAVAILABLE"])
+        self.assertIn("install bun, or node 18 or newer", envelope["issues"][0]["suggestion"])
+        self.assertEqual(sorted(self.directory.iterdir()), before)
+
 
 class ExportFormatTest(unittest.TestCase):
     def setUp(self):

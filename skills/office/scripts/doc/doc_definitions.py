@@ -3,6 +3,7 @@ from __future__ import annotations
 from charts.kinds import DOCUMENT_CHART_KINDS
 from fonts.registry import BODY_SIZE_POINTS, MONOSPACE, SANS_BODY, default_family
 from render.office_preview import PREVIEW_ISSUE_KINDS
+from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE
 from core.office_operations import OPERATION_ISSUE_KINDS
 from core.office_result import ERROR, WARNING, IssueKind
 from core.page_sizes import PAPER_NAMES
@@ -481,14 +482,10 @@ MERGE_ISSUE_KINDS = (UNRESOLVED_PLACEHOLDER, UNUSED_VALUE, LIST_NEEDS_A_ROW, TEM
 
 CHART_BLOCK_INVALID = IssueKind("CHART_BLOCK_INVALID", ERROR, "a ```chart block in the Markdown does not parse or its numbers do not line up, so nothing was written", "fix the line the message names: type:, labels: and values: (or series: name: 1, 2; other: 3, 4) with plain numbers")
 IMAGE_UNAVAILABLE = IssueKind("IMAGE_UNAVAILABLE", WARNING, "a Markdown image is not a readable local file, so its alt text was written instead", "fix the image path relative to the Markdown file, or save a remote image locally first")
-
-PDF_RENDERER_FAILED = IssueKind("PDF_RENDERER_FAILED", ERROR, "the document PDF renderer (takumi-pdf, run by bun or node) could not be installed or could not render", "check that bun or node 18 is on PATH and the network allows its first install, then rerun")
-PDF_RENDERER_UNAVAILABLE = IssueKind("PDF_RENDERER_UNAVAILABLE", WARNING, "neither bun nor node 18 is installed, so the PDF was drawn by the plain fallback renderer without inline bold, links styling or page numbers", "install bun for the typeset PDF, or deliver this plainer one")
-
 GLYPH_NOT_COVERED = IssueKind("GLYPH_NOT_COVERED", WARNING, "some characters have no glyph in any font the PDF carries, so they print as empty boxes", "replace those characters, such as an emoji or a rare Hanja, with words")
 
 MATH_NOT_CONVERTED = IssueKind("MATH_NOT_CONVERTED", WARNING, "a $...$ or $$...$$ formula is not LaTeX the converter reads, so its source text was written as it is", "fix the LaTeX with standard commands such as \\frac, \\sqrt, \\sum, ^ and _, or write the formula in words")
-EXPORT_ISSUE_KINDS = (CHART_BLOCK_INVALID, IMAGE_UNAVAILABLE, MATH_NOT_CONVERTED, PDF_RENDERER_FAILED, PDF_RENDERER_UNAVAILABLE, GLYPH_NOT_COVERED)
+EXPORT_ISSUE_KINDS = (CHART_BLOCK_INVALID, IMAGE_UNAVAILABLE, MATH_NOT_CONVERTED, RENDERER_UNAVAILABLE, RENDER_FAILED, GLYPH_NOT_COVERED)
 
 CHART_FENCE_KEYS = {
     "type": f"one of {', '.join(DOCUMENT_CHART_KINDS)}; the deck's stacked and donut work too",
