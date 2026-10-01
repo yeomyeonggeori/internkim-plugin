@@ -11,7 +11,7 @@ from docx_layout import Layout  # noqa: E402
 from docx_pagination import Paginator  # noqa: E402
 from docx_preview import DocxModelBuilder  # noqa: E402
 from docx_preview_html import PageWriter  # noqa: E402
-from office_preview import PAGES_NOT_RENDERED, Preview, approximation_issues, write_preview  # noqa: E402
+from office_preview import Preview, approximation_issues, draw_pages, write_preview  # noqa: E402
 from office_result import OfficeArgumentParser, Result, run_command  # noqa: E402
 from preview_fonts import FontRegistry  # noqa: E402
 
@@ -34,15 +34,16 @@ def main() -> Result:
     output_directory = Path(arguments.output_directory).expanduser() if arguments.output_directory else source_path.with_name(f"{source_path.stem}-preview")
     preview, preview_fonts = docx_preview(source_path)
     preview_path = write_preview(preview, output_directory)
-    issues = [*approximation_issues(preview, source_path.name), PAGES_NOT_RENDERED.issue(f"wrote {preview_path.name} with {len(preview.pages)} pages; page images come from the shared renderer", str(preview_path))]
-    details = {"preview": str(preview_path), "pageCount": len(preview.pages), "previewFonts": preview_fonts, "approximations": preview.approximations}
+    drawn, drawing_issues = draw_pages(preview_path, preview_fonts, output_directory / f"{source_path.stem}.pdf")
+    issues = [*approximation_issues(preview, source_path.name), *drawing_issues]
+    details = {"preview": str(preview_path), "pageCount": len(preview.pages), "previewFonts": preview_fonts, "approximations": preview.approximations, **drawn}
     return Result(summary=f"laid out {source_path.name} as {len(preview.pages)} pages in {preview_path}", output_path=str(preview_path), issues=tuple(issues), details=details)
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Lay out a .docx page by page as preview HTML: page size and margins, styles, numbering, tables, pictures, headers, footers and footnotes.")
+    parser = OfficeArgumentParser(description="Lay out a .docx page by page as preview HTML, then draw each page as a PNG, contact sheets and a PDF: page size and margins, styles, numbering, tables, pictures, headers, footers and footnotes.")
     parser.add_argument("source_path", help="the .docx to lay out")
-    parser.add_argument("--output-directory", help="where preview.html goes; default <name>-preview beside the file")
+    parser.add_argument("--output-directory", help="where preview.html, the page images and the PDF go; default <name>-preview beside the file")
     return parser.parse_args()
 
 

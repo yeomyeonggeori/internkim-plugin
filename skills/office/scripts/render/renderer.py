@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -16,13 +15,14 @@ SCRIPTS_PATH = pathlib.Path(__file__).resolve().parents[1]
 if str(SCRIPTS_PATH) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_PATH))
 
-from office_result import INPUT_NOT_FOUND, IssueKind, OfficeArgumentParser, OfficeFailure, Result, WARNING, ERROR, run_command  # noqa: E402
+from office_result import INPUT_NOT_FOUND, IssueKind, OfficeFailure, WARNING, ERROR  # noqa: E402
 from skill_runtime import skill_cache_path  # noqa: E402
 
 
 RENDER_DIRECTORY = pathlib.Path(__file__).resolve().parent
 PACKAGE_MANIFEST = RENDER_DIRECTORY / "package.json"
 ENTRY_SCRIPT_NAME = "render_html.mjs"
+DOCUMENT_ENTRY_SCRIPT_NAME = "document_pdf.mjs"
 BUNDLED_FONT_DIRECTORY = RENDER_DIRECTORY.parents[1] / "assets" / "fonts" / "paperlogy"
 BUNDLED_FONT_PATTERN = re.compile(r"^(?P<family>[A-Za-z]+)-(?P<weight>\d)[A-Za-z]+\.ttf$")
 COLLECTION_SUFFIXES = {".ttc", ".otc"}
@@ -71,6 +71,18 @@ class RenderRequest:
     script_selector: str | None = None
     excluded_styles: str | None = None
     extra_css: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class DocumentPdfRequest:
+    html: str
+    css: str
+    output_path: pathlib.Path
+    title: str
+    fonts: tuple[FontFile, ...]
+    size: str = "a4"
+    landscape: bool = False
+    margin: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -172,17 +184,50 @@ def request_json(request: RenderRequest) -> dict:
 def render_html(request: RenderRequest) -> RenderedPages:
     if not request.html_path.exists():
         raise OfficeFailure(INPUT_NOT_FOUND.issue(f"{request.html_path} does not exist", str(request.html_path)))
+    return rendered_pages(run_entry(ENTRY_SCRIPT_NAME, request_json(request)))
+
+
+def run_entry(entry_script_name: str, payload: dict) -> dict:
     runtime = javascript_runtime()
     environment = package_environment()
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as request_file:
-        json.dump(request_json(request), request_file)
+        json.dump(payload, request_file)
     try:
-        completed = subprocess.run([*runtime, str(environment / ENTRY_SCRIPT_NAME), request_file.name], capture_output=True, text=True)
+        completed = subprocess.run([*runtime, str(environment / entry_script_name), request_file.name], capture_output=True, text=True)
     finally:
         pathlib.Path(request_file.name).unlink(missing_ok=True)
     if completed.returncode != 0:
         raise RenderFailed(completed.stderr.strip()[-1200:] or "the renderer exited without a message")
-    return rendered_pages(json.loads(completed.stdout.strip().splitlines()[-1]))
+    return json.loads(completed.stdout.strip().splitlines()[-1])
+
+
+def draw_preview(preview_path: pathlib.Path, page_selector: str, preview_fonts: list[dict], pdf_path: pathlib.Path | None = None, draw_images: bool = True) -> RenderedPages:
+    directory = preview_path.parent
+    request = RenderRequest(
+        html_path=preview_path,
+        page_selector=page_selector,
+        fonts=tuple(font_from_json(entry) for entry in preview_fonts),
+        png_directory=directory if draw_images else None,
+        contact_sheet_directory=directory if draw_images else None,
+        pdf_path=pdf_path,
+    )
+    return render_html(request)
+
+
+def render_document_pdf(request: DocumentPdfRequest) -> pathlib.Path:
+    payload = {
+        "html": request.html,
+        "css": request.css,
+        "output": str(request.output_path.resolve()),
+        "title": request.title,
+        "size": request.size,
+        "landscape": request.landscape,
+        "margin": request.margin,
+        "fontFamilies": list(dict.fromkeys(font.family for font in request.fonts)),
+        "fonts": [{"family": font.family, "weight": font.weight, "style": font.style, "path": str(single_face_path(font))} for font in request.fonts],
+    }
+    run_entry(DOCUMENT_ENTRY_SCRIPT_NAME, payload)
+    return request.output_path
 
 
 def optional_path(output: dict, key: str) -> pathlib.Path | None:
@@ -207,38 +252,3 @@ def render_issues(rendered: RenderedPages, location: str) -> tuple:
     unmapped = [LAYOUT_NOT_MAPPED.issue(message, location) for message in rendered.unmapped]
     dropped = [STYLE_NOT_DRAWN.issue(f"left out: {declaration}", location) for declaration in rendered.dropped_styles]
     return tuple(unmapped + dropped)
-
-
-def parse_arguments(arguments: list[str]):
-    parser = OfficeArgumentParser(description="Draw an HTML file's pages without a browser: page PNGs, a PDF and contact sheets. Each top-level element the selector matches is one page, sized by its own CSS width and height.")
-    parser.add_argument("html", help="the HTML file to draw")
-    parser.add_argument("--output-directory", required=True, help="where the page PNGs and contact sheets go")
-    parser.add_argument("--page-selector", default="section", help="the CSS selector of a page (default section)")
-    parser.add_argument("--pdf", help="also write the pages as one PDF at this path")
-    parser.add_argument("--fonts", help="a JSON file listing fonts as [{family, path, index, weight}], drawn before the bundled Paperlogy")
-    parser.add_argument("--prefix", default="page", help="the page PNG names: <prefix>.001.png (default page)")
-    return parser.parse_args(arguments)
-
-
-def main() -> Result:
-    parsed = parse_arguments(sys.argv[1:])
-    output_directory = pathlib.Path(parsed.output_directory)
-    fonts = tuple(font_from_json(entry) for entry in json.loads(pathlib.Path(parsed.fonts).read_text(encoding="utf-8"))) if parsed.fonts else ()
-    request = RenderRequest(pathlib.Path(parsed.html), parsed.page_selector, fonts=fonts, png_directory=output_directory, png_prefix=parsed.prefix, contact_sheet_directory=output_directory, pdf_path=pathlib.Path(parsed.pdf) if parsed.pdf else None)
-    try:
-        rendered = render_html(request)
-    except RendererUnavailable as reason:
-        return Result(summary=f"no page was drawn: {reason}", issues=(RENDERER_UNAVAILABLE.issue(str(reason)),))
-    except RenderFailed as reason:
-        raise OfficeFailure(RENDER_FAILED.issue(str(reason), str(request.html_path)))
-    issues = render_issues(rendered, str(request.html_path))
-    return Result(
-        summary=f"drew {len(rendered.png_paths)} pages of {request.html_path} into {output_directory}",
-        output_path=str(rendered.pdf_path or output_directory),
-        issues=issues,
-        details={"pages": [str(path) for path in rendered.png_paths], "contactSheets": [str(path) for path in rendered.contact_sheet_paths], "pdf": str(rendered.pdf_path) if rendered.pdf_path else None, "timings": rendered.timings},
-    )
-
-
-if __name__ == "__main__":
-    raise SystemExit(run_command(main))

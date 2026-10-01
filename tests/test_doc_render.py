@@ -7,6 +7,7 @@ import tempfile
 import unittest
 
 from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, run_office, run_office_python
+from render_fixture import assert_pages_drawn, can_render, pdf_page_count
 
 
 REPORT = """
@@ -71,6 +72,13 @@ class DocumentPreviewTest(unittest.TestCase):
         for forbidden in ("<style", "<script", "::before", "::after", "counter(", ":has("):
             self.assertNotIn(forbidden, self.html)
         self.assertEqual(self.envelope["details"]["pageCount"], len(self.pages))
+
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+    def test_every_page_is_drawn_as_an_image_and_a_pdf_page(self):
+        details = self.envelope["details"]
+        self.assertEqual(self.envelope["issues"], [])
+        assert_pages_drawn(self, details, self.directory, len(self.pages), (816, 1056))
+        self.assertEqual(pdf_page_count(self.directory / details["pdf"]), len(self.pages))
 
     def test_fonts_name_the_files_the_layout_measured_with(self):
         fonts = self.envelope["details"]["previewFonts"]

@@ -13,6 +13,7 @@ from pptx import Presentation
 
 from deck_fixture import OFFICE_ENTRY, SCRIPTS_PATH
 from doc_fixture import write_json
+from render_fixture import assert_pages_drawn, can_render
 from pptx_edit_fixture import CUSTOM_PART_NAME, UNKNOWN_EXTENSION_URI, build_korean_deck, part_contents, sample_photo
 
 
@@ -372,15 +373,19 @@ class PreviewTest(KoreanDeckFixture):
     def styled(self, node):
         return dict(part.split(":", 1) for part in node.get("style").split(";"))
 
-    def test_every_slide_is_a_page_at_the_slide_size_and_nothing_was_seen(self):
+    def test_every_slide_is_a_page_at_the_slide_size(self):
         envelope, document = self.check_preview({"op": "set_slide_hidden", "slide": 2, "hidden": True}, {"op": "set_background", "slide": 1, "color": "F3F6FA"})
-        self.assertEqual(codes(envelope), ["PPTX_NOT_RENDERED"])
-        self.assertFalse(envelope["details"]["seen"])
         sections = document.xpath("//section")
         self.assertEqual([section.get("data-slide") for section in sections], ["1", "2", "3", "4", "5"])
         self.assertEqual({(self.styled(section)["width"], self.styled(section)["height"]) for section in sections}, {("1280.0px", "720.0px")})
         self.assertEqual(self.styled(sections[0])["background-color"], "#F3F6FA")
         self.assertTrue(all(Path(font["path"]).exists() for font in envelope["details"]["previewFonts"]))
+
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+    def test_every_slide_is_drawn_and_seen(self):
+        envelope, _ = self.check_preview()
+        self.assertEqual(codes(envelope), [])
+        assert_pages_drawn(self, envelope["details"], self.directory, 5, (1280, 720))
 
     def test_text_keeps_its_box_style_and_korean_face(self):
         _, document = self.check_preview()

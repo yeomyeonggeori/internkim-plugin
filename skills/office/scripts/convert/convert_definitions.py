@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from office_result import ERROR, WARNING, IssueKind
+from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE
 
 
 @dataclass(frozen=True)
@@ -16,6 +17,9 @@ ROUTES = (
     Route("md", "docx", "headings, lists, tables, links and local images; Korean fonts set"),
     Route("md", "html", "one self-contained page; local images embedded"),
     Route("md", "pdf", "same as doc export --format pdf"),
+    Route("docx", "pdf", "each page as doc render lays it out: page size, margins, styles, tables, pictures, headers and footers"),
+    Route("xlsx", "pdf", "each visible sheet as sheet render prints it: print area, scaling, number formats, fills, borders and charts"),
+    Route("pptx", "pdf", "each slide as deck check previews it: shapes, text, pictures, tables and charts"),
     Route("docx", "md", "final text with tracked changes accepted; images saved beside the output; comments, notes, fields and layout dropped"),
     Route("docx", "html", "one self-contained page; same content as docx to md"),
     Route("html", "docx", "headings, paragraphs, lists, tables, bold, italic, links and images"),
@@ -36,7 +40,7 @@ CONVERSION_APPROXIMATED = IssueKind("CONVERSION_APPROXIMATED", WARNING, "the out
 PAGE_WITHOUT_TEXT = IssueKind("PAGE_WITHOUT_TEXT", WARNING, "a PDF page has no text layer, so it was kept as a picture whose words cannot be edited", "say which pages are pictures; reading their text needs OCR")
 FORMULA_VALUE_MISSING = IssueKind("FORMULA_VALUE_MISSING", WARNING, "a formula cell has no saved value, so its CSV cell is empty", "run sheet apply with recalculate, then convert again")
 
-CONVERT_ISSUE_KINDS = (UNSUPPORTED_CONVERSION, CONVERSION_APPROXIMATED, PAGE_WITHOUT_TEXT, FORMULA_VALUE_MISSING)
+CONVERT_ISSUE_KINDS = (UNSUPPORTED_CONVERSION, CONVERSION_APPROXIMATED, PAGE_WITHOUT_TEXT, FORMULA_VALUE_MISSING, RENDERER_UNAVAILABLE, RENDER_FAILED)
 
 
 def normalized_extension(extension: str) -> str:

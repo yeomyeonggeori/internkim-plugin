@@ -20,7 +20,7 @@ import { exportedListAttribute, exportedTextAttribute, extractTextLayout, hideEx
 
 const geometryThresholds = { pixelTolerance: 4, overlapRatioMinimum: 0.12, aspectRatioTolerance: 0.05, textPreviewLength: 40 };
 const pageAttribute = "data-render-page";
-const pdfPageStyle = `[${pageAttribute}] { break-after: page; overflow: hidden; } [${pageAttribute}="last"] { break-after: auto; }`;
+const pdfPageStyle = `[${pageAttribute}] { break-after: page; overflow: hidden; margin: 0 !important; } [${pageAttribute}="last"] { break-after: auto; }`;
 const resetStyle = "html, body { margin: 0 !important; padding: 0 !important; }";
 const textAttributes = { exportedTextAttribute, exportedListAttribute, markerProbeAttribute, markerProbeHostId };
 const boxAttributes = { exportedShapeAttribute, exportedBeforeShapeAttribute, exportedAfterShapeAttribute };
@@ -132,8 +132,12 @@ function imagesOf(elements, bytesOf) {
   });
 }
 
+function rasterSize(size) {
+  return { width: Math.ceil(size.width), height: Math.ceil(size.height) };
+}
+
 async function drawPage(renderer, layout, inlineStyles, page, css, images, withPixels) {
-  const size = layout.sizeOf(page);
+  const size = rasterSize(layout.sizeOf(page));
   await inlineStyles.prepare([page]);
   const parsed = fromHtml(inlineStyles.filterHtml(documentFragmentHtml([page])));
   const options = { width: size.width, height: size.height, css: [...css, resetStyle, ...parsed.css], images };

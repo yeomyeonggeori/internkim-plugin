@@ -9,7 +9,7 @@ import sys
 import tempfile
 
 SCRIPTS_PATH = Path(__file__).resolve().parents[1]
-sys.path[1:1] = [str(SCRIPTS_PATH / "doc"), str(SCRIPTS_PATH / "sheet")]
+sys.path[1:1] = [str(SCRIPTS_PATH / "doc"), str(SCRIPTS_PATH / "sheet"), str(SCRIPTS_PATH / "deck")]
 
 from block_writers import data_uri, html_document, markdown_text  # noqa: E402
 from convert_definitions import (  # noqa: E402
@@ -20,9 +20,16 @@ from docx_markdown import DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, mar
 from docx_to_blocks import read_docx_blocks  # noqa: E402
 from export_document import export_pdf  # noqa: E402
 from html_to_blocks import read_html_blocks  # noqa: E402
+from office_preview import PAGE_SELECTOR, Preview, write_preview  # noqa: E402
 from markdown_blocks import Image, parse_markdown  # noqa: E402
 from office_result import Issue, OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
 from pdf_to_blocks import read_pdf_blocks  # noqa: E402
+from pptx import Presentation  # noqa: E402
+from pptx_preview import preview_document  # noqa: E402
+from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE, RenderFailed, RendererUnavailable, draw_preview  # noqa: E402
+from render_docx import docx_preview  # noqa: E402
+from render_xlsx import xlsx_preview  # noqa: E402
+from check_pptx import SLIDE_SELECTOR, preview_fonts  # noqa: E402
 from spreadsheet_import import legacy_workbook_to_xlsx  # noqa: E402
 from table_conversions import DELIMITERS, delimited_to_workbook, workbook_to_delimited  # noqa: E402
 
@@ -78,6 +85,45 @@ def markdown_to_html(conversion: Conversion) -> None:
 def markdown_to_pdf(conversion: Conversion) -> None:
     text = read_text(conversion.input_path)
     conversion.issues.extend(export_pdf(parse_markdown(text), text, conversion.output_path, conversion.input_path.parent, "", DEFAULT_DOCUMENT_FONT_SIZE))
+
+
+def docx_to_pdf(conversion: Conversion) -> None:
+    preview, fonts = docx_preview(conversion.input_path)
+    report_simplified(conversion, preview)
+    with tempfile.TemporaryDirectory(prefix="office-convert-") as directory:
+        draw_pdf(conversion, write_preview(preview, Path(directory)), PAGE_SELECTOR, fonts)
+
+
+def workbook_to_pdf(conversion: Conversion) -> None:
+    preview, fonts = xlsx_preview(conversion.input_path, conversion.sheet)
+    report_simplified(conversion, preview)
+    with tempfile.TemporaryDirectory(prefix="office-convert-") as directory:
+        draw_pdf(conversion, write_preview(preview, Path(directory)), PAGE_SELECTOR, fonts)
+
+
+def presentation_to_pdf(conversion: Conversion) -> None:
+    presentation = Presentation(str(conversion.input_path))
+    preview = preview_document(presentation, list(range(1, len(presentation.slides) + 1)))
+    with tempfile.TemporaryDirectory(prefix="office-convert-") as directory:
+        preview_path = Path(directory) / "preview.html"
+        preview_path.write_text(preview.html, encoding="utf-8")
+        draw_pdf(conversion, preview_path, SLIDE_SELECTOR, preview_fonts(preview.faces))
+
+
+def draw_pdf(conversion: Conversion, preview_path: Path, page_selector: str, fonts: list[dict]) -> None:
+    try:
+        rendered = draw_preview(preview_path, page_selector, fonts, conversion.output_path.resolve(), draw_images=False)
+    except RendererUnavailable as reason:
+        raise OfficeFailure(RENDERER_UNAVAILABLE.issue(f"{conversion.output_path.name} was not written: {reason}", conversion.input_path.name))
+    except RenderFailed as reason:
+        raise OfficeFailure(RENDER_FAILED.issue(f"{conversion.output_path.name} was not written: {reason}", conversion.input_path.name))
+    conversion.details["pageCount"] = len(rendered.page_sizes)
+
+
+def report_simplified(conversion: Conversion, preview: Preview) -> None:
+    if preview.approximations:
+        listed = ", ".join(f"{count} {what}" for what, count in sorted(preview.approximations.items()))
+        conversion.issues.append(CONVERSION_APPROXIMATED.issue(f"the PDF simplifies {listed}", conversion.input_path.name))
 
 
 def docx_to_markdown(conversion: Conversion) -> None:
@@ -228,6 +274,9 @@ CONVERTERS = {
     ("md", "docx"): markdown_to_docx,
     ("md", "html"): markdown_to_html,
     ("md", "pdf"): markdown_to_pdf,
+    ("docx", "pdf"): docx_to_pdf,
+    ("xlsx", "pdf"): workbook_to_pdf,
+    ("pptx", "pdf"): presentation_to_pdf,
     ("docx", "md"): docx_to_markdown,
     ("docx", "html"): docx_to_html,
     ("html", "docx"): html_to_docx,
@@ -247,7 +296,7 @@ def parse_arguments():
     parser = OfficeArgumentParser(description="Convert an office file to another format; the input and output extensions pick the route. office guide convert lists every route.")
     parser.add_argument("input_path", help="the file to convert")
     parser.add_argument("output_path", help="the file to write; its extension names the target format")
-    parser.add_argument("--sheet", help="xlsx to csv or tsv: convert only this sheet; default every sheet, one file each")
+    parser.add_argument("--sheet", help="xlsx to csv, tsv or pdf: convert only this sheet; default every sheet, one file each for csv and tsv")
     return parser.parse_args()
 
 

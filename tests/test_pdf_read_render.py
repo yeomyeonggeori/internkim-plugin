@@ -1,11 +1,11 @@
 from pathlib import Path
-import struct
 import subprocess
 import sys
 import tempfile
 import unittest
 
 from doc_fixture import OFFICE_ENTRY, run_office, run_office_python
+from render_fixture import png_size
 
 
 FIXTURE_PDF = """
@@ -19,11 +19,6 @@ pdf.cell(text="Second page, Letter size")
 pdf.add_page()
 pdf.output("fixture.pdf")
 """
-
-
-def png_size(path):
-    header = Path(path).read_bytes()[:24]
-    return struct.unpack(">II", header[16:24])
 
 
 class PdfFixture(unittest.TestCase):

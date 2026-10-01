@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 import html
 from pathlib import Path
 
-from office_result import WARNING, IssueKind
+from office_result import WARNING, Issue, IssueKind
+from render.renderer import RenderFailed, RendererUnavailable, RenderedPages, draw_preview
 
 
 CSS_PIXELS_PER_INCH = 96
@@ -12,9 +13,10 @@ TWIPS_PER_INCH = 1440
 EMU_PER_INCH = 914400
 POINTS_PER_INCH = 72
 PREVIEW_FILE_NAME = "preview.html"
+PAGE_SELECTOR = "section[data-page]"
 
 PREVIEW_APPROXIMATED = IssueKind("PREVIEW_APPROXIMATED", WARNING, "the preview leaves out or simplifies something the file has; the message names what", "check those parts in the file itself, or say they were not seen")
-PAGES_NOT_RENDERED = IssueKind("PAGES_NOT_RENDERED", WARNING, "only the preview HTML was written; no page images were drawn from it", "read preview.html for structure, and say the pages were not seen")
+PAGES_NOT_RENDERED = IssueKind("PAGES_NOT_RENDERED", WARNING, "only the preview HTML was written; the renderer could not draw page images from it", "install bun or node 18 and run again, or read preview.html for structure and say the pages were not seen")
 
 PREVIEW_ISSUE_KINDS = (PREVIEW_APPROXIMATED, PAGES_NOT_RENDERED)
 
@@ -113,3 +115,20 @@ def approximation_issues(preview: Preview, location: str) -> list:
         return []
     listed = ", ".join(f"{count} {what}" for what, count in sorted(preview.approximations.items()))
     return [PREVIEW_APPROXIMATED.issue(f"the preview simplifies {listed}", location)]
+
+
+def drawn_page_details(rendered: RenderedPages) -> dict:
+    return {
+        "pages": [str(path) for path in rendered.png_paths],
+        "contactSheets": [str(path) for path in rendered.contact_sheet_paths],
+        "pdf": str(rendered.pdf_path) if rendered.pdf_path else None,
+        "seen": True,
+    }
+
+
+def draw_pages(preview_path: Path, preview_fonts: list[dict], pdf_path: Path, page_selector: str = PAGE_SELECTOR) -> tuple[dict, list[Issue]]:
+    try:
+        rendered = draw_preview(preview_path, page_selector, preview_fonts, pdf_path)
+    except (RendererUnavailable, RenderFailed) as reason:
+        return {"seen": False}, [PAGES_NOT_RENDERED.issue(f"wrote {preview_path.name}, and no page was drawn: {reason}", str(preview_path))]
+    return drawn_page_details(rendered), []

@@ -6,6 +6,8 @@ import unittest
 
 from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, block_texts, run_office, run_office_python
 from pdf_fixture import newsletter_pdf_code
+from pptx_edit_fixture import build_korean_deck
+from render_fixture import can_render, pdf_page_count
 from report_fixture import CHART_IMAGE, REPORT_MARKDOWN
 
 
@@ -127,6 +129,51 @@ class TableRouteTest(unittest.TestCase):
             self.assertEqual(sheet["sheets"][0]["name"], "예산")
             self.assertEqual(sheet["sheets"][0]["mergedCells"], ["A1:B1"])
             self.assertEqual(sheet["range"]["values"], [["2026년 예산", None], ["인건비", 1200], ["인건비", 1200], ["마감", "2026-10-01T00:00:00"], ["=수식 아님", 2400]])
+
+
+DOCUMENT = """
+from docx import Document
+document = Document()
+document.add_heading("분기 보고서", 0)
+document.add_paragraph("3분기 매출은 128억 원입니다.")
+document.add_page_break()
+document.add_paragraph("다음 분기 계획")
+document.save("보고서.docx")
+"""
+
+
+@unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+class PdfRouteTest(unittest.TestCase):
+    def setUp(self):
+        self.temporary_directory = tempfile.TemporaryDirectory()
+        self.directory = Path(self.temporary_directory.name)
+
+    def tearDown(self):
+        self.temporary_directory.cleanup()
+
+    def assert_pdf(self, name, page_count, required_text):
+        self.assertEqual(pdf_page_count(self.directory / name), page_count)
+        validation = run_office(["pdf", "validate", name, "--required-text", required_text], self.directory)
+        self.assertEqual(validation["status"], "ok", validation["issues"])
+
+    def test_a_document_becomes_a_pdf_page_for_each_laid_out_page(self):
+        run_office_python(DOCUMENT, self.directory)
+        envelope = convert("보고서.docx", "보고서.pdf", self.directory)
+        self.assertEqual(envelope["status"], "ok", envelope["issues"])
+        self.assert_pdf("보고서.pdf", envelope["details"]["pageCount"], "128억 원")
+        self.assertEqual(envelope["details"]["pageCount"], 2)
+
+    def test_a_workbook_becomes_its_printed_pages(self):
+        run_office_python(WORKBOOK, self.directory)
+        envelope = convert("실적.xlsx", "실적.pdf", self.directory, "--sheet", "매출")
+        self.assertEqual(envelope["details"]["pageCount"], 1)
+        self.assert_pdf("실적.pdf", 1, "2700")
+
+    def test_a_presentation_becomes_one_page_per_slide(self):
+        build_korean_deck(self.directory / "deck.pptx")
+        envelope = convert("deck.pptx", "deck.pdf", self.directory)
+        self.assertEqual(envelope["status"], "ok", envelope["issues"])
+        self.assert_pdf("deck.pdf", 5, "분기별 매출 추이")
 
 
 class LegacyWorkbookTest(unittest.TestCase):

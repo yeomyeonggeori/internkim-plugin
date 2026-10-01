@@ -18,11 +18,10 @@ sys.path.insert(0, str(TESTS_PATH))
 
 from check_deck import CheckRequest, check_deck  # noqa: E402
 from png_fixture import write_png  # noqa: E402
-from test_deck_geometry import can_render  # noqa: E402
+from render_fixture import can_render, pdf_page_count  # noqa: E402
 
 
 LAYOUT_DEFECT_CODES = {"CONTENT_OVERFLOW", "TEXT_OVERLAP", "OUT_OF_FRAME"}
-PDF_PAGE_PATTERN = re.compile(rb"/Type\s*/Page(?!s)")
 GENERATED_PHOTO_SIZE = (960, 640)
 
 
@@ -78,10 +77,9 @@ class SampleDeckBuildTest(unittest.TestCase):
                 envelope = json.loads(completed.stdout)
                 if envelope["details"]["review"]["renderSource"] != "layout":
                     self.skipTest("the renderer could not run on this host")
-                pdf_bytes = Path(envelope["outputPath"]).read_bytes()
                 self.assertEqual({issue["code"] for issue in envelope["issues"]} & LAYOUT_DEFECT_CODES, set())
                 self.assertTrue(envelope["details"]["acceptance"]["acceptable"], envelope["summary"])
-                self.assertEqual(len(PDF_PAGE_PATTERN.findall(pdf_bytes)), count)
+                self.assertEqual(pdf_page_count(envelope["outputPath"]), count)
                 self.assert_review_measured_every_page(deck_path, count)
 
     def assert_review_measured_every_page(self, deck_path: Path, count: int):

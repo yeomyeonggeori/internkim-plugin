@@ -1,6 +1,0 @@
-{
-  "private": true,
-  "dependencies": {
-    "takumi-pdf": "0.15.0"
-  }
-}

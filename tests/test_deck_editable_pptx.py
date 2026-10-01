@@ -12,7 +12,7 @@ import unittest
 from xml.etree import ElementTree
 import zipfile
 
-from test_deck_geometry import can_render
+from render_fixture import can_render
 
 
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"

@@ -37,7 +37,7 @@ def export_pdf(blocks: list, markdown_text: str, output_path: Path, source_direc
     if can_render():
         return render_document_pdf(blocks, output_path, source_directory, document_title(blocks, output_path), Path(font_path_argument) if font_path_argument else None)
     issues = export_plain_pdf(blocks, markdown_text, output_path, source_directory, font_path_argument, font_size)
-    return [PDF_RENDERER_UNAVAILABLE.issue("bun is not on PATH, so the plain fallback renderer drew the PDF", str(output_path)), *issues]
+    return [PDF_RENDERER_UNAVAILABLE.issue("neither bun nor node 18 is on PATH, so the plain fallback renderer drew the PDF", str(output_path)), *issues]
 
 
 def document_title(blocks: list, output_path: Path) -> str:

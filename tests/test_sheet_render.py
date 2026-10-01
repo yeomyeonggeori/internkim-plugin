@@ -1,10 +1,12 @@
 import datetime
+import math
 from pathlib import Path
 import re
 import sys
 import tempfile
 import unittest
 
+from render_fixture import can_render, pdf_page_count, png_size
 from sheet_fixture import SCRIPTS_PATH, run_office, run_office_python
 
 sys.path[0:0] = [str(SCRIPTS_PATH / "sheet")]
@@ -65,6 +67,15 @@ class SheetPreviewTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.temporary_directory.cleanup()
+
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+    def test_every_printed_page_is_drawn_as_an_image_and_a_pdf_page(self):
+        details = self.envelope["details"]
+        self.assertNotIn("PAGES_NOT_RENDERED", [issue["code"] for issue in self.envelope["issues"]])
+        section_sizes = [tuple(math.ceil(float(value)) for value in re.search(r"width:([\d.]+)px;height:([\d.]+)px", style).groups()) for _, style, _ in self.pages]
+        self.assertTrue(details["seen"])
+        self.assertEqual([png_size(self.directory / page) for page in details["pages"]], section_sizes)
+        self.assertEqual(pdf_page_count(self.directory / details["pdf"]), len(self.pages))
 
     def test_cells_show_their_displayed_values_and_conditional_colors(self):
         first = self.pages[0][2]

@@ -12,7 +12,7 @@ sys.path.insert(0, str(SCRIPTS_PATH.parent))
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from png_fixture import write_png  # noqa: E402
-from render.renderer import RendererUnavailable, javascript_runtime  # noqa: E402
+from render_fixture import can_render  # noqa: E402
 from render_review import build_review_report  # noqa: E402
 
 
@@ -102,14 +102,6 @@ class GeometryReviewTest(unittest.TestCase):
         self.assertGreater(report["slides"][0]["textCharacterCount"], 900)
         self.assertEqual({issue.kind.code for issue in issues} & (GEOMETRY_CODES | {"TEXT_OVERFLOW_RISK"}), set())
         self.assertNotIn("textOverflowRisk", report["slides"][0]["risks"])
-
-
-def can_render() -> bool:
-    try:
-        javascript_runtime()
-    except RendererUnavailable:
-        return False
-    return True
 
 
 class RenderedGeometryTest(unittest.TestCase):

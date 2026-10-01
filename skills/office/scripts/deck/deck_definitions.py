@@ -166,7 +166,7 @@ IMAGE_ISSUE_KINDS = (IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND)
 LAYOUT_AUDIT_ISSUE_KINDS = (CONTENT_OVERFLOW.kind, OUT_OF_FRAME.kind, TEXT_OVERLAP.kind, IMAGE_DISTORTED.kind)
 
 PICTURE_UNREADABLE = IssueKind("PICTURE_UNREADABLE", ERROR, "an image file given to an operation is not a PNG, JPEG or GIF picture", "pass the path of a PNG, JPEG or GIF file")
-PPTX_NOT_RENDERED = IssueKind("PPTX_NOT_RENDERED", WARNING, "no image of the slides was drawn, so nobody looked at them", "say the slides were checked by measurement only and not seen")
+PPTX_NOT_RENDERED = IssueKind("PPTX_NOT_RENDERED", WARNING, "the renderer could not draw the slides, so nobody looked at them", "install bun or node 18 and run again, or say the slides were checked by measurement only and not seen")
 
 APPLY_ISSUE_KINDS = (PICTURE_UNREADABLE,)
 PPTX_CHECK_ISSUE_KINDS = (PPTX_NOT_RENDERED,)
