@@ -140,9 +140,14 @@ IMAGE_SEARCH_FAILED = IssueKind("IMAGE_SEARCH_FAILED", ERROR, "the image search 
 NO_IMAGE_FOUND = IssueKind("NO_IMAGE_FOUND", ERROR, "no usable public-domain image matched", "try a simpler English query or skip imagery")
 
 IMAGE_ISSUE_KINDS = (IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND)
+LAYOUT_AUDIT_ISSUE_KINDS = (CONTENT_OVERFLOW.kind, OUT_OF_FRAME.kind, TEXT_OVERLAP.kind, IMAGE_DISTORTED.kind)
+
 PICTURE_UNREADABLE = IssueKind("PICTURE_UNREADABLE", ERROR, "an image file given to an operation is not a PNG, JPEG or GIF picture", "pass the path of a PNG, JPEG or GIF file")
+PPTX_NOT_RENDERED = IssueKind("PPTX_NOT_RENDERED", WARNING, "LibreOffice is not installed, so nobody looked at the slides", "say the slides were checked by measurement only and not seen")
+PPTX_RENDER_FAILED = IssueKind("PPTX_RENDER_FAILED", WARNING, "LibreOffice could not render the deck, so nobody looked at the slides", "say the slides were not seen, and read the message for why")
 
 APPLY_ISSUE_KINDS = (PICTURE_UNREADABLE,)
+CHECK_ISSUE_KINDS = (PPTX_NOT_RENDERED, PPTX_RENDER_FAILED)
 
 GUIDE_INPUTS = (
     ("deck apply <file.pptx> <ops.json>", ListOf(OPERATIONS, non_empty=True)),
@@ -151,7 +156,8 @@ GUIDE_INPUTS_ON_REQUEST = ("deck apply",)
 GUIDE_ISSUES = (
     ("deck build", BUILD_ISSUE_KINDS + REVIEW_ISSUE_KINDS),
     ("deck validate", VALIDATE_ISSUE_KINDS),
-    ("deck apply", OPERATION_ISSUE_KINDS + APPLY_ISSUE_KINDS),
+    ("deck apply", OPERATION_ISSUE_KINDS + APPLY_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS),
+    ("deck check", LAYOUT_AUDIT_ISSUE_KINDS + CHECK_ISSUE_KINDS),
     ("deck restore", (NO_SLIDE_SECTIONS,)),
     ("deck accept", ACCEPT_ISSUE_KINDS),
     ("deck image", IMAGE_ISSUE_KINDS),

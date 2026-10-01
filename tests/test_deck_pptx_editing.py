@@ -9,10 +9,15 @@ import unittest
 
 from pptx import Presentation
 
-from deck_fixture import OFFICE_ENTRY
+from deck_fixture import OFFICE_ENTRY, SCRIPTS_PATH
 from doc_fixture import write_json
 from pptx_edit_fixture import CUSTOM_PART_NAME, UNKNOWN_EXTENSION_URI, build_korean_deck, part_contents, sample_photo
 
+
+sys.path.insert(0, str(SCRIPTS_PATH))
+sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
+
+from pptx_render import soffice_command  # noqa: E402
 
 
 def run_office(arguments, directory):
@@ -312,6 +317,64 @@ class FidelityTest(KoreanDeckFixture):
         self.assertEqual([name for name in unchanged if before[name] != after[name]], [])
         self.assertIn(UNKNOWN_EXTENSION_URI.encode(), after["ppt/slides/slide5.xml"])
         self.assertIn(b"p:timing", after["ppt/slides/slide4.xml"])
+
+
+class LayoutAuditTest(KoreanDeckFixture):
+    def test_growing_text_is_reported_with_an_operation_that_clears_it(self):
+        long_text = "3분기 매출은 128억 원으로 전년 동기 대비 23% 성장했고, 신규 고객 42곳과 재구매율 68%가 함께 성장을 이끌었습니다.\n다음 분기에는 컨설팅 사업부의 수주 회복과 플랫폼 사업부의 가격 정책 조정을 함께 추진해 같은 흐름을 유지합니다.\n세부 실행 계획은 다음 장에서 사업부별로 설명합니다."
+        envelope = self.apply([{"op": "set_text", "slide": 2, "shape": 3, "text": long_text}, {"op": "set_text_frame", "slide": 2, "shape": 3, "autofit": "none"}])
+        overflow = [issue for issue in envelope["issues"] if issue["code"] == "CONTENT_OVERFLOW" and issue["location"] == "slide 2 shape 3"]
+        self.assertEqual(len(overflow), 1)
+        suggestion = overflow[0]["suggestion"]
+        self.assertEqual((suggestion["slide"], suggestion["shape"]), (2, 3))
+        fixed = self.apply([suggestion])
+        self.assertNotIn("slide 2 shape 3", [issue["location"] for issue in fixed["issues"] if issue["code"] == "CONTENT_OVERFLOW"])
+
+    def test_off_slide_overlap_and_stretched_pictures_are_found(self):
+        envelope = self.apply([
+            {"op": "set_transform", "slide": 3, "shape": 1, "y": 3600000},
+            {"op": "set_transform", "slide": 2, "shape": 3, "x": 609600, "y": 1828800},
+            {"op": "set_transform", "slide": 2, "shape": 4, "w": 6000000},
+        ])
+        by_code = {issue["code"]: issue for issue in envelope["issues"]}
+        self.assertEqual(by_code["OUT_OF_FRAME"]["suggestion"], {"op": "set_transform", "slide": 3, "shape": 1, "y": 6858000 - 4572000})
+        self.assertIn("TEXT_OVERLAP", by_code)
+        self.assertEqual(by_code["IMAGE_DISTORTED"]["suggestion"]["op"], "set_transform")
+
+    def test_text_that_grows_past_its_card_is_found(self):
+        envelope = self.apply([
+            {"op": "set_text", "slide": 2, "shape": 2, "text": "3분기 매출 128억 원, 전년 동기 대비 23% 성장하며 분기 최고치를 다시 경신"},
+            {"op": "set_text_frame", "slide": 2, "shape": 2, "wrap": True},
+        ])
+        spill = [issue for issue in envelope["issues"] if "grows with its text past shape 1" in issue["message"]]
+        self.assertEqual(spill[0]["suggestion"]["shape"], 1)
+
+    def test_check_without_rendering_reports_the_same_findings(self):
+        self.apply([{"op": "set_transform", "slide": 3, "shape": 1, "y": 3600000}])
+        envelope = run_office(["deck", "check", "deck.pptx", "--no-render", "--slides", "3"], self.directory)
+        self.assertEqual(codes(envelope), ["OUT_OF_FRAME"])
+        self.assertEqual(envelope["details"]["checkedSlides"], [3])
+
+
+@unittest.skipUnless(soffice_command(), "LibreOffice is not installed")
+class RenderTest(KoreanDeckFixture):
+    def test_check_renders_every_slide_including_hidden_ones(self):
+        self.apply([{"op": "set_slide_hidden", "slide": 2, "hidden": True}])
+        envelope = run_office(["deck", "check", "deck.pptx"], self.directory)
+        self.assertTrue(envelope["details"]["seen"], envelope["issues"])
+        self.assertEqual([page["slide"] for page in envelope["details"]["slides"]], [1, 2, 3, 4, 5])
+        self.assertTrue(Path(self.directory / envelope["details"]["contactSheet"]).exists())
+
+
+class RenderUnavailableTest(unittest.TestCase):
+    def test_without_libreoffice_the_check_says_the_slides_were_not_seen(self):
+        import check_pptx
+        original = check_pptx.soffice_command
+        check_pptx.soffice_command = lambda: None
+        self.addCleanup(setattr, check_pptx, "soffice_command", original)
+        issues, details = check_pptx.rendering(Path("deck.pptx"), [1], 1, "", frozenset())
+        self.assertEqual([issue.kind.code for issue in issues], ["PPTX_NOT_RENDERED"])
+        self.assertFalse(details["seen"])
 
 
 if __name__ == "__main__":
