@@ -31,10 +31,11 @@ Work in `artifacts/<deck-slug>/`. Write the whole file in one step with your fil
 
 ## Layouts
 
-Choose each slide's layout from its content. Three slides in a row never share a layout, and six or more slides use at least three.
+Slide 1 is a `cover` and, from three slides on, the last is a `closing`. Choose every slide between from its content. Three slides in a row never share a layout, and six or more slides use at least three.
 
 | Content | Layout |
 | --- | --- |
+| the deck's claim, who presents and when | `cover` |
 | order of the talk | `agenda` |
 | part divider | `section` |
 | one sentence to remember | `statement` |

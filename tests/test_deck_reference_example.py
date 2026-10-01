@@ -11,6 +11,12 @@ from PIL import Image
 from render_fixture import can_render
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"))
+
+from deck_definitions import FIRST_SLIDE_NOT_COVER, KIT_LAYOUT_NAMES, LAST_SLIDE_NOT_CLOSING  # noqa: E402
+
+
 TESTS_PATH = Path(__file__).resolve().parent
 OFFICE_PATH = TESTS_PATH.parent / "skills" / "office"
 OFFICE_ENTRY = OFFICE_PATH / "scripts" / "office"
@@ -34,7 +40,21 @@ def write_referenced_images(deck_source: str, deck_path: Path) -> None:
         Image.new("RGB", (960, 640), (70, 110, 150)).save(image_path)
 
 
+def layout_table_names(markdown: str) -> list[str]:
+    return re.findall(r"^\| [^|]+ \| `([a-z]+)` \|$", markdown, re.MULTILINE)
+
+
 class ReferenceExampleTest(unittest.TestCase):
+    def test_the_layout_table_lists_every_kit_layout(self):
+        self.assertEqual(sorted(layout_table_names(DECK_REFERENCE_PATH.read_text(encoding="utf-8"))), sorted(KIT_LAYOUT_NAMES))
+
+    def test_the_layout_rules_name_the_slides_the_check_expects_first_and_last(self):
+        markdown = DECK_REFERENCE_PATH.read_text(encoding="utf-8")
+        for kind, layout in ((FIRST_SLIDE_NOT_COVER, "cover"), (LAST_SLIDE_NOT_CLOSING, "closing")):
+            self.assertIn(f'data-layout="{layout}"', kind.suggestion)
+        self.assertIn("Slide 1 is a `cover`", markdown)
+        self.assertIn("the last is a `closing`", markdown)
+
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_the_reference_example_deck_builds_acceptable_as_written(self):
         deck_source = reference_deck()
