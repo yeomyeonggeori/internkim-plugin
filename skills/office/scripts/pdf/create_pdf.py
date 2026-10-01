@@ -5,11 +5,11 @@ import json
 import os
 from pathlib import Path
 
-from office_result import INVALID_ARGUMENTS, KOREAN_FONT_UNAVAILABLE, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
+from fonts.registry import SANS_BODY, default_family
+from office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
 from pdf_definitions import PDF_SPECIFICATION
-from pdf_fonts import register_regular_and_bold
-from skill_runtime import HANGUL_FONT_PATHS, cache_home_path
+from fonts.pdf_registration import register_document_font
 
 
 def read_specification(arguments):
@@ -63,14 +63,13 @@ def create_pdf(specification):
             self.cell(0, 8, f"{self.page_no()}", align="C")
 
     active_font_name, font_path = resolve_font(specification)
-    validate_font_availability(specification, font_path)
 
     pdf = DocumentPDF(orientation="P", unit="mm", format=specification.get("format") or "A4")
     margin_millimeters = specification.get("marginMillimeters")
     margin = float(18 if margin_millimeters is None else margin_millimeters)
     pdf.set_margins(margin, margin, margin)
     pdf.set_auto_page_break(auto=True, margin=16)
-    font_issues = register_regular_and_bold(pdf, active_font_name, font_path) if font_path else []
+    font_issues = register_document_font(pdf, active_font_name, font_path, json.dumps(specification, ensure_ascii=False))
     pdf.add_page()
     pdf.set_font(active_font_name, size=11)
     pdf.set_text_color(31, 41, 55)
@@ -236,50 +235,8 @@ def write_multiline(pdf, width, height, text, **options):
 
 def resolve_font(specification):
     configured_font = optional_text(specification.get("fontPath"))
-    font_name = optional_text(specification.get("fontName")) or "ArtifactFont"
-    if configured_font:
-        return font_name, Path(configured_font)
-    for candidate in candidate_font_paths():
-        if candidate.exists() and is_embeddable_font(candidate):
-            return font_name, candidate
-    return "Helvetica", None
-
-
-def validate_font_availability(specification, font_path):
-    if font_path and font_path.exists():
-        return
-    text = json.dumps(specification, ensure_ascii=False)
-    if contains_non_latin_text(text):
-        raise OfficeFailure(KOREAN_FONT_UNAVAILABLE.issue("non-Latin PDF text requires fontPath or an installed Korean-capable font"))
-
-
-def is_embeddable_font(font_path):
-    try:
-        from fontTools.ttLib import TTFont
-    except ImportError:
-        return True
-    try:
-        font = TTFont(str(font_path), fontNumber=0, lazy=True)
-    except Exception:
-        return False
-    return "OS/2" in font and "cmap" in font
-
-
-def cached_font_paths():
-    fonts_directory = cache_home_path(os.environ) / "fonts"
-    return [fonts_directory / "NanumGothic.ttf", fonts_directory / "NotoSansKR-Regular.ttf"]
-
-
-LATIN_FALLBACK_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-
-
-def candidate_font_paths():
-    host_paths = HANGUL_FONT_PATHS + [LATIN_FALLBACK_FONT_PATH]
-    return cached_font_paths() + [Path(candidate) for candidate in host_paths]
-
-
-def contains_non_latin_text(text):
-    return any(ord(character) > 127 for character in text)
+    font_name = optional_text(specification.get("fontName")) or default_family(SANS_BODY).name
+    return font_name, Path(configured_font) if configured_font else None
 
 
 def parse_arguments():

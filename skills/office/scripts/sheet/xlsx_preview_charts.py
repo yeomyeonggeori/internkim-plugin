@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from openpyxl.utils import range_boundaries
 
 from chart_svg import LABEL_FLAGS, ChartModel, ChartSeries, chart_svg
+from fonts.preview import DEFAULT_FAMILY
 from office_preview import data_uri, emu_to_pixels, pixels, style_attribute
-from preview_fonts import KOREAN_FALLBACK_FAMILY
 
 
 ACCENT_SLOTS = range(4, 10)
@@ -69,7 +69,7 @@ def absolute(box: Box) -> dict:
 def chart_html(chart, box: Box, values_workbook, palette: tuple, preview) -> str:
     model = chart_model(chart, values_workbook, preview)
     colors = point_colors(chart_items(chart), palette) if model.is_round else tuple(series_color(item, palette, index) for index, item in enumerate(chart_items(chart)))
-    return f"<div{style_attribute(absolute(box))}>{chart_svg(model, box.width, box.height, KOREAN_FALLBACK_FAMILY, colors or round_colors(palette))}</div>"
+    return f"<div{style_attribute(absolute(box))}>{chart_svg(model, box.width, box.height, DEFAULT_FAMILY, colors or round_colors(palette))}</div>"
 
 
 def chart_plots(chart) -> list:

@@ -5,7 +5,7 @@ const pageNumberFooter = '<div style="display:flex;width:100%;justify-content:ce
 
 async function main() {
   const request = JSON.parse(await readFile(process.argv[2], "utf8"));
-  const fonts = await Promise.all(request.fonts.map(async (font) => ({ name: font.family, weight: font.weight, style: font.style || "normal", data: await readFile(font.path) })));
+  const fonts = await Promise.all(request.fonts.map(async (font) => ({ name: font.family, weight: font.weight, style: font.style || "normal", data: await readFile(font.path), ...(font.generic ? { generic: font.generic } : {}) })));
   const pdf = await render(request.html, {
     size: request.size,
     landscape: request.landscape,

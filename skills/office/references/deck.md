@@ -127,7 +127,7 @@ A brand that needs more than `data-accent` adds a `<style>` that sets the theme 
 
 ## PPTX
 
-The PPTX is built from the rendered slides: every word is an editable text box, boxes are native shapes, diagram arrows are connectors attached to their boxes, each kit chart is a native chart with its data, each table is a native table, and Paperlogy is embedded.
+The PPTX is built from the rendered slides: every word is an editable text box, boxes are native shapes, diagram arrows are connectors attached to their boxes, each kit chart is a native chart with its data, each table is a native table, and the shipped fonts the slides use are embedded.
 
 ## Editing a delivered .pptx
 

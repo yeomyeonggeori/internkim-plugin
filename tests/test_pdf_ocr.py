@@ -12,7 +12,6 @@ from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, run_office, run_office_pytho
 from pdf_fixture import SCANNED_STATEMENT_PDF, statement_pdf_code
 
 
-FONT_DIRECTORY = SCRIPTS_PATH.parent / "assets" / "fonts" / "paperlogy"
 AMOUNTS = ["금액", "1,440,000", "540,000", "1,192,500", "432,000", "420,000", "4,024,500"]
 
 
@@ -21,7 +20,7 @@ class ScannedStatementTest(unittest.TestCase):
     def setUpClass(cls):
         cls.temporary_directory = tempfile.TemporaryDirectory()
         cls.directory = Path(cls.temporary_directory.name)
-        run_office_python(statement_pdf_code(FONT_DIRECTORY), cls.directory)
+        run_office_python(statement_pdf_code(), cls.directory)
         run_office_python(SCANNED_STATEMENT_PDF, cls.directory)
 
     @classmethod

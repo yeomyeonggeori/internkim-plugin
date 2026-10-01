@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from fonts.registry import SANS_BODY, default_family
 from office_preview import PREVIEW_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
@@ -9,6 +10,7 @@ from text_checks import FORBIDDEN_TEXT_PRESENT, PLACEHOLDER_LEFT, REQUIRED_TEXT_
 
 
 PICTURE_FORMATS = "PNG, JPEG, GIF, BMP or TIFF"
+DOCUMENT_FONT = default_family(SANS_BODY).name
 
 
 REVISION_TYPES = ("insertion", "deletion", "move", "formatting")
@@ -48,7 +50,7 @@ PAGE = Record("page", "page setup on A4", (
 
 DOCUMENT_SPECIFICATION = Record("document", "the --spec file of doc create", (
     Field("title", Text(), "centered title above the first block"),
-    Field("fontName", Text(non_empty=True), "font for body and headings, default 맑은 고딕"),
+    Field("fontName", Text(non_empty=True), f"font for body and headings, default {DOCUMENT_FONT}"),
     Field("fontSize", Number(minimum=1), "body size in points, default 10.5"),
     Field("page", PAGE, "page setup"),
     Field("blocks", ListOf(BLOCK, non_empty=True), "the content", required=True),
@@ -437,7 +439,7 @@ OPERATIONS = Variant(
         Record("accept_revisions", "accept tracked changes: insertions become plain text, deleted text goes, formatting stays", REVISION_SELECTOR),
         Record("reject_revisions", "reject tracked changes: inserted text goes, deleted text comes back, formatting reverts", REVISION_SELECTOR),
         Record("set_east_asia_font", "make the document's default East Asian font this one", (
-            Field("font", Text(non_empty=True), "font name such as 맑은 고딕", required=True),
+            Field("font", Text(non_empty=True), f"font name such as {DOCUMENT_FONT}", required=True),
         )),
         Record("set_korean_language", "tag the document's East Asian language as Korean (ko-KR): the default, the theme font language, and every style or run that names another", ()),
         Record("update_fields_on_open", "ask Word to refresh the table of contents and other fields when the file opens", ()),
@@ -471,7 +473,7 @@ IMAGE_UNAVAILABLE = IssueKind("IMAGE_UNAVAILABLE", WARNING, "a Markdown image is
 PDF_RENDERER_FAILED = IssueKind("PDF_RENDERER_FAILED", ERROR, "the document PDF renderer (takumi-pdf, run by bun or node) could not be installed or could not render", "check that bun or node 18 is on PATH and the network allows its first install, then rerun")
 PDF_RENDERER_UNAVAILABLE = IssueKind("PDF_RENDERER_UNAVAILABLE", WARNING, "neither bun nor node 18 is installed, so the PDF was drawn by the plain fallback renderer without inline bold, links styling or page numbers", "install bun for the typeset PDF, or deliver this plainer one")
 
-GLYPH_NOT_COVERED = IssueKind("GLYPH_NOT_COVERED", WARNING, "some characters have no glyph in the bundled Paperlogy font or the installed Korean font, so they print as empty boxes", "replace those characters, such as an emoji or a rare Hanja, with words")
+GLYPH_NOT_COVERED = IssueKind("GLYPH_NOT_COVERED", WARNING, "some characters have no glyph in any font the PDF carries, so they print as empty boxes", "replace those characters, such as an emoji or a rare Hanja, with words")
 
 MATH_NOT_CONVERTED = IssueKind("MATH_NOT_CONVERTED", WARNING, "a $...$ or $$...$$ formula is not LaTeX the converter reads, so its source text was written as it is", "fix the LaTeX with standard commands such as \\frac, \\sqrt, \\sum, ^ and _, or write the formula in words")
 EXPORT_ISSUE_KINDS = (CHART_BLOCK_INVALID, IMAGE_UNAVAILABLE, MATH_NOT_CONVERTED, PDF_RENDERER_FAILED, PDF_RENDERER_UNAVAILABLE, GLYPH_NOT_COVERED)

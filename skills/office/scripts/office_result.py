@@ -95,8 +95,7 @@ NO_FILE_FOUND = IssueKind("NO_FILE_FOUND", ERROR, "no path was given and ~/docum
 INVALID_JSON = IssueKind("INVALID_JSON", ERROR, "an input file is not valid JSON", "fix the JSON syntax at the reported line and column")
 PERMISSION_DENIED = IssueKind("PERMISSION_DENIED", ERROR, "the command may not read or write this path", "write the output under ~/documents instead")
 DEPENDENCIES_UNAVAILABLE = IssueKind("DEPENDENCIES_UNAVAILABLE", ERROR, "the office Python packages could not be installed", "check network access and that uv is on PATH, then rerun")
-KOREAN_FONT_UNAVAILABLE = IssueKind("KOREAN_FONT_UNAVAILABLE", ERROR, "the text needs a Korean-capable font and none is installed", "install Nanum Gothic or Noto Sans CJK, or pass a font path")
-BOLD_FONT_UNAVAILABLE = IssueKind("BOLD_FONT_UNAVAILABLE", WARNING, "no bold face was found beside the Korean font, so headings render without bold", "install fonts-nanum or fonts-noto-cjk, which carry a bold face, or pass a font path that has a Bold file beside it")
+BOLD_FONT_UNAVAILABLE = IssueKind("BOLD_FONT_UNAVAILABLE", WARNING, "no bold face was found beside the font file passed as the font path, so headings render without bold", "put the Bold file beside it, named like the regular one with Bold, or leave the font path out to use a bundled family")
 MISSING_FIELD = IssueKind("MISSING_FIELD", ERROR, "a required field is absent or empty", "add the field; {guide} lists every field")
 UNKNOWN_FIELD = IssueKind("UNKNOWN_FIELD", ERROR, "a field is not part of this structure", "remove the field or correct its spelling; {guide} lists every field")
 WRONG_TYPE = IssueKind("WRONG_TYPE", ERROR, "a field holds the wrong kind of value", "give the field the type {guide} names")
@@ -114,7 +113,6 @@ COMMAND_ISSUE_KINDS = (
     INVALID_JSON,
     PERMISSION_DENIED,
     DEPENDENCIES_UNAVAILABLE,
-    KOREAN_FONT_UNAVAILABLE,
     BOLD_FONT_UNAVAILABLE,
     MISSING_FIELD,
     UNKNOWN_FIELD,

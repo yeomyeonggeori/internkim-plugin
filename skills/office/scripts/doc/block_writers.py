@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import html
 import mimetypes
 
+from fonts.registry import MONOSPACE, SANS_BODY, default_family
 from chart_svg import chart_svg
 from docx_charts import specification
 from markdown_charts import Chart
@@ -13,7 +14,9 @@ from markdown_blocks import Equation, Heading, Image, ListItem, Quote, Table, Th
 
 
 LIST_INDENT = "   "
-CHART_FONT_FAMILY = "Malgun Gothic"
+BODY_FONT_FAMILY = default_family(SANS_BODY).name
+CODE_FONT_FAMILY = default_family(MONOSPACE).name
+CHART_FONT_FAMILY = BODY_FONT_FAMILY
 CHART_WIDTH_PIXELS = 640
 CHART_HEIGHT_RATIO = 0.56
 
@@ -29,8 +32,7 @@ class SizedImage:
     @property
     def source(self) -> str:
         return file_data_uri(self.data, f"image{self.suffix}")
-HTML_STYLE = """body{font-family:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR","Nanum Gothic",sans-serif;line-height:1.6;max-width:46rem;margin:2rem auto;padding:0 1rem;color:#1a1a1a}
-table{border-collapse:collapse;margin:1rem 0}th,td{border:1px solid #999;padding:.3rem .6rem;text-align:left;vertical-align:top}th{background:#eef2f7}
+HTML_STYLE = f'body{{font-family:"{BODY_FONT_FAMILY}",sans-serif;line-height:1.6;max-width:46rem;margin:2rem auto;padding:0 1rem;color:#1a1a1a}}code{{font-family:"{CODE_FONT_FAMILY}",monospace}}\n' + """table{border-collapse:collapse;margin:1rem 0}th,td{border:1px solid #999;padding:.3rem .6rem;text-align:left;vertical-align:top}th{background:#eef2f7}
 img{max-width:100%}hr{border:0;border-top:1px solid #8c959f;margin:1rem 0}.equation{text-align:center;margin:1rem 0}blockquote{margin:1rem 0;padding-left:1rem;border-left:3px solid #ccc;color:#444}"""
 
 

@@ -4,13 +4,13 @@ from docx.oxml.ns import qn
 
 from doc_definitions import EAST_ASIA_FONT_MISSING
 from docx_blocks import element_text
-from docx_defaults import KOREAN_LANGUAGE, set_default_east_asia_language, set_theme_font_language
+from docx_defaults import DOCUMENT_FONT, KOREAN_LANGUAGE, set_default_east_asia_language, set_theme_font_language
 from docx_styles import run_styles
 from office_result import Issue
 from text_checks import contains_korean
 
 
-DEFAULT_EAST_ASIA_FONT = "맑은 고딕"
+DEFAULT_EAST_ASIA_FONT = DOCUMENT_FONT
 
 
 def east_asia_language_of(properties) -> str | None:

@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
-from office_result import KOREAN_FONT_UNAVAILABLE, MISSING_FIELD, PERMISSION_DENIED, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
+from fonts.registry import SANS_BODY, default_family
+from fonts.docx_embedding import save_document
+from office_result import MISSING_FIELD, PERMISSION_DENIED, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
-from pdf_fonts import register_regular_and_bold
+from fonts.pdf_registration import register_document_font
 from paperwork_definitions import CONTRACT_DOCUMENT, PAPERWORK_CONTENT_FIELDS, PAPERWORK_DOCUMENT
-from skill_runtime import cache_home_path
 from paperwork_design import (
     COLOR_BORDER,
     COLOR_HEADER_FILL,
     COLOR_INK,
     COLOR_MUTED,
     COLOR_RULE,
-    FONT_CANDIDATE_PATHS_PDF,
     FONT_KOREAN_DOCX,
     LINE_SPACING,
     PDF_PAGE_MARGIN_MILLIMETERS,
@@ -79,35 +80,9 @@ def normalize_document(document):
         document["notes"] = [notes.strip()]
 
 
-def resolve_font(document):
+def configured_font_path(document):
     configured_path = str(document.get("fontPath", "")).strip()
-    if configured_path:
-        return Path(configured_path)
-    for candidate in candidate_font_paths():
-        if candidate.exists() and is_embeddable_font(candidate):
-            return candidate
-    raise OfficeFailure(KOREAN_FONT_UNAVAILABLE.issue("no Korean-capable font found; pass fontPath in the document JSON"))
-
-
-def is_embeddable_font(font_path):
-    try:
-        from fontTools.ttLib import TTFont
-    except ImportError:
-        return True
-    try:
-        font = TTFont(str(font_path), fontNumber=0, lazy=True)
-    except Exception:
-        return False
-    return "OS/2" in font and "cmap" in font
-
-
-def candidate_font_paths():
-    return cached_font_paths() + [Path(candidate) for candidate in FONT_CANDIDATE_PATHS_PDF]
-
-
-def cached_font_paths():
-    fonts_directory = cache_home_path(os.environ) / "fonts"
-    return [fonts_directory / "NanumGothic.ttf", fonts_directory / "NotoSansKR-Regular.ttf"]
+    return Path(configured_path) if configured_path else None
 
 
 def render_document(document):
@@ -132,7 +107,7 @@ def render_document(document):
     pdf = PaperworkPDF(orientation="P", unit="mm", format="A4")
     pdf.set_margins(PAGE_MARGIN_MILLIMETERS, PAGE_MARGIN_MILLIMETERS, PAGE_MARGIN_MILLIMETERS)
     pdf.set_auto_page_break(auto=True, margin=20)
-    font_issues = register_regular_and_bold(pdf, "Paperwork", resolve_font(document))
+    font_issues = register_document_font(pdf, "Paperwork", configured_font_path(document), json.dumps(document, ensure_ascii=False), default_family(SANS_BODY).name)
     pdf.add_page()
 
     profile = document.get("profile", {})
@@ -492,7 +467,7 @@ def generate_docx(document, output_path):
         run.font.color.rgb = RGBColor(*COLOR_INK)
     for block in document["blocks"]:
         append_docx_block(word_document, block)
-    word_document.save(str(output_path))
+    save_document(word_document, output_path)
 
 
 def text_or_default(value, default):

@@ -11,18 +11,13 @@ from fontTools.ttLib import TTFont
 
 from latex_math import math_text, text_with_math_drawn
 from markdown_blocks import Equation, Image, Paragraph, Table, local_image_problem
+from fonts.registry import MONOSPACE, SANS_BODY, BundledFamily, default_family
 from office_result import BOLD_FONT_UNAVAILABLE, Issue, OfficeFailure
-from pdf_fonts import font_file_for_face
+from fonts.pdf_registration import bold_sibling
 from render.renderer import DocumentPdfRequest, FontFile, RenderFailed, RendererUnavailable, javascript_runtime, render_document_pdf as render_pdf
-from skill_runtime import HANGUL_FONT_PATHS, find_bold_face
 
 
 SCRIPTS_PATH = Path(__file__).resolve().parent
-ASSETS_PATH = SCRIPTS_PATH.parents[1] / "assets"
-FONT_DIRECTORY = ASSETS_PATH / "fonts" / "paperlogy"
-FONT_FAMILY = "Paperlogy"
-FONT_FILES = ((400, "Paperlogy-4Regular.ttf"), (600, "Paperlogy-6SemiBold.ttf"), (700, "Paperlogy-7Bold.ttf"))
-FALLBACK_FAMILY = "Korean Fallback"
 CHOSEN_FAMILY = "Document"
 CSS_PATH = SCRIPTS_PATH / "document_pdf.css"
 PAGE_SIZES_PIXELS = {"a4": (794, 1123)}
@@ -42,11 +37,10 @@ def can_render() -> bool:
 def render_document_pdf(blocks: list, output_path: Path, source_directory: Path, title: str, font_path: Path | None = None) -> list[Issue]:
     issues: list[Issue] = []
     sized = [sized_image(block, source_directory, issues) if isinstance(block, Image) else block for block in blocks]
-    fallback = fallback_font()
-    fonts = chosen_fonts(font_path, issues) + fallback_fonts(fallback)
+    fonts = chosen_fonts(font_path, issues) + family_fonts(default_family(MONOSPACE))
     missing = uncovered_characters(markdown_source_text(blocks), fonts)
     if missing:
-        issues.append(GLYPH_NOT_COVERED.issue(f"no bundled or installed font draws {' '.join(missing)}; each shows as an empty box", "".join(missing)))
+        issues.append(GLYPH_NOT_COVERED.issue(f"no font the PDF carries draws {' '.join(missing)}; each shows as an empty box", "".join(missing)))
     try:
         render_keeping_headings_with_their_text(sized, output_path, title, fonts)
     except (RendererUnavailable, RenderFailed) as reason:
@@ -54,7 +48,7 @@ def render_document_pdf(blocks: list, output_path: Path, source_directory: Path,
     return issues
 
 
-def render_keeping_headings_with_their_text(blocks: list, output_path: Path, title: str, fonts: list[tuple[str, int, Path]]) -> None:
+def render_keeping_headings_with_their_text(blocks: list, output_path: Path, title: str, fonts: list[FontFile]) -> None:
     headings_on_new_page: frozenset[int] = frozenset()
     for _ in range(MAXIMUM_PAGINATION_PASSES):
         render_pdf(render_request(blocks, output_path, title, fonts, headings_on_new_page))
@@ -64,38 +58,35 @@ def render_keeping_headings_with_their_text(blocks: list, output_path: Path, tit
         headings_on_new_page |= {stranded}
 
 
-def render_request(blocks: list, output_path: Path, title: str, fonts: list[tuple[str, int, Path]], headings_on_new_page: frozenset[int] = frozenset()) -> DocumentPdfRequest:
+def render_request(blocks: list, output_path: Path, title: str, fonts: list[FontFile], headings_on_new_page: frozenset[int] = frozenset()) -> DocumentPdfRequest:
     return DocumentPdfRequest(
-        html="\n".join(html_blocks(blocks, fonts[0][0], headings_on_new_page)),
+        html="\n".join(html_blocks(blocks, fonts[0].family, headings_on_new_page)),
         css=CSS_PATH.read_text(encoding="utf-8"),
         output_path=output_path,
         title=title,
-        fonts=tuple(FontFile(family, path, weight) for family, weight, path in fonts),
+        fonts=tuple(fonts),
         margin={"left": SIDE_MARGIN_PIXELS, "right": SIDE_MARGIN_PIXELS},
     )
 
 
-def fallback_font() -> Path | None:
-    return next((Path(path) for path in HANGUL_FONT_PATHS if Path(path).exists()), None)
-
-
-def chosen_fonts(font_path: Path | None, issues: list[Issue]) -> list[tuple[str, int, Path]]:
+def chosen_fonts(font_path: Path | None, issues: list[Issue]) -> list[FontFile]:
+    body = family_fonts(default_family(SANS_BODY))
     if font_path is None:
-        return [(FONT_FAMILY, weight, FONT_DIRECTORY / name) for weight, name in FONT_FILES]
-    bold_face = find_bold_face(font_path)
-    if bold_face is None:
+        return body
+    bold_path = bold_sibling(font_path)
+    if bold_path is None:
         issues.append(BOLD_FONT_UNAVAILABLE.issue(f"no bold face found beside {font_path}; headings render without bold", str(font_path)))
-        return [(CHOSEN_FAMILY, 400, font_path)]
-    return [(CHOSEN_FAMILY, 400, font_path), (CHOSEN_FAMILY, 700, font_file_for_face(*bold_face))]
+        return [FontFile(CHOSEN_FAMILY, font_path, 400)] + body
+    return [FontFile(CHOSEN_FAMILY, font_path, 400), FontFile(CHOSEN_FAMILY, bold_path, 700)] + body
 
 
-def fallback_fonts(fallback: Path | None) -> list[tuple[str, int, Path]]:
-    return [(FALLBACK_FAMILY, 400, fallback)] if fallback is not None else []
+def family_fonts(family: BundledFamily) -> list[FontFile]:
+    return [FontFile(family.name, family.path(face), face.weight, generic=family.generic) for face in family.faces]
 
 
-def uncovered_characters(text: str, fonts: list[tuple[str, int, Path]]) -> list[str]:
+def uncovered_characters(text: str, fonts: list[FontFile]) -> list[str]:
     covered: set[int] = set()
-    for path in {path for _, _, path in fonts}:
+    for path in {font.path for font in fonts}:
         covered.update(TTFont(str(path), fontNumber=0, lazy=True).getBestCmap())
     return sorted({character for character in text if not character.isspace() and ord(character) not in covered})
 

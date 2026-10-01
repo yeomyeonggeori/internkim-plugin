@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from office_preview import PageGeometry
-from preview_fonts import FontRequest
+from fonts.preview import FontRequest
 
 
 @dataclass(frozen=True)

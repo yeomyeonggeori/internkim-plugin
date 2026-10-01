@@ -11,14 +11,15 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt
 
 from doc_definitions import DOCUMENT_SPECIFICATION, TABLE_FILE
-from docx_defaults import apply_korean_defaults, set_page, usable_width_inches
+from docx_defaults import DOCUMENT_FONT, apply_korean_defaults, set_page, usable_width_inches
+from fonts.docx_embedding import save_document
 from docx_tables import add_space_after_table, format_table
 from docx_lists import add_list_paragraph, start_list
 from office_result import INVALID_ARGUMENTS, INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
 
 
-DEFAULT_FONT_NAME = "맑은 고딕"
+DEFAULT_FONT_NAME = DOCUMENT_FONT
 DEFAULT_FONT_SIZE = 10.5
 SIZED_STYLE_NAMES = ["Normal", "Title", "Heading 1", "Heading 2", "Heading 3", "Heading 4"]
 LIST_BLOCK_TYPES = ("bullets", "numbered")
@@ -30,7 +31,7 @@ def main() -> Result:
     document = create_document(specification)
     output_path = Path(os.path.expanduser(arguments.output_path))
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    document.save(output_path)
+    save_document(document, output_path)
     return Result(summary=f"created {output_path}", output_path=str(output_path))
 
 

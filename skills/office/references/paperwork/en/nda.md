@@ -20,7 +20,7 @@ An agreement protecting confidential information shared between two parties for 
 ```json
 {
   "title": "Non-Disclosure Agreement",
-  "fontName": "맑은 고딕",
+  "fontName": "Pretendard",
   "fontSize": 10.5,
   "page": { "marginInches": 0.9 },
   "blocks": [

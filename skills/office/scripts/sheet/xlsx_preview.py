@@ -8,7 +8,7 @@ from openpyxl.utils import get_column_letter, range_boundaries
 
 from number_format import Displayed, displayed
 from office_preview import PageGeometry, Preview, emu_to_pixels, escaped, inches_to_pixels, page_section, pixels, points_to_pixels, positioned, style_attribute
-from preview_fonts import FontRegistry, FontRequest, css_font_family
+from fonts.preview import FontRegistry, FontRequest, css_font_family, draws_scripts_apart, script_font_family, script_runs
 from sheet_formatting import STACKED_ROTATION, rotation_degrees
 from sheet_objects import EXCEL_DEFAULT_FIT_PAGES
 from xlsx_colors import css_color
@@ -198,6 +198,7 @@ class SheetPreviewer:
         alignment = cell.alignment
         horizontal = alignment.horizontal or ("right" if text.is_number else "center" if isinstance(value, bool) else "left")
         content = stacked(text.text) if alignment.textRotation == STACKED_ROTATION else text.text
+        self.fonts.use(request, content)
         wraps = bool(alignment.wrap_text)
         if text.is_number and not wraps and self.fonts.width(request, content) > width - 2 * CELL_PADDING_PIXELS * scale:
             content = "#" * max(1, int((width - 2 * CELL_PADDING_PIXELS * scale) // max(self.fonts.width(request, "#"), 1)))
@@ -223,7 +224,7 @@ class SheetPreviewer:
             "text-align": horizontal if horizontal in ("left", "center", "right") else None,
         }
         span = {"text-decoration": text_decoration(font), **rotation_style(alignment.textRotation)}
-        return f"<div{style_attribute(declarations)}><span{style_attribute(span)}>{escaped(content)}</span></div>"
+        return f"<div{style_attribute(declarations)}><span{style_attribute(span)}>{script_spans(request, content)}</span></div>"
 
     def border_css(self, frame: SheetFrame, row: int, column: int, last_row: int, last_column: int, scale: float) -> dict:
         worksheet = frame.worksheet
@@ -444,3 +445,9 @@ def header_text(text: str) -> str:
     for code, replacement in HEADER_CODES:
         cleaned = cleaned.replace(code, replacement)
     return cleaned
+
+
+def script_spans(request: FontRequest, text: str) -> str:
+    if not draws_scripts_apart(request):
+        return escaped(text)
+    return "".join(f'<span{style_attribute({"font-family": script_font_family(request, piece)})}>{escaped(piece)}</span>' for piece in script_runs(text))

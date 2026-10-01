@@ -6,11 +6,10 @@ import unittest
 
 from openpyxl import load_workbook
 
-from pdf_fixture import statement_pdf_code
+from pdf_fixture import statement_pdf_code, with_fonts
 from sheet_fixture import SCRIPTS_PATH, run_office, run_office_python
 from xlsb_fixture import write_xlsb
 
-FONT_DIRECTORY = SCRIPTS_PATH.parent / "assets" / "fonts" / "paperlogy"
 TABLE_PDF = """
 from fpdf import FPDF
 pdf = FPDF(format="A4")
@@ -59,10 +58,7 @@ class ConversionFixture(unittest.TestCase):
         return run_office(["convert", source, target], self.directory)
 
     def write_pdf(self, code):
-        fonts = {"{regular!r}": "Paperlogy-4Regular.ttf", "{bold!r}": "Paperlogy-7Bold.ttf"}
-        for marker, name in fonts.items():
-            code = code.replace(marker, repr(str(FONT_DIRECTORY / name)))
-        run_office_python(textwrap.dedent(code), self.directory)
+        run_office_python(with_fonts(textwrap.dedent(code)), self.directory)
 
 
 class DelimitedRouteTest(ConversionFixture):
@@ -126,7 +122,7 @@ class PdfTablesTest(ConversionFixture):
         self.assertIsNone(third.freeze_panes)
 
     def test_a_table_laid_out_without_lines_becomes_a_typed_sheet(self):
-        run_office_python(statement_pdf_code(FONT_DIRECTORY), self.directory)
+        run_office_python(statement_pdf_code(), self.directory)
         envelope = self.convert("statement.pdf", "statement.xlsx")
         self.assertEqual(envelope["status"], "ok", envelope["issues"])
         self.assertEqual(envelope["details"]["tables"], [{"sheet": "Page 1", "pages": [1], "rows": 7, "columns": 5, "header": True}])

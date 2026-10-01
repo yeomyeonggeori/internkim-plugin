@@ -19,7 +19,7 @@ from docx_preview_sections import document_sections, page_number_start, section_
 from docx_preview_styles import StyleSheet, merged, paragraph_properties, run_properties
 from docx_preview_tables import TableLayers, table_block
 from office_preview import Preview, points_to_pixels, twips_to_pixels
-from preview_fonts import DEFAULT_FAMILY, FontRequest, css_font_family
+from fonts.preview import DEFAULT_FAMILY, FontRequest, css_font_family
 
 
 ACCENT_SLOTS = ("accent1", "accent2", "accent3", "accent4", "accent5", "accent6")

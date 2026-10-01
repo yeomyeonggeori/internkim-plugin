@@ -18,13 +18,10 @@ from native_rendering import (
     timeline_lines,
     visible_card_count,
 )
-from skill_runtime import HANGUL_FONT_PATHS
+from fonts.registry import BOLD_WEIGHT, DECK, REGULAR_WEIGHT, default_family
 from slide_images import slide_image_filename
 from slide_model import SlideModel
 
-
-BOLD_FALLBACK_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-REGULAR_FALLBACK_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 
 def write_native_review_images(slide_models: list[SlideModel], design: dict[str, str], review_path: pathlib.Path, deck_name: str) -> bool:
@@ -50,17 +47,12 @@ def write_native_review_images(slide_models: list[SlideModel], design: dict[str,
 
 
 def preview_font(image_font_module, size: int, is_bold: bool):
-    for candidate in preview_font_candidates(is_bold):
-        try:
-            if pathlib.Path(candidate).exists():
-                return image_font_module.truetype(candidate, size)
-        except OSError:
-            continue
-    return image_font_module.load_default()
+    return image_font_module.truetype(str(preview_font_path(is_bold)), size)
 
 
-def preview_font_candidates(is_bold: bool) -> list[str]:
-    return [*HANGUL_FONT_PATHS, BOLD_FALLBACK_FONT_PATH if is_bold else REGULAR_FALLBACK_FONT_PATH]
+def preview_font_path(is_bold: bool) -> pathlib.Path:
+    family = default_family(DECK)
+    return family.path(family.face(BOLD_WEIGHT if is_bold else REGULAR_WEIGHT))
 
 
 def draw_native_preview_slide(draw, model: SlideModel, colors: dict[str, str], fonts: dict[str, object]) -> None:

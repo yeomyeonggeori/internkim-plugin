@@ -6,7 +6,7 @@ from docx_preview_model import (
     BoxItem, CellBlock, ChartItem, FieldItem, ImageItem, LineBreakItem, NoteReferenceItem, PageBreakBlock, ParagraphBlock, TabItem, TableBlock, TextItem, TextStyle,
 )
 from office_preview import twips_to_pixels
-from preview_fonts import FontRegistry, breakable_pieces, is_ideograph
+from fonts.preview import FontRegistry, breakable_pieces, is_ideograph
 
 
 DEFAULT_TAB_PIXELS = 48

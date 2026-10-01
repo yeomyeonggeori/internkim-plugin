@@ -90,7 +90,7 @@ class DocumentPreviewTest(unittest.TestCase):
         self.assertTrue(all(Path(font["path"]).is_file() and font["weight"] in (400, 700) for font in fonts))
         families = {font["family"] for font in fonts}
         for declaration in set(re.findall(r"font-family:(.*?);", self.html)):
-            self.assertTrue(all(name in families for name in re.findall(r"&quot;([^&]*)&quot;", declaration) if name != "Korean Fallback") or "Korean Fallback" in families, declaration)
+            self.assertLessEqual(set(re.findall(r"&quot;([^&]*)&quot;", declaration)), families, declaration)
 
     def test_headers_footers_numbering_merges_and_tracked_insertions_show(self):
         first, last = self.pages[0][2], self.pages[-1][2]
@@ -115,7 +115,7 @@ class DocumentPreviewTest(unittest.TestCase):
             "from docx_layout import Layout\n"
             "from docx_pagination import Paginator\n"
             "from docx_preview import DocxModelBuilder\n"
-            "from preview_fonts import FontRegistry\n"
+            "from fonts.preview import FontRegistry\n"
             "pages = Paginator(Layout(FontRegistry())).paginate(DocxModelBuilder(Path('보고서.docx')).sections())\n"
             "print(json.dumps([(sum(item.height for item in page.placed), page.body_bottom - page.body_top) for page in pages]))\n"
         )

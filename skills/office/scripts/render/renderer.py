@@ -15,6 +15,7 @@ SCRIPTS_PATH = pathlib.Path(__file__).resolve().parents[1]
 if str(SCRIPTS_PATH) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_PATH))
 
+from fonts.registry import renderer_fonts  # noqa: E402
 from office_result import INPUT_NOT_FOUND, IssueKind, OfficeFailure, WARNING, ERROR  # noqa: E402
 from skill_runtime import skill_cache_path  # noqa: E402
 
@@ -23,8 +24,6 @@ RENDER_DIRECTORY = pathlib.Path(__file__).resolve().parent
 PACKAGE_MANIFEST = RENDER_DIRECTORY / "package.json"
 ENTRY_SCRIPT_NAME = "render_html.mjs"
 DOCUMENT_ENTRY_SCRIPT_NAME = "document_pdf.mjs"
-BUNDLED_FONT_DIRECTORY = RENDER_DIRECTORY.parents[1] / "assets" / "fonts" / "paperlogy"
-BUNDLED_FONT_PATTERN = re.compile(r"^(?P<family>[A-Za-z]+)-(?P<weight>\d)[A-Za-z]+\.ttf$")
 COLLECTION_SUFFIXES = {".ttc", ".otc"}
 NODE_MAJOR_VERSION_MINIMUM = 18
 DEFAULT_VIEWPORT = (1600, 900)
@@ -53,6 +52,7 @@ class FontFile:
     weight: int = 400
     index: int = 0
     style: str = "normal"
+    generic: str | None = None
 
 
 @dataclass(frozen=True)
@@ -99,12 +99,7 @@ class RenderedPages:
 
 
 def bundled_fonts() -> tuple[FontFile, ...]:
-    fonts = []
-    for path in sorted(BUNDLED_FONT_DIRECTORY.glob("*.ttf")):
-        match = BUNDLED_FONT_PATTERN.match(path.name)
-        if match:
-            fonts.append(FontFile(match["family"], path, int(match["weight"]) * 100))
-    return tuple(fonts)
+    return tuple(FontFile(entry["family"], pathlib.Path(entry["path"]), entry["weight"], generic=entry["generic"]) for entry in renderer_fonts())
 
 
 def font_from_json(entry: dict) -> FontFile:
@@ -114,7 +109,7 @@ def font_from_json(entry: dict) -> FontFile:
 def single_face_path(font: FontFile) -> pathlib.Path:
     if font.path.suffix.casefold() not in COLLECTION_SUFFIXES:
         return font.path
-    from pdf_fonts import extract_face
+    from fonts.pdf_registration import extract_face
 
     extracted_path = skill_cache_path(os.environ) / "fonts" / f"{font.path.stem}-face{font.index}.ttf"
     if not extracted_path.exists():
@@ -123,8 +118,13 @@ def single_face_path(font: FontFile) -> pathlib.Path:
 
 
 def font_requests(fonts: tuple[FontFile, ...]) -> list[dict]:
-    chosen = list(fonts) + [font for font in bundled_fonts() if (font.family, font.weight) not in {(other.family, other.weight) for other in fonts}]
-    return [{"family": font.family, "weight": font.weight, "style": font.style, "path": str(single_face_path(font))} for font in chosen]
+    requested = {(font.family, font.weight) for font in fonts}
+    chosen = list(fonts) + [font for font in bundled_fonts() if (font.family, font.weight) not in requested]
+    return [font_request(font) for font in chosen]
+
+
+def font_request(font: FontFile) -> dict:
+    return {"family": font.family, "weight": font.weight, "style": font.style, "path": str(single_face_path(font)), "generic": font.generic}
 
 
 def javascript_runtime() -> list[str]:
@@ -238,7 +238,7 @@ def render_document_pdf(request: DocumentPdfRequest) -> pathlib.Path:
         "landscape": request.landscape,
         "margin": request.margin,
         "fontFamilies": list(dict.fromkeys(font.family for font in request.fonts)),
-        "fonts": [{"family": font.family, "weight": font.weight, "style": font.style, "path": str(single_face_path(font))} for font in request.fonts],
+        "fonts": [font_request(font) for font in request.fonts],
     }
     run_entry(DOCUMENT_ENTRY_SCRIPT_NAME, payload)
     return request.output_path

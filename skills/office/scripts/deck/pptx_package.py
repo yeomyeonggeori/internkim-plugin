@@ -4,20 +4,24 @@ from dataclasses import dataclass
 import html
 import zipfile
 
-from pptx_fonts import EmbeddedFont, embedded_font_list_xml, embedded_fonts, font_relationships_xml
-from truetype_font import TrueTypeFace, embedded_open_type
+from fonts.pptx_embedding import EmbeddedFont, default_run_font, embedded_font_list_xml, embedded_fonts, font_relationships_xml
+from fonts.truetype import TrueTypeFace, embedded_open_type
 
 
 PRESENTATION_WIDTH_EMU = 12192000
 PRESENTATION_HEIGHT_EMU = 6858000
 SLIDE_MASTER_RELATIONSHIP_ID = 2147483648
-DEFAULT_THEME_FONTS = ("Arial", "Apple SD Gothic Neo")
 
 
 @dataclass(frozen=True)
 class DeckFonts:
-    theme_fonts: tuple[str, str] = DEFAULT_THEME_FONTS
+    theme_fonts: tuple[str, str] | None = None
     embedded_faces: tuple[TrueTypeFace, ...] = ()
+
+
+def default_theme_fonts() -> tuple[str, str]:
+    font = default_run_font()
+    return font.latin, font.east_asian
 
 
 def write_pptx_static_files(archive: zipfile.ZipFile, slide_count: int, noted_slides: tuple[int, ...], deck_fonts: DeckFonts = DeckFonts(), chart_count: int = 0) -> None:
@@ -32,7 +36,7 @@ def write_pptx_static_files(archive: zipfile.ZipFile, slide_count: int, noted_sl
     archive.writestr("ppt/slideMasters/_rels/slideMaster1.xml.rels", slide_master_relationships_xml())
     archive.writestr("ppt/slideLayouts/slideLayout1.xml", slide_layout_xml())
     archive.writestr("ppt/slideLayouts/_rels/slideLayout1.xml.rels", slide_layout_relationships_xml())
-    archive.writestr("ppt/theme/theme1.xml", theme_xml(*deck_fonts.theme_fonts))
+    archive.writestr("ppt/theme/theme1.xml", theme_xml(*(deck_fonts.theme_fonts or default_theme_fonts())))
     for font in fonts:
         archive.writestr(font.part_name, embedded_open_type(font.face))
 
@@ -163,7 +167,8 @@ def slide_layout_xml() -> str:
     )
 
 
-def theme_xml(latin_typeface: str = DEFAULT_THEME_FONTS[0], east_asian_typeface: str = DEFAULT_THEME_FONTS[1]) -> str:
+def theme_xml(latin_typeface: str | None = None, east_asian_typeface: str | None = None) -> str:
+    latin_typeface, east_asian_typeface = (latin_typeface, east_asian_typeface) if latin_typeface and east_asian_typeface else default_theme_fonts()
     typefaces = f'<a:latin typeface="{html.escape(latin_typeface)}"/><a:ea typeface="{html.escape(east_asian_typeface)}"/><a:cs typeface="{html.escape(latin_typeface)}"/>'
     return xml_document(
         '<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="internkim">'

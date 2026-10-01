@@ -10,7 +10,7 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
 from doc_definitions import IMAGE_UNAVAILABLE
-from docx_defaults import apply_korean_defaults, set_page
+from docx_defaults import CODE_FONT, DOCUMENT_FONT, apply_korean_defaults, set_page
 from docx_format_operations import ALIGNMENTS
 from docx_tables import add_space_after_table, format_table
 from docx_lists import add_list_paragraph, start_list
@@ -21,7 +21,7 @@ from markdown_blocks import Equation, Heading, Image, ListItem, Paragraph, Quote
 from office_result import Issue
 
 
-DEFAULT_DOCUMENT_FONT = "맑은 고딕"
+DEFAULT_DOCUMENT_FONT = DOCUMENT_FONT
 DEFAULT_DOCUMENT_FONT_SIZE = 10.5
 MAXIMUM_IMAGE_WIDTH = Inches(6)
 LINK_COLOR = "0563C1"
@@ -148,7 +148,7 @@ def add_inline_runs(paragraph, text: str) -> None:
             paragraph.add_run(segment[1:-1]).italic = True
         elif segment.startswith("`") and segment.endswith("`") and len(segment) > 2:
             run = paragraph.add_run(segment[1:-1])
-            run.font.name = "Courier New"
+            run.font.name = CODE_FONT
             run.font.size = Pt(9.5)
         else:
             paragraph.add_run(segment)

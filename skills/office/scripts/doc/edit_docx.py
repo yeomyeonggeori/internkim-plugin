@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 
 from create_docx import add_block, add_list, require_rectangular_tables
+from fonts.docx_embedding import save_document
 from doc_definitions import BLOCK_LIST
 from documents_folder import resolve_document_path
 from docx_package import open_document
@@ -25,7 +26,7 @@ def main() -> Result:
         add_list(document, False, arguments.bullet)
     for block in blocks:
         add_block(document, block)
-    document.save(document_path)
+    save_document(document, document_path)
     return Result(summary=f"appended to {document_path}", output_path=document_path)
 
 

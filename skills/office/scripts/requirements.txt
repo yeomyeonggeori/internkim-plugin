@@ -1,3 +1,4 @@
+brotli
 docxtpl
 fpdf2
 ironcalc==0.8.3

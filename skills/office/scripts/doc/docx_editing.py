@@ -8,6 +8,7 @@ from docx.oxml.ns import qn
 from docx.text.paragraph import Paragraph
 
 from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, body_block_elements
+from fonts.docx_embedding import save_document
 from docx_package import open_document
 from docx_tracking import Tracking, start_tracking
 from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND
@@ -34,7 +35,7 @@ def load_editing(path: str, tracking_author: str | None = None) -> DocxEditing:
 
 
 def save_editing(editing: DocxEditing, path: str) -> None:
-    editing.document.save(path)
+    save_document(editing.document, path)
 
 
 def resolve_block(editing: DocxEditing, index: int, location: str):

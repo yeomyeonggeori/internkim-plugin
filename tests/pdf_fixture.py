@@ -1,13 +1,26 @@
-NEWSLETTER_PDF = """
-FONT_DIRECTORY = {font_directory!r}
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"))
+
+from fonts.registry import BOLD_WEIGHT, DECK, REGULAR_WEIGHT, default_family  # noqa: E402
+
+PAPERLOGY = default_family(DECK)
+REGULAR_FONT = PAPERLOGY.path(PAPERLOGY.face(REGULAR_WEIGHT))
+BOLD_FONT = PAPERLOGY.path(PAPERLOGY.face(BOLD_WEIGHT))
+
+
+def with_fonts(code):
+    return code.replace("{regular!r}", repr(str(REGULAR_FONT))).replace("{bold!r}", repr(str(BOLD_FONT)))
+
+
+NEWSLETTER_PDF = """
 from fpdf import FPDF
 from PIL import Image, ImageDraw
-FONTS = Path(FONT_DIRECTORY)
 pdf = FPDF(format="A4")
 pdf.set_auto_page_break(False)
-pdf.add_font("Korean", "", str(FONTS / "Paperlogy-4Regular.ttf"))
-pdf.add_font("Korean", "B", str(FONTS / "Paperlogy-7Bold.ttf"))
+pdf.add_font("Korean", "", {regular!r})
+pdf.add_font("Korean", "B", {bold!r})
 left_column = [
     "올해 하반기 사내 교육은 직무 역량과 리더십 두 축으로 운영한다. 교육 일정은 부서별 수요 조사를 반영해 확정했다.",
     "직무 교육은 매월 둘째 주 화요일에 열리며 사전 신청자에 한해 수료증을 발급한다.",
@@ -71,18 +84,15 @@ pdf.output("newsletter.pdf")
 """
 
 
-def newsletter_pdf_code(font_directory):
-    return NEWSLETTER_PDF.replace("{font_directory!r}", repr(str(font_directory)))
+def newsletter_pdf_code():
+    return with_fonts(NEWSLETTER_PDF)
 
 
 STATEMENT_PDF = """
-FONT_DIRECTORY = {font_directory!r}
-from pathlib import Path
 from fpdf import FPDF
-FONTS = Path(FONT_DIRECTORY)
 pdf = FPDF(format="A4")
-pdf.add_font("Korean", "", str(FONTS / "Paperlogy-4Regular.ttf"))
-pdf.add_font("Korean", "B", str(FONTS / "Paperlogy-7Bold.ttf"))
+pdf.add_font("Korean", "", {regular!r})
+pdf.add_font("Korean", "B", {bold!r})
 pdf.add_page()
 pdf.set_font("Korean", "B", 16)
 pdf.text(20, 25, "2026년 9월 거래 명세서")
@@ -126,8 +136,8 @@ STATEMENT_ROWS = [
 ]
 
 
-def statement_pdf_code(font_directory):
-    return STATEMENT_PDF.replace("{font_directory!r}", repr(str(font_directory)))
+def statement_pdf_code():
+    return with_fonts(STATEMENT_PDF)
 
 
 SCANNED_STATEMENT_PDF = """
