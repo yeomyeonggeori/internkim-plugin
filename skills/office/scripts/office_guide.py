@@ -30,13 +30,14 @@ def guide_text(office_format: Format, verb: str | None = None, operation: str | 
 
 def index_text(office_format: Format, definitions: ModuleType) -> str:
     lines = [f"office {office_format.name}: {office_format.summary}", "", *command_lines(office_format.name), "", ENVELOPE_LINE]
+    listed: list[Variant] = []
     for label, shape in definitions.GUIDE_INPUTS:
-        lines.extend(["", *summary_lines(label, shape)])
+        lines.extend(["", *summary_lines(label, shape, listed)])
     for title, section_lines in getattr(definitions, "GUIDE_SECTIONS", ()):
         lines.extend(["", title, *section_lines()])
-    for issue_command, kinds in definitions.GUIDE_ISSUES:
-        lines.extend(["", f"Issues {issue_command} reports", *issue_lines(kinds)])
-    lines.extend(["", "Issues any command reports", *issue_lines(COMMAND_ISSUE_KINDS)])
+    lines.extend(["", f"Issue codes (office guide {office_format.name} <verb> explains its own; every issue carries a message and a suggestion)"])
+    lines.extend(f"  {issue_command}: {', '.join(kind.code for kind in kinds)}" for issue_command, kinds in definitions.GUIDE_ISSUES)
+    lines.append(f"  any command: {', '.join(kind.code for kind in COMMAND_ISSUE_KINDS)}")
     return "\n".join(lines)
 
 
@@ -45,7 +46,7 @@ def verb_text(office_format: Format, definitions: ModuleType, verb: str) -> str:
     lines = [*command_lines(office_format.name, command_name)]
     described: list[Record | Variant] = []
     for label, shape in verb_inputs(definitions, command_name):
-        lines.extend(["", *input_lines(label, shape, described)])
+        lines.extend(["", *input_lines(label, shape, described, command_name)])
     for issue_command, kinds in definitions.GUIDE_ISSUES:
         if issue_command == command_name:
             lines.extend(["", f"Issues {issue_command} reports", *issue_lines(kinds)])
@@ -81,11 +82,15 @@ def verb_inputs(definitions: ModuleType, command_name: str) -> list[tuple[str, S
     return [(label, shape) for label, shape in definitions.GUIDE_INPUTS if label.startswith(command_name)]
 
 
-def summary_lines(label: str, shape: Shape) -> list[str]:
+def summary_lines(label: str, shape: Shape, listed: list[Variant]) -> list[str]:
     command_name = " ".join(label.split()[:2])
     variants = [structure for structure in shape.structures() if isinstance(structure, Variant)]
     lines = [f"{label}: {shape.label}; office guide {command_name} lists every field"]
     for variant in variants:
+        if any(existing is variant for existing in listed):
+            lines.append(f"  {variant.discriminator}: the {variant.name} list above")
+            continue
+        listed.append(variant)
         lines.append(f"  {variant.discriminator}: {', '.join(record.name for record in variant.records)}")
     if variants:
         lines.append(f"  office guide {command_name} <{variants[0].discriminator}> lists one {variants[0].discriminator}'s fields")
@@ -122,13 +127,24 @@ def command_lines(format_name: str, command_name: str | None = None) -> list[str
     return lines
 
 
-def input_lines(label: str, shape: Shape, described: list[Record | Variant]) -> list[str]:
+def input_lines(label: str, shape: Shape, described: list[Record | Variant], command_name: str) -> list[str]:
     lines = [f"{label}: {shape.label}"]
     for structure in shape.structures():
         if any(existing is structure for existing in described):
             continue
         described.append(structure)
-        lines.extend(structure_lines(structure))
+        if isinstance(structure, Variant):
+            described.extend(nested for record in structure.records for field in record.fields for nested in field.shape.structures())
+            lines.extend(variant_summary_lines(structure, command_name))
+        else:
+            lines.extend(structure_lines(structure))
+    return lines
+
+
+def variant_summary_lines(variant: Variant, command_name: str) -> list[str]:
+    lines = [f"  {variant.name}: {variant.description}; \"{variant.discriminator}\" picks one of"]
+    lines.extend(f"    {variant.discriminator} \"{record.name}\": {record.description}" for record in variant.records)
+    lines.append(f"  office guide {command_name} <{variant.discriminator}> lists one {variant.discriminator}'s fields")
     return lines
 
 

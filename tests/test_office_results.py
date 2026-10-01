@@ -16,6 +16,7 @@ sys.path.insert(0, str(SCRIPTS_PATH))
 sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
 
 from office_commands import COMMANDS, FORMATS  # noqa: E402
+from office_guide import guide_text  # noqa: E402
 from office_result import COMMAND_ISSUE_KINDS, IssueKind  # noqa: E402
 from office_schema import CellValue, Field, ListOf, Number, Record, Text, Variant  # noqa: E402
 
@@ -90,7 +91,13 @@ class GuideTest(unittest.TestCase):
 
     def guide_with_every_verb(self, office_format):
         verbs = [command.verb for command in COMMANDS if command.format_name == office_format.name and command.verb]
-        return "\n".join([self.guide(office_format.name), *(self.guide(office_format.name, verb) for verb in verbs)])
+        operation_guides = [
+            guide_text(office_format, label.split()[1], record.name)
+            for label, shape in load_definitions(office_format).GUIDE_INPUTS
+            for structure in shape.structures() if isinstance(structure, Variant)
+            for record in structure.records
+        ]
+        return "\n".join([self.guide(office_format.name), *(self.guide(office_format.name, verb) for verb in verbs), *operation_guides])
 
     def test_the_guide_lists_every_code_its_format_defines(self):
         for office_format in FORMATS:
@@ -128,6 +135,16 @@ class GuideTest(unittest.TestCase):
         index = self.guide("sheet")
         self.assertIn("add_chart", index)
         self.assertNotIn("secondaryAxis", index)
+
+    def test_a_first_read_stays_short_and_an_operation_gives_its_fields(self):
+        index, apply_guide = self.guide("sheet"), self.guide("sheet", "apply")
+        self.assertLess(len(index), 6000)
+        self.assertLess(len(apply_guide), 8000)
+        self.assertIn('op "add_pivot_table": summarize', apply_guide)
+        self.assertNotIn("secondaryAxis", apply_guide)
+        self.assertIn("office guide sheet apply <op> lists one op's fields", apply_guide)
+        self.assertIn("secondaryAxis (true or false)", self.guide("sheet", "apply", "add_chart"))
+        self.assertIn("CIRCULAR_REFERENCE (error)", apply_guide)
 
 
 class SchemaTest(unittest.TestCase):

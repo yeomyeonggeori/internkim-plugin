@@ -2,7 +2,7 @@
 
 Create or modify local workbooks (.xlsx, .xlsm, .csv, .tsv). SKILL.md's rules for source truth, totals, earlier files, naming and verification apply here; never invent prices or taxes either.
 
-`<skill>/scripts/office guide sheet` lists every spec field, operation and issue, and how the commands treat formulas, CSV values and edits. Read it before writing a spec or operations, and do not copy it into a reply.
+Read `<skill>/scripts/office guide sheet` first: a short index of the commands, the operation names, how the commands treat formulas, dates, CSV values and edits, and the issue codes. Then read `office guide sheet create` for the spec fields and `office guide sheet apply <op>` for each operation you write. Do not copy the guide into a reply.
 
 | Job | Command |
 | --- | --- |

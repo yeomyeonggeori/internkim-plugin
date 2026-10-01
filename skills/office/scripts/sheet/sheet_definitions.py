@@ -454,4 +454,12 @@ GUIDE_SECTIONS = (("How the sheet commands behave", behavior_lines),)
 
 WRITE_ISSUE_KINDS = (FORMULA_SYNTAX, CIRCULAR_REFERENCE, FORMULA_NOT_EVALUATED, CHART_COLUMN_LEFT_OUT)
 EDIT_ISSUE_KINDS = (CONTENT_WOULD_BE_LOST, CONTENT_DROPPED)
-GUIDE_ISSUES = (("sheet create, sheet edit and sheet apply", WRITE_ISSUE_KINDS), ("sheet edit and sheet apply", EDIT_ISSUE_KINDS), ("sheet check", CHECK_ISSUE_KINDS), ("sheet validate", VALIDATE_ISSUE_KINDS), ("sheet apply", OPERATION_ISSUE_KINDS), ("sheet render", PREVIEW_ISSUE_KINDS), ("sheet merge", PACKAGE_MERGE_ISSUE_KINDS + WRITE_ISSUE_KINDS))
+GUIDE_ISSUES = (
+    ("sheet create", WRITE_ISSUE_KINDS),
+    ("sheet edit", WRITE_ISSUE_KINDS + EDIT_ISSUE_KINDS),
+    ("sheet apply", WRITE_ISSUE_KINDS + EDIT_ISSUE_KINDS + OPERATION_ISSUE_KINDS),
+    ("sheet check", CHECK_ISSUE_KINDS),
+    ("sheet validate", VALIDATE_ISSUE_KINDS),
+    ("sheet render", PREVIEW_ISSUE_KINDS),
+    ("sheet merge", PACKAGE_MERGE_ISSUE_KINDS + WRITE_ISSUE_KINDS),
+)
