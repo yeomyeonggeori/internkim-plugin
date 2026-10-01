@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 from openpyxl import load_workbook
+from openpyxl.utils.cell import range_boundaries
 
 from office_result import Issue, OfficeArgumentParser, Result, run_command
 from sheet_definitions import AUTO_FILTER_MISSING, BLANK_HEADER_CELLS, HEADER_NOT_FROZEN
-from sheet_styling import MINIMUM_DATA_ROWS, MINIMUM_TABLE_COLUMNS, header_row_index, non_blank_count
+from sheet_styling import MINIMUM_DATA_ROWS, MINIMUM_TABLE_COLUMNS, header_row_index, is_filled, non_blank_count
 
 
 FORMULA_CELL_LIMIT = 50
@@ -32,9 +33,21 @@ def main() -> Result:
     return Result(summary=f"checked {arguments.workbook_path}: {len(issues)} issues", output_path=arguments.workbook_path, issues=tuple(issues), details=details)
 
 
+def is_inside(cell, bounds: tuple[int, int, int, int]) -> bool:
+    min_column, min_row, max_column, max_row = bounds
+    return min_column <= cell.column <= max_column and min_row <= cell.row <= max_row
+
+
+def holds_only_pivots(worksheet) -> bool:
+    pivots = [range_boundaries(pivot.location.ref) for pivot in getattr(worksheet, "_pivots", [])]
+    filled = [cell for cell in worksheet._cells.values() if is_filled(cell.value)]
+    return bool(pivots) and all(any(is_inside(cell, bounds) for bounds in pivots) for cell in filled)
+
+
 def summarize_sheet(worksheet) -> dict:
     header_row = header_row_index(worksheet)
-    header_values = [cell.value for cell in worksheet[header_row]] if worksheet.max_row >= header_row else []
+    is_table_sheet = worksheet.max_row >= header_row and not holds_only_pivots(worksheet)
+    header_values = [cell.value for cell in worksheet[header_row]] if is_table_sheet else []
     data_rows = sum(1 for row in worksheet.iter_rows(min_row=header_row + 1) if non_blank_count(cell.value for cell in row) > 0)
     return {
         "title": worksheet.title,
