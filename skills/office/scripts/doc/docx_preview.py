@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from docx import Document
+
+from chart_svg import DEFAULT_PALETTE
 from docx.oxml.ns import qn
 from lxml import etree
 
@@ -20,6 +22,8 @@ from office_preview import Preview, points_to_pixels, twips_to_pixels
 from preview_fonts import DEFAULT_FAMILY, FontRequest, css_font_family
 
 
+ACCENT_SLOTS = ("accent1", "accent2", "accent3", "accent4", "accent5", "accent6")
+DRAWING_MAIN = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 THEME_RELATIONSHIP = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
 MARKUP_COLORS = {"inserted": "#1d4ed8", "deleted": "#b42318"}
 COMMENT_BACKGROUND = "#fff1b8"
@@ -54,7 +58,9 @@ class InlineState:
 class DocxModelBuilder:
     def __init__(self, path: Path):
         self.document = Document(str(path))
-        self.styles = StyleSheet(self.document.styles.element, self.theme_root())
+        theme = self.theme_root()
+        self.styles = StyleSheet(self.document.styles.element, theme)
+        self.chart_palette = theme_accents(theme)
         self.numbering = Numbering(self.numbering_root())
         self.preview = Preview(title=path.stem)
         self.footnotes = self.notes("footnotes", "w:footnote")
@@ -307,3 +313,14 @@ def split_at_page_breaks(items: list) -> list[list]:
         else:
             pieces[-1].append(item)
     return pieces
+
+
+def theme_accents(theme_root) -> tuple[str, ...]:
+    if theme_root is None:
+        return DEFAULT_PALETTE
+    colors = []
+    for slot in ACCENT_SLOTS:
+        element = theme_root.find(f".//{DRAWING_MAIN}{slot}")
+        color = next((child.get("val") or child.get("lastClr") for child in element), None) if element is not None else None
+        colors.append(f"#{color.lower()}" if color else None)
+    return tuple(color for color in colors if color) or DEFAULT_PALETTE

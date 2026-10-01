@@ -34,6 +34,9 @@ class FontRegistry:
         self.used.setdefault((registered, 700 if bold else 400), chosen)
         return chosen
 
+    def korean_family(self) -> str:
+        return KOREAN_FALLBACK_FAMILY if self.face(DEFAULT_FAMILY, False, True).substituted else DEFAULT_FAMILY
+
     def width(self, request: FontRequest, text: str) -> float:
         return sum(self.script_width(request, piece) for piece in script_runs(text))
 

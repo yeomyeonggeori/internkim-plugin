@@ -5,7 +5,8 @@ import re
 
 from docx.oxml.ns import qn
 
-from docx_preview_model import BoxItem, ImageItem
+from docx_charts import read_specification
+from docx_preview_model import BoxItem, ChartItem, ImageItem
 from docx_preview_tables import TableLayers
 from office_preview import emu_to_pixels, inches_to_pixels, points_to_pixels
 
@@ -53,10 +54,19 @@ def drawing_items(drawing, part, builder) -> list:
     text_box = placement.find(f".//{{{NAMESPACES['wps']}}}txbx/{qn('w:txbxContent')}")
     if text_box is not None:
         return [BoxItem(builder.blocks(list(text_box), part, TableLayers()), width, height)]
-    if placement.find(".//c:chart", NAMESPACES) is not None:
-        builder.preview.approximate("charts shown as empty boxes")
-        return [BoxItem([], width, height)]
+    chart = placement.find(".//c:chart", NAMESPACES)
+    if chart is not None:
+        return chart_items(chart, part, builder, width, height)
     return []
+
+
+def chart_items(chart, part, builder, width: float, height: float) -> list:
+    relationship_id = chart.get(f"{{{NAMESPACES['r']}}}id")
+    if part is None or relationship_id not in part.rels:
+        builder.preview.approximate("charts whose data part is missing")
+        return [BoxItem([], width, height)]
+    model = read_specification(part.rels[relationship_id].target_part).model()
+    return [ChartItem(model, builder.chart_palette, width, height)]
 
 
 def vml_items(picture, part, builder) -> list:

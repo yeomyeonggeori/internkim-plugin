@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from docx_preview_model import (
-    BoxItem, CellBlock, FieldItem, ImageItem, LineBreakItem, NoteReferenceItem, PageBreakBlock, ParagraphBlock, TabItem, TableBlock, TextItem, TextStyle,
+    BoxItem, CellBlock, ChartItem, FieldItem, ImageItem, LineBreakItem, NoteReferenceItem, PageBreakBlock, ParagraphBlock, TabItem, TableBlock, TextItem, TextStyle,
 )
 from office_preview import twips_to_pixels
 from preview_fonts import FontRegistry, breakable_pieces, is_ideograph
@@ -120,6 +120,9 @@ class Layout:
         if isinstance(item, ImageItem):
             scale = min(1.0, available / item.width) if item.width > available > 0 else 1.0
             return [Fragment("image", item.width * scale, item.height * scale, item=item)]
+        if isinstance(item, ChartItem):
+            scale = min(1.0, available / item.width) if item.width > available > 0 else 1.0
+            return [Fragment("chart", item.width * scale, item.height * scale, item=item, text=self.fonts.korean_family())]
         if isinstance(item, BoxItem):
             inner = self.blocks(item.blocks, item.width)
             height = max(item.height, sum(layout.height for layout in inner))
@@ -224,6 +227,6 @@ def cell_height(cell: CellBlock, layouts: list) -> float:
 def last_break(fragments: list[Fragment]) -> int:
     for index in range(len(fragments) - 1, 0, -1):
         previous, fragment = fragments[index - 1], fragments[index]
-        if not fragment.is_space and (previous.is_space or previous.is_ideograph or fragment.is_ideograph or previous.kind in ("image", "box", "tab")):
+        if not fragment.is_space and (previous.is_space or previous.is_ideograph or fragment.is_ideograph or previous.kind in ("image", "box", "chart", "tab")):
             return index
     return 0

@@ -17,6 +17,7 @@ from docx_reference_operations import (
     plan_add_bookmark, plan_insert_cross_reference, plan_insert_endnote, plan_insert_footnote, plan_insert_link, plan_insert_table_of_contents,
 )
 from docx_table_operations import plan_delete_table_column, plan_format_cells, plan_insert_table_column, plan_merge_cells
+from docx_chart_operations import plan_delete_chart, plan_edit_chart, plan_insert_chart
 from docx_comments import plan_add_comment, plan_delete_comment, plan_reply_comment, plan_resolve_comment
 from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, paragraph_runs
 from docx_settings import request_field_update
@@ -330,6 +331,9 @@ def plan_update_fields_on_open(editing: DocxEditing, operation: dict, location: 
 
 
 DOCX_OPERATIONS = OperationSet(OPERATIONS, {
+    "insert_chart": plan_insert_chart,
+    "edit_chart": plan_edit_chart,
+    "delete_chart": plan_delete_chart,
     "replace_text": plan_replace_text,
     "set_text": plan_set_text,
     "insert_paragraph": plan_insert_paragraph,

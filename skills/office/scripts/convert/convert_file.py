@@ -22,6 +22,7 @@ from export_document import export_pdf  # noqa: E402
 from html_to_blocks import read_html_blocks  # noqa: E402
 from office_preview import PAGE_SELECTOR, Preview, write_preview  # noqa: E402
 from markdown_blocks import Image, parse_markdown  # noqa: E402
+from markdown_charts import require_valid_charts  # noqa: E402
 from office_inputs import KINDS_BY_NAME, office_file
 from office_result import Issue, OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
 from pdf_to_blocks import read_pdf_blocks  # noqa: E402
@@ -81,18 +82,24 @@ def require_route(input_path: Path, output_path: Path) -> Route:
     raise OfficeFailure(UNSUPPORTED_CONVERSION.issue(f"no route converts .{source} to .{target}", f"{input_path.name} -> {output_path.name}", suggestion=suggestion))
 
 
+def markdown_blocks(conversion: Conversion) -> list:
+    blocks = parse_markdown(read_text(conversion.input_path))
+    require_valid_charts(blocks, conversion.input_path.name)
+    return blocks
+
+
 def markdown_to_docx(conversion: Conversion) -> None:
-    write_docx(conversion, parse_markdown(read_text(conversion.input_path)), conversion.input_path.parent)
+    write_docx(conversion, markdown_blocks(conversion), conversion.input_path.parent)
 
 
 def markdown_to_html(conversion: Conversion) -> None:
-    blocks = [embedded(block, conversion.input_path.parent) for block in parse_markdown(read_text(conversion.input_path))]
+    blocks = [embedded(block, conversion.input_path.parent) for block in markdown_blocks(conversion)]
     conversion.output_path.write_text(html_document(blocks, conversion.input_path.stem), encoding="utf-8")
 
 
 def markdown_to_pdf(conversion: Conversion) -> None:
     text = read_text(conversion.input_path)
-    conversion.issues.extend(export_pdf(parse_markdown(text), text, conversion.output_path, conversion.input_path.parent, "", DEFAULT_DOCUMENT_FONT_SIZE))
+    conversion.issues.extend(export_pdf(markdown_blocks(conversion), text, conversion.output_path, conversion.input_path.parent, "", DEFAULT_DOCUMENT_FONT_SIZE))
 
 
 def docx_to_pdf(conversion: Conversion) -> None:

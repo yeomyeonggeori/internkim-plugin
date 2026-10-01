@@ -133,6 +133,20 @@ HEADER_FOOTER_FIELDS = (
     Field("page", Choice(("default", "first", "even")), "which pages: first turns on a different first page, even a different even page; default every page"),
     Field("align", ALIGNMENT, "alignment"),
 )
+CHART_KINDS = ("column", "stacked_column", "bar", "stacked_bar", "line", "area", "pie", "doughnut", "combo")
+CHART_SERIES = Record("series", "one data series", (
+    Field("name", Text(non_empty=True), "series name shown in the legend", required=True),
+    Field("values", ListOf(Number(), non_empty=True), "one plain number per category; the unit goes in the title", required=True),
+    Field("line", Boolean(), "combo only: draw this series as a line over the columns"),
+))
+CHART_DATA = (
+    Field("categories", ListOf(CellValue(), non_empty=True), "category labels along the axis, or slice names of a pie"),
+    Field("series", ListOf(CHART_SERIES, non_empty=True), "data series; pie and doughnut take one"),
+    Field("title", Text(), "chart title, with the unit, such as 분기 매출 (억 원)"),
+    Field("legend", Boolean(), "show the legend; default when there is more than one series or a pie"),
+    Field("secondaryAxis", Boolean(), "combo only: draw the lines against their own axis on the right; default when lines and columns differ more than tenfold"),
+)
+CHART_INDEX = Field("chart", Number(minimum=0, integer=True), "chart index from doc read", required=True)
 COMMENT_ID = Field("comment", Number(minimum=0, integer=True), "comment id from doc read", required=True)
 REVISION_SELECTOR = (
     Field("all", Boolean(), "every tracked change"),
@@ -249,6 +263,21 @@ OPERATIONS = Variant(
             Field("align", ALIGNMENT, "paragraph alignment"),
             Field("description", Text(), "alt text read aloud by screen readers"),
         )),
+        Record("insert_chart", "insert a native Word chart with its own data workbook as its own paragraph, as wide as the text unless a size is given", (
+            INSERT_AFTER,
+            INSERT_BEFORE,
+            Field("type", Choice(CHART_KINDS), "chart kind; combo draws columns with the series marked line as lines", required=True),
+            *(field if field.name not in ("categories", "series") else Field(field.name, field.shape, field.description, required=True) for field in CHART_DATA),
+            Field("widthInches", Number(minimum=1), "width; default the text width"),
+            Field("heightInches", Number(minimum=1), "height; default a little over half the width"),
+            Field("align", ALIGNMENT, "paragraph alignment"),
+        )),
+        Record("edit_chart", "change a chart's kind, data, title or legend; fields left out keep their current value", (
+            CHART_INDEX,
+            Field("type", Choice(CHART_KINDS), "chart kind"),
+            *CHART_DATA,
+        )),
+        Record("delete_chart", "delete a chart, and its paragraph when nothing else is in it", (CHART_INDEX,)),
         Record("insert_table_of_contents", "insert a table of contents field listing the headings now in the document; Word fills in page numbers when the file opens", (
             INSERT_AFTER,
             INSERT_BEFORE,
@@ -334,6 +363,7 @@ CHECK_ISSUE_KINDS = (PLACEHOLDER_LEFT, BROKEN_INTERNAL_REFERENCE, STALE_TABLE_OF
 
 MERGE_ISSUE_KINDS = (UNRESOLVED_PLACEHOLDER, UNUSED_VALUE, TEMPLATE_SYNTAX_ERROR)
 
+CHART_BLOCK_INVALID = IssueKind("CHART_BLOCK_INVALID", ERROR, "a ```chart block in the Markdown does not parse or its numbers do not line up, so nothing was written", "fix the line the message names: type:, labels: and values: (or series: name: 1, 2; other: 3, 4) with plain numbers")
 IMAGE_UNAVAILABLE = IssueKind("IMAGE_UNAVAILABLE", WARNING, "a Markdown image is not a readable local file, so its alt text was written instead", "fix the image path relative to the Markdown file, or save a remote image locally first")
 
 PDF_RENDERER_FAILED = IssueKind("PDF_RENDERER_FAILED", ERROR, "the document PDF renderer (takumi-pdf, run by bun or node) could not be installed or could not render", "check that bun or node 18 is on PATH and the network allows its first install, then rerun")
@@ -341,7 +371,7 @@ PDF_RENDERER_UNAVAILABLE = IssueKind("PDF_RENDERER_UNAVAILABLE", WARNING, "neith
 
 GLYPH_NOT_COVERED = IssueKind("GLYPH_NOT_COVERED", WARNING, "some characters have no glyph in the bundled Paperlogy font or the installed Korean font, so they print as empty boxes", "replace those characters, such as an emoji or a rare Hanja, with words")
 
-EXPORT_ISSUE_KINDS = (IMAGE_UNAVAILABLE, PDF_RENDERER_FAILED, PDF_RENDERER_UNAVAILABLE, GLYPH_NOT_COVERED)
+EXPORT_ISSUE_KINDS = (CHART_BLOCK_INVALID, IMAGE_UNAVAILABLE, PDF_RENDERER_FAILED, PDF_RENDERER_UNAVAILABLE, GLYPH_NOT_COVERED)
 
 GUIDE_INPUTS = (
     ("doc create --spec <file>", DOCUMENT_SPECIFICATION),
