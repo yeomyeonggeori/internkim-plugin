@@ -71,6 +71,16 @@ class MisspelledInputTest(WorkbookEditTest):
         self.assertEqual(envelope["issues"][0]["suggestion"], 'use "sheet": "Sales"')
         self.assertIn("it has Sales, Summary", envelope["issues"][0]["message"])
 
+    def test_a_short_korean_sheet_name_with_one_wrong_letter_names_the_sheet(self):
+        self.create_workbook([{"title": "실적", "rows": [["a", "b"], [1, 2]]}, {"title": "분석", "rows": [["c"], [3]]}])
+        issue = self.apply([{"op": "set_cell", "sheet": "실젹", "cell": "A9", "value": 1}])["issues"][0]
+        self.assertEqual((issue["code"], issue["suggestion"]), ("TARGET_NOT_FOUND", 'use "sheet": "실적"'))
+
+    def test_a_sheet_name_close_to_none_lists_the_names(self):
+        self.create_workbook([{"title": "실적", "rows": [["a", "b"], [1, 2]]}, {"title": "분석", "rows": [["c"], [3]]}])
+        issue = self.apply([{"op": "set_cell", "sheet": "요약표", "cell": "A9", "value": 1}])["issues"][0]
+        self.assertEqual(issue["suggestion"], "use one of the sheet names: 실적, 분석")
+
 
 class InsertAndDeleteTest(WorkbookEditTest):
     def test_inserted_rows_shift_every_reference_that_points_past_them(self):

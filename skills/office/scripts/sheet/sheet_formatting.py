@@ -12,7 +12,7 @@ from workbook_structure import isolate_column
 
 
 COLOR_PATTERN = re.compile(r"^[0-9A-Fa-f]{6}$")
-COLOR_FIELDS = ("fill", "fontColor", "borderColor", "color")
+COLOR_FIELDS = ("fill", "fontColor", "borderColor", "color", "lineColor")
 FONT_FIELDS = ("bold", "italic", "underline", "fontSize", "fontName", "fontColor")
 ALIGNMENT_FIELDS = ("alignment", "verticalAlignment", "indent", "wrapText")
 DEFAULT_BORDER_COLOR = "94A3B8"

@@ -3,15 +3,21 @@ from __future__ import annotations
 import datetime
 import os
 from typing import Iterable
+import warnings
 
 from openpyxl import load_workbook
+from openpyxl.worksheet.formula import ArrayFormula
 from openpyxl.utils import column_index_from_string
 from openpyxl.utils.cell import coordinate_from_string, range_boundaries
 from openpyxl.utils.exceptions import CellCoordinatesException
 
 from office_operations import TARGET_NOT_FOUND
 from office_result import INVALID_VALUE, OfficeFailure
-from office_schema import closest_suggestion, did_you_mean
+from office_schema import closest_name
+from excel_functions import PARAMETER_PREFIX
+from formula_tree import FUNCTION_PREFIXES, Call, parse_formula, render, tokens_in
+
+warnings.filterwarnings("ignore", category=UserWarning, module=r"openpyxl\.")
 
 
 def is_macro_workbook(path: str) -> bool:
@@ -29,10 +35,16 @@ def resolve_sheet(workbook, sheet_name: str | None, location: str):
         return workbook.worksheets[0]
     match = next((worksheet for worksheet in workbook.worksheets if worksheet.title == sheet_name), None)
     if match is None:
-        names = ", ".join(workbook.sheetnames)
-        message = f"{location}: the workbook has no sheet named {sheet_name!r}{did_you_mean(sheet_name, workbook.sheetnames)}; it has {names}"
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(message, location, closest_suggestion(sheet_name, workbook.sheetnames, 'use "sheet": "{match}"')))
+        raise OfficeFailure(missing_sheet_issue(workbook.sheetnames, sheet_name, location))
     return match
+
+
+def missing_sheet_issue(names: list[str], sheet_name: str, location: str):
+    nearest = closest_name(sheet_name, names)
+    guess = f" (did you mean {nearest!r}?)" if nearest else ""
+    message = f"{location}: the workbook has no sheet named {sheet_name!r}{guess}; it has {', '.join(names)}"
+    suggestion = f'use "sheet": "{nearest}"' if nearest else f"use one of the sheet names: {', '.join(names)}"
+    return TARGET_NOT_FOUND.issue(message, location, suggestion)
 
 
 MAXIMUM_COLUMN = 16384
@@ -79,7 +91,23 @@ def json_value(value):
 def formula_text(cell) -> str | None:
     if cell.data_type != "f":
         return None
-    return cell.value if isinstance(cell.value, str) else "{array formula}"
+    stored = cell.value.text if isinstance(cell.value, ArrayFormula) else cell.value
+    if not isinstance(stored, str):
+        return None
+    written = stored if stored.startswith("=") else "=" + stored
+    nodes = parse_formula(written)
+    if nodes is None:
+        return written
+    for token in tokens_in(nodes):
+        if token.value.lower().startswith(PARAMETER_PREFIX):
+            token.value = token.value[len(PARAMETER_PREFIX):]
+    return "=" + render(nodes, without_storage_prefix)
+
+
+def without_storage_prefix(call: Call) -> str | None:
+    if not call.name.upper().startswith(FUNCTION_PREFIXES):
+        return None
+    return f"{call.function}(" + ",".join(render(argument, without_storage_prefix) for argument in call.arguments) + ")"
 
 
 def cell_rows(worksheet, bounds: tuple[int, int, int, int]) -> Iterable:

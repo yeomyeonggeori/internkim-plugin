@@ -4,11 +4,11 @@ import datetime
 import math
 from collections import defaultdict
 
-from openpyxl import load_workbook
 from openpyxl.utils.datetime import to_excel
 
 from office_result import Issue
 from sheet_definitions import STALE_CACHED_VALUE
+from workbook_access import open_workbook
 from workbook_values import BOOLEAN, NUMBER, ERROR, TEXT, CachedValue, Evaluation
 
 
@@ -19,7 +19,7 @@ ABSOLUTE_TOLERANCE = 1e-9
 
 
 def stale_cached_value_issues(path: str, evaluation: Evaluation) -> list[Issue]:
-    stored = load_workbook(path, data_only=True)
+    stored = open_workbook(path, data_only=True)
     by_sheet = defaultdict(list)
     for (sheet, coordinate), computed in sorted(evaluation.values.items()):
         value = stored[sheet][coordinate].value

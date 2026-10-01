@@ -5,6 +5,7 @@ import datetime
 from openpyxl.utils import get_column_letter
 
 from office_result import INVALID_VALUE, OfficeFailure
+from sheet_styling import header_row_index
 from workbook_access import cell_rows, column_index, formula_text, json_value
 from workbook_values import EXCEL_ERROR_CODES
 
@@ -69,17 +70,18 @@ def cells_where(worksheet, values_worksheet, bounds: tuple[int, int, int, int], 
     return found
 
 
-def column_stats(worksheet, values_worksheet, bounds: tuple[int, int, int, int], columns: list[int]) -> list[dict]:
-    header_bounds = (bounds[0], bounds[1], bounds[0], bounds[3])
+def column_stats(worksheet, values_worksheet, bounds: tuple[int, int, int, int], columns: list[int]) -> tuple[int, list[dict]]:
+    header = header_row_index(values_worksheet, bounds)
+    header_bounds = (header, bounds[1], header, bounds[3])
     headers = [cell.value for cell in list(cell_rows(values_worksheet, header_bounds))[0]]
-    body = (bounds[0] + 1, bounds[1], bounds[2], bounds[3])
+    body = (header + 1, bounds[1], bounds[2], bounds[3])
     collected = {column: {"types": {}, "numbers": [], "formulas": 0} for column in columns}
     if body[0] <= body[2]:
         for formula_row, value_row in zip(cell_rows(worksheet, body), cell_rows(values_worksheet, body)):
             formula_row, value_row = list(formula_row), list(value_row)
             for column in columns:
                 tally(collected[column], formula_row[column], value_row[column].value)
-    return [summary(bounds[1] + column, headers[column], collected[column]) for column in columns]
+    return header, [summary(bounds[1] + column, headers[column], collected[column]) for column in columns]
 
 
 def tally(column: dict, cell, value: object) -> None:

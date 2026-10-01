@@ -6,7 +6,7 @@ import posixpath
 
 from lxml import etree
 
-from formula_references import REFERENCE_ERROR, ROW_AXIS, Shift, rename_sheet_reference, rewrite_formula, shift_reference, shift_single
+from formula_references import REFERENCE_ERROR, ROW_AXIS, Shift, deleted_sheet_reference, rename_sheet_reference, rewrite_formula, shift_reference, shift_single
 from workbook_package import (
     CONTENT_TYPES_NAMESPACE,
     CONTENT_TYPES_PART,
@@ -79,10 +79,15 @@ class EditRecord:
     def renamed(self, old_name: str, new_name: str) -> None:
         self.steps.append(("rename", old_name, new_name))
 
-    def current_title(self, title: str) -> str:
+    def deleted(self, title: str) -> None:
+        self.steps.append(("delete", title))
+
+    def current_title(self, title: str) -> str | None:
         for step in self.steps:
             if step[0] == "rename" and step[1].casefold() == title.casefold():
                 title = step[2]
+            elif step[0] == "delete" and step[1].casefold() == title.casefold():
+                return None
         return title
 
     def rewrite_reference(self, reference: str, host: str) -> str:
@@ -90,6 +95,8 @@ class EditRecord:
             if step[0] == "rename":
                 reference = rename_sheet_reference(reference, step[1], step[2])
                 host = step[2] if host.casefold() == step[1].casefold() else host
+            elif step[0] == "delete":
+                reference = deleted_sheet_reference(reference, step[1])
             else:
                 reference = shift_reference(reference, host, step[1])
         return reference
@@ -172,7 +179,7 @@ def sheet_pairs(graft: Graft) -> list[SheetPair]:
     pairs = []
     for part, title in worksheet_parts(graft.source).items():
         current = graft.record.current_title(title)
-        if current.casefold() in output_parts:
+        if current is not None and current.casefold() in output_parts:
             pairs.append(SheetPair(part, output_parts[current.casefold()], title, current))
     return pairs
 
@@ -444,8 +451,21 @@ def lost_content(graft: Graft, sheets: list[SheetPair]) -> list[str]:
     workbook_source, workbook_output = main_part(source), main_part(output)
     for name in sorted(element_names(source, workbook_source) - MANAGED_WORKBOOK_ELEMENTS - IGNORED_WORKBOOK_ELEMENTS - element_names(output, workbook_output)):
         lost.append(f"workbook: <{name}>")
+    discarded = deleted_sheet_parts(graft)
     for part in sorted(source.entries):
-        if part.endswith(".rels") or part == CONTENT_TYPES_PART or is_managed(source, part) or part in graft.copied:
+        if part.endswith(".rels") or part == CONTENT_TYPES_PART or is_managed(source, part) or part in graft.copied or part in discarded:
             continue
         lost.append(f"part {part}")
     return lost
+
+
+def deleted_sheet_parts(graft: Graft) -> set[str]:
+    pending = [part for part, title in worksheet_parts(graft.source).items() if graft.record.current_title(title) is None]
+    reached = set()
+    while pending:
+        part = pending.pop()
+        if part in reached:
+            continue
+        reached.add(part)
+        pending.extend(relationship["part"] for relationship in relationships(graft.source, part) if relationship["part"] in graft.source.entries)
+    return reached

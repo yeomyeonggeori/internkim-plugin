@@ -4,9 +4,11 @@ from dataclasses import dataclass
 from functools import lru_cache
 import re
 
-from excel_functions import EXCEL_FUNCTIONS, FUTURE_FUNCTIONS, WORKSHEET_ONLY_FUNCTIONS, stored_function_name
+from excel_functions import DYNAMIC_ARRAY_FUNCTIONS, EXCEL_FUNCTIONS, FUTURE_FUNCTIONS, SPILL_REFERENCE_FUNCTION, WORKSHEET_ONLY_FUNCTIONS, stored_function_name
 from formula_references import REFERENCE_ERROR, rewrite_formula
-from formula_tree import Call, calls_in, parse_formula, render, text_literal
+from openpyxl.formula.tokenizer import Token
+
+from formula_tree import Call, Group, calls_in, meaningful, parse_formula, render, text_literal, tokens_in
 
 
 ROUNDING_FUNCTIONS = frozenset(("ROUND", "ROUNDUP", "ROUNDDOWN"))
@@ -21,6 +23,12 @@ SCALED_ROUNDING = (
 SINGLE_CRITERIA_FUNCTIONS = frozenset(("COUNTIF", "SUMIF", "AVERAGEIF"))
 FIRST_CRITERIA_RANGE = {"COUNTIF": 0, "SUMIF": 0, "AVERAGEIF": 0, "COUNTIFS": 0, "SUMIFS": 1, "AVERAGEIFS": 1, "MAXIFS": 1, "MINIFS": 1}
 UNSUPPORTED_ERRORS = frozenset(("#NAME?", "#N/IMPL!"))
+# IronCalc 0.8.3 answers #VALUE! for ROWS and COLUMNS of an array that is not a reference; counting one
+# column or one row of it gives the same size
+ARRAY_SIZE_FUNCTIONS = {"ROWS": "CHOOSECOLS", "COLUMNS": "CHOOSEROWS"}
+ARRAY_RESULT_FUNCTIONS = DYNAMIC_ARRAY_FUNCTIONS - {SPILL_REFERENCE_FUNCTION}
+# IronCalc 0.8.3 does not know HYPERLINK; its value is the text it shows
+REWRITTEN_FUNCTIONS = frozenset(("HYPERLINK",))
 NAME_ERROR_FORMULA = "=INTERNKIMNAMEERROR()"
 QUOTED = re.compile(r'"[^"]*"|\\.|\[[^\]]*\]')
 DATE_TOKENS = re.compile(r"[yYmMdDhHsS]|AM/PM|A/P", re.IGNORECASE)
@@ -63,10 +71,34 @@ def prepare(formula: str, allows_user_functions: bool) -> Preparation:
         return Preparation(NAME_ERROR_FORMULA, True, "#NAME?", ())
     if allows_user_functions and any(call.function not in EXCEL_FUNCTIONS for call in calls):
         return Preparation(formula, False, None, ())
-    if any(call.function in unsupported_functions() for call in calls) or not all(map(is_text_computable, calls)):
+    if any(call.function in unsupported_functions() - REWRITTEN_FUNCTIONS for call in calls) or not all(map(is_text_computable, calls)):
         return Preparation(formula, False, None, ())
     criteria = tuple(pair for call in calls for pair in criteria_pairs(call))
     return Preparation("=" + render(nodes, evaluation_call), True, None, criteria)
+
+
+def constant_names(workbook, sheet: str) -> dict:
+    # IronCalc 0.8.3 refuses a defined name whose value is a constant ("Invalid defined name formula"), so the
+    # evaluation copy writes the constant in place of the name
+    scoped = [(name, defined.attr_text) for name, defined in workbook.defined_names.items()]
+    scoped += [(name, defined.attr_text) for name, defined in workbook[sheet].defined_names.items()]
+    return {name.casefold(): value.strip() for name, value in scoped if value and is_constant(value.strip())}
+
+
+def is_constant(text: str) -> bool:
+    return bool(NUMBER_TEXT.match(text)) or text.upper() in ("TRUE", "FALSE") or len(text) >= 2 and text[0] == text[-1] == '"'
+
+
+def with_constant_names(formula: str, constants: dict) -> str:
+    nodes = parse_formula(formula) if constants else None
+    if nodes is None:
+        return formula
+    replaced = False
+    for token in tokens_in(nodes):
+        if token.type == Token.OPERAND and token.subtype == Token.RANGE and token.value.casefold() in constants:
+            token.value = f"({constants[token.value.casefold()]})"
+            replaced = True
+    return "=" + render(nodes) if replaced else formula
 
 
 def without_sheet_on_reference_errors(formula: str) -> str:
@@ -86,7 +118,26 @@ def evaluation_call(call: Call) -> str | None:
         return scaled_rounding(call.function, value, digits)
     if call.function == "TEXT" and len(call.arguments) == 2:
         return rounded_text_call(call)
+    if call.function in ARRAY_SIZE_FUNCTIONS and len(call.arguments) == 1 and is_array_expression(call.arguments[0]):
+        return array_size_call(call)
+    if call.function == "HYPERLINK" and call.arguments:
+        return f"({render(call.arguments[-1], evaluation_call)})"
     return None
+
+
+def is_array_expression(nodes: list) -> bool:
+    significant = meaningful(nodes)
+    if len(significant) != 1:
+        return False
+    node = significant[0]
+    if isinstance(node, Group):
+        return node.opening == "{"
+    return isinstance(node, Call) and node.function in ARRAY_RESULT_FUNCTIONS
+
+
+def array_size_call(call: Call) -> str:
+    counted = stored_function_name(ARRAY_SIZE_FUNCTIONS[call.function])
+    return f"COUNTA({counted}({render(call.arguments[0], evaluation_call)},1))"
 
 
 def scaled_rounding(function: str, value: str, digits: str) -> str:

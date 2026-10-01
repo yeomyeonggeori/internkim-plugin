@@ -17,16 +17,15 @@ from sheet_formatting import plan_format_range, plan_hide_columns, plan_hide_row
 from sheet_objects import plan_add_table, plan_set_comment, plan_set_hyperlink, plan_set_page_setup
 from sheet_pivots import plan_add_pivot_table
 from sheet_rules import plan_add_conditional_format, plan_add_data_validation, plan_clear_conditional_formats, plan_clear_data_validations
+from sheet_drawings import plan_add_image, plan_add_shape
+from sheet_ranges import plan_clear_range, plan_convert_to_values, plan_copy_range, plan_fill_range, plan_set_filter_criteria
 from sheet_sparklines import plan_add_sparklines
+from sheet_workbook import plan_add_defined_name, plan_delete_defined_name, plan_delete_sheet, plan_duplicate_sheet, plan_move_sheet, plan_protect_sheet, validate_sheet_name
 from sheet_styling import data_bounds, style_written_cells
 from workbook_access import column_index, open_workbook, parse_cell, parse_range, resolve_sheet, sheet_of
 from workbook_fidelity import EditRecord, preserve_source_content
 from workbook_package import Package, read_package, write_package
 from workbook_structure import isolate_column, rename_sheet_references, shift_workbook
-
-
-MAXIMUM_SHEET_NAME_LENGTH = 31
-FORBIDDEN_SHEET_NAME_CHARACTERS = set("[]:*?/\\")
 
 
 @dataclass
@@ -58,16 +57,6 @@ def save_editing(editing: SheetEditing, path: str) -> list:
 
 def on_workbook(planner):
     return lambda editing, operation, location: planner(editing.workbook, operation, location)
-
-
-def validate_sheet_name(workbook, name: str, location: str, renaming: str | None = None) -> None:
-    if len(name) > MAXIMUM_SHEET_NAME_LENGTH:
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: sheet names hold at most {MAXIMUM_SHEET_NAME_LENGTH} characters, {name!r} has {len(name)}", location))
-    if FORBIDDEN_SHEET_NAME_CHARACTERS & set(name) or name.startswith("'") or name.endswith("'"):
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: a sheet name cannot hold any of [ ] : * ? / \\ or start or end with an apostrophe", location))
-    taken = [title for title in workbook.sheetnames if title.casefold() == name.casefold() and title != renaming]
-    if taken:
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: the workbook already has a sheet named {taken[0]!r}", location))
 
 
 def store_value(cell, value, value_type) -> None:
@@ -228,5 +217,18 @@ SHEET_OPERATIONS = OperationSet(OPERATIONS, {
     "set_comment": on_workbook(plan_set_comment),
     "set_page_setup": on_workbook(plan_set_page_setup),
     "add_sparklines": plan_add_sparklines,
+    "delete_sheet": plan_delete_sheet,
+    "duplicate_sheet": on_workbook(plan_duplicate_sheet),
+    "move_sheet": on_workbook(plan_move_sheet),
+    "add_defined_name": on_workbook(plan_add_defined_name),
+    "delete_defined_name": on_workbook(plan_delete_defined_name),
+    "fill_range": on_workbook(plan_fill_range),
+    "copy_range": on_workbook(plan_copy_range),
+    "clear_range": on_workbook(plan_clear_range),
+    "convert_to_values": on_workbook(plan_convert_to_values),
+    "set_filter_criteria": on_workbook(plan_set_filter_criteria),
+    "protect_sheet": on_workbook(plan_protect_sheet),
+    "add_image": on_workbook(plan_add_image),
+    "add_shape": plan_add_shape,
     "add_pivot_table": plan_add_pivot_table,
 }, sequential=True)

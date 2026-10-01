@@ -1,6 +1,8 @@
+import subprocess
+import sys
 import unittest
 
-from sheet_fixture import WorkbookFixture, run_office, run_office_python, write_json
+from sheet_fixture import OFFICE_ENTRY, WorkbookFixture, run_office, run_office_python, write_json
 
 FIXTURE_WORKBOOK = """
 from openpyxl import Workbook
@@ -92,6 +94,12 @@ class ReadTest(WorkbookFixture):
         self.assertEqual(stats[0], {"column": "A", "header": "item", "types": {"text": 3, "empty": 1}})
         self.assertEqual(stats[1], {"column": "B", "header": "amount", "types": {"number": 4}, "formulas": 1, "count": 4, "min": 10, "max": 60, "sum": 120, "mean": 30})
 
+    def test_stats_skip_a_title_row_above_the_header(self):
+        self.create_workbook([{"title": "S", "heading": "2026 실적", "rows": [["담당", "1월", "2월"], ["이샘플", 10, 20], ["박예시", 30, 40]]}])
+        selected = run_office(["sheet", "read", "book.xlsx", "--stats"], self.directory)["details"]["range"]
+        self.assertEqual(selected["headerRow"], 2)
+        self.assertEqual([(column["header"], column.get("sum")) for column in selected["stats"]], [("담당", None), ("1월", 40), ("2월", 60)])
+
     def test_stats_count_a_formula_without_a_stored_value_apart(self):
         run_office_python(FIXTURE_WORKBOOK, self.directory)
         stats = self.read("--range", "B1:B5", "--stats")["range"]["stats"]
@@ -120,6 +128,15 @@ class ReadTest(WorkbookFixture):
         envelope = run_office(["sheet", "read", "fixture.xlsx", "--sheet", "Missing"], self.directory)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["TARGET_NOT_FOUND"])
         self.assertIn("Sales, Notes", envelope["issues"][0]["message"])
+
+
+class LibraryWarningTest(WorkbookFixture):
+    def test_reading_a_workbook_with_sparklines_prints_only_the_result(self):
+        self.create_workbook([{"title": "S", "rows": [["name", "1월", "2월", "3월", "trend"], ["a", 1, 2, 3, None], ["b", 3, 2, 1, None]]}])
+        self.assertEqual(self.apply([{"op": "add_sparklines", "range": "B2:D3", "target": "E2:E3"}])["status"], "ok")
+        for command in (["sheet", "read"], ["sheet", "check"], ["sheet", "validate"]):
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *command, "book.xlsx"], capture_output=True, text=True, cwd=self.directory)
+            self.assertEqual(completed.stderr, "", command)
 
 
 if __name__ == "__main__":

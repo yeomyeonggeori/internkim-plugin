@@ -95,7 +95,7 @@ def describe_range(worksheet, values_worksheet, bounds: tuple[int, int, int, int
     columns = selected_columns(arguments.cols, bounds)
     description = {"sheet": worksheet.title, "range": range_label(bounds)}
     if arguments.stats:
-        description["stats"] = column_stats(worksheet, values_worksheet, bounds, columns)
+        description["headerRow"], description["stats"] = column_stats(worksheet, values_worksheet, bounds, columns)
         return description
     shown_bounds, truncated = limited_bounds(bounds, arguments.max_rows)
     description.update({"range": range_label(shown_bounds), "truncated": truncated})
@@ -131,7 +131,7 @@ def parse_arguments():
     parser.add_argument("--cols", metavar="COLUMNS", help="only these columns of the range, such as A,C:E")
     parser.add_argument("--max-rows", "--limit", dest="max_rows", type=int, default=READ_ROW_LIMIT, help=f"most rows to show, default {READ_ROW_LIMIT}")
     parser.add_argument("--where", choices=WHERE_KINDS, help="list only the cells that hold a formula, an error, a number, text, or nothing")
-    parser.add_argument("--stats", action="store_true", help="per column: its header (the range's first row), value types, and count, min, max, sum and mean of the numbers")
+    parser.add_argument("--stats", action="store_true", help="per column: its header (the first row with two or more filled cells, which skips a title row), value types, and count, min, max, sum and mean of the numbers")
     parser.add_argument("--formats", action="store_true", help="each formatted cell's number format, font, fill, border and alignment, with column widths and row heights")
     return parser.parse_args()
 

@@ -5,7 +5,6 @@ import math
 import os
 import tempfile
 
-from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.cell import range_boundaries
 from openpyxl.worksheet.formula import ArrayFormula
@@ -14,7 +13,8 @@ from dynamic_arrays import dynamic_array_cell_metadata, mark_array_formula
 from excel_functions import is_dynamic_array_formula
 from formula_dependencies import DependencyReader, cell_position, propagate
 from formula_references import is_bare_name, join_parts, quote_sheet_name, reference_parts, rewrite_formula
-from ironcalc_compatibility import is_divergent_criteria, needs_criteria_probe, prepare
+from ironcalc_compatibility import constant_names, is_divergent_criteria, needs_criteria_probe, prepare, with_constant_names
+from workbook_access import open_workbook
 from workbook_package import main_tag, read_package, relationships_part, worksheet_parts, write_package
 
 
@@ -28,6 +28,9 @@ EXCEL_ERROR_CODES = frozenset((
     "#FIELD!", "#BLOCKED!", "#UNKNOWN!", "#CONNECT!", "#BUSY!",
 ))
 PROBE_SHEET = "InternKimProbe"
+CIRCULAR_ERROR = "#CIRC!"
+IMPLICIT_INTERSECTION = "=@"
+LAST_ROW = 1048576
 
 
 @dataclass(frozen=True)
@@ -51,6 +54,7 @@ class ArrayResult:
 class Evaluation:
     values: dict = field(default_factory=dict)
     not_evaluated: list = field(default_factory=list)
+    circular: list = field(default_factory=list)
     arrays: dict = field(default_factory=dict)
 
 
@@ -98,7 +102,7 @@ def dynamic_cells_in_file(path: str) -> set:
 
 
 def evaluate_workbook(path: str, writes_dynamic_arrays: bool = False) -> Evaluation:
-    workbook = load_workbook(path)
+    workbook = open_workbook(path)
     cells = formula_cells(workbook)
     evaluation = Evaluation()
     if not cells:
@@ -117,21 +121,23 @@ def evaluate_workbook(path: str, writes_dynamic_arrays: bool = False) -> Evaluat
     if computed is None:
         evaluation.not_evaluated = sorted(cell.key for cell in cells if cell.key not in evaluation.values)
         return evaluation
-    values, arrays, probe_roots = computed
+    values, arrays, probe_roots, circular = computed
     roots = plan.roots | probe_roots | {key for key, value in values.items() if value is None}
     unevaluated = propagate(roots, {cell.key: cell.formula for cell in cells}, DependencyReader(workbook))
     for key, value in values.items():
         if key not in unevaluated and key not in evaluation.values:
             evaluation.values[key] = value
     evaluation.arrays = {key: array for key, array in arrays.items() if key not in unevaluated}
-    evaluation.not_evaluated = sorted(key for key in unevaluated if key not in evaluation.values)
+    evaluation.circular = sorted(circular)
+    evaluation.not_evaluated = sorted(key for key in unevaluated if key not in evaluation.values and key not in circular)
     return evaluation
 
 
 def plan_evaluation(workbook, cells: list[FormulaCell], marked: set, writes_dynamic_arrays: bool, allows_user_functions: bool) -> EvaluationPlan:
     plan = EvaluationPlan()
+    constants = {title: constant_names(workbook, title) for title in workbook.sheetnames}
     for cell in cells:
-        preparation = prepare(cell.formula, allows_user_functions)
+        preparation = prepare(with_constant_names(cell.formula, constants[cell.sheet]), allows_user_functions)
         plan.preparations[cell.key] = preparation
         if not preparation.is_computable:
             plan.roots.add(cell.key)
@@ -194,13 +200,37 @@ def compute_with_ironcalc(path: str, cells: list[FormulaCell], plan: EvaluationP
     if model is None:
         return None
     sheet_indexes = {properties["name"]: index for index, properties in enumerate(model.get_worksheets_properties())}
-    values = {
-        cell.key: computed_value(model, sheet_indexes[cell.sheet], *cell_position(cell.coordinate))
-        for cell in cells
-        if not plan.preparations[cell.key].fixed_error
-    }
+    computed_cells = [cell for cell in cells if not plan.preparations[cell.key].fixed_error]
+    intersection_roots = repair_implicit_intersections(model, computed_cells, sheet_indexes)
+    values = {cell.key: computed_value(model, sheet_indexes[cell.sheet], *cell_position(cell.coordinate)) for cell in computed_cells}
+    circular = {cell.key for cell in computed_cells if model.get_cell_value(sheet_indexes[cell.sheet], *cell_position(cell.coordinate)) == CIRCULAR_ERROR}
     arrays = read_arrays(model, sheet_indexes, plan, directory)
-    return values, arrays, criteria_roots(model, cells, plan)
+    return values, arrays, criteria_roots(model, cells, plan) | intersection_roots, circular
+
+
+def repair_implicit_intersections(model, cells: list[FormulaCell], sheet_indexes: dict) -> set:
+    # IronCalc 0.8.3 puts @ in front of a legacy formula whose result is a reference and answers #VALUE! for it,
+    # even when the reference is one cell; such a cell is recomputed through INDEX, and one whose reference
+    # spans several cells is left unevaluated
+    broken = [(cell, sheet_indexes[cell.sheet], *cell_position(cell.coordinate)) for cell in cells]
+    broken = [(cell, sheet, row, column) for cell, sheet, row, column in broken if model.get_cell_content(sheet, row, column).startswith(IMPLICIT_INTERSECTION) and model.get_cell_value(sheet, row, column) == "#VALUE!"]
+    if not broken:
+        return set()
+    for position, (_, sheet, row, column) in enumerate(broken):
+        expression = model.get_cell_content(sheet, row, column)[len(IMPLICIT_INTERSECTION):]
+        model.set_user_input(sheet, LAST_ROW - position, column, f"=ROWS({expression})*COLUMNS({expression})")
+    model.evaluate()
+    roots = set()
+    for position, (cell, sheet, row, column) in enumerate(broken):
+        size = model.get_cell_value(sheet, LAST_ROW - position, column)
+        expression = model.get_cell_content(sheet, row, column)[len(IMPLICIT_INTERSECTION):]
+        model.clear_cell_contents(sheet, LAST_ROW - position, column)
+        if size == 1:
+            model.set_user_input(sheet, row, column, f"=INDEX({expression},1,1)")
+        else:
+            roots.add(cell.key)
+    model.evaluate()
+    return roots
 
 
 def loaded_model(path: str):

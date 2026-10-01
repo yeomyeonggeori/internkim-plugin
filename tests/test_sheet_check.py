@@ -137,3 +137,39 @@ class ChartReferenceTest(WorkbookFixture):
         issues = run_office(["sheet", "check", "charts.xlsx"], self.directory)["issues"]
         self.assertEqual([(issue["code"], issue["location"]) for issue in issues], [("CHART_REFERENCE_BROKEN", "Sales chart 1")])
         self.assertIn("$H$2:$H$3", issues[0]["message"])
+
+
+class FormulaVisibilityTest(WorkbookFixture):
+    def create(self):
+        self.create_workbook([
+            {"title": "Data", "rows": [["key", "amount"], ["a", 1], ["b", 2], ["a", 3]]},
+            {"title": "T", "rows": [
+                ["what", "formula"],
+                ["indirect", '=INDIRECT("Data!B2")'],
+                ["unique", "=ROWS(UNIQUE(Data!A2:A4))"],
+                ["offset", "=SUM(OFFSET(Data!B2,0,0,3,1))"],
+                ["unsupported", '=WEBSERVICE("https://example.com")'],
+            ]},
+        ])
+
+    def issues(self):
+        return {issue["code"]: issue for issue in run_office(["sheet", "check", "book.xlsx"], self.directory)["issues"]}
+
+    def test_indirect_and_rows_of_an_array_compute_beside_a_formula_that_cannot(self):
+        self.create()
+        issues = self.issues()
+        self.assertNotIn("FORMULA_ERROR", issues)
+        self.assertEqual(issues["FORMULA_NOT_EVALUATED"]["message"], "1 formula cells have no computed value: T!B5")
+        self.assertEqual(self.apply([{"op": "recalculate"}])["status"], "warning")
+        self.assertEqual(issues["FORMULA_NOT_EVALUATED"]["message"], self.issues()["FORMULA_NOT_EVALUATED"]["message"])
+
+    def test_read_shows_a_dynamic_array_formula_as_written(self):
+        self.create()
+        cells = run_office(["sheet", "read", "book.xlsx", "--sheet", "T", "--where", "formula"], self.directory)["details"]["range"]["cells"]
+        self.assertEqual([(cell["formula"], cell["value"]) for cell in cells[:3]], [('=INDIRECT("Data!B2")', 1), ("=ROWS(UNIQUE(Data!A2:A4))", 2), ("=SUM(OFFSET(Data!B2,0,0,3,1))", 6)])
+
+    def test_a_formula_reading_its_own_cell_is_reported_as_circular(self):
+        write_json(self.directory / "spec.json", {"sheets": [{"title": "S", "rows": [["total", "=SUM(B1:B2)"], ["x", 5]], "autoFilter": False}]})
+        envelope = run_office(["sheet", "create", "book.xlsx", "--spec", "spec.json"], self.directory)
+        self.assertEqual((envelope["outputPath"], [issue["code"] for issue in envelope["issues"]]), ("book.xlsx", ["CIRCULAR_REFERENCE"]))
+        self.assertEqual([issue["location"] for issue in self.issues().values()], ["S!B1"])

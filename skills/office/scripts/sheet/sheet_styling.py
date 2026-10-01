@@ -15,6 +15,7 @@ MINIMUM_TABLE_COLUMNS = 2
 MINIMUM_DATA_ROWS = 10
 MINIMUM_COLUMN_WIDTH = 10
 MAXIMUM_COLUMN_WIDTH = 48
+TITLE_ROWS_ABOVE_HEADER = 2
 
 
 def is_filled(value: object) -> bool:
@@ -25,12 +26,14 @@ def non_blank_count(values) -> int:
     return sum(1 for value in values if is_filled(value))
 
 
-def header_row_index(worksheet) -> int:
-    if worksheet.max_row < 2:
-        return 1
-    if non_blank_count(cell.value for cell in worksheet[1]) == 1 and non_blank_count(cell.value for cell in worksheet[2]) > 1:
-        return 2
-    return 1
+def header_row_index(worksheet, bounds: tuple[int, int, int, int] | None = None) -> int:
+    min_row, min_column, max_row, max_column = bounds or (1, 1, worksheet.max_row, worksheet.max_column)
+    last_candidate = min(max_row, min_row + TITLE_ROWS_ABOVE_HEADER)
+    rows = worksheet.iter_rows(min_row=min_row, max_row=last_candidate, min_col=min_column, max_col=max_column, values_only=True)
+    for row_number, values in enumerate(rows, start=min_row):
+        if non_blank_count(values) >= MINIMUM_TABLE_COLUMNS:
+            return row_number
+    return min_row
 
 
 def data_bounds(worksheet) -> tuple[int, int, int, int] | None:
