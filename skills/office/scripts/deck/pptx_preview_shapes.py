@@ -72,15 +72,31 @@ def flips(properties) -> tuple[bool, bool]:
 
 
 def line_html(properties, line: Outline, width: float, height: float) -> str:
+    if not width or not height:
+        return straight_line_html(line, width, height)
     flip_horizontal, flip_vertical = flips(properties)
-    start = (width if flip_horizontal else 0, height if flip_vertical else 0)
-    end = (0 if flip_horizontal else width, 0 if flip_vertical else height)
     canvas_width, canvas_height = max(width, line.width), max(height, line.width)
+    left, top = (canvas_width - width) / 2, (canvas_height - height) / 2
+    start = (left + (width if flip_horizontal else 0), top + (height if flip_vertical else 0))
+    end = (left + (0 if flip_horizontal else width), top + (0 if flip_vertical else height))
     svg = (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{canvas_width:.2f}" height="{canvas_height:.2f}">'
         f'<line x1="{start[0]:.2f}" y1="{start[1]:.2f}" x2="{end[0]:.2f}" y2="{end[1]:.2f}" stroke="{line.color}" stroke-width="{line.width}"/></svg>'
     )
-    return image_layer(svg, canvas_width, canvas_height)
+    return image_layer(svg, canvas_width, canvas_height, -left, -top)
+
+
+def straight_line_html(line: Outline, width: float, height: float) -> str:
+    thickness = line.width
+    left, top = (-thickness / 2, 0.0) if not width else (0.0, -thickness / 2)
+    return element("div", {
+        "position": "absolute",
+        "left": f"{left:.2f}px",
+        "top": f"{top:.2f}px",
+        "width": f"{max(width, thickness):.2f}px",
+        "height": f"{max(height, thickness):.2f}px",
+        "background": line.color,
+    }, "")
 
 
 def polygon_html(points: tuple, fill: str | None, line: Outline | None, width: float, height: float) -> str:
@@ -91,5 +107,5 @@ def polygon_html(points: tuple, fill: str | None, line: Outline | None, width: f
     return image_layer(svg, width, height)
 
 
-def image_layer(svg: str, width: float, height: float) -> str:
-    return f'<img src="{svg_uri(svg)}" style="position:absolute;left:0px;top:0px;width:{width:.2f}px;height:{height:.2f}px"/>'
+def image_layer(svg: str, width: float, height: float, left: float = 0.0, top: float = 0.0) -> str:
+    return f'<img src="{svg_uri(svg)}" style="position:absolute;left:{left:.2f}px;top:{top:.2f}px;width:{width:.2f}px;height:{height:.2f}px"/>'

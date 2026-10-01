@@ -6,7 +6,7 @@ import html
 
 from pptx.oxml.ns import qn
 
-from pptx_style import resolve_color
+from pptx_style import PERCENT_SCALE, resolve_color
 
 
 PIXELS_PER_EMU = 96 / 914400
@@ -52,16 +52,25 @@ def fill_color(context, properties, style) -> str | None:
     reference = style.find(qn("a:fillRef")) if style is not None else None
     if reference is None or reference.get("idx", "0") == "0" or not len(reference):
         return None
-    return resolve_color(context, reference[0])
+    return css_color(context, reference[0])
 
 
 def paint_color(context, paint) -> str | None:
     if paint.tag == qn("a:solidFill") and len(paint):
-        return resolve_color(context, paint[0])
+        return css_color(context, paint[0])
     if paint.tag == qn("a:gradFill"):
         stop = paint.find(f"{qn('a:gsLst')}/{qn('a:gs')}")
-        return resolve_color(context, stop[0]) if stop is not None and len(stop) else None
+        return css_color(context, stop[0]) if stop is not None and len(stop) else None
     return None
+
+
+def css_color(context, color_element) -> str | None:
+    hex_color = resolve_color(context, color_element)
+    alpha = color_element.find(qn("a:alpha"))
+    if hex_color is None or alpha is None:
+        return hex_color
+    red, green, blue = (int(hex_color[index:index + 2], 16) for index in (1, 3, 5))
+    return f"rgba({red}, {green}, {blue}, {int(alpha.get('val')) / PERCENT_SCALE:.3f})"
 
 
 def outline(context, properties, style) -> Outline | None:
@@ -74,7 +83,7 @@ def outline(context, properties, style) -> Outline | None:
     reference = style.find(qn("a:lnRef")) if style is not None else None
     if reference is None or reference.get("idx", "0") == "0" or not len(reference):
         return None
-    color = resolve_color(context, reference[0])
+    color = css_color(context, reference[0])
     return Outline(color, max(pixels(width), 1.0)) if color else None
 
 
