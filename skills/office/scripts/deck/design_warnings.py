@@ -23,8 +23,8 @@ from office_result import Issue
 STRUCTURE_DOMINANCE_RATIO = 0.55
 CLAIM_TITLE_WORD_MINIMUM = 5
 DESIGN_DOCUMENT_BODY_MINIMUM_CHARACTERS = 80
-KOREAN_SENTENCE_ENDINGS = ("다", "요", "까", "죠")
-LABEL_ONLY_SLIDE_ROLES = {"title", "cover", "divider", "section"}
+KOREAN_SENTENCE_ENDINGS = ("다", "요", "까", "죠", "오")
+LABEL_ONLY_SLIDE_ROLES = {"title", "cover", "divider", "section", "agenda", "quote"}
 
 
 def slide_design_warnings(structure: dict[str, object]) -> list[Issue]:
@@ -33,6 +33,8 @@ def slide_design_warnings(structure: dict[str, object]) -> list[Issue]:
         warnings.append(MISSING_SLIDE_ROLE.issue("slide lacks data-slide-role, so its job is not explicit"))
     if has_generic_topic_title(structure):
         warnings.append(TOPIC_TITLE.issue("title reads as a topic label rather than a claim with a conclusion"))
+    if structure["kitLayout"]:
+        return warnings
     if slide_is_table_dominated(structure):
         warnings.append(RAW_TABLE.issue("a raw table is the slide's primary composition"))
     if slide_is_list_dominated(structure):
@@ -122,6 +124,8 @@ def composition_warnings(slides: list[dict[str, object]]) -> list[Issue]:
 
 
 def source_has_visual_identity(source_context: dict[str, object]) -> bool:
+    if source_context["usesDeckKit"]:
+        return True
     return (
         bool(source_context["hasVisualSystemAttribute"])
         and int(source_context["designDocumentBodyCharacterCount"]) >= DESIGN_DOCUMENT_BODY_MINIMUM_CHARACTERS
@@ -130,6 +134,8 @@ def source_has_visual_identity(source_context: dict[str, object]) -> bool:
 
 def slide_has_dominant_raw_structure(slide: dict[str, object]) -> bool:
     structure = slide["structure"]
+    if structure["kitLayout"]:
+        return False
     return slide_is_table_dominated(structure) or slide_is_list_dominated(structure)
 
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from deck_kit import DEFAULT_THEME, chart_types, theme_palettes
 from office_operations import OPERATION_ISSUE_KINDS
 from template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
 from office_result import ERROR, WARNING, Issue, IssueKind
@@ -148,6 +149,104 @@ PPTX_NOT_RENDERED = IssueKind("PPTX_NOT_RENDERED", WARNING, "no image of the sli
 
 APPLY_ISSUE_KINDS = (PICTURE_UNREADABLE,)
 CHECK_ISSUE_KINDS = (PPTX_NOT_RENDERED,)
+
+@dataclass(frozen=True)
+class LayoutPart:
+    selector: str
+    minimum: int = 1
+    maximum: int | None = 1
+
+    def matches(self, tag: str, classes: set[str], attributes: dict[str, str]) -> bool:
+        return any(selector_matches(alternative, tag, classes, attributes) for alternative in self.selector.split("|"))
+
+
+@dataclass(frozen=True)
+class KitLayout:
+    name: str
+    purpose: str
+    parts: tuple[LayoutPart, ...]
+
+
+def selector_matches(selector: str, tag: str, classes: set[str], attributes: dict[str, str]) -> bool:
+    if selector.startswith("."):
+        return selector[1:] in classes
+    if "[" in selector:
+        element, attribute = selector.rstrip("]").split("[")
+        return tag == element and attribute in attributes
+    return tag == selector
+
+
+TITLE = LayoutPart("h2")
+KIT_LAYOUTS = (
+    KitLayout("cover", "first slide: the deck's claim, a lead line and a .meta line with presenter and date; an <img> fills the right panel", (LayoutPart("h1"), LayoutPart("img", 0))),
+    KitLayout("agenda", "the order of the talk, three to six items", (TITLE, LayoutPart("ol|ul"))),
+    KitLayout("section", "a divider before a part of the talk; the .eyebrow holds its number", (TITLE,)),
+    KitLayout("statement", "one sentence the audience must remember; <em> marks the words in the accent color", (TITLE,)),
+    KitLayout("number", "one number that carries the slide, with its .label and the points that explain it", (TITLE, LayoutPart(".value"), LayoutPart(".label", 0))),
+    KitLayout("kpi", "two to four metrics in one unit system, each a .kpi with .value, .label and a change line", (TITLE, LayoutPart(".kpi", 2, 4))),
+    KitLayout("cards", "two to four parallel points, each a .card with an optional .label or .value, an <h3> and a <p>", (TITLE, LayoutPart(".card", 2, 4))),
+    KitLayout("comparison", "two options side by side, each a .column with .label, <h3> and <ul>; .pick marks the recommended one", (TITLE, LayoutPart(".column", 2, 2))),
+    KitLayout("timeline", "a sequence of three to six .step blocks, each with a .label date, <h3> and <p>; .done fills the dot", (TITLE, LayoutPart(".step", 3, 6))),
+    KitLayout("table", "rows and columns the audience must read; numeric cells align right by themselves, tr.pick highlights a row", (TITLE, LayoutPart("table"))),
+    KitLayout("chart", "a trend, ranking or share drawn from data attributes, with an optional .insight beside it", (TITLE, LayoutPart("figure[data-chart]"), LayoutPart(".insight", 0))),
+    KitLayout("quote", "a customer's or expert's words in a <blockquote> with a .by line", (LayoutPart("blockquote"),)),
+    KitLayout("image", "a photo that carries meaning on the left half, the text on the right", (TITLE, LayoutPart("img"))),
+    KitLayout("closing", "the decision or next actions as .card blocks or an <ol>, on the deck's dark feature color", (TITLE, LayoutPart(".card", 0, 4))),
+)
+KIT_LAYOUT_NAMES = tuple(layout.name for layout in KIT_LAYOUTS)
+SHARED_PARTS = (
+    ".eyebrow: a short kicker above the title",
+    ".lead: one subtitle line under the title",
+    ".takeaway: the conclusion band under the body",
+    ".source: the source line, placed in the footer beside the page number",
+    "<em>: words in the accent color; .up and .down color a change; .pick highlights one item",
+    "<aside class=\"notes\">: the speaker notes",
+)
+CHART_ATTRIBUTES = (
+    "data-chart: " + ", ".join(chart_types()),
+    "data-labels: category names separated by commas",
+    "data-values: one number per label, for a single series",
+    "data-series: \"name: 1, 2, 3; other: 4, 5, 6\" for several series, each with one number per label",
+    "data-unit: text after every value, such as 억, %, 건",
+    "data-highlight: one label drawn in the accent color while the others are muted (single series)",
+    "data-center, data-center-label: the text in a donut's hole; default the first slice's share",
+    "data-zero: true starts a line chart's axis at zero",
+    "<figcaption>: the unit, period and source under the chart",
+)
+
+
+def kit_layout(name: str) -> KitLayout | None:
+    return next((layout for layout in KIT_LAYOUTS if layout.name == name), None)
+
+
+def part_label(part: LayoutPart) -> str:
+    count = str(part.minimum) if part.maximum == part.minimum else f"{part.minimum}-{part.maximum}" if part.maximum else f"{part.minimum}+"
+    return f"{part.selector.replace('|', ' or ')} x{count}"
+
+
+def theme_lines() -> list[str]:
+    palettes = theme_palettes()
+    return [
+        f"  {name}{' (default)' if name == DEFAULT_THEME else ''}: background {palette['bg']}, ink {palette['ink']}, accent {palette['accent']}, second accent {palette['accent-2']}"
+        for name, palette in palettes.items()
+    ] + ["  data-accent=\"#RRGGBB\" on <body> replaces the accent with a brand color"]
+
+
+def layout_lines() -> list[str]:
+    width = max(len(name) for name in KIT_LAYOUT_NAMES)
+    lines = [f"  {layout.name.ljust(width)}  {layout.purpose}; parts: {', '.join(part_label(part) for part in layout.parts)}" for layout in KIT_LAYOUTS]
+    return lines + ["  Any layout also takes:"] + [f"    {part}" for part in SHARED_PARTS]
+
+
+def chart_lines() -> list[str]:
+    return [f"  {attribute}" for attribute in CHART_ATTRIBUTES]
+
+
+GUIDE_SECTIONS = (
+    ("Themes (<body data-theme=\"...\">)", theme_lines),
+    ("Layouts (<section data-layout=\"...\">; parts are direct children of the section)", layout_lines),
+    ("Charts (<figure data-chart=\"...\"> in a chart slide)", chart_lines),
+)
 
 GUIDE_INPUTS = (
     ("deck apply <file.pptx> <ops.json>", ListOf(OPERATIONS, non_empty=True)),

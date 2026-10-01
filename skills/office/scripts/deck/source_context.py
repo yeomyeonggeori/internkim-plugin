@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+from deck_kit import uses_deck_kit
 from slide_source import slide_role, split_slide_sources
 from slide_structure import visible_slide_text
 
@@ -25,6 +26,7 @@ def inspect_source_context(source_text: str, design_document_text: str, slide_co
     visual_system_count = source_text.casefold().count("data-visual-system")
     return {
         "hasVisualSystemAttribute": visual_system_count > 0,
+        "usesDeckKit": uses_deck_kit(source_text),
         "designDocumentBodyCharacterCount": len(design_document_body(design_document_text)),
         "slideRoleCount": slide_role_count,
         "expectedSlideCount": slide_count,

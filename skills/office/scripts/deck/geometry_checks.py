@@ -20,6 +20,7 @@ class ContentExtent:
     body_bottom_ratio: float
     unfilled_ratio: float
     has_footer: bool
+    gap_under_title_ratio: float
 
 
 def read_geometry(review_path: pathlib.Path) -> list[dict[str, object]] | None:
@@ -43,7 +44,8 @@ def content_extent(measured: dict[str, object] | None) -> ContentExtent | None:
     body_bottom = bands[footer_start - 1][1]
     has_footer = footer_start < len(bands)
     floor = bands[footer_start][0] if has_footer else height - bands[0][0]
-    return ContentExtent(body_bottom / height, max(0.0, floor - body_bottom) / height, has_footer)
+    gap_under_title = bands[1][0] - bands[0][1] if footer_start >= 2 else 0.0
+    return ContentExtent(body_bottom / height, max(0.0, floor - body_bottom) / height, has_footer, gap_under_title / height)
 
 
 def footer_start_index(bands: list[list[float]], height: float) -> int:

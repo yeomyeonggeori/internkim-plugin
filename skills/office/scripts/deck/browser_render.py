@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pathlib
+import re
 import shutil
 import subprocess
 
@@ -8,6 +9,9 @@ from office_result import INPUT_NOT_FOUND, OfficeFailure
 from editable_pptx import text_layers_path
 from geometry_checks import GEOMETRY_FILE_NAME
 from slide_images import rendered_slide_image_paths
+
+
+NODE_MAJOR_VERSION_MINIMUM = 18
 
 
 def try_html_render(html_render_script: pathlib.Path, source_path: pathlib.Path, deck_name: str, build_path: pathlib.Path, formats: set[str]) -> str:
@@ -32,7 +36,7 @@ def run_html_render(html_render_script: pathlib.Path, source_path: pathlib.Path,
     if not html_render_script.exists():
         raise OfficeFailure(INPUT_NOT_FOUND.issue(f"{html_render_script} not found; cannot render the deck", str(html_render_script)))
     command = [
-        "bun",
+        javascript_runtime(),
         str(html_render_script),
         str(source_path),
         deck_name,
@@ -40,6 +44,15 @@ def run_html_render(html_render_script: pathlib.Path, source_path: pathlib.Path,
         ",".join(sorted(formats)),
     ]
     subprocess.run(command, check=True)
+
+
+def javascript_runtime() -> str:
+    node_path = shutil.which("node")
+    if node_path is None:
+        return "bun"
+    completed = subprocess.run([node_path, "--version"], capture_output=True, text=True)
+    major_version = re.match(r"v(\d+)", completed.stdout.strip())
+    return "node" if major_version and int(major_version.group(1)) >= NODE_MAJOR_VERSION_MINIMUM else "bun"
 
 
 def browser_unavailable_marker_path(build_path: pathlib.Path) -> pathlib.Path:

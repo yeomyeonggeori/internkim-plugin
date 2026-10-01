@@ -46,7 +46,11 @@ def single_line_text(markup: str) -> str:
 
 
 def slide_role(slide_source: str) -> str:
-    return extract_section_attribute(slide_source, "data-slide-role")
+    return extract_section_attribute(slide_source, "data-slide-role") or slide_layout(slide_source)
+
+
+def slide_layout(slide_source: str) -> str:
+    return extract_section_attribute(slide_source, "data-layout")
 
 
 def extract_section_attribute(slide_source: str, attribute_name: str) -> str:

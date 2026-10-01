@@ -4,6 +4,7 @@ from __future__ import annotations
 import pathlib
 
 from deck_definitions import NO_SLIDE_SECTIONS
+from deck_kit import strip_deck_kit
 from office_result import OfficeArgumentParser, OfficeFailure, Result, run_command
 from slide_viewer import strip_screen_slide_viewer
 
@@ -12,7 +13,7 @@ def main() -> Result:
     arguments = parse_arguments()
     delivered_path = pathlib.Path(arguments.delivered_path)
     source_path = pathlib.Path(arguments.source_path)
-    source_text = strip_screen_slide_viewer(delivered_path.read_text(encoding="utf-8"))
+    source_text = strip_deck_kit(strip_screen_slide_viewer(delivered_path.read_text(encoding="utf-8")))
     if "<section" not in source_text.casefold():
         raise OfficeFailure(NO_SLIDE_SECTIONS.issue("delivered HTML contains no slide sections", str(delivered_path)))
     source_path.parent.mkdir(parents=True, exist_ok=True)

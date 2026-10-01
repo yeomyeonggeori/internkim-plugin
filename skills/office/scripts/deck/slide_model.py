@@ -16,6 +16,8 @@ NATIVE_LAYOUT_BY_SLIDE_ROLE = {
     "timeline": "timeline",
     "risk": "risk",
     "approval": "approval",
+    "kpi": "metrics",
+    "closing": "approval",
 }
 GENERIC_LAYOUT = "content"
 

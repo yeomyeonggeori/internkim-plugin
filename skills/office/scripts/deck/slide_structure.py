@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 import re
 
-from slide_source import extract_section_attribute, normalize_structure_text, remove_invisible_markup, slide_role, slide_title, split_slide_sources
+from slide_source import extract_section_attribute, normalize_structure_text, remove_invisible_markup, slide_layout, slide_role, slide_title, split_slide_sources
 
 
 PREVIEW_CHARACTER_LIMIT = 180
@@ -65,6 +65,7 @@ def inspect_slide_structure(slide_source: str) -> dict[str, object]:
         "title": title,
         "normalizedTitle": normalize_structure_text(title),
         "slideRole": declared_role,
+        "kitLayout": slide_layout(slide_source),
         "visualSystem": visual_system,
         "hasSlideRole": bool(declared_role),
         "hasVisualSystem": bool(visual_system),

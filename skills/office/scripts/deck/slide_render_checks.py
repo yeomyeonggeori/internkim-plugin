@@ -15,6 +15,8 @@ CONTENT_DENSITY_MINIMUM = 0.006
 CONTENT_DENSITY_MAXIMUM = 0.42
 VERTICAL_DEAD_ZONE_HEIGHT_RATIO = 0.27
 UNFILLED_BOTTOM_HEIGHT_RATIO = 0.2
+CENTERED_BODY_GAP_RATIO = 1.6
+CENTERED_KIT_LAYOUTS = {"statement", "quote", "closing"}
 
 
 def review_slides(image_paths: list[pathlib.Path], design: dict[str, str], slide_texts: list[dict[str, object]], geometry: list[dict[str, object]] | None) -> list[dict[str, object]]:
@@ -87,15 +89,19 @@ def slide_text_fields(slide_text: dict[str, object]) -> dict[str, object]:
 
 
 def vertical_dead_zone_warnings(analysis: dict[str, object], measured: dict[str, object] | None, structure: dict[str, object]) -> list[Issue]:
-    if str(structure["slideRole"]) in LABEL_ONLY_SLIDE_ROLES:
+    if str(structure["slideRole"]) in LABEL_ONLY_SLIDE_ROLES or structure["kitLayout"] in CENTERED_KIT_LAYOUTS:
         return []
     extent = content_extent(measured)
-    if extent is not None and extent.unfilled_ratio >= UNFILLED_BOTTOM_HEIGHT_RATIO:
+    if extent is not None and extent.unfilled_ratio >= UNFILLED_BOTTOM_HEIGHT_RATIO and not body_is_centered(extent):
         below = "above the footer" if extent.has_footer else "below it"
         return [VERTICAL_DEAD_ZONE.issue(f"the content ends at {extent.body_bottom_ratio:.0%} of the slide height and leaves {extent.unfilled_ratio:.0%} of it empty {below}; let the body fill the frame")]
     if analysis["verticalGapRatio"] >= VERTICAL_DEAD_ZONE_HEIGHT_RATIO:
         return [VERTICAL_DEAD_ZONE.issue(f"an empty band spans {analysis['verticalGapRatio']:.0%} of the slide height; distribute content to fill the frame")]
     return []
+
+
+def body_is_centered(extent) -> bool:
+    return extent.unfilled_ratio <= extent.gap_under_title_ratio * CENTERED_BODY_GAP_RATIO
 
 
 def slide_checks(bounds: typing.Optional[dict[str, int]], image: dict[str, object], margin: int, density: float) -> dict[str, bool]:
@@ -159,6 +165,15 @@ def slide_warnings(checks: dict[str, bool], margin: int, density: float, risks: 
     warnings = []
     if not checks["nonblank"]:
         warnings.append(SLIDE_BLANK.issue("slide render appears blank"))
+    if not structure["kitLayout"]:
+        warnings.extend(pixel_heuristic_warnings(checks, margin, density, risks))
+    warnings.extend(geometry_warnings(measured))
+    warnings.extend(slide_design_warnings(structure))
+    return warnings
+
+
+def pixel_heuristic_warnings(checks: dict[str, bool], margin: int, density: float, risks: dict[str, bool]) -> list[Issue]:
+    warnings = []
     if not checks["safeMargin"]:
         warnings.append(SAFE_MARGIN_INTRUSION.issue(f"content extends inside the recommended safe margin of {margin}px"))
     if not checks["edgeOverflow"]:
@@ -169,6 +184,4 @@ def slide_warnings(checks: dict[str, bool], margin: int, density: float, risks: 
         warnings.append(SLIDE_TOO_CROWDED.issue(f"slide appears visually crowded (content density {density:.1%})"))
     if risks["frameFitRisk"]:
         warnings.append(FRAME_FIT_RISK.issue("rendered content is close to the right or bottom frame edge"))
-    warnings.extend(geometry_warnings(measured))
-    warnings.extend(slide_design_warnings(structure))
     return warnings

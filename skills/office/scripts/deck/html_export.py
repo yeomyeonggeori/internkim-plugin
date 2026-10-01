@@ -10,6 +10,7 @@ import time
 
 from browser_render import clear_stale_render_evidence, try_html_render, write_render_source
 from deck_definitions import BROWSER_RENDER_UNAVAILABLE, FONT_NOT_EMBEDDED, PPTX_WITHOUT_DESIGN, REVIEW_FAILED, REVIEW_ISSUE_KINDS, TEXT_KEPT_AS_PICTURE, UNKNOWN_FORMAT
+from deck_kit import inject_deck_kit
 from design_tokens import read_design_tokens
 from editable_pptx import EditablePptx, read_text_layers, text_layers_path, write_editable_pptx
 from native_pptx import write_native_text_pptx
@@ -117,7 +118,7 @@ def enabled_formats(raw_formats: str) -> set[str]:
 
 
 def deck_html_text(source_path: pathlib.Path) -> str:
-    source_text = source_path.read_text(encoding="utf-8")
+    source_text = inject_deck_kit(source_path.read_text(encoding="utf-8"))
     source_text = inject_vendored_paperlogy_fallback(source_text)
     source_text = inline_local_images(source_text, source_path.parent)
     source_text = inline_local_fonts(source_text, source_path.parent)

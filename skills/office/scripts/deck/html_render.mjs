@@ -129,6 +129,7 @@ async function renderDeck(browser, deck, sourceURL, allowedURLPrefix) {
   await page.goto(sourceURL, { waitUntil: "load", timeout: 30000 }).catch(() => {});
   await page.emulateMedia({ media: "print" });
   await waitForFonts(page);
+  await renderDeckKit(page);
   renderProgress("navigated");
 
   const renderedSlideCount = await page.locator("section").count();
@@ -474,6 +475,14 @@ async function countSlides(sourcePath) {
 
 function compactErrorMessage(error) {
   return String(error?.message || error).replace(/\s+/g, " ").slice(0, 180);
+}
+
+async function renderDeckKit(page) {
+  await page.evaluate(async () => {
+    if (!window.deckKit) return;
+    await window.deckKit.ready;
+    window.deckKit.render();
+  });
 }
 
 async function waitForFonts(page) {

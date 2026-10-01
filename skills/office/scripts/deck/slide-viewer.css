@@ -45,6 +45,7 @@ section aside.notes, section aside[role="note"], section [data-speaker-notes] { 
   .bespoke-marp-parent { position: static; inset: auto; overflow: visible; }
   .marpit { position: static; width: auto; height: auto; transform: none; }
   .marpit > section { position: relative; inset: auto; opacity: 1; pointer-events: auto; transform: none; box-shadow: none; page-break-after: always; }
+  .marpit > section:last-child { page-break-after: auto; }
   .bespoke-marp-osc,
   .bespoke-progress-parent,
   .bespoke-marp-overview,
