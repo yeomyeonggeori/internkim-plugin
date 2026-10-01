@@ -118,11 +118,11 @@
     });
   }
 
-  function fitSlide(slide) {
-    if (!slide.clientHeight) return;
+  async function fitSlide(slide, layOut) {
     for (const step of fitSteps) {
       slide.style.setProperty("--fit", String(step));
-      if (!overflows(slide)) return;
+      if (layOut) await layOut(slide);
+      if (!slide.clientHeight || !overflows(slide)) return;
     }
   }
 
@@ -401,14 +401,14 @@
     document.querySelectorAll("section[data-layout] figure[data-chart]").forEach(renderChart);
   }
 
-  function render() {
+  async function render(layOut) {
     prepare();
-    slides().forEach(fitSlide);
+    for (const slide of slides()) await fitSlide(slide, layOut);
   }
 
   async function renderWhenFontsLoad() {
     if (document.fonts) await document.fonts.ready;
-    render();
+    await render();
   }
 
   function start() {
@@ -416,6 +416,7 @@
   }
 
   window.deckKit = { render, ready: null, chartTypes: Object.keys(chartRenderers) };
+  window.renderHook = render;
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", start);
   } else {

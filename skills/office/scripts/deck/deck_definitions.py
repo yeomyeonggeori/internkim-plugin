@@ -8,10 +8,13 @@ from template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
 from office_result import ERROR, WARNING, Issue, IssueKind
 from office_schema import ListOf
 from pptx_edit_definitions import OPERATIONS
+from render.renderer import RENDER_ISSUE_KINDS
 from text_checks import PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
 
 
 DECK_LOCATION = "deck"
+LAYOUT_RENDER_SOURCE = "layout"
+NATIVE_RENDER_SOURCE = "nativeFallback"
 
 
 @dataclass(frozen=True)
@@ -41,9 +44,9 @@ CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is lar
 OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "move or resize the element so it sits inside the slide")
 TEXT_OVERLAP = review_check("TEXT_OVERLAP", "two pieces of text cover each other", "separate the two text blocks or shorten the one that spills")
 IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "set object-fit: cover or contain, or size the image to its ratio")
-GEOMETRY_NOT_MEASURED = review_check("GEOMETRY_NOT_MEASURED", "no browser measured element geometry, so overflow, overlap and stretched images were not checked", "rerun the build where a browser renders the deck, or say the layout was not measured")
+GEOMETRY_NOT_MEASURED = review_check("GEOMETRY_NOT_MEASURED", "no renderer measured element geometry, so overflow, overlap and stretched images were not checked", "install bun or node 18 and build again, or say the layout was not measured")
 FRAME_FIT_RISK = review_check("FRAME_FIT_RISK", "content is close to the right or bottom frame edge", "check the contact sheet for clipped text", label="frameFitRisk")
-UNRELIABLE_VISUAL_EVIDENCE = review_check("UNRELIABLE_VISUAL_EVIDENCE", "review images did not come from a browser", "treat the previews as approximate and say so when delivering", label="unreliableVisualEvidenceWarning")
+UNRELIABLE_VISUAL_EVIDENCE = review_check("UNRELIABLE_VISUAL_EVIDENCE", "review images were not drawn from the deck's layout", "treat the previews as approximate and say so when delivering", label="unreliableVisualEvidenceWarning")
 
 WEAK_VISUAL_IDENTITY = review_check("WEAK_VISUAL_IDENTITY", "the deck declares no visual system", "add data-visual-system to slides.html and describe the system in DESIGN.md", "weakVisualIdentityWarning", 24)
 MISSING_SLIDE_ROLE = review_check("MISSING_SLIDE_ROLE", "a slide lacks data-slide-role", "give every slide section a data-slide-role", "missingSlideRoleWarning", 16)
@@ -93,9 +96,7 @@ REVIEW_ISSUE_KINDS = tuple(check.kind for check in SLIDE_RENDER_CHECKS + DESIGN_
 SOURCE_NOT_HTML = IssueKind("SOURCE_NOT_HTML", ERROR, "the deck source is not an .html file", "write slides.html, or pass --source with an .html file")
 NO_SLIDE_SECTIONS = IssueKind("NO_SLIDE_SECTIONS", ERROR, "the HTML has no <section> slides", "put each slide in its own <section>")
 UNKNOWN_FORMAT = IssueKind("UNKNOWN_FORMAT", ERROR, "--format names a format the build cannot write", "use pdf, pptx, html, or all")
-REVIEW_FAILED = IssueKind("REVIEW_FAILED", ERROR, "the slide review stopped before writing its report", "read the review's error output above the result")
-BROWSER_RENDER_UNAVAILABLE = IssueKind("BROWSER_RENDER_UNAVAILABLE", WARNING, "no browser rendered the deck", "say that the PDF and screenshots are missing, or deliver from a host with a browser")
-PPTX_WITHOUT_DESIGN = IssueKind("PPTX_WITHOUT_DESIGN", WARNING, "no browser rendered the deck, so the PPTX re-lays the slide text into stock layouts", "say the PPTX does not carry the deck's design, or build where a browser renders it")
+PPTX_WITHOUT_DESIGN = IssueKind("PPTX_WITHOUT_DESIGN", WARNING, "no renderer drew the deck, so the PPTX re-lays the slide text into stock layouts", "say the PPTX does not carry the deck's design, or install bun or node 18 and build again")
 FONT_NOT_EMBEDDED = IssueKind("FONT_NOT_EMBEDDED", WARNING, "the PPTX names a font it could not embed, so the recipient sees a substitute unless that font is installed", "use Paperlogy, or tell the recipient which font to install")
 TEXT_KEPT_AS_PICTURE = IssueKind("TEXT_KEPT_AS_PICTURE", WARNING, "some slide text is drawn into the slide picture, so the recipient cannot edit it", "name that text when delivering; rotated, skewed, filtered, gradient-clipped and SVG text stays a picture")
 
@@ -133,8 +134,7 @@ SOURCE_CHECK_ISSUE_KINDS = (
 
 BUILD_ISSUE_KINDS = (
     UNKNOWN_FORMAT,
-    REVIEW_FAILED,
-    BROWSER_RENDER_UNAVAILABLE,
+    *RENDER_ISSUE_KINDS,
     PPTX_WITHOUT_DESIGN,
     FONT_NOT_EMBEDDED,
     TEXT_KEPT_AS_PICTURE,

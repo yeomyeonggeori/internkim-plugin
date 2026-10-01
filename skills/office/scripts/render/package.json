@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@takumi-rs/core": "2.14.0",
+    "@takumi-rs/helpers": "2.14.0",
+    "linkedom": "0.18.13",
+    "takumi-pdf": "0.15.0"
+  }
+}

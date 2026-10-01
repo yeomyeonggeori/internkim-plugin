@@ -3,7 +3,7 @@ export const exportedListAttribute = "data-internkim-pptx-list";
 export const markerProbeAttribute = "data-internkim-pptx-marker";
 export const markerProbeHostId = "internkim-pptx-marker-probes";
 
-export function insertMarkerProbes({ markerProbeAttribute, markerProbeHostId }) {
+export function insertMarkerProbes({ markerProbeAttribute, markerProbeHostId, pages }) {
   const bulletCharacters = { disc: "•", circle: "◦", square: "▪" };
   const numberingSchemes = { decimal: "arabicPeriod", "decimal-leading-zero": "arabicPeriod", "lower-alpha": "alphaLcPeriod", "lower-latin": "alphaLcPeriod", "upper-alpha": "alphaUcPeriod", "upper-latin": "alphaUcPeriod", "lower-roman": "romanLcPeriod", "upper-roman": "romanUcPeriod" };
   const ordinalOf = (item) => (item.parentElement.start || 1) + Array.from(item.parentElement.children).filter((child) => child.tagName === "LI").indexOf(item);
@@ -16,7 +16,7 @@ export function insertMarkerProbes({ markerProbeAttribute, markerProbeHostId }) 
   const host = document.createElement("div");
   host.id = markerProbeHostId;
   host.style.cssText = "position:absolute;left:0;top:0;visibility:hidden;pointer-events:none";
-  document.querySelectorAll("section li").forEach((item, index) => {
+  pages.flatMap((page) => Array.from(page.querySelectorAll("li"))).forEach((item, index) => {
     const style = getComputedStyle(item);
     const markerText = markerTextOf(item, style);
     if (!markerText) return;
@@ -24,14 +24,15 @@ export function insertMarkerProbes({ markerProbeAttribute, markerProbeHostId }) 
     probe.textContent = markerText;
     probe.dataset.numbering = numberingSchemes[style.listStyleType] || "";
     probe.setAttribute(markerProbeAttribute, String(index));
-    probe.style.cssText = `white-space:pre;font-family:${style.fontFamily};font-size:${style.fontSize};font-weight:${style.fontWeight};font-style:${style.fontStyle};letter-spacing:${style.letterSpacing}`;
+    const letterSpacing = style.letterSpacing === "normal" ? "" : `;letter-spacing:${style.letterSpacing}`;
+    probe.style.cssText = `white-space:pre;font-family:${style.fontFamily};font-size:${style.fontSize};font-weight:${style.fontWeight};font-style:${style.fontStyle}${letterSpacing}`;
     item.setAttribute(markerProbeAttribute, String(index));
     host.appendChild(probe);
   });
   document.documentElement.appendChild(host);
 }
 
-export function extractTextLayout({ exportedTextAttribute, exportedListAttribute, markerProbeAttribute, markerProbeHostId }) {
+export function extractTextLayout({ exportedTextAttribute, exportedListAttribute, markerProbeAttribute, markerProbeHostId, pages }) {
   const genericFamilies = new Set(["serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui", "ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded", "-apple-system", "blinkmacsystemfont", "emoji", "math", "fangsong"]);
   const skippedTags = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "TEXTAREA", "SELECT", "OPTION"]);
   const linkProtocols = new Set(["http:", "https:", "mailto:", "tel:"]);
@@ -490,7 +491,7 @@ export function extractTextLayout({ exportedTextAttribute, exportedListAttribute
     };
   };
 
-  const slides = Array.from(document.querySelectorAll("section")).map(describeSlide);
+  const slides = pages.map(describeSlide);
   document.getElementById(markerProbeHostId)?.remove();
   return { language: document.documentElement.lang, slides };
 }

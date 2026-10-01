@@ -39,14 +39,15 @@ FONT_MIME_TYPES = {
     ".ttf": "font/ttf",
 }
 REMOTE_URL_PREFIXES = ("data:", "http:", "https:")
+VENDORED_FONTS_MARKER = "data-internkim-vendored-fonts"
 
 
 def inject_vendored_paperlogy_fallback(source_text: str) -> str:
     source_text = add_paperlogy_local_to_font_family_lists(source_text)
     font_style = vendored_paperlogy_fallback_style()
-    if "data-internkim-vendored-fonts" in source_text:
+    if VENDORED_FONTS_MARKER in source_text:
         return re.sub(
-            r"<style\b[^>]*data-internkim-vendored-fonts[^>]*>.*?</style>",
+            rf"<style\b[^>]*{VENDORED_FONTS_MARKER}[^>]*>.*?</style>",
             font_style,
             source_text,
             count=1,
@@ -82,7 +83,7 @@ def add_paperlogy_local_to_font_family_lists(source_text: str) -> str:
 
 def vendored_paperlogy_fallback_style() -> str:
     rules = [paperlogy_local_font_face(weight, file_name) for weight, file_name in VENDORED_PAPERLOGY_FONTS]
-    return '<style data-internkim-vendored-fonts>' + "\n".join(rules) + "</style>"
+    return f'<style {VENDORED_FONTS_MARKER}>' + "\n".join(rules) + "</style>"
 
 
 def paperlogy_local_font_face(weight: int, file_name: str) -> str:

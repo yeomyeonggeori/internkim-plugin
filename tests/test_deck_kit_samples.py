@@ -17,8 +17,8 @@ sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
 sys.path.insert(0, str(TESTS_PATH))
 
 from check_deck import CheckRequest, check_deck  # noqa: E402
-from png_codec import write_png  # noqa: E402
-from test_deck_geometry import can_render_in_a_browser  # noqa: E402
+from png_fixture import write_png  # noqa: E402
+from test_deck_geometry import can_render  # noqa: E402
 
 
 LAYOUT_DEFECT_CODES = {"CONTENT_OVERFLOW", "TEXT_OVERLAP", "OUT_OF_FRAME"}
@@ -63,7 +63,7 @@ class SampleDeckCheckTest(unittest.TestCase):
 
 
 class SampleDeckBuildTest(unittest.TestCase):
-    @unittest.skipUnless(can_render_in_a_browser(), "needs bun and a browser that speaks the Chrome DevTools Protocol")
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_every_sample_deck_builds_an_acceptable_pdf_without_layout_defects(self):
         for sample_path in sample_deck_paths():
             with self.subTest(sample_path.name), tempfile.TemporaryDirectory() as directory:
@@ -76,12 +76,19 @@ class SampleDeckBuildTest(unittest.TestCase):
                     cwd=deck_path,
                 )
                 envelope = json.loads(completed.stdout)
-                if envelope["details"]["review"]["renderSource"] != "browser":
-                    self.skipTest("the browser did not render the deck on this host")
+                if envelope["details"]["review"]["renderSource"] != "layout":
+                    self.skipTest("the renderer could not run on this host")
                 pdf_bytes = Path(envelope["outputPath"]).read_bytes()
                 self.assertEqual({issue["code"] for issue in envelope["issues"]} & LAYOUT_DEFECT_CODES, set())
                 self.assertTrue(envelope["details"]["acceptance"]["acceptable"], envelope["summary"])
                 self.assertEqual(len(PDF_PAGE_PATTERN.findall(pdf_bytes)), count)
+                self.assert_review_measured_every_page(deck_path, count)
+
+    def assert_review_measured_every_page(self, deck_path: Path, count: int):
+        review = json.loads((deck_path / "build" / "review" / "slide-review.json").read_text(encoding="utf-8"))
+        self.assertTrue(all(slide["contentBounds"] for slide in review["slides"]))
+        self.assertEqual(len(review["contactSheets"]), -(-count // 4))
+        self.assertTrue(all((deck_path / "build" / "review" / sheet["filename"]).is_file() for sheet in review["contactSheets"]))
 
 
 if __name__ == "__main__":

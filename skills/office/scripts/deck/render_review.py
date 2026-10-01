@@ -6,7 +6,6 @@ import pathlib
 import sys
 import typing
 
-from contact_sheet import write_contact_sheets
 from content_warnings import (
     apply_emoji_icon_warning,
     apply_language_mismatch_warning,
@@ -14,12 +13,14 @@ from content_warnings import (
     apply_missing_speaker_notes_warning,
     apply_unsourced_current_date_warning,
 )
+from deck_definitions import LAYOUT_RENDER_SOURCE
 from design_tokens import read_design_tokens
 from design_warnings import annotate_design_revision_need, apply_deck_design_warnings, calculate_visual_quality_score, unique_design_warnings
 from office_result import INVALID_ARGUMENTS, Issue, OfficeFailure, Result, run_command
 from fit_review import DESIGN_REVIEW_PROMPT, attach_fit_review_metadata, create_fit_reviews
 from geometry_checks import apply_geometry_not_measured_warning, read_geometry
 from footer_warnings import apply_footer_baseline_warning, apply_unpinned_footer_warning
+from render_evidence import read_contact_sheets, read_page_pixels, read_render_source
 from review_report import write_review_outputs
 from slide_images import rendered_slide_image_paths
 from slide_render_checks import review_slides
@@ -48,11 +49,15 @@ def main() -> Result:
     arguments = parse_arguments(sys.argv)
     if not arguments:
         raise OfficeFailure(INVALID_ARGUMENTS.issue("usage: render_review.py <source> <deck-name> <review-dir>"))
-    report, issues = build_review_report(arguments["sourcePath"], arguments["deckName"], arguments["reviewDirectoryPath"])
-    write_review_outputs(arguments["reviewDirectoryPath"], report)
+    return review_deck(arguments["sourcePath"], arguments["deckName"], arguments["reviewDirectoryPath"])
+
+
+def review_deck(source_path: pathlib.Path, deck_name: str, review_directory_path: pathlib.Path) -> Result:
+    report, issues = build_review_report(source_path, deck_name, review_directory_path)
+    write_review_outputs(review_directory_path, report)
     return Result(
         summary=review_summary(report),
-        output_path=str(arguments["reviewDirectoryPath"] / "slide-review.json"),
+        output_path=str(review_directory_path / "slide-review.json"),
         issues=tuple(issues),
         details={field: report[field] for field in REVIEW_DETAIL_FIELDS},
     )
@@ -79,12 +84,12 @@ def build_review_report(source_path: pathlib.Path, deck_name: str, review_direct
     source_context = inspect_source_context(source_text, design_document_text, slide_count)
     slide_texts = read_slide_texts(source_text, slide_count)
     geometry = read_geometry(review_directory_path)
-    slides = review_slides(image_paths, design, slide_texts, geometry)
+    slides = review_slides(image_paths, read_page_pixels(review_directory_path), design, slide_texts, geometry)
     apply_deck_warnings(slides, slide_texts, source_text, source_context, render_source, required_text_ledger, geometry)
     design_warnings = unique_design_warnings(slides)
     issues = located_review_issues(slides)
     replace_warnings_with_messages(slides)
-    contact_sheets = write_contact_sheets(review_directory_path, image_paths)
+    contact_sheets = read_contact_sheets(review_directory_path)
     fit_reviews = create_fit_reviews(contact_sheets, slides)
     report = quality_gate_fields(slides, design_warnings, render_source) | {
         "reviewUnavailable": slide_count == 0,
@@ -142,7 +147,7 @@ def apply_deck_warnings(
 
 
 def quality_gate_fields(slides: list[dict[str, object]], design_warnings: list[Issue], render_source: str) -> dict[str, object]:
-    visual_evidence_reliable = render_source == "browser"
+    visual_evidence_reliable = render_source == LAYOUT_RENDER_SOURCE
     visual_quality_score = calculate_visual_quality_score(design_warnings)
     static_gate_passed = visual_quality_score >= VISUAL_QUALITY_SCORE_MINIMUM
     quality_gate_passed = (
@@ -160,17 +165,6 @@ def quality_gate_fields(slides: list[dict[str, object]], design_warnings: list[I
         "visualEvidenceReliable": visual_evidence_reliable,
         "needsDesignRevision": bool(design_warnings) or not static_gate_passed,
     }
-
-
-def read_render_source(review_directory_path: pathlib.Path, image_paths: list[pathlib.Path]) -> str:
-    source_path = review_directory_path / "render-source.txt"
-    if source_path.exists():
-        value = source_path.read_text(encoding="utf-8").strip()
-        if value:
-            return value
-    if image_paths:
-        return "browser"
-    return "unavailable"
 
 
 def review_summary(report: dict[str, object]) -> str:

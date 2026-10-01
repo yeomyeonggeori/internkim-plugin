@@ -2,7 +2,7 @@ export const exportedShapeAttribute = "data-internkim-pptx-shape";
 export const exportedBeforeShapeAttribute = "data-internkim-pptx-shape-before";
 export const exportedAfterShapeAttribute = "data-internkim-pptx-shape-after";
 
-export function extractBoxLayout({ exportedShapeAttribute, exportedBeforeShapeAttribute, exportedAfterShapeAttribute }) {
+export function extractBoxLayout({ exportedShapeAttribute, exportedBeforeShapeAttribute, exportedAfterShapeAttribute, pages }) {
   const replacedTags = new Set(["IMG", "SVG", "CANVAS", "VIDEO", "IFRAME", "OBJECT", "EMBED", "PICTURE", "INPUT", "BUTTON", "SELECT", "TEXTAREA", "MATH", "AUDIO"]);
   const skippedTags = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "HEAD", "META", "LINK", "TITLE"]);
   const pseudoAttributes = { "::before": exportedBeforeShapeAttribute, "::after": exportedAfterShapeAttribute };
@@ -330,7 +330,7 @@ export function extractBoxLayout({ exportedShapeAttribute, exportedBeforeShapeAt
     return { shapes: emitted, boxesKeptAsPicture: pictureRegions.length };
   };
 
-  return Array.from(document.querySelectorAll("section")).map(describeSlide);
+  return pages.map(describeSlide);
 }
 
 export function hideExportedBoxes({ exportedShapeAttribute, exportedBeforeShapeAttribute, exportedAfterShapeAttribute }) {

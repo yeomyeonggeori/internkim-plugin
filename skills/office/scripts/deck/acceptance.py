@@ -48,7 +48,7 @@ class Acceptance:
     @property
     def verdict(self) -> str:
         if not self.measured:
-            return f"NOT MEASURED: no browser rendered the deck, so there is no PDF and no layout check; deliver {self.deliverable} and say so"
+            return f"NOT MEASURED: the renderer did not draw the deck, so there is no PDF and no layout check; deliver {self.deliverable} and say so"
         if self.acceptable:
             return f"ACCEPTABLE: deliver {self.deliverable}; the other issues are advice, so do not redesign clean slides"
         listed = "; ".join(f"{issue.kind.code} on {issue.location}" for issue in self.defects)

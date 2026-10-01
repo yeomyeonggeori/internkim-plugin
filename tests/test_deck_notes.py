@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from deck_fixture import DeckFixture, SCRIPTS_PATH, run_office_python_json
 
 
@@ -12,10 +14,10 @@ EXPECTED_NOTES = ["첫 슬라이드 노트\n둘째 줄 & 끝", None, "마지막 
 WRITE_AND_READ_BACK = """
 import json, sys
 from pathlib import Path
-sys.path[:0] = [{deck_path!r}, {scripts_path!r}]
+sys.path[:0] = [{deck_path!r}, {scripts_path!r}, {tests_path!r}]
 from editable_pptx import read_text_layers, write_editable_pptx
 from native_pptx import write_native_text_pptx
-from png_codec import write_png
+from png_fixture import write_png
 from pptx import Presentation
 from slide_model import create_slide_models
 from slide_source import split_slide_sources
@@ -42,7 +44,7 @@ print(json.dumps({{"native": notes_of("native.pptx"), "editable": notes_of("edit
 
 class NotesRoundTripTest(DeckFixture):
     def read_back(self, deck: str):
-        code = WRITE_AND_READ_BACK.format(deck_path=str(SCRIPTS_PATH / "deck"), scripts_path=str(SCRIPTS_PATH), deck=deck)
+        code = WRITE_AND_READ_BACK.format(deck_path=str(SCRIPTS_PATH / "deck"), scripts_path=str(SCRIPTS_PATH), tests_path=str(Path(__file__).resolve().parent), deck=deck)
         return run_office_python_json(code, self.directory)
 
     def test_both_pptx_modes_carry_the_slide_notes_python_pptx_reads_back(self):

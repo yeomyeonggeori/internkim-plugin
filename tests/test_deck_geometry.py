@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -12,7 +11,8 @@ OFFICE_ENTRY = SCRIPTS_PATH.parent / "office"
 sys.path.insert(0, str(SCRIPTS_PATH.parent))
 sys.path.insert(0, str(SCRIPTS_PATH))
 
-from png_codec import write_png  # noqa: E402
+from png_fixture import write_png  # noqa: E402
+from render.renderer import RendererUnavailable, javascript_runtime  # noqa: E402
 from render_review import build_review_report  # noqa: E402
 
 
@@ -104,22 +104,24 @@ class GeometryReviewTest(unittest.TestCase):
         self.assertNotIn("textOverflowRisk", report["slides"][0]["risks"])
 
 
-def can_render_in_a_browser() -> bool:
-    has_browser = any(shutil.which(program) for program in ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "moli"))
-    has_mac_browser = Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome").exists()
-    return shutil.which("bun") is not None and (has_browser or has_mac_browser)
+def can_render() -> bool:
+    try:
+        javascript_runtime()
+    except RendererUnavailable:
+        return False
+    return True
 
 
 class RenderedGeometryTest(unittest.TestCase):
-    @unittest.skipUnless(can_render_in_a_browser(), "needs bun and a browser that speaks the Chrome DevTools Protocol")
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_the_renderer_measures_an_overflowing_box_and_leaves_a_clean_slide_alone(self):
         with tempfile.TemporaryDirectory() as directory:
             deck_path = Path(directory)
             (deck_path / "slides.html").write_text(FIXTURE_SOURCE, encoding="utf-8")
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build"], capture_output=True, text=True, cwd=deck_path)
             envelope = json.loads(completed.stdout)
-            if envelope["details"]["review"]["renderSource"] != "browser":
-                self.skipTest("the browser did not render the deck on this host")
+            if envelope["details"]["review"]["renderSource"] != "layout":
+                self.skipTest("the renderer could not run on this host")
             geometry = json.loads((deck_path / "build" / "review" / "geometry.json").read_text(encoding="utf-8"))
         clean, clipped = geometry["slides"]
         self.assertEqual(clean["overflow"], [])

@@ -64,7 +64,7 @@ def report_summary_lines(report: dict[str, object]) -> list[str]:
 
 def geometry_line(report: dict[str, object]) -> str:
     if report["geometryMeasured"]:
-        return "measured in the browser (review/geometry.json)"
+        return "measured by the renderer (review/geometry.json)"
     return "not measured, so overflow, overlap and stretched images were not checked"
 
 

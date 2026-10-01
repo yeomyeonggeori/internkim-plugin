@@ -54,7 +54,7 @@ Python 3 and [uv](https://docs.astral.sh/uv/) on `PATH`. A skill that bundles
 scripts declares its own dependencies in `scripts/requirements.txt` and installs
 them into an environment it creates on first use, so nothing has to be prepared
 in advance. `website` also needs [Bun](https://bun.sh), and `office` needs Bun
-and a browser that speaks the Chrome DevTools Protocol to render decks.
+or Node 18 to draw pages, which it does without a browser.
 
 `office` runs every command through one entry, `scripts/office <format>
 <verb>`, which prepares that environment first; `scripts/office --help` lists

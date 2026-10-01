@@ -5,9 +5,10 @@ import re
 
 
 SCRIPT_PATH = pathlib.Path(__file__).resolve().parent
+SLIDE_VIEWER_MARKER = "data-internkim-slide-viewer"
 SLIDE_VIEWER_BLOCK_PATTERNS = (
-    r"\s*<style\b(?=[^>]*\bdata-internkim-slide-viewer\b)[^>]*>.*?</style>\s*",
-    r"\s*<script\b(?=[^>]*\bdata-internkim-slide-viewer\b)[^>]*>.*?</script>\s*",
+    rf"\s*<style\b(?=[^>]*\b{SLIDE_VIEWER_MARKER}\b)[^>]*>.*?</style>\s*",
+    rf"\s*<script\b(?=[^>]*\b{SLIDE_VIEWER_MARKER}\b)[^>]*>.*?</script>\s*",
 )
 
 
@@ -32,6 +33,6 @@ def slide_viewer_markup() -> str:
     style = (SCRIPT_PATH / "slide-viewer.css").read_text(encoding="utf-8")
     script = (SCRIPT_PATH / "slide-viewer.js").read_text(encoding="utf-8")
     return (
-        f"<style data-internkim-slide-viewer>\n{style}</style>\n"
-        f"<script data-internkim-slide-viewer>\n{script}</script>"
+        f"<style {SLIDE_VIEWER_MARKER}>\n{style}</style>\n"
+        f"<script {SLIDE_VIEWER_MARKER}>\n{script}</script>"
     )

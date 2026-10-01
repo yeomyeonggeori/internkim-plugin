@@ -12,7 +12,7 @@ import unittest
 from xml.etree import ElementTree
 import zipfile
 
-from test_deck_geometry import can_render_in_a_browser
+from test_deck_geometry import can_render
 
 
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"
@@ -22,7 +22,7 @@ sys.path.insert(0, str(SCRIPTS_PATH.parent))
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from editable_pptx import read_text_layers, write_editable_pptx  # noqa: E402
-from png_codec import read_png, write_png  # noqa: E402
+from png_fixture import read_png, write_png  # noqa: E402
 from resource_inlining import VENDORED_PAPERLOGY_FONTS  # noqa: E402
 from truetype_font import read_truetype_face  # noqa: E402
 
@@ -297,15 +297,15 @@ class VendoredFontTest(unittest.TestCase):
 
 
 class RenderedEditablePptxTest(unittest.TestCase):
-    @unittest.skipUnless(can_render_in_a_browser(), "needs bun and a browser that speaks the Chrome DevTools Protocol")
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_the_pptx_holds_each_slides_visible_text_in_the_deck_font_inside_the_slide(self):
         with tempfile.TemporaryDirectory() as directory:
             deck_path = Path(directory)
             (deck_path / "slides.html").write_text(DECK_SOURCE, encoding="utf-8")
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build"], capture_output=True, text=True, cwd=deck_path, env={**os.environ, "FORMATS": "pptx"})
             envelope = json.loads(completed.stdout)
-            if envelope["details"]["pptx"]["source"] != "browser":
-                self.skipTest("the browser did not render the deck on this host")
+            if envelope["details"]["pptx"]["source"] != "layout":
+                self.skipTest("the renderer could not run on this host")
             layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
             with zipfile.ZipFile(deck_path / "build" / f"{deck_path.name}.pptx") as archive:
                 slides = [ElementTree.fromstring(archive.read(f"ppt/slides/slide{number}.xml")) for number in range(1, len(layout["slides"]) + 1)]

@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from deck_definitions import (
+    LAYOUT_RENDER_SOURCE,
     ABSOLUTE_FOOTER,
     BARE_LIST,
     DESIGN_WARNING_WEIGHTS,
@@ -82,8 +83,8 @@ def deck_design_warnings(slides: list[dict[str, object]], source_context: dict[s
         warnings.append(weak_visual_identity_warning(source_context))
     if int(source_context["missingSlideRoleCount"]) > 0:
         warnings.append(MISSING_SLIDE_ROLE.deck_issue("one or more slide sections lack data-slide-role"))
-    if render_source != "browser":
-        warnings.append(UNRELIABLE_VISUAL_EVIDENCE.deck_issue("review images did not come from browser rendering"))
+    if render_source != LAYOUT_RENDER_SOURCE:
+        warnings.append(UNRELIABLE_VISUAL_EVIDENCE.deck_issue("review images were not drawn from the deck's layout"))
     return warnings + source_pattern_warnings(source_context) + composition_warnings(slides)
 
 
