@@ -205,6 +205,28 @@ class ChartTest(OperationFixture):
         chart = self.workbook()["Sales"]._charts[0]
         self.assertEqual([series.val.numRef.f for plot in chart._charts for series in plot.series], ["'Sales'!$C$2:$C$4", "'Sales'!$D$2:$D$4"])
 
+    def test_a_number_column_stored_as_text_is_converted_and_drawn_by_the_suggestion(self):
+        self.edit([{"op": "set_range", "cell": "E1", "values": [["share"], ["12"], ["9"], ["7"], ["15"], ["6"], ["4"]]}])
+        envelope = self.edit([{"op": "add_chart", "type": "bar", "range": "A1:E7"}])
+        issue = envelope["issues"][0]
+        self.assertIn("E2:E7 (share) holds numbers stored as text, and B2:B7 (product) holds no number", issue["message"])
+        self.assertEqual(issue["fix"], [
+            {"op": "set_range", "sheet": "Sales", "cell": "E2", "values": [[12], [9], [7], [15], [6], [4]]},
+            {"op": "edit_chart", "sheet": "Sales", "chart": 0, "range": "A1:E7"},
+        ])
+        self.edit(issue["fix"])
+        chart = self.workbook()["Sales"]._charts[0]
+        self.assertIn("'Sales'!$E$2:$E$7", [series.val.numRef.f for series in chart.series])
+
+    def test_a_trailing_text_column_is_left_out_of_the_suggested_range(self):
+        self.edit([{"op": "set_range", "cell": "E1", "values": [["memo"], ["가"], ["나"]]}])
+        issue = self.edit([{"op": "add_chart", "type": "bar", "range": "C1:E7"}])["issues"][0]
+        self.assertIn('"range": "C1:D7"', issue["suggestion"])
+
+    def test_one_category_column_is_widened_to_the_number_columns_beside_it(self):
+        issue = self.refused([{"op": "add_chart", "type": "bar", "range": "A1:A7"}])
+        self.assertIn('"range": "A1:D7"', issue["suggestion"])
+
     def test_a_range_without_a_number_is_refused_before_anything_is_written(self):
         original = (self.directory / "book.xlsx").read_bytes()
         issue = self.refused([{"op": "add_chart", "type": "bar", "range": "F1:H5"}])
@@ -227,6 +249,17 @@ class ChartTest(OperationFixture):
         self.assertIn('<a:srgbClr val="AA0000"/>', self.chart_xml(1))
         issue = self.refused([{"op": "edit_chart", "chart": 0, "colors": ["red"]}])
         self.assertEqual((issue["code"], issue["location"]), ("INVALID_VALUE", "ops[0].colors[0]"))
+
+    def test_names_from_other_vocabularies_are_answered_with_the_exact_word(self):
+        cases = [
+            ({"op": "add_chart", "type": "column", "range": "A1:C4"}, "ops[0].type", "use 'bar'"),
+            ({"op": "add_chart", "type": "bar", "range": "A1:C4", "colors": ["red"]}, "ops[0].colors[0]", 'use "FF0000" for red'),
+            ({"op": "add_pivot_table", "range": "A1:D7", "row": "region", "values": ["amount"], "function": "avg"}, "ops[0].function", "use 'average'"),
+        ]
+        for operation, location, suggestion in cases:
+            with self.subTest(location=location):
+                issue = self.refused([operation])
+                self.assertEqual((issue["location"], issue["suggestion"]), (location, suggestion))
 
     def test_a_chart_index_beyond_the_sheet_is_refused(self):
         issue = self.refused([{"op": "delete_chart", "chart": 0}])

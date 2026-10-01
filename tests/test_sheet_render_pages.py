@@ -1,5 +1,6 @@
 import re
 import unittest
+import zipfile
 
 from openpyxl import load_workbook
 
@@ -82,6 +83,89 @@ class RenderedPagesTest(WorkbookFixture):
         self.create_workbook([{"title": "Sales", "rows": MONTHS}])
         envelope, _ = self.render()
         self.assertNotIn("BLANK_PAGE", [issue["code"] for issue in envelope["issues"]])
+
+
+    def test_fit_to_one_page_tall_and_printed_gridlines_shape_the_pages(self):
+        self.create_workbook([{"title": "일지", "rows": [["일자", "건수"]] + [[f"{day}일", day] for day in range(1, 151)]}])
+        self.assertGreater(self.render()[0]["details"]["pageCount"], 1)
+        self.assertEqual(self.apply([{"op": "set_page_setup", "fitToHeight": 1, "fitToWidth": 0, "printGridlines": True}])["status"], "ok")
+        sheet = load_workbook(self.directory / "book.xlsx")["일지"]
+        self.assertEqual((sheet.page_setup.fitToWidth, sheet.page_setup.fitToHeight, sheet.print_options.gridLines), (0, 1, True))
+        self.apply([{"op": "set_cell", "sheet": "일지", "cell": "D2", "value": "메모"}])
+        envelope, preview = self.render()
+        self.assertEqual(envelope["details"]["pageCount"], 1)
+        self.assertIn("border-right:1px solid #d0d0d0", preview.replace(": ", ":"))
+
+
+SHARES = [["분기", "국내", "해외"], ["1분기", 30, 10], ["2분기", 20, 20], ["3분기", 45, 5]]
+
+
+class PercentChartTest(WorkbookFixture):
+    def chart_xml(self, number):
+        with zipfile.ZipFile(self.directory / "book.xlsx") as archive:
+            return archive.read(f"xl/charts/chart{number}.xml").decode()
+
+    def test_percent_stacked_columns_and_percent_slices_are_written_and_drawn(self):
+        self.create_workbook([{"title": "매출", "rows": SHARES}])
+        envelope = self.apply([
+            {"op": "add_chart", "type": "bar", "range": "A1:C4", "stacked": "percent", "dataLabels": "value", "anchor": "E2"},
+            {"op": "add_chart", "type": "pie", "range": "A1:B4", "dataLabels": "category_percent", "anchor": "E20"},
+            {"op": "add_chart", "type": "area", "range": "A1:C4", "stacked": "percent", "anchor": "E38"},
+        ])
+        self.assertEqual(envelope["status"], "ok", envelope)
+        columns = self.chart_xml(1)
+        self.assertIn('<grouping val="percentStacked"/>', columns)
+        self.assertIn('formatCode="0%"', columns)
+        self.assertIn('<showVal val="1"/>', columns)
+        self.assertIn('<showCatName val="1"/><showSerName val="0"/><showPercent val="1"/>', self.chart_xml(2))
+        self.assertIn('<grouping val="percentStacked"/>', self.chart_xml(3))
+        run_office(["sheet", "render", "book.xlsx"], self.directory)
+        svgs = re.findall(r"<svg.*?</svg>", (self.directory / "book-preview" / "preview.html").read_text(encoding="utf-8"), flags=re.DOTALL)
+        heights = [float(height) for height in re.findall(r'<rect x="[\d.]+" y="[\d.]+" width="[\d.]+" height="([\d.]+)" fill="#', svgs[0])[1:]]
+        self.assertAlmostEqual(heights[0] + heights[3], heights[1] + heights[4], delta=0.2)
+        self.assertIn(">100%<", svgs[0])
+        self.assertIn(">30<", svgs[0])
+        self.assertIn(">1분기 32%<", svgs[1])
+        self.assertIn(">100%<", svgs[2])
+
+    def test_percent_labels_on_a_chart_without_slices_are_refused(self):
+        self.create_workbook([{"title": "매출", "rows": SHARES}])
+        issue = self.apply([{"op": "add_chart", "type": "bar", "range": "A1:C4", "dataLabels": "percent"}])["issues"][0]
+        self.assertEqual((issue["code"], issue["location"]), ("OPERATION_NOT_APPLICABLE", "ops[0].dataLabels"))
+        self.assertIn('"stacked": "percent"', issue["suggestion"])
+
+
+
+class StyleRuleTest(WorkbookFixture):
+    def test_strikethrough_rotation_theme_colors_and_text_rules_are_written_and_drawn(self):
+        self.create_workbook([{"title": "현황", "rows": [["이름", "상태", "점수"], ["이샘플", "완료", 90], ["박예시", "진행 중", 40], ["최견본", None, 70]]}])
+        envelope = self.apply([
+            {"op": "format_range", "sheet": "현황", "range": "A2", "strikethrough": True, "textRotation": 45},
+            {"op": "format_range", "sheet": "현황", "range": "A3", "textRotation": -30},
+            {"op": "format_range", "sheet": "현황", "range": "B1", "textRotation": "vertical"},
+            {"op": "format_range", "sheet": "현황", "range": "A1:C1", "fill": "accent1+40%", "fontColor": "dk2"},
+            {"op": "add_conditional_format", "sheet": "현황", "range": "B2:B4", "rule": "begins_with", "value": "완", "fill": "C6EFCE"},
+            {"op": "add_conditional_format", "sheet": "현황", "range": "B2:B4", "rule": "ends_with", "value": "중", "fill": "FFEB9C"},
+            {"op": "add_conditional_format", "sheet": "현황", "range": "B2:B4", "rule": "blank", "fill": "D9D9D9"},
+            {"op": "add_conditional_format", "sheet": "현황", "range": "C2:C4", "rule": "color_scale", "minColor": "F8696B", "midColor": "FFFFFF", "maxColor": "63BE7B", "minValue": 0, "midValue": 50, "maxValue": 100},
+        ])
+        self.assertEqual(envelope["status"], "ok", envelope)
+        sheet = load_workbook(self.directory / "book.xlsx")["현황"]
+        self.assertEqual((sheet["A2"].font.strike, sheet["A2"].alignment.textRotation, sheet["A3"].alignment.textRotation, sheet["B1"].alignment.textRotation), (True, 45, 120, 255))
+        self.assertEqual((sheet["A1"].fill.fgColor.theme, sheet["A1"].fill.fgColor.tint, sheet["A1"].font.color.theme), (4, 0.4, 3))
+        rules = [rule for formatting in sheet.conditional_formatting for rule in formatting.rules]
+        self.assertEqual([rule.type for rule in rules], ["beginsWith", "endsWith", "containsBlanks", "colorScale"])
+        self.assertEqual([(cfvo.type, cfvo.val) for cfvo in rules[3].colorScale.cfvo], [("num", 0.0), ("num", 50.0), ("num", 100.0)])
+        run_office(["sheet", "render", "book.xlsx"], self.directory)
+        compact = (self.directory / "book-preview" / "preview.html").read_text(encoding="utf-8").replace(": ", ":")
+        for drawn in ("text-decoration:line-through;display:inline-block;transform:rotate(-45deg)", "rotate(30deg)", "background:#95b3d7", "background:#c6efce", "background:#ffeb9c", "background:#d9d9d9", "background:#fee1e1"):
+            with self.subTest(drawn=drawn):
+                self.assertIn(drawn, compact)
+
+    def test_a_color_name_or_a_theme_alias_is_answered_with_the_exact_value(self):
+        self.create_workbook([{"title": "현황", "rows": [["이름", "점수"], ["이샘플", 90]]}])
+        issues = self.apply([{"op": "format_range", "range": "A1", "fill": "red", "fontColor": "background1+10%"}])["issues"]
+        self.assertEqual([(issue["location"], issue["suggestion"]) for issue in issues], [("ops[0].fontColor", 'use "lt1+10%"'), ("ops[0].fill", 'use "FF0000" for red')])
 
 
 if __name__ == "__main__":

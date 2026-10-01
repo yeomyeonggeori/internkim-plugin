@@ -86,6 +86,17 @@ class InputBoundaryTest(unittest.TestCase):
                     issue = self.assert_refused(command, f"plain.{other_kind}", "WRONG_INPUT_FORMAT")
                     self.assertIn("office doc read" if other_kind == "docx" else "office sheet read", issue["suggestion"])
 
+    def test_every_reader_reads_a_file_by_its_content_whatever_its_extension(self):
+        for kind, commands in READERS.items():
+            misnamed = f"{kind}-content.{'docx' if kind != 'docx' else 'xlsx'}"
+            (self.directory / misnamed).write_bytes((self.directory / f"plain.{kind}").read_bytes())
+            for command in commands:
+                with self.subTest(command=command):
+                    envelope, stderr = run_office([*command.split(), misnamed], self.directory)
+                    self.assertNotIn("Traceback", stderr)
+                    self.assertFalse({"WRONG_INPUT_FORMAT", "FILE_DAMAGED"} & {issue["code"] for issue in envelope["issues"]}, envelope["issues"])
+                    self.assertTrue(envelope["summary"])
+
     def test_every_reader_answers_a_missing_file(self):
         for commands in READERS.values():
             for command in commands:

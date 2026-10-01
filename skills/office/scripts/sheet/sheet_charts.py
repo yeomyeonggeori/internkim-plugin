@@ -8,9 +8,11 @@ from openpyxl.chart.shapes import GraphicalProperties
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.cell import range_boundaries
 
+from chart_svg import LABEL_FLAGS
 from office_operations import OPERATION_NOT_APPLICABLE, Change, chart_indexes_suggestion
 from office_result import MISSING_FIELD, OfficeFailure
 from sheet_definitions import CHART_COLUMN_LEFT_OUT
+from text_values import conversion_operations, holds_number, holds_or_reads_as_number
 from workbook_access import parse_cell, parse_range, sheet_of
 
 
@@ -29,24 +31,42 @@ ROUND_PLOTS = ("pieChart", "doughnutChart", "pie3DChart", "ofPieChart")
 LINE_PLOTS = ("lineChart", "line3DChart", "radarChart")
 SCATTER_PLOT = "scatterChart"
 GENERAL = "General"
+SHARE_FORMAT = "0%"
+SHOWN_LABEL_FLAGS = tuple(dict.fromkeys(flag for flags in LABEL_FLAGS.values() for flag in flags))
 
 
-def require_block(bounds: tuple[int, int, int, int], location: str) -> None:
+def require_block(worksheet, bounds: tuple[int, int, int, int], location: str) -> None:
     min_row, min_column, max_row, max_column = bounds
     if max_row <= min_row or max_column <= min_column:
-        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}.range: a chart needs a header row, a category column and at least one row and one series column", f"{location}.range", block_suggestion(bounds)))
+        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}.range: a chart needs a header row, a category column and at least one row and one series column", f"{location}.range", block_suggestion(worksheet, bounds)))
 
 
-def block_suggestion(bounds: tuple[int, int, int, int]) -> str:
+def block_suggestion(worksheet, bounds: tuple[int, int, int, int]) -> str:
     min_row, min_column, max_row, max_column = bounds
-    first_column = min_column - 1 if max_column == min_column and min_column > 1 else min_column
     last_row = max_row + 1 if max_row == min_row else max_row
-    widened = f"{get_column_letter(first_column)}{min_row}:{get_column_letter(max_column)}{last_row}"
-    return f"include the header row and the category column to the left of the numbers, such as \"range\": \"{widened}\""
+    first_column, last_column = min_column, max_column
+    if max_column == min_column:
+        series_columns = number_columns_right_of(worksheet, (min_row, min_column, last_row, max_column))
+        if series_columns:
+            last_column = series_columns[-1]
+        elif min_column > 1:
+            first_column = min_column - 1
+    if (first_column, last_column, last_row) == (min_column, max_column, max_row):
+        return "point range at a block whose first column holds the categories and whose other columns hold numbers"
+    widened = f"{get_column_letter(first_column)}{min_row}:{get_column_letter(last_column)}{last_row}"
+    return f"include the header row, the category column and the number columns beside it, such as \"range\": \"{widened}\""
 
 
-def holds_number(cell) -> bool:
-    return cell.data_type == "f" or isinstance(cell.value, (int, float)) and not isinstance(cell.value, bool)
+def number_columns_right_of(worksheet, bounds: tuple[int, int, int, int]) -> list[int]:
+    min_row, _, max_row, max_column = bounds
+    found = []
+    for column in range(max_column + 1, worksheet.max_column + 1):
+        filled = [cell for cell in (worksheet.cell(row=row, column=column) for row in range(min_row + 1, max_row + 1)) if cell.value not in (None, "")]
+        if not filled:
+            break
+        if any(holds_or_reads_as_number(cell) for cell in filled):
+            found.append(column)
+    return found
 
 
 def number_columns(worksheet, bounds: tuple[int, int, int, int]) -> list[int]:
@@ -63,7 +83,7 @@ def column_label(worksheet, bounds: tuple[int, int, int, int], column: int) -> s
 
 
 def drawn_columns(worksheet, bounds: tuple[int, int, int, int], operation: dict, location: str) -> list[int]:
-    require_block(bounds, location)
+    require_block(worksheet, bounds, location)
     columns = number_columns(worksheet, bounds)
     if not columns:
         first, last = get_column_letter(bounds[1] + 1), get_column_letter(bounds[3])
@@ -77,22 +97,47 @@ def drawn_columns(worksheet, bounds: tuple[int, int, int, int], operation: dict,
     return columns
 
 
-def left_out_issue(worksheet, bounds: tuple[int, int, int, int], columns: list[int], location: str):
+def column_labels(worksheet, bounds: tuple[int, int, int, int], columns: list[int]) -> str:
+    return ", ".join(column_label(worksheet, bounds, column) for column in columns)
+
+
+def left_out_issue(worksheet, bounds: tuple[int, int, int, int], columns: list[int], location: str, chart_index: int):
     left_out = [column for column in range(bounds[1] + 1, bounds[3] + 1) if column not in columns]
     if not left_out:
         return None
-    labels = ", ".join(column_label(worksheet, bounds, column) for column in left_out)
-    drawn = ", ".join(column_label(worksheet, bounds, column) for column in columns)
-    category = column_label(worksheet, bounds, bounds[1])
+    drawing = f"it draws {column_labels(worksheet, bounds, columns)} over the categories in {column_label(worksheet, bounds, bounds[1])}"
+    conversions = {column: operations for column in left_out if (operations := conversion_operations(worksheet, column, bounds[0] + 1, bounds[2]))}
+    if not conversions:
+        return CHART_COLUMN_LEFT_OUT.issue(f"{location}.range: {worksheet.title}!{column_labels(worksheet, bounds, left_out)} holds no number, so the chart leaves it out; {drawing}", f"{location}.range", text_column_suggestion(bounds, columns, left_out))
+    texts = [column for column in left_out if column not in conversions]
+    text_note = f", and {column_labels(worksheet, bounds, texts)} holds no number" if texts else ""
+    rebuilt = {"op": "edit_chart", "sheet": worksheet.title, "chart": chart_index, "range": range_text(bounds)}
     return CHART_COLUMN_LEFT_OUT.issue(
-        f"{location}.range: {worksheet.title}!{labels} holds no number, so the chart leaves it out; it draws {drawn} over the categories in {category}",
+        f"{location}.range: {worksheet.title}!{column_labels(worksheet, bounds, list(conversions))} holds numbers stored as text{text_note}, so the chart leaves them out; {drawing}",
         f"{location}.range",
-        f"to label the categories with a text column instead, start the range at that column, such as {get_column_letter(left_out[-1])}{bounds[0]}:{get_column_letter(bounds[3])}{bounds[2]}",
+        fix=[*(operation for operations in conversions.values() for operation in operations), rebuilt],
     )
 
 
-def build_chart(worksheet, operation: dict, location: str):
+def text_column_suggestion(bounds: tuple[int, int, int, int], columns: list[int], left_out: list[int]) -> str | None:
+    min_row, min_column, max_row, _ = bounds
+    if min(left_out) > max(columns):
+        trimmed = range_text((min_row, min_column, max_row, max(columns)))
+        return f"leave the text column out of the chart with \"range\": \"{trimmed}\", or leave it as it is"
+    if max(left_out) < min(columns):
+        relabelled = range_text((min_row, max(left_out), max_row, bounds[3]))
+        return f"to label the categories with that text column instead, start the range at it: \"range\": \"{relabelled}\"; or leave it as it is"
+    return None
+
+
+def range_text(bounds: tuple[int, int, int, int]) -> str:
+    min_row, min_column, max_row, max_column = bounds
+    return f"{get_column_letter(min_column)}{min_row}:{get_column_letter(max_column)}{max_row}"
+
+
+def build_chart(worksheet, operation: dict, location: str, chart_index: int):
     bounds = parse_range(operation["range"], f"{location}.range")
+    require_labels_fit(operation["type"] in ROUND_CHARTS, operation, location)
     columns = drawn_columns(worksheet, bounds, operation, location)
     if operation["type"] == "scatter":
         chart = scatter_chart(worksheet, bounds, columns)
@@ -106,7 +151,7 @@ def build_chart(worksheet, operation: dict, location: str):
     paint_series(chart, operation.get("colors") or [])
     format_value_axes(chart, worksheet, bounds, columns)
     show_axes(chart)
-    return chart, left_out_issue(worksheet, bounds, columns, location)
+    return chart, left_out_issue(worksheet, bounds, columns, location, chart_index)
 
 
 def add_columns(chart, worksheet, bounds, columns: list[int]) -> None:
@@ -136,7 +181,7 @@ def new_chart(chart_type: str, operation: dict):
     else:
         chart = PieChart()
     if operation.get("stacked") and chart_type in ("bar", "line", "area"):
-        chart.grouping = "stacked"
+        chart.grouping = "percentStacked" if operation["stacked"] == "percent" else "stacked"
         if chart_type == "bar":
             chart.overlap = 100
     return chart
@@ -245,7 +290,7 @@ def format_value_axes(chart, worksheet, bounds, columns: list[int]) -> None:
         if y_axis is None:
             continue
         column = columns[-1] if sub_chart is not chart else columns[0]
-        number_format = worksheet.cell(row=bounds[0] + 1, column=column).number_format
+        number_format = SHARE_FORMAT if getattr(sub_chart, "grouping", None) == "percentStacked" else worksheet.cell(row=bounds[0] + 1, column=column).number_format
         if number_format != GENERAL:
             y_axis.number_format = number_format
             y_axis.numFmt.sourceLinked = False
@@ -264,11 +309,29 @@ def apply_labels(chart, operation: dict) -> None:
         chart.legend = chart.legend or Legend()
         chart.legend.position = LEGEND_POSITIONS[operation["legend"]]
     if operation.get("dataLabels") is not None:
-        chart.dataLabels = value_labels() if operation["dataLabels"] else None
+        mode = label_mode(operation["dataLabels"])
+        chart.dataLabels = point_labels(mode) if mode != "none" else None
 
 
-def value_labels() -> DataLabelList:
-    return DataLabelList(showVal=True, showLegendKey=False, showCatName=False, showSerName=False, showPercent=False, showBubbleSize=False)
+def label_mode(written: bool | str) -> str:
+    if isinstance(written, bool):
+        return "value" if written else "none"
+    return written
+
+
+def point_labels(mode: str) -> DataLabelList:
+    shown = {flag: flag in LABEL_FLAGS[mode] for flag in SHOWN_LABEL_FLAGS}
+    return DataLabelList(showLegendKey=False, showSerName=False, showBubbleSize=False, **shown)
+
+
+def require_labels_fit(is_round: bool, operation: dict, location: str) -> None:
+    mode = label_mode(operation["dataLabels"]) if operation.get("dataLabels") is not None else "none"
+    if "showPercent" in LABEL_FLAGS[mode] and not is_round:
+        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(
+            f"{location}.dataLabels: {mode} labels show each slice's share of a pie or doughnut, and Excel draws none on other charts",
+            f"{location}.dataLabels",
+            'on this chart use "dataLabels": "value", with "stacked": "percent" to draw each category as shares of 100%',
+        ))
 
 
 def show_axes(chart) -> None:
@@ -289,7 +352,7 @@ def chart_anchor(operation: dict, location: str) -> str:
 
 def plan_add_chart(editing, operation: dict, location: str) -> Change:
     worksheet = sheet_of(editing.workbook, operation, location)
-    chart, left_out = build_chart(worksheet, operation, location)
+    chart, left_out = build_chart(worksheet, operation, location, len(worksheet._charts))
     anchor = chart_anchor(operation, location)
 
     def change() -> str:
@@ -319,7 +382,9 @@ def plan_edit_chart(editing, operation: dict, location: str) -> Change:
     chart = existing_chart(worksheet, operation, location)
     if operation.get("type") and not operation.get("range"):
         raise OfficeFailure(MISSING_FIELD.issue(f"{location}.range: changing the chart type needs the data range", f"{location}.range"))
-    replacement, left_out = build_chart(worksheet, {"type": "bar", **operation}, location) if operation.get("range") else (None, None)
+    replacement, left_out = build_chart(worksheet, {"type": "bar", **operation}, location, operation["chart"]) if operation.get("range") else (None, None)
+    if replacement is None:
+        require_labels_fit(any(plot.tagname in ROUND_PLOTS for plot in chart._charts), operation, location)
 
     def change() -> str:
         index = operation["chart"]

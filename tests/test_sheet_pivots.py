@@ -241,5 +241,31 @@ class PivotPersistenceTest(PivotFixture):
             self.assertIn(text, preview)
 
 
+
+class TextValuesTest(PivotFixture):
+    def test_a_values_header_holding_numbers_as_text_is_refused_with_the_conversion(self):
+        self.apply([{"op": "set_range", "sheet": "Orders", "cell": "E2", "values": [[str(row[4])] for row in ORDERS[1:]]}])
+        issue = self.refused(row="region", values=["qty"])
+        self.assertEqual(issue["location"], "ops[0].values[0]")
+        self.assertIn("'qty' in Orders!E2:E7 holds numbers as text", issue["message"])
+        self.assertEqual(issue["fix"], [{"op": "set_range", "sheet": "Orders", "cell": "E2", "values": [[3], [5], [2], [7], [1], [4]]}])
+        self.assertEqual(self.apply(issue["fix"])["status"], "ok")
+        self.pivot(row="region", values=["qty"])
+        self.assertEqual(self.grid()[1], ["Busan", 6])
+
+    def test_a_text_header_is_counted_and_not_summed(self):
+        issue = self.refused(row="region", values=["product"])
+        self.assertIn('"function": "count"', issue["suggestion"])
+        self.pivot(row="region", values=[{"field": "product", "function": "count"}])
+
+    def test_check_reports_a_pivot_whose_value_cells_are_empty(self):
+        self.pivot(row="region", values=["amount"])
+        self.assertNotIn("PIVOT_VALUES_EMPTY", [issue["code"] for issue in run_office(["sheet", "check", "book.xlsx"], self.directory)["issues"]])
+        self.apply([{"op": "clear_range", "sheet": "Pivot", "range": "B4:B7"}])
+        issues = [issue for issue in run_office(["sheet", "check", "book.xlsx"], self.directory)["issues"] if issue["code"] == "PIVOT_VALUES_EMPTY"]
+        self.assertEqual([issue["location"] for issue in issues], ["Pivot!A3:B7"])
+        self.assertIn("Orders!A1:G7", issues[0]["message"])
+
+
 if __name__ == "__main__":
     unittest.main()

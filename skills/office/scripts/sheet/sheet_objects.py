@@ -23,6 +23,8 @@ EXTERNAL_LINK = re.compile(r"^(https?://|mailto:|file:)", re.IGNORECASE)
 COMMENT_WIDTH = 240
 COMMENT_HEIGHT = 90
 PAPER_SIZES = {"letter": 1, "legal": 5, "A3": 8, "A4": 9}
+# ECMA-376 Part 1, 18.3.1.63 pageSetup: fitToWidth and fitToHeight default to 1, and 0 leaves that direction free
+EXCEL_DEFAULT_FIT_PAGES = 1
 MARGINS = {
     "normal": {"left": 0.7, "right": 0.7, "top": 0.75, "bottom": 0.75, "header": 0.3, "footer": 0.3},
     "narrow": {"left": 0.25, "right": 0.25, "top": 0.75, "bottom": 0.75, "header": 0.3, "footer": 0.3},
@@ -160,8 +162,10 @@ def apply_page_setup(worksheet, operation: dict) -> None:
         worksheet.page_setup.orientation = operation["orientation"]
     if "paperSize" in operation:
         worksheet.page_setup.paperSize = PAPER_SIZES[operation["paperSize"]]
-    if "fitToWidth" in operation:
-        fit_to_width(worksheet, operation["fitToWidth"])
+    if "fitToWidth" in operation or "fitToHeight" in operation:
+        fit_to_pages(worksheet, fitted_pages(worksheet, operation, "fitToWidth"), fitted_pages(worksheet, operation, "fitToHeight"))
+    if "printGridlines" in operation:
+        worksheet.print_options.gridLines = operation["printGridlines"]
     if "printTitleRows" in operation:
         worksheet.print_title_rows = operation["printTitleRows"].replace("$", "") or None
     if "printArea" in operation:
@@ -174,7 +178,7 @@ def apply_page_setup(worksheet, operation: dict) -> None:
     if "pageNumbers" in operation:
         worksheet.oddFooter.center.text = PAGE_NUMBER_FOOTER if operation["pageNumbers"] else None
     if "scale" in operation:
-        fit_to_width(worksheet, False)
+        fit_to_pages(worksheet, 0, 0)
         worksheet.page_setup.scale = operation["scale"]
     if "header" in operation:
         worksheet.oddHeader.center.text = header_footer_text(operation["header"])
@@ -195,9 +199,26 @@ def header_footer_text(text: str) -> str | None:
     return escaped
 
 
-def fit_to_width(worksheet, enabled: bool) -> None:
+def fitted_pages(worksheet, operation: dict, name: str) -> int:
+    if name in operation:
+        return int(operation[name])
+    if not is_fitted_to_pages(worksheet):
+        return 0
+    current = getattr(worksheet.page_setup, name)
+    return EXCEL_DEFAULT_FIT_PAGES if current is None else int(current)
+
+
+def is_fitted_to_pages(worksheet) -> bool:
+    properties = worksheet.sheet_properties.pageSetUpPr
+    return bool(properties is not None and properties.fitToPage)
+
+
+def fit_to_pages(worksheet, width_pages: int, height_pages: int) -> None:
     if worksheet.sheet_properties.pageSetUpPr is None:
         worksheet.sheet_properties.pageSetUpPr = PageSetupProperties()
+    enabled = width_pages > 0 or height_pages > 0
     worksheet.sheet_properties.pageSetUpPr.fitToPage = enabled
-    worksheet.page_setup.fitToWidth = 1 if enabled else None
-    worksheet.page_setup.fitToHeight = 0 if enabled else None
+    worksheet.page_setup.fitToWidth = width_pages if enabled else None
+    worksheet.page_setup.fitToHeight = height_pages if enabled else None
+
+

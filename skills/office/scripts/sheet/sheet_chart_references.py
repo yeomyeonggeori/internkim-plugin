@@ -3,7 +3,8 @@ from __future__ import annotations
 from openpyxl.utils.cell import range_boundaries
 
 from office_result import Issue
-from sheet_charts import anchor_cell, holds_number
+from sheet_charts import anchor_cell
+from text_values import holds_number
 from sheet_definitions import CHART_REFERENCE_BROKEN
 
 

@@ -61,6 +61,7 @@ OTHER_PACKAGE = InputKind("package", "a zip package that is not a Word, Excel or
 DAMAGED_PACKAGE = InputKind("damaged-package", "a zip package cut short or damaged", "")
 OTHER = InputKind("other", "not in any Office or PDF format", "")
 OPEN_XML_KINDS = (DOCX, XLSX, PPTX, XLSB)
+MACRO_ENABLED_CONTENT_TYPES = frozenset(content_type for kind in OPEN_XML_KINDS for content_type in kind.main_content_types if "macroEnabled" in content_type)
 KINDS_BY_NAME = {kind.name: kind for kind in (DOCX, XLSX, PPTX, PDF)}
 
 
@@ -153,6 +154,15 @@ def detected_kind(path: str) -> InputKind:
 def open_xml_kind(path: str) -> InputKind:
     content_types = main_content_types(path)
     return next((kind for kind in OPEN_XML_KINDS if kind.main_content_types & content_types), OTHER_PACKAGE)
+
+
+def holds_macros(path: str) -> bool:
+    return bool(main_content_types(os.path.expanduser(path)) & MACRO_ENABLED_CONTENT_TYPES)
+
+
+def package_stream(path: str) -> io.BytesIO:
+    with open(os.path.expanduser(path), "rb") as input_file:
+        return io.BytesIO(input_file.read())
 
 
 def main_content_types(path: str) -> set[str]:

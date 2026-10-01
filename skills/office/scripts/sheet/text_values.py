@@ -63,12 +63,27 @@ def text_value_runs(worksheet) -> list[Run]:
 
 
 def columns_holding_numbers(worksheet, header_row: int) -> set[int]:
-    return {
-        cell.column
-        for row in worksheet.iter_rows(min_row=header_row + 1)
-        for cell in row
-        if cell.data_type == "f" or isinstance(cell.value, (int, float)) and not isinstance(cell.value, bool)
-    }
+    holding: set[int] = set()
+    readings: dict[int, list[bool]] = {}
+    for row in worksheet.iter_rows(min_row=header_row + 1):
+        for cell in row:
+            if holds_number(cell):
+                holding.add(cell.column)
+            if cell.value is not None and cell.value != "":
+                readings.setdefault(cell.column, []).append(holds_or_reads_as_number(cell))
+    return holding | {column for column, reads_as_numbers in readings.items() if all(reads_as_numbers)}
+
+
+def holds_number(cell) -> bool:
+    return cell.data_type == "f" or isinstance(cell.value, (int, float)) and not isinstance(cell.value, bool)
+
+
+def holds_or_reads_as_number(cell) -> bool:
+    if holds_number(cell):
+        return True
+    if cell.data_type != "s" or not isinstance(cell.value, str) or cell.quotePrefix:
+        return False
+    return not isinstance(typed_text(cell.value)[0], str)
 
 
 def text_reading(cell, in_numeric_column: bool) -> Reading | None:
@@ -97,21 +112,30 @@ def formula_missing_equals(text: str) -> str | None:
     return formula if formula_problem(formula) is None else None
 
 
-def run_issue(run: Run) -> Issue:
+def conversion_operations(worksheet, column: int, first_row: int, last_row: int) -> list[dict]:
+    runs = [run for run in text_value_runs(worksheet) if run.column == column and first_row <= run.first_row and run.last_row <= last_row]
+    return [operation for run in runs for operation in suggested_operations(run)]
+
+
+def run_reference(run: Run) -> str:
     letter = get_column_letter(run.column)
     first, last = f"{letter}{run.first_row}", f"{letter}{run.last_row}"
-    reference = first if first == last else f"{first}:{last}"
-    location = f"{run.sheet}!{reference}"
+    return first if first == last else f"{first}:{last}"
+
+
+def run_issue(run: Run) -> Issue:
+    location = f"{run.sheet}!{run_reference(run)}"
     shown = ", ".join(repr(text) for text in run.texts[:SHOWN_TEXT_LIMIT]) + (" and more" if len(run.texts) > SHOWN_TEXT_LIMIT else "")
     verb = "holds the text" if len(run.texts) == 1 else "hold the texts"
-    return VALUE_STORED_AS_TEXT.issue(f"{location} {verb} {shown}, which reads as {run.noun}", location, fix=typing_operations(run, first, reference))
+    return VALUE_STORED_AS_TEXT.issue(f"{location} {verb} {shown}, which reads as {run.noun}", location, fix=suggested_operations(run))
 
 
-def typing_operations(run: Run, first: str, reference: str) -> list[dict]:
+def suggested_operations(run: Run) -> list[dict]:
+    first = f"{get_column_letter(run.column)}{run.first_row}"
     if len(run.values) == 1:
         operations = [{"op": "set_cell", "sheet": run.sheet, "cell": first, "value": run.values[0]}]
     else:
         operations = [{"op": "set_range", "sheet": run.sheet, "cell": first, "values": [[value] for value in run.values]}]
     if run.number_format is not None:
-        operations.append({"op": "format_range", "sheet": run.sheet, "range": reference, "numberFormat": run.number_format})
+        operations.append({"op": "format_range", "sheet": run.sheet, "range": run_reference(run), "numberFormat": run.number_format})
     return operations

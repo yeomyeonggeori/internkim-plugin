@@ -7,6 +7,7 @@ from openpyxl.worksheet.filters import AutoFilter
 
 from excel_functions import written_value
 from formula_cache import cell_labels, evaluation_issues, listed, save_workbook_with_values
+from formula_names import name_issues, names_already_broken
 from formula_references import COLUMN_AXIS, ROW_AXIS, Shift
 from office_operations import Change, OperationSet
 from office_result import INVALID_VALUE, OfficeFailure
@@ -48,6 +49,7 @@ def load_editing(path: str, allows_loss: bool = False) -> SheetEditing:
 
 
 def save_editing(editing: SheetEditing, path: str) -> list:
+    refuse_new_formula_names(editing)
     evaluation = save_workbook_with_values(editing.workbook, path)
     refuse_new_circular_references(editing, evaluation)
     issues = [issue for issue in evaluation_issues(evaluation) if issue.kind is not CIRCULAR_REFERENCE]
@@ -59,6 +61,14 @@ def save_editing(editing: SheetEditing, path: str) -> list:
         raise OfficeFailure(CONTENT_WOULD_BE_LOST.issue(f"saving would drop what the editor cannot carry: {', '.join(lost)}", lost[0]))
     write_package(output, path)
     return issues + editing.warnings + ([CONTENT_DROPPED.issue(f"dropped what the editor cannot carry: {', '.join(lost)}", lost[0])] if lost else [])
+
+
+def refuse_new_formula_names(editing: SheetEditing) -> None:
+    issues = name_issues(editing.workbook)
+    if issues and editing.source_path:
+        issues = name_issues(editing.workbook, names_already_broken(open_workbook(editing.source_path)))
+    if issues:
+        raise OfficeFailure(*issues)
 
 
 def refuse_new_circular_references(editing: SheetEditing, evaluation) -> None:

@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import json
+
 from openpyxl.styles import Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from office_operations import OPERATION_NOT_APPLICABLE, Change
 from office_result import INVALID_VALUE, OfficeFailure
-from cell_values import typed_date
+from cell_values import DATE_FORMAT, typed_date, typed_text
 from display_width import display_width
 from office_schema import closest_suggestion, did_you_mean
 from pivot_formula import parse_formula
 from pivot_layout import PivotAxis, PivotGrid, PivotModel, PivotValue, TopFilter, as_datetime, binned_field, build_model, grouped_field, numbers, pivot_grid, plain_field
 from pivot_parts import PivotPlacement, add_pivot_parts
+from text_values import conversion_operations
 from workbook_access import parse_cell, parse_range, sheet_of
 from workbook_snapshot import cell_values
 
@@ -21,7 +24,6 @@ DEFAULT_PERCENT_FORMAT = "0.0%"
 DEFAULT_TOTAL_LABEL = "Grand Total"
 DEFAULT_TARGET_SHEET = "Pivot"
 DEFAULT_TARGET_CELL = "A3"
-DATE_FORMAT = "yyyy-mm-dd"
 ALL_ITEMS_LABEL = "(All)"
 HEADER_FILL = "DCEAF7"
 RULE_COLOR = "94A3B8"
@@ -140,6 +142,42 @@ def top_filter(headers: list, operation: dict, axis_indexes: list[int], location
     return TopFilter(index, top["count"], top.get("bottom", False))
 
 
+def summed_fields(values: list[PivotValue]) -> dict[int, int]:
+    fields: dict[int, int] = {}
+    for position, value in enumerate(values):
+        indexes = value.formula.fields if value.formula is not None else () if value.function == "count" else (value.field,)
+        for index in indexes:
+            fields.setdefault(index, position)
+    return fields
+
+
+def require_number_values(worksheet, records: list, values: list[PivotValue], headers: list, bounds: tuple, location: str) -> None:
+    for index, position in summed_fields(values).items():
+        column_values = [record[index] for record in records]
+        texts = [value for value in column_values if isinstance(value, str) and value.strip()]
+        reading_as_numbers = [text for text in texts if not isinstance(typed_text(text)[0], str)]
+        if not reading_as_numbers and numbers(column_values):
+            continue
+        letter = get_column_letter(bounds[1] + index)
+        cells = f"{worksheet.title}!{letter}{bounds[0] + 1}:{letter}{bounds[2]}"
+        value_location = f"{location}.values[{position}]"
+        if reading_as_numbers:
+            shown = ", ".join(repr(text) for text in reading_as_numbers[:3])
+            conversion = conversion_operations(worksheet, bounds[1] + index, bounds[0] + 1, bounds[2])
+            raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(
+                f"{value_location}: {headers[index]!r} in {cells} holds numbers as text, such as {shown}, so every summary of it would be empty; convert the column to numbers first",
+                value_location,
+                "apply the operations in fix, then add the pivot" if conversion else f"write the numbers in {cells} as numbers with set_range, then add the pivot",
+                fix=conversion,
+            ))
+        counted = json.dumps({"field": headers[index], "function": "count"}, ensure_ascii=False)
+        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(
+            f"{value_location}: {headers[index]!r} in {cells} holds no number to summarize, so every summary of it would be empty",
+            value_location,
+            f"summarize a header that holds numbers, or count this one with {counted}",
+        ))
+
+
 def stored_date(value: object) -> object:
     return typed_date(value) if isinstance(value, str) else value
 
@@ -213,6 +251,7 @@ def plan_add_pivot_table(editing, operation: dict, location: str) -> Change:
         converted = {headers[index]: store_text_dates(worksheet, records, index, headers[index], bounds[0] + 1, bounds[1] + index, location) for index in groups}
         for index in bins:
             require_numbers(records, index, headers[index], bounds[0] + 1, location)
+        require_number_values(worksheet, records, values, headers, bounds, location)
         pages = [plain_field(index, records) for index in page_indexes]
         rows, columns = pivot_axis(records, row_indexes, groups, bins), pivot_axis(records, column_indexes, groups, bins)
         model = build_model(PivotModel(headers, records, rows, columns, pages, values, operation.get("totalLabel", DEFAULT_TOTAL_LABEL), top))
