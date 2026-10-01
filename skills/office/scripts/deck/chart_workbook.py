@@ -5,23 +5,14 @@ import zipfile
 
 from pptx_package import xml_document
 from pptx_text import text_content
+from excel_limits import DEFAULT_SHEET_NAME, column_letter
 
 
-SHEET_NAME = "Sheet1"
-
-
-def column_letter(index: int) -> str:
-    letters = ""
-    number = index + 1
-    while number:
-        number, remainder = divmod(number - 1, 26)
-        letters = chr(ord("A") + remainder) + letters
-    return letters
 
 
 def cell_reference(column: int, row: int, absolute: bool = False) -> str:
     marker = "$" if absolute else ""
-    return f"{marker}{column_letter(column)}{marker}{row + 1}"
+    return f"{marker}{column_letter(column + 1)}{marker}{row + 1}"
 
 
 def chart_workbook_bytes(labels: list[str], series: list[dict]) -> bytes:
@@ -89,7 +80,7 @@ def workbook_xml() -> str:
     return xml_document(
         '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
         'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-        f'<sheets><sheet name="{SHEET_NAME}" sheetId="1" r:id="rId1"/></sheets></workbook>'
+        f'<sheets><sheet name="{DEFAULT_SHEET_NAME}" sheetId="1" r:id="rId1"/></sheets></workbook>'
     )
 
 

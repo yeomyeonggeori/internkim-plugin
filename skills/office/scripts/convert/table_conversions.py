@@ -13,11 +13,11 @@ from convert_definitions import FORMULA_VALUE_MISSING
 from create_xlsx import create_workbook
 from formula_cache import cache_formula_values
 from office_result import INVALID_VALUE, Issue, OfficeFailure
+from excel_limits import fitting_sheet_name
 
 
 DELIMITERS = {"csv": ",", "tsv": "\t"}
 FILE_NAME_UNSAFE = re.compile(r"[\\/:*?\"<>|\s]+")
-SHEET_TITLE_UNSAFE = re.compile(r"[\[\]:*?/\\]")
 
 
 def workbook_to_delimited(input_path: Path, output_path: Path, delimiter: str, sheet_name: str | None) -> tuple[list[str], list[Issue]]:
@@ -85,7 +85,7 @@ def text_value(value) -> str:
 
 
 def delimited_to_workbook(input_path: Path, output_path: Path, delimiter: str) -> list[Issue]:
-    specification = {"title": input_path.stem, "sheets": [{"title": SHEET_TITLE_UNSAFE.sub("_", input_path.stem)[:31] or "Sheet1", "csvPath": str(input_path), "delimiter": delimiter}]}
+    specification = {"title": input_path.stem, "sheets": [{"title": fitting_sheet_name(input_path.stem), "csvPath": str(input_path), "delimiter": delimiter}]}
     workbook = create_workbook(specification)
     workbook.save(output_path)
     return list(cache_formula_values(str(output_path)))

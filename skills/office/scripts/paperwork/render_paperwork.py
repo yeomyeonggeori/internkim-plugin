@@ -7,10 +7,11 @@ from pathlib import Path
 
 from fonts.registry import SANS_BODY, default_family
 from fonts.docx_embedding import save_document
-from office_result import MISSING_FIELD, PERMISSION_DENIED, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
+from office_result import DOCUMENTS_FOLDER, MISSING_FIELD, PERMISSION_DENIED, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
 from fonts.pdf_registration import register_document_font
 from paperwork_definitions import CONTRACT_DOCUMENT, PAPERWORK_CONTENT_FIELDS, PAPERWORK_DOCUMENT
+from page_sizes import DEFAULT_PAPER
 from paperwork_design import (
     COLOR_BORDER,
     COLOR_HEADER_FILL,
@@ -104,7 +105,7 @@ def render_document(document):
         def pages_count(self):
             return len(self.pages)
 
-    pdf = PaperworkPDF(orientation="P", unit="mm", format="A4")
+    pdf = PaperworkPDF(orientation="P", unit="mm", format=DEFAULT_PAPER.millimetres)
     pdf.set_margins(PAGE_MARGIN_MILLIMETERS, PAGE_MARGIN_MILLIMETERS, PAGE_MARGIN_MILLIMETERS)
     pdf.set_auto_page_break(auto=True, margin=20)
     font_issues = register_document_font(pdf, "Paperwork", configured_font_path(document), json.dumps(document, ensure_ascii=False), default_family(SANS_BODY).name)
@@ -343,7 +344,7 @@ def add_notes(pdf, notes):
     if not notes:
         return
     pdf.ln(3)
-    set_body_font(pdf, size=10.5, color=HEADING_COLOR)
+    set_body_font(pdf, size=SIZE_BODY, color=HEADING_COLOR)
     for note in notes:
         pdf.cell(0, 7, str(note).strip(), align="C", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(2)
@@ -514,7 +515,7 @@ def main():
         raise OfficeFailure(PERMISSION_DENIED.issue(
             f"cannot write to {output_path} (permission denied)",
             location=error.filename,
-            suggestion=f"rerun the SAME command with the output changed to ~/documents/{output_path.parent.name}/{output_path.name}",
+            suggestion=f"rerun the SAME command with the output changed to {DOCUMENTS_FOLDER}/{output_path.parent.name}/{output_path.name}",
         )) from error
     return Result(summary=f"rendered {output_path}", output_path=str(output_path), issues=tuple(font_issues))
 

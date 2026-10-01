@@ -5,11 +5,12 @@ import json
 import os
 from pathlib import Path
 
-from fonts.registry import SANS_BODY, default_family
+from fonts.registry import BODY_SIZE_POINTS, SANS_BODY, default_family
 from office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
 from pdf_definitions import PDF_SPECIFICATION
 from fonts.pdf_registration import register_document_font
+from page_sizes import DEFAULT_PAPER, PAPER_BY_NAME
 
 
 def read_specification(arguments):
@@ -64,7 +65,7 @@ def create_pdf(specification):
 
     active_font_name, font_path = resolve_font(specification)
 
-    pdf = DocumentPDF(orientation="P", unit="mm", format=specification.get("format") or "A4")
+    pdf = DocumentPDF(orientation="P", unit="mm", format=PAPER_BY_NAME[specification.get("format") or DEFAULT_PAPER.name].millimetres)
     margin_millimeters = specification.get("marginMillimeters")
     margin = float(18 if margin_millimeters is None else margin_millimeters)
     pdf.set_margins(margin, margin, margin)
@@ -105,7 +106,7 @@ def add_section(pdf, section, font_name):
         pdf.set_text_color(17, 24, 39)
         write_multiline(pdf, 0, 7, title)
         pdf.ln(1)
-    pdf.set_font(font_name, size=10.5)
+    pdf.set_font(font_name, size=BODY_SIZE_POINTS)
     pdf.set_text_color(31, 41, 55)
     for paragraph in section.get("paragraphs") or []:
         write_multiline(pdf, 0, 6.2, paragraph.strip())

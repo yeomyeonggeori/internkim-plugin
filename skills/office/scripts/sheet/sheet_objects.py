@@ -14,6 +14,7 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 from office_operations import OPERATION_NOT_APPLICABLE, Change
 from office_result import INVALID_VALUE, OfficeFailure
 from office_theme import HYPERLINK_COLOR
+from page_sizes import PAPER_BY_NAME
 from workbook_access import column_index, parse_cell, parse_range, sheet_of
 
 
@@ -22,7 +23,6 @@ DEFAULT_TABLE_STYLE = "TableStyleMedium2"
 EXTERNAL_LINK = re.compile(r"^(https?://|mailto:|file:)", re.IGNORECASE)
 COMMENT_WIDTH = 240
 COMMENT_HEIGHT = 90
-PAPER_SIZES = {"letter": 1, "legal": 5, "A3": 8, "A4": 9}
 # ECMA-376 Part 1, 18.3.1.63 pageSetup: fitToWidth and fitToHeight default to 1, and 0 leaves that direction free
 EXCEL_DEFAULT_FIT_PAGES = 1
 MARGINS = {
@@ -161,7 +161,7 @@ def apply_page_setup(worksheet, operation: dict) -> None:
     if "orientation" in operation:
         worksheet.page_setup.orientation = operation["orientation"]
     if "paperSize" in operation:
-        worksheet.page_setup.paperSize = PAPER_SIZES[operation["paperSize"]]
+        worksheet.page_setup.paperSize = PAPER_BY_NAME[operation["paperSize"]].spreadsheet_code
     if "fitToWidth" in operation or "fitToHeight" in operation:
         fit_to_pages(worksheet, fitted_pages(worksheet, operation, "fitToWidth"), fitted_pages(worksheet, operation, "fitToHeight"))
     if "printGridlines" in operation:

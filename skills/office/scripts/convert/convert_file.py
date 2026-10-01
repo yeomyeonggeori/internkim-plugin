@@ -17,7 +17,8 @@ from convert_definitions import (  # noqa: E402
 )
 from docx.shared import Pt  # noqa: E402
 from fonts.docx_embedding import save_document  # noqa: E402
-from docx_markdown import DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, markdown_document  # noqa: E402
+from fonts.registry import BODY_SIZE_POINTS  # noqa: E402
+from docx_markdown import DEFAULT_DOCUMENT_FONT, markdown_document  # noqa: E402
 from docx_to_blocks import read_docx_blocks  # noqa: E402
 from export_document import export_pdf  # noqa: E402
 from html_to_blocks import read_html_blocks  # noqa: E402
@@ -117,7 +118,7 @@ def markdown_to_html(conversion: Conversion) -> None:
 
 
 def markdown_to_pdf(conversion: Conversion) -> None:
-    conversion.issues.extend(export_pdf(markdown_blocks(conversion), conversion.output_path, conversion.input_path.parent, "", DEFAULT_DOCUMENT_FONT_SIZE))
+    conversion.issues.extend(export_pdf(markdown_blocks(conversion), conversion.output_path, conversion.input_path.parent, "", BODY_SIZE_POINTS))
 
 
 def docx_to_pdf(conversion: Conversion) -> None:
@@ -194,7 +195,7 @@ def html_to_docx(conversion: Conversion) -> None:
 def html_to_pdf(conversion: Conversion) -> None:
     with tempfile.TemporaryDirectory(prefix="office-convert-") as media_directory:
         blocks = html_blocks(read_text(conversion.input_path), Path(media_directory))
-        conversion.issues.extend(export_pdf(blocks, conversion.output_path, conversion.input_path.parent, "", DEFAULT_DOCUMENT_FONT_SIZE))
+        conversion.issues.extend(export_pdf(blocks, conversion.output_path, conversion.input_path.parent, "", BODY_SIZE_POINTS))
 
 
 def html_blocks(html: str, media_directory: Path) -> list:
@@ -326,7 +327,7 @@ def pdf_to_workbook(conversion: Conversion) -> None:
 
 
 def write_docx(conversion: Conversion, blocks: list, source_directory: Path, save: bool = True):
-    document, issues = markdown_document(blocks, DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, source_directory)
+    document, issues = markdown_document(blocks, DEFAULT_DOCUMENT_FONT, BODY_SIZE_POINTS, source_directory)
     conversion.issues.extend(issues)
     if save:
         save_document(document, conversion.output_path)

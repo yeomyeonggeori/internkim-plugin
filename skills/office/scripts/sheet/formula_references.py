@@ -6,10 +6,9 @@ from typing import Callable
 
 from openpyxl.formula.tokenizer import Token, Tokenizer
 from openpyxl.utils import column_index_from_string, get_column_letter
+from excel_limits import MAXIMUM_COLUMN, MAXIMUM_ROW
 
 
-MAXIMUM_COLUMN = 16384
-MAXIMUM_ROW = 1048576
 ROW_AXIS = "row"
 COLUMN_AXIS = "column"
 REFERENCE_ERROR = "#REF!"

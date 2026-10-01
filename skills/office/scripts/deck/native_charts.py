@@ -5,7 +5,8 @@ import zipfile
 
 from charts.kinds import is_round_kind
 from charts.look import PERCENT_FORMAT
-from chart_workbook import SHEET_NAME, cell_reference, chart_workbook_bytes, number_text
+from excel_limits import DEFAULT_SHEET_NAME
+from chart_workbook import cell_reference, chart_workbook_bytes, number_text
 from css_color import most_contrasting, parse_css_color
 from pptx_package import xml_document
 from pptx_text import SlideScale, TextContext, attribute, color_xml, run_properties_xml, text_content
@@ -186,7 +187,7 @@ def scatter_series_xml(layout: dict, context: TextContext) -> str:
 def series_name_xml(layout: dict, index: int) -> str:
     name = layout["series"][index]["name"]
     return (
-        f'<c:tx><c:strRef><c:f>{SHEET_NAME}!{cell_reference(index + 1, 0, absolute=True)}</c:f>'
+        f'<c:tx><c:strRef><c:f>{DEFAULT_SHEET_NAME}!{cell_reference(index + 1, 0, absolute=True)}</c:f>'
         f'<c:strCache><c:ptCount val="1"/><c:pt idx="0"><c:v>{text_content(name)}</c:v></c:pt></c:strCache></c:strRef></c:tx>'
     )
 
@@ -195,7 +196,7 @@ def categories_xml(layout: dict) -> str:
     labels = layout["labels"]
     points = "".join(f'<c:pt idx="{index}"><c:v>{text_content(label)}</c:v></c:pt>' for index, label in enumerate(labels))
     return (
-        f'<c:cat><c:strRef><c:f>{SHEET_NAME}!{cell_reference(0, 1, absolute=True)}:{cell_reference(0, len(labels), absolute=True)}</c:f>'
+        f'<c:cat><c:strRef><c:f>{DEFAULT_SHEET_NAME}!{cell_reference(0, 1, absolute=True)}:{cell_reference(0, len(labels), absolute=True)}</c:f>'
         f'<c:strCache><c:ptCount val="{len(labels)}"/>{points}</c:strCache></c:strRef></c:cat>'
     )
 
@@ -204,7 +205,7 @@ def values_xml(layout: dict, index: int, tag: str) -> str:
     values = layout["series"][index]["values"]
     points = "".join(f'<c:pt idx="{point}"><c:v>{number_text(value)}</c:v></c:pt>' for point, value in enumerate(values))
     return (
-        f'<{tag}><c:numRef><c:f>{SHEET_NAME}!{cell_reference(index + 1, 1, absolute=True)}:{cell_reference(index + 1, len(values), absolute=True)}</c:f>'
+        f'<{tag}><c:numRef><c:f>{DEFAULT_SHEET_NAME}!{cell_reference(index + 1, 1, absolute=True)}:{cell_reference(index + 1, len(values), absolute=True)}</c:f>'
         f'<c:numCache><c:formatCode>{attribute(number_format(layout, index))}</c:formatCode><c:ptCount val="{len(values)}"/>{points}</c:numCache></c:numRef></{tag}>'
     )
 

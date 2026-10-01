@@ -8,17 +8,16 @@ from openpyxl.worksheet.protection import SheetProtection
 
 from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
 from office_result import INVALID_VALUE, MISSING_FIELD, OfficeFailure
-from office_schema import closest_name
+from office_schema import closest_name, guess_text
 from formula_references import deleted_sheet_reference, quote_sheet_name
 from workbook_access import parse_range, resolve_sheet, sheet_of
 from workbook_structure import rewrite_chart_references, rewrite_defined_names, rewrite_formulas
+from excel_limits import FORBIDDEN_SHEET_NAME_CHARACTERS, FORBIDDEN_SHEET_NAME_TEXT, MAXIMUM_SHEET_NAME_LENGTH
 
 
 DEFINED_NAME_PATTERN = re.compile(r"^[^\W\d][\w.]{0,254}$")
 CELL_LIKE_NAME = re.compile(r"^([A-Za-z]{1,3}\d+|[Rr]\d*[Cc]\d*)$")
 COPY_SUFFIX = " ({number})"
-MAXIMUM_SHEET_NAME_LENGTH = 31
-FORBIDDEN_SHEET_NAME_CHARACTERS = set("[]:*?/\\")
 
 
 def validate_sheet_name(workbook, name: str, location: str, renaming: str | None = None) -> None:
@@ -28,7 +27,7 @@ def validate_sheet_name(workbook, name: str, location: str, renaming: str | None
         raise OfficeFailure(INVALID_VALUE.issue(f"{location}: Excel sheet names hold at most {MAXIMUM_SHEET_NAME_LENGTH} characters, and {name!r} has {len(name)}", location, f'use a name of {MAXIMUM_SHEET_NAME_LENGTH} characters or fewer, such as "{field}": "{shortened}"'))
     if FORBIDDEN_SHEET_NAME_CHARACTERS & set(name) or name.startswith("'") or name.endswith("'"):
         cleaned = "".join(character for character in name if character not in FORBIDDEN_SHEET_NAME_CHARACTERS).strip("'") or "Sheet"
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: a sheet name cannot hold any of [ ] : * ? / \\ or start or end with an apostrophe", location, f'use "{field}": "{cleaned}"'))
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: a sheet name cannot hold any of {FORBIDDEN_SHEET_NAME_TEXT} or start or end with an apostrophe", location, f'use "{field}": "{cleaned}"'))
     taken = [title for title in workbook.sheetnames if title.casefold() == name.casefold() and title != renaming]
     if taken:
         raise OfficeFailure(INVALID_VALUE.issue(f"{location}: the workbook already has a sheet named {taken[0]!r}", location, f'pick a name no sheet has, such as "{field}": "{copy_title(workbook, name)}"'))
@@ -157,7 +156,7 @@ def plan_delete_defined_name(workbook, operation: dict, location: str) -> Change
     if not found:
         known = sorted({name for _, names in scopes for name in names})
         nearest = closest_name(operation["name"], known)
-        guess = f" (did you mean {nearest!r}?)" if nearest else ""
+        guess = guess_text(nearest)
         raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.name: the workbook has no name {operation['name']!r}{guess}; it has {', '.join(known) or 'none'}", f"{location}.name"))
 
     def change() -> str:

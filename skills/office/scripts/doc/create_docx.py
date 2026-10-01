@@ -17,10 +17,10 @@ from docx_tables import add_space_after_table, format_table
 from docx_lists import add_list_paragraph, start_list
 from office_result import INVALID_ARGUMENTS, INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
+from fonts.registry import BODY_SIZE_POINTS
 
 
 DEFAULT_FONT_NAME = DOCUMENT_FONT
-DEFAULT_FONT_SIZE = 10.5
 SIZED_STYLE_NAMES = ["Normal", "Title", "Heading 1", "Heading 2", "Heading 3", "Heading 4"]
 LIST_BLOCK_TYPES = ("bullets", "numbered")
 
@@ -75,7 +75,7 @@ def create_document(specification: dict) -> Document:
     document = Document()
     set_document_page(document.sections[0], specification.get("page") or {})
     font_name = (specification.get("fontName") or DEFAULT_FONT_NAME).strip()
-    set_text_sizes(document, float(specification.get("fontSize") or DEFAULT_FONT_SIZE))
+    set_text_sizes(document, float(specification.get("fontSize") or BODY_SIZE_POINTS))
     apply_korean_defaults(document, font_name)
     add_title(document, specification.get("title") or "")
     for block in specification["blocks"]:

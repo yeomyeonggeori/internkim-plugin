@@ -13,6 +13,7 @@ import xlrd
 from convert_definitions import CONVERSION_APPROXIMATED
 from formula_cache import cache_formula_values
 from office_result import Issue
+from excel_limits import fitting_sheet_name
 
 
 OPEN_DOCUMENT_NAMESPACES = {
@@ -210,7 +211,7 @@ def write_workbook(sheets: list[SheetData], output_path: Path) -> None:
     workbook = Workbook()
     workbook.remove(workbook.active)
     for sheet in sheets:
-        worksheet = workbook.create_sheet(sheet.name[:31])
+        worksheet = workbook.create_sheet(fitting_sheet_name(sheet.name))
         for (row, column), value in sheet.cells.items():
             cell = worksheet.cell(row=row, column=column, value=value)
             if isinstance(value, str) and value.startswith("="):

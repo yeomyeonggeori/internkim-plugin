@@ -6,7 +6,7 @@ from excel_functions import EXCEL_FUNCTIONS, PARAMETER_FUNCTIONS, parameter_name
 from formula_references import formula_references, referenced_sheet_names
 from formula_tree import Call, calls_in, parse_formula
 from office_result import Issue
-from office_schema import closest_name
+from office_schema import closest_name, guess_text
 from sheet_definitions import MISSING_SHEET_REFERENCE, UNKNOWN_FUNCTION
 from workbook_access import formula_text
 
@@ -76,14 +76,14 @@ def is_unknown_function(call: Call, known_names: set[str]) -> bool:
 
 def missing_sheet_issue(problem: NameProblem, sheet_names: list[str]) -> Issue:
     nearest = closest_name(problem.name, sheet_names)
-    guess = f" (did you mean {nearest!r}?)" if nearest else f"; it has {', '.join(sheet_names)}"
+    guess = guess_text(nearest) or f"; it has {', '.join(sheet_names)}"
     suggestion = f"write the formula with {nearest!r}, or add the sheet first" if nearest else None
     return MISSING_SHEET_REFERENCE.issue(f"{problem.location} reads sheet {problem.name!r}, which the workbook does not have{guess}", problem.location, suggestion)
 
 
 def unknown_function_issue(problem: NameProblem) -> Issue:
     nearest = closest_name(problem.name.upper(), EXCEL_FUNCTIONS)
-    guess = f" (did you mean {nearest}?)" if nearest else ""
+    guess = guess_text(nearest)
     suggestion = f"write {nearest} in place of {problem.name}" if nearest else None
     return UNKNOWN_FUNCTION.issue(f"{problem.location} calls {problem.name}, which is not an Excel function{guess}: {problem.formula}", problem.location, suggestion)
 

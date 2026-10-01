@@ -85,15 +85,17 @@ class OfficeFailure(Exception):
         self.issues = issues
 
 
+DOCUMENTS_FOLDER = "~/documents"
+
 INVALID_ARGUMENTS = IssueKind("INVALID_ARGUMENTS", ERROR, "the command line does not match the command's arguments", "run the command with --help and pass the arguments it lists")
 UNKNOWN_COMMAND = IssueKind("UNKNOWN_COMMAND", ERROR, "no office command has this format and verb", "run office --help for the command list")
 INPUT_NOT_FOUND = IssueKind("INPUT_NOT_FOUND", ERROR, "an input file or directory does not exist", "check the path, or write the file first")
 WRONG_INPUT_FORMAT = IssueKind("WRONG_INPUT_FORMAT", ERROR, "the input file is not the kind this command reads", "run the command the suggestion names for this kind of file")
 FILE_DAMAGED = IssueKind("FILE_DAMAGED", ERROR, "the file is the right kind but its structure is broken, as when a download or copy stopped early, so it cannot be read", "ask the user to send the complete file again; no office command can read this one")
 PDF_PASSWORD_REQUIRED = IssueKind("PDF_PASSWORD_REQUIRED", ERROR, "the PDF needs a password to open", "ask the user for the password and rerun with --password <password>; never guess one")
-NO_FILE_FOUND = IssueKind("NO_FILE_FOUND", ERROR, "no path was given and ~/documents holds no file of this kind", "pass the file path explicitly")
+NO_FILE_FOUND = IssueKind("NO_FILE_FOUND", ERROR, f"no path was given and {DOCUMENTS_FOLDER} holds no file of this kind", "pass the file path explicitly")
 INVALID_JSON = IssueKind("INVALID_JSON", ERROR, "an input file is not valid JSON", "fix the JSON syntax at the reported line and column")
-PERMISSION_DENIED = IssueKind("PERMISSION_DENIED", ERROR, "the command may not read or write this path", "write the output under ~/documents instead")
+PERMISSION_DENIED = IssueKind("PERMISSION_DENIED", ERROR, "the command may not read or write this path", f"write the output under {DOCUMENTS_FOLDER} instead")
 DEPENDENCIES_UNAVAILABLE = IssueKind("DEPENDENCIES_UNAVAILABLE", ERROR, "the office Python packages could not be installed", "check network access and that uv is on PATH, then rerun")
 BOLD_FONT_UNAVAILABLE = IssueKind("BOLD_FONT_UNAVAILABLE", WARNING, "no bold face was found beside the font file passed as the font path, so headings render without bold", "put the Bold file beside it, named like the regular one with Bold, or leave the font path out to use a bundled family")
 MISSING_FIELD = IssueKind("MISSING_FIELD", ERROR, "a required field is absent or empty", "add the field; {guide} lists every field")

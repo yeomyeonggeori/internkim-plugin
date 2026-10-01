@@ -6,10 +6,9 @@ import argparse
 from create_docx import add_block, add_list, require_rectangular_tables
 from fonts.docx_embedding import save_document
 from doc_definitions import BLOCK_LIST
-from documents_folder import resolve_document_path
 from docx_package import open_document
-from office_inputs import office_file
-from office_result import OfficeArgumentParser, Result, read_json_file, run_command
+from office_inputs import office_file, resolve_document_path
+from office_result import DOCUMENTS_FOLDER, OfficeArgumentParser, Result, read_json_file, run_command
 from office_schema import require_valid
 
 
@@ -39,7 +38,7 @@ def load_blocks(blocks_path: str) -> list[dict]:
 
 def parse_arguments() -> argparse.Namespace:
     parser = OfficeArgumentParser(description="Append content to an existing DOCX in place.")
-    parser.add_argument("document_path", nargs="?", type=office_file("docx"), help="Path to the .docx; defaults to the newest .docx in ~/documents")
+    parser.add_argument("document_path", nargs="?", type=office_file("docx"), help=f"Path to the .docx; defaults to the newest .docx in {DOCUMENTS_FOLDER}")
     parser.add_argument("--heading", action="append", default=[], metavar="TEXT", help="Append a level-1 heading")
     parser.add_argument("--paragraph", action="append", default=[], metavar="TEXT", help="Append a paragraph")
     parser.add_argument("--bullet", action="append", default=[], metavar="TEXT", help="Append a bullet item")

@@ -8,10 +8,9 @@ from docx.enum.section import WD_ORIENT, WD_SECTION_START
 from docx.image.exceptions import UnrecognizedImageError
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
-from docx.shared import Emu, Inches, Mm
+from docx.shared import Emu, Inches, Twips
 from docx.text.paragraph import Paragraph
 
-from doc_definitions import PICTURE_FORMATS
 from fonts.registry import OFFICE_KOREAN_FAMILY
 from docx_drawing_operations import align_drawing, set_wrap
 from docx_editing import DocxEditing, placement, resolve_block
@@ -20,9 +19,10 @@ from docx_text import PARAGRAPH_TAG
 from docx_tracking import mark_block_inserted
 from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
 from office_result import INPUT_NOT_FOUND, INVALID_VALUE, MISSING_FIELD, OfficeFailure
+from page_sizes import PAPER_BY_NAME
+from image_formats import PICTURE_FORMATS_TEXT
 
 
-PAPER_SIZES = {"A3": (Mm(297), Mm(420)), "A4": (Mm(210), Mm(297)), "A5": (Mm(148), Mm(210)), "B5": (Mm(182), Mm(257)), "Letter": (Inches(8.5), Inches(11)), "Legal": (Inches(8.5), Inches(14))}
 ORIENTATIONS = {"portrait": WD_ORIENT.PORTRAIT, "landscape": WD_ORIENT.LANDSCAPE}
 SECTION_STARTS = {"nextPage": WD_SECTION_START.NEW_PAGE, "continuous": WD_SECTION_START.CONTINUOUS, "evenPage": WD_SECTION_START.EVEN_PAGE, "oddPage": WD_SECTION_START.ODD_PAGE}
 MARGIN_FIELDS = {"marginTopInches": "top_margin", "marginBottomInches": "bottom_margin", "marginLeftInches": "left_margin", "marginRightInches": "right_margin"}
@@ -123,7 +123,7 @@ def plan_set_page_setup(editing: DocxEditing, operation: dict, location: str) ->
 def set_page(section, operation: dict) -> None:
     orientation = operation.get("orientation")
     if operation.get("paper"):
-        width, height = PAPER_SIZES[operation["paper"]]
+        width, height = (Twips(length) for length in PAPER_BY_NAME[operation["paper"]].twips)
         section.page_width, section.page_height = width, height
         if (orientation or current_orientation(section)) == "landscape":
             section.page_width, section.page_height = height, width
@@ -250,7 +250,7 @@ def require_picture_file(written_path: str, location: str) -> str:
 
 
 def unreadable_picture(written_path: str, location: str) -> OfficeFailure:
-    return OfficeFailure(INVALID_VALUE.issue(f"{location}: {written_path} is not a {PICTURE_FORMATS} image", location))
+    return OfficeFailure(INVALID_VALUE.issue(f"{location}: {written_path} is not a {PICTURE_FORMATS_TEXT} image", location))
 
 
 def picture_watermark_paragraph(header, section, operation: dict, image_path: str, number: int, location: str):

@@ -16,11 +16,11 @@ from pptx_inheritance import slide_context
 from pptx_relationships import carry_relationships, drop_unreferenced, relationship_ids
 from pptx_shape_kinds import NON_VISUAL_TAGS, shape_kind
 from pptx_targets import PptxEditing, ShapeTarget, require_kind, resolve_shape
+from image_formats import OFFICE_PICTURE_FORMATS
 
 
 SHAPE_TAGS = {qn("p:sp"), qn("p:grpSp"), qn("p:graphicFrame"), qn("p:cxnSp"), qn("p:pic"), qn("p:contentPart")}
 DUPLICATE_OFFSET_EMU = 228600
-PICTURE_FORMATS = {"PNG", "JPEG", "GIF", "BMP", "TIFF"}
 FILLED_KINDS = ("shape", "text")
 OUTLINED_KINDS = ("shape", "text", "picture", "connector")
 
@@ -197,7 +197,7 @@ def plan_replace_picture(editing: PptxEditing, operation: dict, location: str) -
 def readable_image_size(path: str, location: str) -> tuple[int, int]:
     try:
         with Image.open(path) as image:
-            if image.format not in PICTURE_FORMATS:
+            if image.format not in OFFICE_PICTURE_FORMATS:
                 raise OfficeFailure(PICTURE_UNREADABLE.issue(f"{location}: {path} is a {image.format} image", location))
             return image.size
     except FileNotFoundError as error:

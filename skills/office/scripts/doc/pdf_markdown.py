@@ -11,6 +11,7 @@ from markdown_blocks import Equation, Heading, Image, ListItem, Paragraph, Quote
 from office_result import Issue
 from office_theme import HYPERLINK_COLOR
 from units import MILLIMETRES_PER_INCH
+from page_sizes import DEFAULT_PAPER
 
 
 HEADING_SIZES = {1: 20, 2: 15, 3: 12.5, 4: 11}
@@ -25,7 +26,7 @@ DEFAULT_IMAGE_DOTS_PER_INCH = 96
 
 class MarkdownPdf:
     def __init__(self, family: str, font_size: float, source_directory: Path):
-        self.pdf = FPDF(format="A4")
+        self.pdf = FPDF(format=DEFAULT_PAPER.millimetres)
         self.pdf.set_auto_page_break(auto=True, margin=18)
         self.pdf.add_page()
         self.family = family

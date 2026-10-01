@@ -7,6 +7,7 @@ import re
 
 from fonts.registry import DECK, BundledFace, default_family
 from office_preview import data_uri
+from image_formats import WEB_IMAGE_TYPES
 
 
 SKILL_ASSET_PATH = pathlib.Path(__file__).resolve().parents[2] / "assets"
@@ -14,14 +15,6 @@ SKILL_ASSET_MARKER = "office/assets/"
 PAPERLOGY = default_family(DECK)
 PAPERLOGY_FAMILY = PAPERLOGY.name
 VENDORED_PAPERLOGY_FAMILY = PAPERLOGY.web_name
-IMAGE_MIME_TYPES = {
-    "jpg": "image/jpeg",
-    "jpeg": "image/jpeg",
-    "png": "image/png",
-    "gif": "image/gif",
-    "webp": "image/webp",
-    "svg": "image/svg+xml",
-}
 FONT_MIME_TYPES = {
     ".woff2": "font/woff2",
     ".woff": "font/woff",
@@ -158,7 +151,7 @@ def base64_data_url(mime_type: str, path: pathlib.Path) -> str:
 
 def image_mime_type(path: pathlib.Path) -> str:
     extension = path.suffix.lower().removeprefix(".")
-    return IMAGE_MIME_TYPES.get(extension) or guessed_mime_type(path)
+    return WEB_IMAGE_TYPES.get(extension) or guessed_mime_type(path)
 
 
 def font_mime_type(path: pathlib.Path) -> str:

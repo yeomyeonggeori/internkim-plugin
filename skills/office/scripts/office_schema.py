@@ -358,7 +358,10 @@ def name_similarity(written: str, candidate: str) -> float:
 
 
 def did_you_mean(written: object, candidates) -> str:
-    match = closest_name(written, candidates)
+    return guess_text(closest_name(written, candidates))
+
+
+def guess_text(match: str | None) -> str:
     return f" (did you mean {match!r}?)" if match else ""
 
 

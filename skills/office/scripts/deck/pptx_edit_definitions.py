@@ -10,6 +10,7 @@ from office_schema import Boolean, CellValue, Choice, Field, HexColor, ListOf, M
 from pptx_connectors import ARROW_ENDS, CONNECTOR_KINDS, DEFAULT_ARROW, DEFAULT_WIDTH_POINTS, ELBOW_KIND, STRAIGHT_KIND
 from pptx_lengths import LENGTH_EXAMPLES, Length
 from units import EMU_PER_INCH, EMU_PER_POINT
+from image_formats import PICTURE_FORMATS_TEXT
 
 
 SHAPE_PATH_PATTERN = re.compile(r"\d+(\.\d+)*")
@@ -126,7 +127,7 @@ ELEMENT_OPERATIONS = (
         Field("width", Number(minimum=0, maximum=100), "outline width in points"),
     ),
     operation("replace_picture", "swap a picture's image, keeping its frame, position and effects; the new image is cropped to fill the frame without stretching", SLIDE_FIELD, SHAPE_FIELD,
-        Field("image", Text(non_empty=True), "path to a PNG, JPEG or GIF file", required=True),
+        Field("image", Text(non_empty=True), f"path to a {PICTURE_FORMATS_TEXT} file", required=True),
     ),
     operation("crop_picture", "crop a picture inside its frame; each side is the share of the image cut from that edge, sides left out keep their value", SLIDE_FIELD, SHAPE_FIELD,
         Field("left", CROP_SHARE, "share cut from the left, 0.1 is 10%"),
@@ -171,7 +172,7 @@ INSERT_OPERATIONS = (
         Field("width", Number(minimum=0.25, maximum=20), f"line width in points, default {DEFAULT_WIDTH_POINTS:g}"),
     ),
     operation("add_picture", "add an image; give w or h alone to keep its ratio", SLIDE_FIELD, *POSITION_FIELDS,
-        Field("image", Text(non_empty=True), "path to a PNG, JPEG or GIF file", required=True),
+        Field("image", Text(non_empty=True), f"path to a {PICTURE_FORMATS_TEXT} file", required=True),
         Field("w", WIDTH, "width; default from h or the image's own size"),
         Field("h", HEIGHT, "height; default from w or the image's own size"),
     ),

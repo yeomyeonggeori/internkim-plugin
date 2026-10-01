@@ -4,14 +4,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from fonts.docx_embedding import save_document
-from docx_markdown import DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, markdown_document
+from docx_markdown import DEFAULT_DOCUMENT_FONT, markdown_document
 from doc_definitions import PDF_RENDERER_UNAVAILABLE
 from document_pdf import can_render, markdown_source_text, render_document_pdf
 from latex_math import math_issues
 from markdown_blocks import Heading, parse_markdown
 from markdown_charts import require_valid_charts
 from office_inputs import read_text_input
-from fonts.registry import REGULAR_WEIGHT, SANS_BODY, default_family, resolved_face
+from fonts.registry import BODY_SIZE_POINTS, REGULAR_WEIGHT, SANS_BODY, default_family, resolved_face
 from office_result import INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
 from fonts.pdf_registration import register_document_font
 from pdf_markdown import MarkdownPdf
@@ -82,7 +82,7 @@ def parse_arguments():
     parser.add_argument("markdown_path", help="path to content.md")
     parser.add_argument("--output", help="the file to write; its extension, .docx or .pdf, picks the format; default <markdown name>.docx beside the markdown")
     parser.add_argument("--font", default=DEFAULT_DOCUMENT_FONT, help="base font family name for docx")
-    parser.add_argument("--font-size", type=float, default=DEFAULT_DOCUMENT_FONT_SIZE)
+    parser.add_argument("--font-size", type=float, default=BODY_SIZE_POINTS)
     parser.add_argument("--font-path", default="", help=f"Korean-capable TTF for pdf output instead of the bundled {default_family(SANS_BODY).name}; a Bold file beside it is used for bold")
     return parser.parse_args()
 

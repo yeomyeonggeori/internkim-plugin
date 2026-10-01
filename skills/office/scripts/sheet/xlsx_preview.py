@@ -17,10 +17,9 @@ from sheet_objects import EXCEL_DEFAULT_FIT_PAGES
 from xlsx_colors import css_color
 from xlsx_conditional import ConditionalStyles
 from xlsx_preview_charts import chart_html, chart_kind, chart_title, drawing_box, image_html, is_whole
+from page_sizes import DEFAULT_PAPER, PAPER_BY_SPREADSHEET_CODE
 
 
-PAPER_INCHES = {1: (8.5, 11), 5: (8.5, 14), 8: (11.69, 16.54), 9: (8.27, 11.69), 11: (5.83, 8.27), 13: (7.17, 10.12)}
-DEFAULT_PAPER = 9
 DEFAULT_COLUMN_CHARACTERS = 8.43
 DEFAULT_ROW_POINTS = 15
 MAXIMUM_DIGIT_PIXELS = 7
@@ -113,7 +112,7 @@ class SheetPreviewer:
 
     def page_geometry(self, worksheet, frame: SheetFrame) -> tuple[PageGeometry, float]:
         setup = worksheet.page_setup
-        width_inches, height_inches = PAPER_INCHES.get(int(setup.paperSize or DEFAULT_PAPER), PAPER_INCHES[DEFAULT_PAPER])
+        width_inches, height_inches = PAPER_BY_SPREADSHEET_CODE.get(int(setup.paperSize or DEFAULT_PAPER.spreadsheet_code), DEFAULT_PAPER).inches
         if setup.orientation == "landscape":
             width_inches, height_inches = height_inches, width_inches
         margins = worksheet.page_margins

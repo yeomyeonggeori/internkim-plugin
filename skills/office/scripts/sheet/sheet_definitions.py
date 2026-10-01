@@ -10,10 +10,13 @@ from office_preview import PREVIEW_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
 from template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
 from office_result import ERROR, INVALID_VALUE, WARNING, WRONG_TYPE, Issue, IssueKind
-from office_schema import HEX_COLOR_PATTERN, AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, closest_name, color_problem, wrong_type
+from excel_limits import CHART_TITLE_LIMIT, FORBIDDEN_SHEET_NAME_TEXT, HEADER_FOOTER_LIMIT, MAXIMUM_SHEET_NAME_LENGTH
+from page_sizes import PAPER_NAMES
+from office_schema import HEX_COLOR_PATTERN, AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, closest_name, color_problem, guess_text, wrong_type
 from text_checks import PLACEHOLDER_LEFT
 from office_theme import THEME_SLOTS
 from theme_colors import THEME_COLOR, theme_reference
+from image_formats import PICTURE_FORMATS_TEXT
 
 
 SHOWN_ROW_LIMIT = 4
@@ -52,14 +55,14 @@ class CellColor(Shape):
         if nearest is None:
             return [color_problem(value, self.accepted, location)]
         written = value.strip()[len(slot["slot"]):]
-        return [INVALID_VALUE.issue(f"{location}: {value!r} is not {self.accepted} (did you mean {nearest + written!r}?)", location, f'use "{nearest + written}"')]
+        return [INVALID_VALUE.issue(f"{location}: {value!r} is not {self.accepted}{guess_text(nearest + written)}", location, f'use "{nearest + written}"')]
 
 
 ROWS = Rows(ListOf(CellValue()))
 READ_ROW_LIMIT = 500
 
 SHEET = Record("sheet", "one worksheet; the first row, or the row after the heading, is the header", (
-    Field("title", Text(non_empty=True), "sheet name, at most 31 characters, without [ ] : * ? / \\", required=True),
+    Field("title", Text(non_empty=True), f"sheet name, at most {MAXIMUM_SHEET_NAME_LENGTH} characters, without {FORBIDDEN_SHEET_NAME_TEXT}", required=True),
     Field("heading", Text(), "bold title row above the table"),
     Field("rows", ROWS, "rows in order; text starting with = is a formula and YYYY-MM-DD is a date"),
     Field("csvPath", Text(non_empty=True), "read the rows from this CSV or TSV file instead of rows"),
@@ -83,10 +86,9 @@ HIDDEN = Field("hidden", Boolean(), "true (default) hides, false shows again")
 CHART_INDEX = Field("chart", Number(minimum=0, integer=True), "chart index on the sheet, from sheet read", required=True)
 SHAPE_GEOMETRIES = {"rectangle": "rect", "rounded_rectangle": "roundRect", "ellipse": "ellipse", "arrow": "rightArrow", "callout": "wedgeRectCallout", "textbox": "rect"}
 COMPARISON_OPERATORS = ("between", "not_between", "equal", "not_equal", "greater_than", "less_than", "greater_or_equal", "less_or_equal")
-CHART_TITLE_LIMIT = 255
 DATA_LABELS = tuple(LABEL_FLAGS)
 CHART_FIELDS = (
-    Field("title", Text(maximum_length=CHART_TITLE_LIMIT), "chart title; Excel keeps at most 255 characters in a chart or axis title"),
+    Field("title", Text(maximum_length=CHART_TITLE_LIMIT), f"chart title; Excel keeps at most {CHART_TITLE_LIMIT} characters in a chart or axis title"),
     Field("anchor", CELL_ADDRESS, "cell the chart's top-left corner sits on, default two columns right of the data"),
     Field("horizontal", Boolean(), "bar and combo: bars run sideways"),
     Field("stacked", AnyOf((Boolean(), Choice(("percent",))), name='true, false or "percent"'), "bar, area and line: stack the series; percent stacks each category to 100%"),
@@ -305,7 +307,7 @@ OPERATIONS = Variant(
         Record("set_page_setup", "set how a sheet prints; unnamed properties stay as they are", (
             SHEET_NAME,
             Field("orientation", Choice(("portrait", "landscape")), "page orientation"),
-            Field("paperSize", Choice(("A4", "A3", "letter", "legal")), "paper size"),
+            Field("paperSize", Choice(PAPER_NAMES), "paper size"),
             Field("fitToWidth", FIT_PAGES, "shrink the columns onto this many pages wide; true is one page, and 0 or false lets the width run on"),
             Field("fitToHeight", FIT_PAGES, "shrink the rows onto this many pages tall; true is one page, and 0 or false lets the length run on"),
             Field("printGridlines", Boolean(), "print the cell gridlines"),
@@ -315,8 +317,8 @@ OPERATIONS = Variant(
             Field("centerHorizontally", Boolean(), "center the printout between the side margins"),
             Field("pageNumbers", Boolean(), "print page X / Y in the footer"),
             Field("scale", Number(minimum=10, maximum=400, integer=True), "print at this percent of full size instead of fitting the width"),
-            Field("header", Text(maximum_length=255), "text printed at the top of every page, at most 255 characters as Excel allows; {page}, {pages}, {date}, {sheet} and {file} are filled in; empty text removes it"),
-            Field("footer", Text(maximum_length=255), "text printed at the bottom of every page, with header's placeholders and limit; empty text removes it"),
+            Field("header", Text(maximum_length=HEADER_FOOTER_LIMIT), f"text printed at the top of every page, at most {HEADER_FOOTER_LIMIT} characters as Excel allows; {{page}}, {{pages}}, {{date}}, {{sheet}} and {{file}} are filled in; empty text removes it"),
+            Field("footer", Text(maximum_length=HEADER_FOOTER_LIMIT), "text printed at the bottom of every page, with header's placeholders and limit; empty text removes it"),
             Field("pageBreakRows", ListOf(Number(minimum=1, integer=True)), "rows after which a new page starts; an empty list removes them"),
             Field("pageBreakColumns", ListOf(Text(non_empty=True)), "column letters after which a new page starts; an empty list removes them"),
         )),
@@ -326,7 +328,7 @@ OPERATIONS = Variant(
             Field("password", Text(non_empty=True), "password asked to unlock it"),
         )),
         Record("add_sheet", "add an empty sheet", (
-            Field("name", Text(non_empty=True), "new sheet name, at most 31 characters", required=True),
+            Field("name", Text(non_empty=True), f"new sheet name, at most {MAXIMUM_SHEET_NAME_LENGTH} characters", required=True),
             Field("index", Number(minimum=0, integer=True), "position among the sheets, default last"),
         )),
         Record("delete_sheet", "delete a sheet; formulas, names and charts that read it show #REF!, which sheet check reports", (
@@ -352,7 +354,7 @@ OPERATIONS = Variant(
         )),
         Record("rename_sheet", "rename a sheet and rewrite every formula, defined name and chart reference to it", (
             Field("sheet", Text(non_empty=True), "current sheet name", required=True),
-            Field("name", Text(non_empty=True), "new sheet name, at most 31 characters", required=True),
+            Field("name", Text(non_empty=True), f"new sheet name, at most {MAXIMUM_SHEET_NAME_LENGTH} characters", required=True),
         )),
         Record("insert_rows", "insert empty rows before a row; formulas, absolute references, references from other sheets, defined names, filters, merged ranges, tables, charts, sparklines and shapes follow", (
             SHEET_NAME,
@@ -389,7 +391,7 @@ OPERATIONS = Variant(
             *CHART_FIELDS,
         )),
         Record("delete_chart", "remove a chart", (SHEET_NAME, CHART_INDEX)),
-        Record("add_image", "place a PNG, JPEG, GIF or BMP image with its top-left corner on a cell", (
+        Record("add_image", f"place a {PICTURE_FORMATS_TEXT} image with its top-left corner on a cell", (
             SHEET_NAME,
             Field("cell", CELL_ADDRESS, "cell the image's top-left corner sits on", required=True),
             Field("path", Text(non_empty=True), "image file path", required=True),

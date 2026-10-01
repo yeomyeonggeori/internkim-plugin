@@ -8,12 +8,12 @@ from fpdf import FPDF
 from pypdf import PdfReader, PdfWriter
 
 import create_pdf as pdf_helper
-from documents_folder import resolve_document_path
-from office_inputs import add_password_argument, office_file, require_unlocked_pdf
-from office_result import OfficeArgumentParser, Result, read_json_file, run_command
+from office_inputs import add_password_argument, office_file, require_unlocked_pdf, resolve_document_path
+from office_result import DOCUMENTS_FOLDER, OfficeArgumentParser, Result, read_json_file, run_command
 from office_schema import require_valid
 from pdf_definitions import SECTION
 from fonts.pdf_registration import register_document_font
+from page_sizes import DEFAULT_PAPER
 
 
 def main() -> Result:
@@ -39,7 +39,7 @@ def read_section(arguments) -> dict:
 
 
 def build_appended_page(section: dict, font_name: str, font_path) -> tuple[bytes, list]:
-    appended_pdf = FPDF(orientation="P", unit="mm", format="A4")
+    appended_pdf = FPDF(orientation="P", unit="mm", format=DEFAULT_PAPER.millimetres)
     appended_pdf.set_margins(18, 18, 18)
     appended_pdf.set_auto_page_break(auto=True, margin=16)
     font_issues = register_document_font(appended_pdf, font_name, font_path, json.dumps(section, ensure_ascii=False))
@@ -66,7 +66,7 @@ def merge_into_original(pdf_path: str, appended_page_bytes: bytes, password: str
 
 def parse_arguments():
     parser = OfficeArgumentParser(description="Append a new section page to an existing PDF in place.")
-    parser.add_argument("pdf_path", nargs="?", type=office_file("pdf"), help="Path to the .pdf; defaults to the newest .pdf in ~/documents")
+    parser.add_argument("pdf_path", nargs="?", type=office_file("pdf"), help=f"Path to the .pdf; defaults to the newest .pdf in {DOCUMENTS_FOLDER}")
     parser.add_argument("--heading", metavar="TEXT", help="Section heading for the appended page")
     parser.add_argument("--paragraph", action="append", default=[], metavar="TEXT", help="Paragraph to add")
     parser.add_argument("--bullet", action="append", default=[], metavar="TEXT", help="Bullet item to add")

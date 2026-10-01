@@ -18,9 +18,9 @@ from pptx_preview_text import TextPaint, body_html, body_layout
 from pptx_shape_kinds import placeholder_of, shape_kind
 from pptx_text_measure import font_face, grown_box, measure_text
 from text_script import has_east_asian
+from image_formats import WEB_IMAGE_CONTENT_TYPES
 
 
-DRAWABLE_IMAGE_TYPES = {"image/png", "image/jpeg", "image/gif", "image/bmp", "image/svg+xml"}
 CROP_SCALE = 100000
 SLIDE_GAP_PIXELS = 16
 UNDRAWN_OUTLINE = "1px dashed #9CA3AF"
@@ -85,7 +85,7 @@ def background_picture_html(picture_fill, part) -> str:
     if relationship_id is None:
         return ""
     image = part.related_part(relationship_id)
-    if image.content_type not in DRAWABLE_IMAGE_TYPES:
+    if image.content_type not in WEB_IMAGE_CONTENT_TYPES:
         return ""
     style = {"position": "absolute", "left": "0px", "top": "0px", "width": "100%", "height": "100%", "object-fit": "cover"}
     return f'<img src="{data_uri(image.content_type, image.blob)}" style="{html.escape(css(style))}"/>'
@@ -143,7 +143,7 @@ def autoshape_html(shape, box: Box, canvas: Canvas) -> str:
 def picture_html(shape, box: Box, canvas: Canvas) -> str:
     tree = shape._element
     blip = tree.find(f"{qn('p:blipFill')}/{qn('a:blip')}")
-    if blip is None or blip.get(qn("r:embed")) is None or shape.image.content_type not in DRAWABLE_IMAGE_TYPES:
+    if blip is None or blip.get(qn("r:embed")) is None or shape.image.content_type not in WEB_IMAGE_CONTENT_TYPES:
         return element("div", placed(box, tree, {"box-sizing": "border-box", "border": UNDRAWN_OUTLINE}))
     crop = tree.find(f"{qn('p:blipFill')}/{qn('a:srcRect')}")
     sides = {side: int(crop.get(side, "0")) / CROP_SCALE if crop is not None else 0.0 for side in ("l", "t", "r", "b")}

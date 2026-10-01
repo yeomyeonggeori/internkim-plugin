@@ -3,20 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
-from deck_kit import slide_size
+from deck_kit import DEFAULT_THEME, slide_size, theme_palettes
 from slide_model import SlideModel
 
 
 SLIDE_WIDTH, SLIDE_HEIGHT = slide_size()
 MISSING_SOURCE_TEXT = "제공된 자료 없음"
-DEFAULT_NATIVE_COLORS = {
-    "background": "F8FAFC",
-    "surface": "FFFFFF",
-    "ink": "111827",
-    "muted": "64748B",
-    "accent": "0F766E",
-    "line": "CBD5E1",
-}
+NATIVE_COLOR_TOKENS = {"background": "bg", "surface": "surface", "ink": "ink", "muted": "muted", "accent": "accent", "line": "line"}
 DATE_PATTERN = r"\d{4}-\d{2}-\d{2}"
 CARD_GAP = 26
 MAXIMUM_CARD_COUNT = 6
@@ -40,9 +33,10 @@ class TableGrid:
 
 
 def native_colors(design: dict[str, str]) -> dict[str, str]:
+    kit_colors = theme_palettes()[DEFAULT_THEME]
     return {
-        key: normalize_hex_color(design.get("colors." + key, default_color), default_color)
-        for key, default_color in DEFAULT_NATIVE_COLORS.items()
+        key: normalize_hex_color(design.get("colors." + key, kit_colors[token]), kit_colors[token].lstrip("#"))
+        for key, token in NATIVE_COLOR_TOKENS.items()
     }
 
 

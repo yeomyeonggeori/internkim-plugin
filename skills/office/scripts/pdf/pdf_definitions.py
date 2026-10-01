@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from office_result import ERROR, WARNING, IssueKind
-from office_schema import Boolean, CellValue, Field, ListOf, Number, Record, Text
+from office_schema import Boolean, CellValue, Choice, Field, ListOf, Number, Record, Text
 from fonts.pdf_registration import FONT_NAME_MEANING, FONT_PATH_MEANING
 from text_checks import TEXT_CHECK_ISSUE_KINDS
+from page_sizes import DEFAULT_PAPER, PAPER_NAMES
 
 
 TABLE = Record("table", "a bordered table with a shaded header row, wrapped to the page width", (
@@ -21,7 +22,7 @@ SECTION = Record("section", "a heading followed by paragraphs, bullets, then an 
 PDF_SPECIFICATION = Record("document", "the --spec file of pdf create", (
     Field("title", Text(), "large title with a rule under it"),
     Field("subtitle", Text(), "smaller line under the title"),
-    Field("format", Text(non_empty=True), "page size fpdf2 knows, such as A4, A3, Letter; default A4"),
+    Field("format", Choice(PAPER_NAMES), f"paper size; default {DEFAULT_PAPER.name}"),
     Field("marginMillimeters", Number(minimum=0), "every margin, default 18"),
     Field("fontPath", Text(), FONT_PATH_MEANING),
     Field("fontName", Text(), FONT_NAME_MEANING),

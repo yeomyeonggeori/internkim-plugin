@@ -15,6 +15,7 @@ from office_result import MISSING_FIELD, OfficeFailure
 from sheet_formatting import style_color
 from workbook_access import parse_range, sheet_of
 from written_cells import require_writable
+from excel_limits import LIST_LENGTH_LIMIT
 
 
 HIGHLIGHT_FILL = "FFC7CE"
@@ -60,7 +61,6 @@ BLANK_RULES = {
 }
 MIDDLE_PERCENTILE = 50
 VALIDATION_TYPES = {"list": "list", "whole": "whole", "decimal": "decimal", "date": "date", "text_length": "textLength", "custom": "custom"}
-LIST_LENGTH_LIMIT = 255
 
 
 def require(operation: dict, name: str, location: str, reason: str) -> None:

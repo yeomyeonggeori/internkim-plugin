@@ -12,6 +12,7 @@ from office_schema import ListOf
 from pptx_edit_definitions import OPERATIONS
 from render.renderer import RENDER_ISSUE_KINDS
 from text_checks import PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
+from image_formats import PICTURE_FORMATS_TEXT
 
 
 DECK_LOCATION = "deck"
@@ -121,7 +122,7 @@ NO_IMAGE_FOUND = IssueKind("NO_IMAGE_FOUND", ERROR, "no usable public-domain ima
 IMAGE_ISSUE_KINDS = (IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND)
 LAYOUT_AUDIT_ISSUE_KINDS = (CONTENT_OVERFLOW.kind, OUT_OF_FRAME.kind, TEXT_OVERLAP.kind, IMAGE_DISTORTED.kind)
 
-PICTURE_UNREADABLE = IssueKind("PICTURE_UNREADABLE", ERROR, "an image file given to an operation is not a PNG, JPEG or GIF picture", "pass the path of a PNG, JPEG or GIF file")
+PICTURE_UNREADABLE = IssueKind("PICTURE_UNREADABLE", ERROR, f"an image file given to an operation is not a {PICTURE_FORMATS_TEXT} picture", f"pass the path of a {PICTURE_FORMATS_TEXT} file")
 PPTX_NOT_RENDERED = IssueKind("PPTX_NOT_RENDERED", WARNING, "the renderer could not draw the slides, so nobody looked at them", "install bun or node 18 and run again, or say the slides were checked by measurement only and not seen")
 
 APPLY_ISSUE_KINDS = (PICTURE_UNREADABLE,)

@@ -14,6 +14,7 @@ from workbook_access import parse_cell, sheet_of
 from workbook_fidelity import DRAWING_NAMESPACE, EditRecord, create_drawing, drawing_part, shift_anchor
 from workbook_package import Package, worksheet_parts
 from units import EMU_PER_CENTIMETRE, EMU_PER_PIXEL, PIXELS_PER_CENTIMETRE
+from image_formats import PICTURE_FORMATS_TEXT
 
 
 DRAWING_MAIN_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/main"
@@ -35,7 +36,7 @@ def plan_add_image(workbook, operation: dict, location: str) -> Change:
         with PillowImage.open(path) as probe:
             width, height = probe.size
     except UnidentifiedImageError:
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}.path: {operation['path']} is not a PNG, JPEG, GIF or BMP image", f"{location}.path")) from None
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}.path: {operation['path']} is not a {PICTURE_FORMATS_TEXT} image", f"{location}.path")) from None
     shown_width = operation.get("width", DEFAULT_IMAGE_WIDTH) * PIXELS_PER_CENTIMETRE
 
     def change() -> str:

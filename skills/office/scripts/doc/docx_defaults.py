@@ -4,18 +4,17 @@ from docx import Document
 from docx.enum.section import WD_ORIENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Inches, Mm
+from docx.shared import Inches, Twips
 
 from fonts.registry import MONOSPACE, SANS_BODY, default_family
 from docx_settings import insert_setting
+from page_sizes import DEFAULT_PAPER
 
 
 KOREAN_LANGUAGE = "ko-KR"
 DOCUMENT_FONT = default_family(SANS_BODY).name
 CODE_FONT = default_family(MONOSPACE).name
 DEFAULT_MARGIN_INCHES = 1.0
-A4_WIDTH = Mm(210)
-A4_HEIGHT = Mm(297)
 HEADING_STYLE_NAMES = ["Title"] + [f"Heading {level}" for level in range(1, 10)]
 THEME_FONT_ATTRIBUTES = ("asciiTheme", "hAnsiTheme", "eastAsiaTheme", "cstheme")
 
@@ -73,7 +72,8 @@ def name_fonts(run_properties, font_name: str) -> None:
 
 
 def set_page(section, margin_inches: float | None = None, is_landscape: bool = False) -> None:
-    section.page_width, section.page_height = (A4_HEIGHT, A4_WIDTH) if is_landscape else (A4_WIDTH, A4_HEIGHT)
+    width, height = (Twips(length) for length in DEFAULT_PAPER.twips)
+    section.page_width, section.page_height = (height, width) if is_landscape else (width, height)
     section.orientation = WD_ORIENT.LANDSCAPE if is_landscape else WD_ORIENT.PORTRAIT
     margin = Inches(DEFAULT_MARGIN_INCHES if margin_inches is None else margin_inches)
     section.top_margin = margin

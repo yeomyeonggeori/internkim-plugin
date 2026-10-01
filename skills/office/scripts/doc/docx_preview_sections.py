@@ -5,10 +5,10 @@ from dataclasses import dataclass, field
 from docx.oxml.ns import qn
 
 from office_preview import PageGeometry, Preview
+from page_sizes import DEFAULT_PAPER
 from units import twips_to_pixels
 
 
-A4_TWIPS = (11906, 16838)
 DEFAULT_MARGIN_TWIPS = 1440
 DEFAULT_EDGE_DISTANCE_TWIPS = 720
 
@@ -62,7 +62,7 @@ def section_geometry(properties, preview: Preview) -> PageGeometry:
     columns = properties.find(qn("w:cols")) if properties is not None else None
     if columns is not None and int(columns.get(qn("w:num"), "1")) > 1:
         preview.approximate("multi-column sections shown in one column")
-    width, height = twips(size, "w:w", A4_TWIPS[0]), twips(size, "w:h", A4_TWIPS[1])
+    width, height = twips(size, "w:w", DEFAULT_PAPER.twips[0]), twips(size, "w:h", DEFAULT_PAPER.twips[1])
     return PageGeometry(
         width=twips_to_pixels(width),
         height=twips_to_pixels(height),

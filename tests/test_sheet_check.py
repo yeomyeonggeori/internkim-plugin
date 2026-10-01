@@ -228,7 +228,7 @@ class FormulaNameTest(WorkbookFixture):
         ])
         self.assertEqual(envelope["status"], "error")
         self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("MISSING_SHEET_REFERENCE", "실적!C3"), ("UNKNOWN_FUNCTION", "실적!C2")])
-        self.assertIn("did you mean SUM?", envelope["issues"][1]["message"])
+        self.assertIn("did you mean 'SUM'?", envelope["issues"][1]["message"])
         self.assertEqual(envelope["issues"][1]["suggestion"], "write SUM in place of SUMM")
         self.assertNotIn("C2", self.cells())
 

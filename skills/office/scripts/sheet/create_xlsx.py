@@ -18,6 +18,7 @@ from sheet_operations import SHEET_OPERATIONS, SheetEditing, save_editing
 from sheet_styling import style_table
 from sheet_workbook import validate_sheet_name
 from written_cells import require_writable_rows
+from excel_limits import fitting_sheet_name
 
 
 def optional_text(value):
@@ -66,7 +67,7 @@ def create_workbook(specification):
 
 def add_sheet(workbook, sheet_specification, get_column_letter, location):
     title = sheet_specification["title"].strip()
-    worksheet = workbook.create_sheet(title=title[:31])
+    worksheet = workbook.create_sheet(title=fitting_sheet_name(title))
     rows = read_rows(sheet_specification)
     require_writable_rows(rows, sheet_specification["csvPath"].strip() if sheet_specification.get("csvPath") else f"{location}.rows")
     heading = optional_text(sheet_specification.get("heading"))

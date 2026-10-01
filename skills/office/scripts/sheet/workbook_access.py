@@ -12,9 +12,10 @@ from openpyxl.worksheet.formula import ArrayFormula
 from office_inputs import holds_macros, package_stream
 from office_operations import TARGET_NOT_FOUND
 from office_result import INVALID_VALUE, OfficeFailure
-from office_schema import closest_name
+from office_schema import closest_name, guess_text
 from excel_functions import PARAMETER_PREFIX
 from formula_tree import FUNCTION_PREFIXES, Call, parse_formula, render, tokens_in
+from excel_limits import LAST_COLUMN, MAXIMUM_COLUMN, MAXIMUM_ROW, SHEET_LIMITS, column_number
 
 warnings.filterwarnings("ignore", category=UserWarning, module=r"openpyxl\.")
 
@@ -36,36 +37,26 @@ def resolve_sheet(workbook, sheet_name: str | None, location: str):
 
 def missing_sheet_issue(names: list[str], sheet_name: str, location: str):
     nearest = closest_name(sheet_name, names)
-    guess = f" (did you mean {nearest!r}?)" if nearest else ""
+    guess = guess_text(nearest)
     message = f"{location}: the workbook has no sheet named {sheet_name!r}{guess}; it has {', '.join(names)}"
     suggestion = f'use "sheet": "{nearest}"' if nearest else f"use one of the sheet names: {', '.join(names)}"
     return TARGET_NOT_FOUND.issue(message, location, suggestion)
 
 
-MAXIMUM_COLUMN = 16384
-MAXIMUM_ROW = 1048576
 CELL_GRAMMAR = re.compile(r"([A-Za-z]*)([0-9]*)")
-SHEET_LIMITS = "columns run from A to XFD and rows from 1 to 1048576"
 
 
 def sheet_of(workbook, operation: dict, location: str):
     return resolve_sheet(workbook, operation.get("sheet"), f"{location}.sheet")
 
 
-def letters_index(letters: str) -> int:
-    index = 0
-    for letter in letters.upper():
-        index = index * 26 + ord(letter) - ord("A") + 1
-    return index
-
-
 def column_index(text: str, location: str) -> int:
     letters = text.strip().upper()
     if not letters.isalpha() or not letters.isascii():
         raise OfficeFailure(INVALID_VALUE.issue(f"{location}: {text!r} is not a column letter such as C", location, f"write only the column letters, such as {''.join(character for character in letters if character.isascii() and character.isalpha()) or 'C'}"))
-    if letters_index(letters) > MAXIMUM_COLUMN:
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: column {letters} is past XFD, the last column Excel has", location, f"use a column from A to XFD; {SHEET_LIMITS}"))
-    return letters_index(letters)
+    if column_number(letters) > MAXIMUM_COLUMN:
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: column {letters} is past {LAST_COLUMN}, the last column Excel has", location, f"use a column from A to {LAST_COLUMN}; {SHEET_LIMITS}"))
+    return column_number(letters)
 
 
 def field_name(location: str) -> str:
@@ -89,8 +80,8 @@ def cell_problems(text: str) -> list[str]:
     problems = []
     if not letters:
         problems.append("the column letters are missing")
-    elif letters_index(letters) > MAXIMUM_COLUMN:
-        problems.append(f"column {letters.upper()} is past XFD")
+    elif column_number(letters) > MAXIMUM_COLUMN:
+        problems.append(f"column {letters.upper()} is past {LAST_COLUMN}")
     if not digits:
         problems.append("the row number is missing")
     elif not 1 <= int(digits) <= MAXIMUM_ROW:
@@ -101,7 +92,7 @@ def cell_problems(text: str) -> list[str]:
 def cell_example(text: str) -> str:
     match = CELL_GRAMMAR.fullmatch(text)
     letters, digits = match.groups() if match else ("", "")
-    column = letters.upper() if letters and letters_index(letters) <= MAXIMUM_COLUMN else "A"
+    column = letters.upper() if letters and column_number(letters) <= MAXIMUM_COLUMN else "A"
     row = digits if digits and 1 <= int(digits) <= MAXIMUM_ROW else "1"
     return f"{column}{row}"
 
@@ -121,7 +112,7 @@ def parse_cell(text: str, location: str) -> tuple[int, int]:
     if problems:
         refuse_cell(written, location, problems)
     letters, digits = CELL_GRAMMAR.fullmatch(written).groups()
-    return int(digits), letters_index(letters)
+    return int(digits), column_number(letters)
 
 
 def parse_range(text: str, location: str) -> tuple[int, int, int, int]:

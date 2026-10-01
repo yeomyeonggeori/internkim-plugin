@@ -26,6 +26,7 @@ DECK = "deck"
 ROLE_GENERIC_FAMILIES = {SANS_BODY: "sans-serif", SERIF_BODY: "serif", MONOSPACE: "monospace"}
 CSS_GENERIC_FAMILIES = frozenset({"serif", "sans-serif", "monospace", "system-ui", "ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded", "-apple-system", "blinkmacsystemfont", "cursive", "fantasy", "emoji", "math", "fangsong"})
 OFFICE_KOREAN_FAMILY = "맑은 고딕"
+BODY_SIZE_POINTS = 10.5
 
 
 @dataclass(frozen=True)

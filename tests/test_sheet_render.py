@@ -12,6 +12,9 @@ from sheet_fixture import SCRIPTS_PATH, run_office, run_office_python
 sys.path[0:0] = [str(SCRIPTS_PATH), str(SCRIPTS_PATH / "sheet")]
 
 from number_format import displayed  # noqa: E402
+from office_preview import pixels  # noqa: E402
+from page_sizes import DEFAULT_PAPER  # noqa: E402
+from units import inches_to_pixels  # noqa: E402
 
 
 WORKBOOK = """
@@ -87,7 +90,8 @@ class SheetPreviewTest(unittest.TestCase):
         self.assertIn("<svg", first)
 
     def test_long_sheets_paginate_with_title_rows_and_page_numbers(self):
-        detail_pages = [body for _, style, body in self.pages if "width:1122.24px" in style]
+        landscape_width = pixels(inches_to_pixels(max(DEFAULT_PAPER.inches)))
+        detail_pages = [body for _, style, body in self.pages if f"width:{landscape_width}" in style]
         self.assertGreaterEqual(len(detail_pages), 2)
         self.assertTrue(all(">번호<" in body for body in detail_pages))
         self.assertIn(f">{len(self.pages)} / {len(self.pages)}<", self.pages[-1][2])

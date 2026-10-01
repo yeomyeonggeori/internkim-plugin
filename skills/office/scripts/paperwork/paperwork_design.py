@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fonts.registry import SANS_BODY, default_family
+from fonts.registry import BODY_SIZE_POINTS, SANS_BODY, default_family
 
 COLOR_INK = (0x1C, 0x24, 0x30)
 COLOR_MUTED = (0x6A, 0x72, 0x80)
@@ -12,7 +12,7 @@ FONT_KOREAN_DOCX = default_family(SANS_BODY).name
 
 SIZE_TITLE = 18.0
 SIZE_CLAUSE_HEADING = 11.0
-SIZE_BODY = 10.5
+SIZE_BODY = BODY_SIZE_POINTS
 SIZE_SMALL = 8.5
 SIZE_LETTERHEAD_NAME = 11.5
 SIZE_LETTERHEAD_DETAIL = 7.5

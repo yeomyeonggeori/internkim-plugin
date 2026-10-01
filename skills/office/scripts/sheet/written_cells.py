@@ -3,11 +3,9 @@ from __future__ import annotations
 from formula_grammar import formula_problem
 from office_result import INVALID_VALUE, OfficeFailure
 from sheet_definitions import FORMULA_SYNTAX
+from excel_limits import CELL_TEXT_LIMIT, FORMULA_LENGTH_LIMIT
 
 
-# Excel specifications and limits: a cell holds at most 32,767 characters and a formula at most 8,192
-CELL_TEXT_LIMIT = 32767
-FORMULA_LENGTH_LIMIT = 8192
 
 
 def is_formula(value: object) -> bool:

@@ -11,9 +11,9 @@ from create_xlsx import create_workbook
 from office_inputs import unlocked_pdf_bytes
 from pdf_ocr import OcrLine
 from pdf_tables import page_tables, stream_tables
+from excel_limits import fitting_sheet_name
 
 
-SHEET_TITLE_LIMIT = 31
 
 
 @dataclass
@@ -65,7 +65,7 @@ def add_table(found: PdfTables, rows: list[list[str]], page: int, position: int,
         previous.pages.append(page)
         return
     title = f"Page {page}" if page_table_count == 1 else f"Page {page} Table {position}"
-    found.tables.append(PdfTable(title[:SHEET_TITLE_LIMIT], [page], [list(row) for row in rows]))
+    found.tables.append(PdfTable(fitting_sheet_name(title), [page], [list(row) for row in rows]))
 
 
 def sheet_specification(table: PdfTable) -> tuple[dict, dict]:

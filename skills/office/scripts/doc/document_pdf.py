@@ -15,13 +15,13 @@ from fonts.registry import MONOSPACE, SANS_BODY, BundledFamily, default_family
 from office_result import BOLD_FONT_UNAVAILABLE, Issue, OfficeFailure
 from fonts.pdf_registration import bold_sibling
 from render.renderer import DocumentPdfRequest, FontFile, RenderFailed, RendererUnavailable, javascript_runtime, render_document_pdf as render_pdf
+from page_sizes import DEFAULT_PAPER
 from units import CSS_PIXELS_PER_INCH
 
 
 SCRIPTS_PATH = Path(__file__).resolve().parent
 CHOSEN_FAMILY = "Document"
 CSS_PATH = SCRIPTS_PATH / "document_pdf.css"
-PAGE_SIZES_PIXELS = {"a4": (794, 1123)}
 SIDE_MARGIN_PIXELS = 64
 DEFAULT_DOTS_PER_INCH = 96
 
@@ -102,7 +102,7 @@ def sized_image(image: Image, source_directory: Path, issues: list[Issue]):
     if problem is not None:
         issues.append(IMAGE_UNAVAILABLE.issue(f"image {image.source} {problem}; wrote its alt text instead", image.source))
         return replace_with_alt(image)
-    text_width = PAGE_SIZES_PIXELS["a4"][0] - 2 * SIDE_MARGIN_PIXELS
+    text_width = DEFAULT_PAPER.pixels[0] - 2 * SIDE_MARGIN_PIXELS
     scale = min(1.0, text_width / width)
     return SizedImage(image.alt, image_path.read_bytes(), image_path.suffix, round(width * scale), round(height * scale))
 

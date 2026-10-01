@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 from charts.kinds import DOCUMENT_CHART_KINDS
-from fonts.registry import SANS_BODY, default_family
+from fonts.registry import BODY_SIZE_POINTS, SANS_BODY, default_family
 from office_preview import PREVIEW_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
+from page_sizes import PAPER_NAMES
 from office_schema import AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Text, Variant
 from template_merge import LIST_NEEDS_A_ROW, MERGE_VALUES, TEMPLATE_SYNTAX_ERROR, UNRESOLVED_PLACEHOLDER, UNUSED_VALUE
 from text_checks import FORBIDDEN_TEXT_PRESENT, PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
+from image_formats import PICTURE_FORMATS_TEXT
 
 
-PICTURE_FORMATS = "PNG, JPEG, GIF, BMP or TIFF"
 DOCUMENT_FONT = default_family(SANS_BODY).name
 
 
@@ -52,7 +53,7 @@ PAGE = Record("page", "page setup on A4", (
 DOCUMENT_SPECIFICATION = Record("document", "the --spec file of doc create", (
     Field("title", Text(), "centered title above the first block"),
     Field("fontName", Text(non_empty=True), f"font for body and headings, default {DOCUMENT_FONT}"),
-    Field("fontSize", Number(minimum=1), "body size in points, default 10.5"),
+    Field("fontSize", Number(minimum=1), f"body size in points, default {BODY_SIZE_POINTS}"),
     Field("page", PAGE, "page setup"),
     Field("blocks", ListOf(BLOCK, non_empty=True), "the content", required=True),
 ))
@@ -108,7 +109,6 @@ ROW_INDEX = Number(minimum=0, integer=True)
 
 ALIGNMENT = Choice(("left", "center", "right", "justify"))
 HIGHLIGHT_COLORS = ("yellow", "green", "cyan", "pink", "blue", "red", "gray", "none")
-PAPER_NAMES = ("A3", "A4", "A5", "B5", "Letter", "Legal")
 CELL_RANGE = (
     TABLE_BLOCK,
     Field("row", ROW_INDEX, "first row index", required=True),
@@ -282,7 +282,7 @@ OPERATIONS = Variant(
             INSERT_AFTER,
             INSERT_BEFORE,
             INSERT_AT,
-            Field("path", Text(non_empty=True), f"{PICTURE_FORMATS} file", required=True),
+            Field("path", Text(non_empty=True), f"{PICTURE_FORMATS_TEXT} file", required=True),
             Field("widthInches", Number(minimum=0.1), "width; the height keeps the aspect ratio unless also given"),
             Field("heightInches", Number(minimum=0.1), "height"),
             Field("align", ALIGNMENT, "paragraph alignment"),
@@ -413,7 +413,7 @@ OPERATIONS = Variant(
         )),
         Record("set_watermark", "put large diagonal text such as 대외비 or DRAFT, or a picture such as a logo, behind every page; give text or image", (
             Field("text", Text(), "watermark text; empty removes the watermark"),
-            Field("image", Text(non_empty=True), f"{PICTURE_FORMATS} file centered behind the body"),
+            Field("image", Text(non_empty=True), f"{PICTURE_FORMATS_TEXT} file centered behind the body"),
             Field("scale", Number(minimum=1, maximum=1000), "picture size as a percent of its natural size; default fit inside the margins"),
             Field("washout", Boolean(), "fade the picture the way Word's washout does, default true"),
             Field("color", HexColor(), "text color, default light gray"),

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass
+import glob
 import io
 import os
 from typing import Callable
@@ -9,7 +10,7 @@ from xml.etree import ElementTree
 import zipfile
 import zlib
 
-from office_result import FILE_DAMAGED, INPUT_NOT_FOUND, PDF_PASSWORD_REQUIRED, WRONG_INPUT_FORMAT, OfficeFailure
+from office_result import DOCUMENTS_FOLDER, FILE_DAMAGED, INPUT_NOT_FOUND, NO_FILE_FOUND, PDF_PASSWORD_REQUIRED, WRONG_INPUT_FORMAT, OfficeFailure
 
 
 
@@ -224,3 +225,12 @@ def unlocked_pdf_bytes(path: str, password: str | None) -> bytes:
     stream = io.BytesIO()
     PdfWriter(clone_from=reader).write(stream)
     return stream.getvalue()
+
+
+def resolve_document_path(given_path: str | None, extension: str) -> str:
+    if given_path:
+        return os.path.expanduser(given_path)
+    candidates = sorted(glob.glob(os.path.expanduser(f"{DOCUMENTS_FOLDER}/*.{extension}")), key=os.path.getmtime, reverse=True)
+    if not candidates:
+        raise OfficeFailure(NO_FILE_FOUND.issue(f"no .{extension} found in {DOCUMENTS_FOLDER}; pass the file path explicitly"))
+    return candidates[0]

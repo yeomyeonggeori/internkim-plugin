@@ -15,6 +15,7 @@ from pptx_shape_kinds import shape_address, shape_kind, shape_reference
 from pptx_text_measure import TextFit, grown_box, grows_with_text, largest_text_size, measure_text, wraps
 from pptx_text_operations import apply_run_style, character_properties
 from units import EMU_PER_POINT
+from image_formats import OFFICE_PICTURE_CONTENT_TYPES
 
 
 EDGE_TOLERANCE = EMU_PER_POINT
@@ -24,7 +25,6 @@ SMALLEST_SUGGESTED_SIZE = 10
 SHRINK_STEP = 0.05
 SHRINK_STEPS = 10
 MEDIA_KINDS = {"picture", "chart", "table", "diagram", "media", "object"}
-MEASURABLE_IMAGE_TYPES = {"image/png", "image/jpeg", "image/gif", "image/bmp", "image/tiff"}
 CROP_SCALE = 100000
 NO_SINGLE_OPERATION = "no single operation fits this text at a legible size: shorten it, or split it across slides"
 
@@ -282,7 +282,7 @@ def picture_pixels(shape, kind: str) -> tuple[int, int] | None:
     if blip is None or blip.get(qn("r:embed")) is None:
         return None
     image = shape.image
-    return image.size if image.content_type in MEASURABLE_IMAGE_TYPES else None
+    return image.size if image.content_type in OFFICE_PICTURE_CONTENT_TYPES else None
 
 
 def overlap_issues(entries: list[Entry], area: SlideArea) -> list[Issue]:
