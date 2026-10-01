@@ -93,8 +93,17 @@ class InputBoundaryTest(unittest.TestCase):
                     self.assert_refused(command, "missing.docx", "INPUT_NOT_FOUND")
 
     def test_text_and_legacy_files_are_refused_with_what_they_are(self):
-        self.assertIn("neither an Office file nor a PDF", self.assert_refused("doc read", "notes.txt", "WRONG_INPUT_FORMAT")["message"])
+        self.assertEqual(self.assert_refused("doc read", "notes.txt", "WRONG_INPUT_FORMAT")["message"], "notes.txt is not a Word document: its content is not in any Office or PDF format")
         self.assertIn("office convert", self.assert_refused("sheet read", "legacy.xls", "WRONG_INPUT_FORMAT")["suggestion"])
+
+    def test_an_empty_file_is_named_empty_by_every_reader_and_convert(self):
+        for kind, commands in READERS.items():
+            (self.directory / f"empty.{kind}").write_bytes(b"")
+            for command in commands:
+                with self.subTest(command=command):
+                    self.assertEqual(self.assert_refused(command, f"empty.{kind}", "FILE_DAMAGED")["message"], f"empty.{kind} is empty (0 bytes)")
+        envelope, _ = run_office(["convert", "empty.pdf", "empty.docx"], self.directory)
+        self.assertEqual(envelope["summary"], "empty.pdf is empty (0 bytes)")
 
     def test_a_binary_workbook_is_sent_to_convert(self):
         issue = self.assert_refused("sheet read", "binary.xlsb", "WRONG_INPUT_FORMAT")
