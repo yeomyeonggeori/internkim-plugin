@@ -20,8 +20,6 @@ An agreement protecting confidential information shared between two parties for 
 ```json
 {
   "title": "Non-Disclosure Agreement",
-  "fontName": "Pretendard",
-  "fontSize": 10.5,
   "page": { "marginInches": 0.9 },
   "blocks": [
     { "type": "paragraph", "text": "This Non-Disclosure Agreement (this \"Agreement\") is entered into by and between <Party A name> (\"Party A\") and <Party B name> (\"Party B\") in connection with <purpose of discussion>, to protect the confidential information the parties provide to one another." },

@@ -4,10 +4,12 @@ from dataclasses import dataclass, field
 import datetime
 import re
 
+from openpyxl.styles.fonts import DEFAULT_FONT
 from openpyxl.utils import get_column_letter, range_boundaries
 
 from number_format import Displayed, displayed
 from office_preview import PageGeometry, Preview, emu_to_pixels, escaped, inches_to_pixels, page_section, pixels, points_to_pixels, positioned, style_attribute
+from fonts.registry import OFFICE_KOREAN_FAMILY
 from fonts.preview import FontRegistry, FontRequest, css_font_family, draws_scripts_apart, script_font_family, script_runs
 from sheet_formatting import STACKED_ROTATION, rotation_degrees
 from sheet_objects import EXCEL_DEFAULT_FIT_PAGES
@@ -33,7 +35,6 @@ HORIZONTAL = {"left": "flex-start", "center": "center", "right": "flex-end", "ce
 VERTICAL = {"top": "flex-start", "center": "center", "bottom": "flex-end", "justify": "flex-start", "distributed": "center"}
 HEADER_CODES = (("&P", "{page}"), ("&N", "{pages}"), ("&A", "{sheet}"), ("&F", "{file}"), ("&D", "{date}"), ("&T", ""), ("&B", ""), ("&I", ""), ("&U", ""), ("&&", "&"))
 HEADER_FORMATTING = re.compile(r'&K[0-9A-Fa-f]{6}|&"[^"]*"|&\d+|&[SXYEOHG]')
-KOREAN_DEFAULT_FONT = "맑은 고딕"
 
 
 @dataclass
@@ -146,7 +147,7 @@ class SheetPreviewer:
             for text, alignment in pieces:
                 if text:
                     content = escaped(header_text(text).format(**substitutions))
-                    parts.append(positioned(geometry.margin_left, top, geometry.content_width, content, {"text-align": alignment, "font-size": "12px", "font-family": css_font_family("Calibri", KOREAN_DEFAULT_FONT), "white-space": "pre"}))
+                    parts.append(positioned(geometry.margin_left, top, geometry.content_width, content, {"text-align": alignment, "font-size": "12px", "font-family": css_font_family(DEFAULT_FONT.name, OFFICE_KOREAN_FAMILY), "white-space": "pre"}))
         return parts
 
     def grid_html(self, frame: SheetFrame, columns: list[int], rows: list[int], scale: float) -> str:
@@ -253,7 +254,7 @@ class SheetPreviewer:
         self.page_drawings = []
         html = []
         if getattr(frame.worksheet, "_charts", []):
-            self.fonts.width(FontRequest(KOREAN_DEFAULT_FONT, KOREAN_DEFAULT_FONT, 10), "가")
+            self.fonts.width(FontRequest(OFFICE_KOREAN_FAMILY, OFFICE_KOREAN_FAMILY, 10), "가")
         for chart in getattr(frame.worksheet, "_charts", []):
             box = drawing_box(chart.anchor, frame, columns, body_rows, scale)
             if box is not None:
@@ -297,8 +298,7 @@ def rotation_style(rotation: int | None) -> dict:
 
 
 def font_request(font, scale: float = 1.0) -> FontRequest:
-    name = font.name or "Calibri"
-    return FontRequest(name, KOREAN_DEFAULT_FONT, (font.sz or 11) * scale, bool(font.b))
+    return FontRequest(font.name or DEFAULT_FONT.name, OFFICE_KOREAN_FAMILY, (font.sz or DEFAULT_FONT.sz) * scale, bool(font.b))
 
 
 def fill_color(cell, palette: tuple) -> str | None:

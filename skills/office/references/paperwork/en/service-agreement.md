@@ -21,8 +21,6 @@ An editable draft agreement under which a Client engages a Provider to perform d
 ```json
 {
   "title": "Service Agreement",
-  "fontName": "Pretendard",
-  "fontSize": 10.5,
   "page": { "marginInches": 0.9 },
   "blocks": [
     { "type": "paragraph", "text": "This Service Agreement (this \"Agreement\") is entered into by and between <client name> (\"Company\") and <provider name> (\"Provider\")." },

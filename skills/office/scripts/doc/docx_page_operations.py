@@ -12,6 +12,7 @@ from docx.shared import Emu, Inches, Mm
 from docx.text.paragraph import Paragraph
 
 from doc_definitions import PICTURE_FORMATS
+from fonts.registry import OFFICE_KOREAN_FAMILY
 from docx_drawing_operations import align_drawing, set_wrap
 from docx_editing import DocxEditing, placement, resolve_block
 from docx_format_operations import ALIGNMENTS
@@ -33,7 +34,6 @@ PICTURE_WATERMARK_PREFIX = "WordPictureWatermark"
 WASHOUT_ATTRIBUTES = ' gain="19661f" blacklevel="22938f"'
 PICTURE_WATERMARK_TEMPLATE = """<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:w10="urn:schemas-microsoft-com:office:word"><w:pPr><w:pStyle w:val="Header"/></w:pPr><w:r><w:rPr><w:noProof/></w:rPr><w:pict><v:shapetype id="_x0000_t75" coordsize="21600,21600" o:spt="75" o:preferrelative="t" path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f"><v:stroke joinstyle="miter"/><v:formulas><v:f eqn="if lineDrawn pixelLineWidth 0"/><v:f eqn="sum @0 1 0"/><v:f eqn="sum 0 0 @1"/><v:f eqn="prod @2 1 2"/><v:f eqn="prod @3 21600 pixelWidth"/><v:f eqn="prod @3 21600 pixelHeight"/><v:f eqn="sum @0 0 1"/><v:f eqn="prod @6 1 2"/><v:f eqn="prod @7 21600 pixelWidth"/><v:f eqn="sum @8 21600 0"/><v:f eqn="prod @7 21600 pixelHeight"/><v:f eqn="sum @10 21600 0"/></v:formulas><v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect"/><o:lock v:ext="edit" aspectratio="t"/></v:shapetype><v:shape id="{shape_id}" o:spid="_x0000_s{spid}" type="#_x0000_t75" style="position:absolute;margin-left:0;margin-top:0;width:{width}pt;height:{height}pt;z-index:-251656192;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin" o:allowincell="f"><v:imagedata r:id="{relationship_id}" o:title="{title}"{washout}/><w10:wrap anchorx="margin" anchory="margin"/></v:shape></w:pict></w:r></w:p>"""
 WATERMARK_TEMPLATE = """<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w:pPr><w:pStyle w:val="Header"/></w:pPr><w:r><w:rPr><w:noProof/></w:rPr><w:pict><v:shapetype id="_x0000_t136" coordsize="21600,21600" o:spt="136" adj="10800" path="m@7,l@8,m@5,21600l@6,21600e"><v:formulas><v:f eqn="sum #0 0 10800"/><v:f eqn="prod #0 2 1"/><v:f eqn="sum 21600 0 @1"/><v:f eqn="sum 0 0 @2"/><v:f eqn="sum 21600 0 @3"/><v:f eqn="if @0 @3 0"/><v:f eqn="if @0 21600 @1"/><v:f eqn="if @0 0 @2"/><v:f eqn="if @0 @4 21600"/><v:f eqn="mid @5 @6"/><v:f eqn="mid @8 @5"/><v:f eqn="mid @7 @8"/><v:f eqn="mid @6 @7"/><v:f eqn="sum @6 0 @5"/></v:formulas><v:path textpathok="t" o:connecttype="custom" o:connectlocs="@9,0;@10,10800;@11,21600;@12,10800" o:connectangles="270,180,90,0"/><v:textpath on="t" fitshape="t"/><v:handles><v:h position="#0,bottomRight" xrange="6629,14971"/></v:handles><o:lock v:ext="edit" text="t" shapetype="t"/></v:shapetype><v:shape id="{shape_id}" o:spid="_x0000_s{spid}" type="#_x0000_t136" style="position:absolute;margin-left:0;margin-top:0;width:{width}pt;height:{height}pt;rotation:315;z-index:-251657216;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin" o:allowincell="f" fillcolor="#{color}" stroked="f"><v:fill opacity=".5"/><v:textpath style="font-family:&quot;{font}&quot;;font-size:1pt" string="{text}"/><w10:wrap anchorx="margin" anchory="margin"/></v:shape></w:pict></w:r></w:p>"""
-WATERMARK_FONT = "맑은 고딕"
 WATERMARK_HEIGHT_POINTS = 120
 WATERMARK_POINTS_PER_CHARACTER = 90
 WATERMARK_MAXIMUM_WIDTH_POINTS = 480
@@ -293,7 +293,7 @@ def watermark_paragraph(operation: dict, number: int):
         width=width,
         height=WATERMARK_HEIGHT_POINTS,
         color=(operation.get("color") or DEFAULT_WATERMARK_COLOR).lstrip("#").upper(),
-        font=WATERMARK_FONT,
+        font=OFFICE_KOREAN_FAMILY,
         text=xml_attribute(text),
     ))
 

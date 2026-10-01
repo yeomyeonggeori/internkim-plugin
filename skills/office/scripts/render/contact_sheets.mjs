@@ -9,7 +9,7 @@ const padding = 24;
 const gutter = 18;
 const labelHeight = 34;
 const sheetStyle = [
-  ".sheet { display: flex; flex-wrap: wrap; gap: 18px; padding: 24px; background: rgb(248, 250, 252); font-family: Paperlogy, sans-serif; }",
+  ".sheet { display: flex; flex-wrap: wrap; gap: 18px; padding: 24px; background: rgb(248, 250, 252); font-family: sans-serif; }",
   ".page { display: flex; flex-direction: column; }",
   ".badge { align-self: flex-start; height: 26px; padding: 0 10px; margin-bottom: 8px; background: rgba(17, 24, 39, 0.9); color: white; font-size: 18px; font-weight: 700; line-height: 26px; }",
   ".page img { border: 1px solid rgb(203, 213, 225); }",

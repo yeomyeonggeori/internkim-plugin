@@ -20,8 +20,6 @@ Documents the intent of two organizations or companies to cooperate in a given a
 ```json
 {
   "title": "Memorandum of Understanding",
-  "fontName": "Pretendard",
-  "fontSize": 10.5,
   "page": { "marginInches": 0.9 },
   "blocks": [
     { "type": "paragraph", "text": "This Memorandum of Understanding (this \"MOU\") is entered into by and between <Party A name> (\"Party A\") and <Party B name> (\"Party B\") for the purpose of <purpose of cooperation>." },

@@ -14,13 +14,6 @@ SKILL_ASSET_MARKER = "office/assets/"
 PAPERLOGY = default_family(DECK)
 PAPERLOGY_FAMILY = PAPERLOGY.name
 VENDORED_PAPERLOGY_FAMILY = PAPERLOGY.web_name
-PAPERLOGY_ALIASES = {
-    "fonts/Paperlogy-Regular.woff2": "fonts/paperlogy/Paperlogy-4Regular.woff2",
-    "fonts/Paperlogy-Medium.woff2": "fonts/paperlogy/Paperlogy-6SemiBold.woff2",
-    "fonts/Paperlogy-SemiBold.woff2": "fonts/paperlogy/Paperlogy-6SemiBold.woff2",
-    "fonts/Paperlogy-Bold.woff2": "fonts/paperlogy/Paperlogy-7Bold.woff2",
-    "fonts/Paperlogy-ExtraBold.woff2": "fonts/paperlogy/Paperlogy-8ExtraBold.woff2",
-}
 IMAGE_MIME_TYPES = {
     "jpg": "image/jpeg",
     "jpeg": "image/jpeg",
@@ -156,19 +149,7 @@ def resolve_skill_asset_path(resource_path: pathlib.Path) -> pathlib.Path | None
         return None
     asset_relative_text = path_text.split(SKILL_ASSET_MARKER, 1)[1].lstrip("/")
     asset_path = SKILL_ASSET_PATH / asset_relative_text
-    if asset_path.exists():
-        return asset_path
-    return resolve_paperlogy_alias(asset_relative_text)
-
-
-def resolve_paperlogy_alias(asset_relative_text: str) -> pathlib.Path | None:
-    aliased_path = PAPERLOGY_ALIASES.get(asset_relative_text)
-    if aliased_path is None:
-        return None
-    resolved_path = SKILL_ASSET_PATH / aliased_path
-    if resolved_path.exists():
-        return resolved_path
-    return None
+    return asset_path if asset_path.exists() else None
 
 
 def base64_data_url(mime_type: str, path: pathlib.Path) -> str:

@@ -9,6 +9,7 @@ from docx.text.paragraph import Paragraph as DocxParagraph
 from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, heading_level
 from docx_package import open_document
 from docx_text import live_runs, run_text, visible_text
+from fonts.registry import MONOSPACE, font_role
 from docx_charts import RELATIONSHIP_NAMESPACE, chart_references, read_specification
 from markdown_charts import Chart
 from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak
@@ -16,7 +17,6 @@ from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, T
 
 MARKDOWN_HEADING_LEVELS = 4
 QUOTE_STYLES = ("Quote", "Intense Quote")
-CODE_FONTS = ("Courier New", "Consolas", "D2Coding", "Menlo")
 BLIP_TAG = qn("a:blip")
 DOCUMENT_PROPERTIES_TAG = "{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}docPr"
 
@@ -153,7 +153,7 @@ def emphasis(run) -> str:
     if properties is None:
         return ""
     fonts = properties.find(qn("w:rFonts"))
-    if fonts is not None and fonts.get(qn("w:ascii")) in CODE_FONTS:
+    if fonts is not None and font_role(fonts.get(qn("w:ascii")) or "") == MONOSPACE:
         return "`"
     if is_on(properties, "w:b"):
         return "**"

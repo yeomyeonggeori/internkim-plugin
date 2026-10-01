@@ -4,11 +4,10 @@ from dataclasses import dataclass
 import functools
 import html
 
-from fonts.registry import DECK, REGULAR_WEIGHT, SANS_BODY, BundledFamily, BundledFace, bundled_family, default_family, stand_in_family
+from fonts.registry import CSS_GENERIC_FAMILIES, DECK, REGULAR_WEIGHT, SANS_BODY, BundledFamily, BundledFace, bundled_family, default_family, stand_in_family
 from fonts.truetype import TrueTypeFace, read_truetype_face
 
 
-GENERIC_FAMILY_NAMES = {"serif", "sans-serif", "monospace", "system-ui", "ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded", "-apple-system", "blinkmacsystemfont", "cursive", "fantasy", "emoji", "math", "fangsong"}
 SYNTHETIC_BOLD_WEIGHT = 600
 FONT_RELATIONSHIP_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/font"
 EMBEDDED_FONT_SLOTS = {"regular": "p:regular", "bold": "p:bold", "italic": "p:italic", "bold italic": "p:boldItalic"}
@@ -39,7 +38,7 @@ def run_font(family: str, weight: int) -> RunFont:
 
 
 def deck_family(family: str) -> BundledFamily | None:
-    if family.strip().casefold() not in GENERIC_FAMILY_NAMES:
+    if family.strip().casefold() not in CSS_GENERIC_FAMILIES:
         return bundled_family(family)
     substitute = stand_in_family(family)
     return default_family(DECK) if substitute.role == SANS_BODY else substitute

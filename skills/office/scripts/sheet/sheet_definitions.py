@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import json
 
 from chart_svg import LABEL_FLAGS
+from fonts.registry import OFFICE_KOREAN_FAMILY
 from office_preview import PREVIEW_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
 from template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
@@ -146,7 +147,7 @@ OPERATIONS = Variant(
             Field("underline", Boolean(), "single underline on or off"),
             Field("strikethrough", Boolean(), "line through the text on or off"),
             Field("fontSize", Number(minimum=6, maximum=72), "font size in points"),
-            Field("fontName", Text(non_empty=True), "font family such as Malgun Gothic"),
+            Field("fontName", Text(non_empty=True), f"font family such as {OFFICE_KOREAN_FAMILY}"),
             Field("fontColor", STYLE_COLOR, "text color"),
             Field("fill", STYLE_COLOR, "background color such as DCEAF7 or accent1+80%"),
             Field("alignment", Choice(("left", "center", "right")), "horizontal alignment"),

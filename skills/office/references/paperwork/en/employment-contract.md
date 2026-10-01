@@ -19,8 +19,6 @@ An editable draft agreement between the company ("Company") and an employee ("Em
 ```json
 {
   "title": "Employment Agreement",
-  "fontName": "Pretendard",
-  "fontSize": 10.5,
   "page": { "marginInches": 0.9 },
   "blocks": [
     { "type": "paragraph", "text": "This Employment Agreement (\"Agreement\") is entered into by and between <company legal name> (\"Company\") and <employee name> (\"Employee\")." },

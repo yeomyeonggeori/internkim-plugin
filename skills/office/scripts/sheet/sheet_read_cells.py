@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 
+from openpyxl.styles.fonts import DEFAULT_FONT
 from openpyxl.utils import get_column_letter
 
 from office_result import INVALID_VALUE, OfficeFailure
@@ -11,8 +12,6 @@ from workbook_values import EXCEL_ERROR_CODES
 
 
 WHERE_KINDS = ("formula", "error", "number", "text", "empty")
-DEFAULT_FONT_SIZE = 11
-DEFAULT_FONT_NAME = "Calibri"
 GENERAL = "General"
 STAT_DIGITS = 10
 
@@ -115,9 +114,9 @@ def color_text(color) -> str | None:
 
 def font_text(font) -> str | None:
     parts = [word for word, present in (("bold", font.b), ("italic", font.i), ("underline", font.u)) if present]
-    if font.sz and float(font.sz) != DEFAULT_FONT_SIZE:
+    if font.sz and float(font.sz) != DEFAULT_FONT.sz:
         parts.append(f"{float(font.sz):g}pt")
-    if font.name and font.name != DEFAULT_FONT_NAME:
+    if font.name and font.name != DEFAULT_FONT.name:
         parts.append(font.name)
     color = color_text(font.color)
     if color:

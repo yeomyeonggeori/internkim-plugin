@@ -12,6 +12,7 @@ from pptx.oxml.ns import qn
 from pptx.util import Emu, Pt
 import pypdfium2
 
+from fonts.registry import OFFICE_KOREAN_FAMILY
 from markdown_blocks import inline_segments, link_parts, strip_inline_markers
 from office_inputs import unlocked_pdf_bytes
 from pdf_to_blocks import MINIMUM_IMAGE_POINTS, Segment, crop, inside_any, page_image_bitmap, page_segments
@@ -21,7 +22,6 @@ from pdf_tables import page_tables
 EMU_PER_POINT = 12700
 SMALLEST_SLIDE_POINTS = 72
 LARGEST_SLIDE_POINTS = 4032
-EAST_ASIAN_TYPEFACE = "맑은 고딕"
 LINE_X_TOLERANCE_POINTS = 4
 LINE_GAP_FACTOR = 0.8
 SIZE_TOLERANCE_POINTS = 0.6
@@ -220,7 +220,7 @@ def set_east_asian_typeface(run) -> None:
     if east_asian is None:
         east_asian = properties.makeelement(qn("a:ea"), {})
         properties.append(east_asian)
-    east_asian.set("typeface", EAST_ASIAN_TYPEFACE)
+    east_asian.set("typeface", OFFICE_KOREAN_FAMILY)
 
 
 def table_fills(page, table) -> list[dict]:

@@ -18,8 +18,6 @@ An editable outbound document proposing a role and compensation package to a con
 ```json
 {
   "title": "Offer Letter",
-  "fontName": "Pretendard",
-  "fontSize": 10.5,
   "page": { "marginInches": 0.9 },
   "blocks": [
     { "type": "paragraph", "text": "Dear <candidate name>, we are delighted to extend the following offer to join <company name>." },

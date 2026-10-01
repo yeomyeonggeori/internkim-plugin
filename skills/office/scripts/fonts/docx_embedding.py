@@ -12,6 +12,7 @@ import zipfile
 from lxml import etree
 
 from fonts.registry import FAMILIES, MONOSPACE, SERIF_BODY, BundledFamily, BundledFace, face_facts
+from fonts.truetype import HANGUL_CHARSET
 from skill_runtime import skill_cache_path
 
 
@@ -33,8 +34,7 @@ EMBED_ELEMENTS = {"regular": "embedRegular", "bold": "embedBold", "italic": "emb
 FONT_CHILD_ORDER = ("altName", "panose1", "charset", "family", "notTrueType", "pitch", "sig", *EMBED_ELEMENTS.values())
 SETTINGS_BEFORE_EMBEDDING = ("writeProtection", "view", "zoom", "removePersonalInformation", "removeDateAndTime", "doNotDisplayPageBoundaries", "displayBackgroundShape", "printPostScriptOverText", "printFractionalCharacterWidth", "printFormsData")
 FONT_FAMILY_CLASSES = {SERIF_BODY: "roman", MONOSPACE: "modern"}
-HANGUL_CHARSET = "81"
-DEFAULT_CHARSET = "00"
+DEFAULT_CHARSET = 0
 FONT_KEY_NAMESPACE = uuid.UUID("6f1d3a2e-6c1b-4b0a-9a39-2b4c1f0e7d55")
 PRINTABLE_ASCII = "".join(chr(code) for code in range(0x20, 0x7F))
 KS_X_1001_HANGUL = "".join(bytes((lead, trail)).decode("euc-kr") for lead in range(0xB0, 0xC9) for trail in range(0xA1, 0xFF))
@@ -221,7 +221,7 @@ def new_font_entry(font_table, face: NamedFace):
     entry.set(f"{{{WORD_NAMESPACE}}}name", face.name)
     values = (
         ("panose1", facts.panose),
-        ("charset", HANGUL_CHARSET if facts.is_korean else DEFAULT_CHARSET),
+        ("charset", f"{HANGUL_CHARSET if facts.is_korean else DEFAULT_CHARSET:02X}"),
         ("family", FONT_FAMILY_CLASSES.get(face.family.role, "swiss")),
         ("pitch", "fixed" if facts.is_fixed_pitch else "variable"),
     )

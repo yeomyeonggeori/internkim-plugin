@@ -37,7 +37,7 @@ A standardized form belongs to paperwork even when it ships as .docx or PDF: its
 
 **Verify before attaching.** Run the final check the format's reference names and look at the pages it renders. Pass the source names, dates, totals, and key labels as `--required-text` where the command takes it. Read every warning, revise real problems, then attach only the accepted final output. Say what visual uncertainty remains.
 
-**Fonts.** The skill ships its fonts in `assets/fonts` and draws every page with them, so a page looks the same on any host. Documents and tables use Pretendard, serif text NanumMyeongjo or MaruBuri, code D2Coding, and decks Paperlogy, Freesentation or A2Z; a font a file names that the skill does not ship is drawn with the shipped family of its kind. A .docx carries the shipped fonts it names, except MaruBuri, and a .pptx carries its deck font, so the recipient sees them without installing anything. Excel cannot carry fonts, so a workbook keeps Office's own. Pass a font path only when the user supplies a font file.
+**Fonts.** The skill ships its fonts and draws every page with them, so a page looks the same on any host; `<skill>/scripts/office guide` lists each family and its kind. A font a file names that the skill does not ship is drawn with the shipped family of its kind. A .docx or .pptx carries the shipped fonts it uses, so the recipient needs nothing installed; a workbook cannot carry fonts and keeps Office's own. Pass a font path only when the user supplies a font file.
 
 **Dependencies.** The `office` command installs its packages into its own environment on first use. Never run pip or uv yourself, and keep dependency caches apart from source documents.
 

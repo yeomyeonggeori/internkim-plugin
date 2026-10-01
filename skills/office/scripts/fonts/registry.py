@@ -7,6 +7,7 @@ import io
 import os
 import pathlib
 
+from fonts.truetype import ENGLISH_UNITED_STATES, FAMILY_NAME_ID, FULL_NAME_ID, SUBFAMILY_NAME_ID, UNICODE_BMP_ENCODING, WINDOWS_PLATFORM, has_korean_code_page, license_allows_embedding
 from skill_runtime import skill_cache_path
 
 
@@ -15,23 +16,16 @@ OPENTYPE_FLAVOR = b"OTTO"
 WOFF2_FLAVOR_OFFSET = 4
 REGULAR_WEIGHT = 400
 BOLD_WEIGHT = 700
-FAMILY_NAME_ID = 1
-FULL_NAME_ID = 4
 POSTSCRIPT_NAME_ID = 6
-STYLE_NAME_ID = 2
 FACE_NAME_IDS = (FAMILY_NAME_ID, FULL_NAME_ID, POSTSCRIPT_NAME_ID)
-WINDOWS_PLATFORM = 3
-UNICODE_BMP_ENCODING = 1
-ENGLISH_UNITED_STATES = 0x409
-KOREAN_CODE_PAGE_BITS = (19, 21)
-RESTRICTED_LICENSE_BITS = 0x000F
-RESTRICTED_LICENSE_EMBEDDING = 0x0002
 
 SANS_BODY = "sans body"
 SERIF_BODY = "serif body"
 MONOSPACE = "monospace"
 DECK = "deck"
 ROLE_GENERIC_FAMILIES = {SANS_BODY: "sans-serif", SERIF_BODY: "serif", MONOSPACE: "monospace"}
+CSS_GENERIC_FAMILIES = frozenset({"serif", "sans-serif", "monospace", "system-ui", "ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded", "-apple-system", "blinkmacsystemfont", "cursive", "fantasy", "emoji", "math", "fangsong"})
+OFFICE_KOREAN_FAMILY = "맑은 고딕"
 
 
 @dataclass(frozen=True)
@@ -80,7 +74,7 @@ class FaceFacts:
 
     @property
     def can_embed_in_office(self) -> bool:
-        return self.has_truetype_outlines and self.fs_type & RESTRICTED_LICENSE_BITS != RESTRICTED_LICENSE_EMBEDDING
+        return self.has_truetype_outlines and license_allows_embedding(self.fs_type)
 
 
 @dataclass(frozen=True)
@@ -217,10 +211,10 @@ def face_facts(family: BundledFamily, face: BundledFace) -> FaceFacts:
         metrics = font["OS/2"]
         return FaceFacts(
             family_names=tuple(dict.fromkeys((english_name(names, FAMILY_NAME_ID), *(record.toUnicode() for record in names.names if record.nameID == FAMILY_NAME_ID)))),
-            style=english_name(names, STYLE_NAME_ID),
+            style=english_name(names, SUBFAMILY_NAME_ID),
             fs_type=metrics.fsType,
             panose=panose_hex(metrics.panose),
-            is_korean=any(metrics.ulCodePageRange1 & (1 << bit) for bit in KOREAN_CODE_PAGE_BITS),
+            is_korean=has_korean_code_page(metrics.ulCodePageRange1),
             is_fixed_pitch=bool(font["post"].isFixedPitch),
             has_truetype_outlines="glyf" in font,
         )
@@ -238,6 +232,11 @@ def panose_hex(panose) -> str:
 
 def stand_in_family(name: str) -> BundledFamily:
     return default_family(STAND_IN_ROLES.get(name.strip().casefold(), SANS_BODY))
+
+
+def font_role(name: str) -> str:
+    family = bundled_family(name)
+    return family.role if family is not None else stand_in_family(name).role
 
 
 def resolved_face(name: str, weight: int = REGULAR_WEIGHT) -> ResolvedFace:

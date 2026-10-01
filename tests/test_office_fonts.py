@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import sys
 import unittest
 
@@ -7,10 +8,12 @@ OFFICE_SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" 
 sys.path.insert(0, str(OFFICE_SCRIPTS_PATH))
 sys.path.insert(0, str(OFFICE_SCRIPTS_PATH / "deck"))
 
-from fonts.registry import DECK, FAMILIES, FONT_DIRECTORY, ROLE_GENERIC_FAMILIES, default_family, renderer_fonts, resolved_face  # noqa: E402
+from fonts.registry import CSS_GENERIC_FAMILIES, DECK, FAMILIES, FONT_DIRECTORY, ROLE_GENERIC_FAMILIES, default_family, renderer_fonts, resolved_face  # noqa: E402
 from native_preview import preview_font_path  # noqa: E402
 
 HANGUL_SYLLABLES = range(0xAC00, 0xD7A4)
+DECK_KIT_STYLE = OFFICE_SCRIPTS_PATH.parent / "assets" / "deck-kit" / "deck-kit.css"
+TEXT_LAYOUT_SCRIPT = OFFICE_SCRIPTS_PATH / "render" / "text_layout.mjs"
 FAMILY_NOTES = ("OFL.txt", "README.md")
 
 
@@ -62,6 +65,16 @@ class BundledFontRegistryTest(unittest.TestCase):
                 with self.subTest(face=face.file_name):
                     resolved = resolved_face(resolved_face(family.name, face.weight).typeface, face.weight)
                     self.assertEqual((resolved.family, resolved.face, resolved.is_substitute), (family, face, False))
+
+
+class FontNamesOutsidePythonTest(unittest.TestCase):
+    def test_the_deck_kit_draws_with_the_registry_deck_family(self):
+        declared = re.search(r'--font:\s*"([^"]+)"', DECK_KIT_STYLE.read_text(encoding="utf-8")).group(1)
+        self.assertEqual(declared, default_family(DECK).name)
+
+    def test_the_page_layout_script_knows_the_same_generic_families(self):
+        listed = re.search(r"genericFamilies = new Set\(\[([^\]]*)\]\)", TEXT_LAYOUT_SCRIPT.read_text(encoding="utf-8")).group(1)
+        self.assertEqual(set(re.findall(r'"([^"]+)"', listed)), CSS_GENERIC_FAMILIES)
 
 
 class NativeReviewImageFontTest(unittest.TestCase):

@@ -5,6 +5,7 @@ import pathlib
 import sys
 from types import ModuleType
 
+from fonts.registry import FAMILIES, face_facts
 from office_commands import COMMANDS, FORMATS, Format
 from office_result import COMMAND_ISSUE_KINDS, UNKNOWN_COMMAND, IssueKind, OfficeFailure
 from office_schema import Field, Record, Shape, Variant, closest_name
@@ -107,7 +108,20 @@ def formats_text() -> str:
     width = max(len(office_format.name) for office_format in FORMATS)
     lines = [USAGE, ""]
     lines.extend(f"  {office_format.name.ljust(width)}  {office_format.summary}" for office_format in FORMATS)
-    return "\n".join(lines)
+    return "\n".join([*lines, "", *font_lines()])
+
+
+def font_lines() -> list[str]:
+    roles = list(dict.fromkeys(family.role for family in FAMILIES))
+    width = max(len(role) for role in roles)
+    lines = ["Fonts the skill ships and draws every page with (the first of each kind is its default; * a .docx or .pptx cannot carry it)"]
+    lines.extend(f"  {role.ljust(width)}  {', '.join(family_label(family) for family in FAMILIES if family.role == role)}" for role in roles)
+    return lines
+
+
+def family_label(family) -> str:
+    carried = all(face_facts(family, face).can_embed_in_office for face in family.faces)
+    return family.name if carried else f"{family.name}*"
 
 
 def load_definitions(office_format: Format) -> ModuleType:

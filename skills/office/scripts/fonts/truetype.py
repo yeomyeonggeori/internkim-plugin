@@ -18,6 +18,8 @@ EOT_ROOT_STRING_CHECKSUM = 0x50475342
 EOT_EUDC_CODE_PAGE = 0x000004E4
 KOREAN_CODE_PAGE_BITS = (19, 21)
 HANGUL_CHARSET = 129
+RESTRICTED_LICENSE_BITS = 0x000F
+RESTRICTED_LICENSE_EMBEDDING = 0x0002
 
 
 @dataclass(frozen=True)
@@ -38,9 +40,7 @@ class TrueTypeFace:
 
     @property
     def charset(self) -> int:
-        if any(self.code_page_ranges[0] & (1 << bit) for bit in KOREAN_CODE_PAGE_BITS):
-            return HANGUL_CHARSET
-        return 0
+        return HANGUL_CHARSET if has_korean_code_page(self.code_page_ranges[0]) else 0
 
     @property
     def signed_charset(self) -> int:
@@ -48,7 +48,15 @@ class TrueTypeFace:
 
     @property
     def allows_embedding(self) -> bool:
-        return self.fs_type & 0x000F != 0x0002
+        return license_allows_embedding(self.fs_type)
+
+
+def has_korean_code_page(code_page_range: int) -> bool:
+    return any(code_page_range & (1 << bit) for bit in KOREAN_CODE_PAGE_BITS)
+
+
+def license_allows_embedding(fs_type: int) -> bool:
+    return fs_type & RESTRICTED_LICENSE_BITS != RESTRICTED_LICENSE_EMBEDDING
 
 
 def read_truetype_face(path: pathlib.Path) -> TrueTypeFace:
