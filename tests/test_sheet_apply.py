@@ -121,6 +121,20 @@ class SpecificSuggestionTest(WorkbookEditTest):
         self.assertIn('[["담당자", "매출"], ["이샘플", 5], ["박예시", 6]]', issue["suggestion"])
 
 
+class TextLimitTest(WorkbookEditTest):
+    def test_text_past_an_excel_limit_is_refused_with_the_limit(self):
+        issue = self.apply([{"op": "add_chart", "sheet": "Sales", "type": "bar", "range": "A1:B4", "title": "가" * 3000}], name="fixture.xlsx")["issues"][0]
+        self.assertEqual((issue["code"], issue["location"]), ("INVALID_VALUE", "ops[0].title"))
+        self.assertIn("more than the 255", issue["message"])
+        issue = self.apply([{"op": "set_cell", "sheet": "Sales", "cell": "A9", "value": "x" * 32768}], name="fixture.xlsx")["issues"][0]
+        self.assertIn("an Excel cell holds at most 32767", issue["message"])
+        write_json(self.directory / "spec.json", {"sheets": [{"title": "2026년 3분기 영업 실적 지역별 담당자별 상세 분석 보고서", "rows": [["a"]]}]})
+        issue = run_office(["sheet", "create", "book.xlsx", "--spec", "spec.json"], self.directory)["issues"][0]
+        self.assertEqual(issue["location"], "spec.sheets[0].title")
+        self.assertIn("at most 31 characters", issue["message"])
+        self.assertFalse((self.directory / "book.xlsx").exists())
+
+
 class InsertAndDeleteTest(WorkbookEditTest):
     def test_inserted_rows_shift_every_reference_that_points_past_them(self):
         self.edit([{"op": "insert_rows", "sheet": "Sales", "at": 3, "count": 2}])

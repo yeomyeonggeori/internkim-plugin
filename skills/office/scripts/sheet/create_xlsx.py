@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 from cell_values import typed_cell_value
 from excel_functions import written_value
@@ -13,6 +14,7 @@ from office_schema import require_valid
 from sheet_definitions import WORKBOOK_SPECIFICATION
 from sheet_operations import SHEET_OPERATIONS, SheetEditing, save_editing
 from sheet_styling import style_table
+from sheet_workbook import validate_sheet_name
 from written_cells import require_writable_rows
 
 
@@ -30,7 +32,16 @@ def read_specification(arguments):
     else:
         raise OfficeFailure(INVALID_ARGUMENTS.issue("provide at least --title or --row, or pass --spec <file>"))
     require_valid(WORKBOOK_SPECIFICATION, specification, location)
+    require_sheet_titles(specification, location)
     return specification
+
+
+def require_sheet_titles(specification, location):
+    taken = SimpleNamespace(sheetnames=[])
+    for index, sheet_specification in enumerate(specification["sheets"]):
+        title = sheet_specification["title"].strip()
+        validate_sheet_name(taken, title, f"{location}.sheets[{index}].title")
+        taken.sheetnames.append(title)
 
 
 def create_workbook(specification):

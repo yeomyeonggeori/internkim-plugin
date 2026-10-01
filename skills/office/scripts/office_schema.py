@@ -24,16 +24,20 @@ class Shape:
 @dataclass(frozen=True)
 class Text(Shape):
     non_empty: bool = False
+    maximum_length: int | None = None
 
     @property
     def label(self) -> str:
-        return "non-empty text" if self.non_empty else "text"
+        noun = "non-empty text" if self.non_empty else "text"
+        return f"{noun} of at most {self.maximum_length} characters" if self.maximum_length else noun
 
     def problems(self, value: object, location: str) -> list[Issue]:
         if not isinstance(value, str):
             return [wrong_type(self, value, location)]
         if self.non_empty and not value.strip():
             return [MISSING_FIELD.issue(f"{location}: must not be empty", location)]
+        if self.maximum_length is not None and len(value) > self.maximum_length:
+            return [INVALID_VALUE.issue(f"{location}: {len(value)} characters, more than the {self.maximum_length} this field holds", location, f"shorten it to {self.maximum_length} characters or fewer")]
         return []
 
 

@@ -36,7 +36,7 @@ ROWS = Rows(ListOf(CellValue()))
 READ_ROW_LIMIT = 500
 
 SHEET = Record("sheet", "one worksheet; the first row, or the row after the heading, is the header", (
-    Field("title", Text(non_empty=True), "sheet name, cut to 31 characters", required=True),
+    Field("title", Text(non_empty=True), "sheet name, at most 31 characters, without [ ] : * ? / \\", required=True),
     Field("heading", Text(), "bold title row above the table"),
     Field("rows", ROWS, "rows in order; text starting with = is a formula and YYYY-MM-DD is a date"),
     Field("csvPath", Text(non_empty=True), "read the rows from this CSV or TSV file instead of rows"),
@@ -59,15 +59,16 @@ CHART_INDEX = Field("chart", Number(minimum=0, integer=True), "chart index on th
 SHAPE_GEOMETRIES = {"rectangle": "rect", "rounded_rectangle": "roundRect", "ellipse": "ellipse", "arrow": "rightArrow", "callout": "wedgeRectCallout", "textbox": "rect"}
 COMPARISON_OPERATORS = ("between", "not_between", "equal", "not_equal", "greater_than", "less_than", "greater_or_equal", "less_or_equal")
 CHART_TYPES = ("bar", "line", "pie", "area", "doughnut", "scatter", "radar", "combo")
+CHART_TITLE_LIMIT = 255
 CHART_FIELDS = (
-    Field("title", Text(), "chart title"),
+    Field("title", Text(maximum_length=CHART_TITLE_LIMIT), "chart title; Excel keeps at most 255 characters in a chart or axis title"),
     Field("anchor", CELL_ADDRESS, "cell the chart's top-left corner sits on, default two columns right of the data"),
     Field("horizontal", Boolean(), "bar and combo: bars run sideways"),
     Field("stacked", Boolean(), "bar, area and line: stack the series"),
     Field("lineSeries", Number(minimum=1, integer=True), "combo: how many of the last series are lines, default 1"),
     Field("secondaryAxis", Boolean(), "combo: lines use a right-hand axis, default true"),
-    Field("xTitle", Text(), "category axis title"),
-    Field("yTitle", Text(), "value axis title"),
+    Field("xTitle", Text(maximum_length=CHART_TITLE_LIMIT), "category axis title"),
+    Field("yTitle", Text(maximum_length=CHART_TITLE_LIMIT), "value axis title"),
     Field("legend", Choice(("bottom", "right", "top", "none")), "legend position, default bottom; none hides it"),
     Field("dataLabels", Boolean(), "show each point's value"),
     Field("colors", ListOf(HexColor()), "one color per series in order, or per slice of a pie or doughnut, such as [\"1F4E79\", \"F59E0B\"]; series past the list take the default palette"),
@@ -269,8 +270,8 @@ OPERATIONS = Variant(
             Field("centerHorizontally", Boolean(), "center the printout between the side margins"),
             Field("pageNumbers", Boolean(), "print page X / Y in the footer"),
             Field("scale", Number(minimum=10, maximum=400, integer=True), "print at this percent of full size instead of fitting the width"),
-            Field("header", Text(), "text printed at the top of every page; {page}, {pages}, {date}, {sheet} and {file} are filled in; empty text removes it"),
-            Field("footer", Text(), "text printed at the bottom of every page, with header's placeholders; empty text removes it"),
+            Field("header", Text(maximum_length=255), "text printed at the top of every page, at most 255 characters as Excel allows; {page}, {pages}, {date}, {sheet} and {file} are filled in; empty text removes it"),
+            Field("footer", Text(maximum_length=255), "text printed at the bottom of every page, with header's placeholders and limit; empty text removes it"),
             Field("pageBreakRows", ListOf(Number(minimum=1, integer=True)), "rows after which a new page starts; an empty list removes them"),
             Field("pageBreakColumns", ListOf(Text(non_empty=True)), "column letters after which a new page starts; an empty list removes them"),
         )),
