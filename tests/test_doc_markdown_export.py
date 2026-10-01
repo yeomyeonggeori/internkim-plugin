@@ -136,6 +136,13 @@ class MathTest(unittest.TestCase):
         pdf = run_office(["doc", "export", "평균.md", "--output", "평균.pdf"], self.directory)
         self.assertEqual(pdf["issues"], [])
 
+    def test_broken_latex_is_named_with_its_reason_and_never_raised(self):
+        (self.directory / "깨진.md").write_text("제곱은 $x^$ 이고 근은 $\\sqrt$ 이다.\n", encoding="utf-8")
+        envelope = run_office(["doc", "export", "깨진.md", "--output", "깨진.docx"], self.directory)
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("MATH_NOT_CONVERTED", "x^"), ("MATH_NOT_CONVERTED", "\\sqrt")])
+        for issue in envelope["issues"]:
+            self.assertNotIn("()", issue["message"])
+
     def test_the_pdf_typesets_the_formulas_instead_of_printing_latex(self):
         self.assertEqual([issue["code"] for issue in self.export("수식.pdf")["issues"]], ["MATH_NOT_CONVERTED"])
         text = pdf_text("수식.pdf", self.directory)

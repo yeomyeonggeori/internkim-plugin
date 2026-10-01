@@ -7,18 +7,21 @@ import os
 from pathlib import Path
 from types import SimpleNamespace
 
+from openpyxl.utils import get_column_letter
+
 from sheet.cell_values import typed_cell_value
 from sheet.excel_functions import written_value
 from core.office_inputs import read_text_input
 from core.office_operations import apply_batch, save_atomically
-from core.office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
-from core.office_schema import require_valid
+from core.office_result import INVALID_ARGUMENTS, INVALID_VALUE, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
+from core.office_schema import closest_name, require_valid
 from sheet.sheet_definitions import WORKBOOK_SPECIFICATION
 from sheet.sheet_operations import SHEET_OPERATIONS, SheetEditing, save_editing
 from sheet.sheet_styling import style_table
 from sheet.sheet_workbook import validate_sheet_name
 from sheet.written_cells import argument_rows, require_writable_rows
-from core.excel_limits import fitting_sheet_name
+from core.excel_limits import MAXIMUM_COLUMN, fitting_sheet_name
+from sheet.workbook_access import column_index
 from core.office_outputs import output_file
 
 
@@ -50,7 +53,6 @@ def require_sheet_titles(specification, location):
 
 def create_workbook(specification):
     from openpyxl import Workbook
-    from openpyxl.utils import get_column_letter
 
     workbook = Workbook()
     default_sheet = workbook.active
@@ -61,7 +63,7 @@ def create_workbook(specification):
 
     for index, sheet_specification in enumerate(specification["sheets"]):
         worksheet = add_sheet(workbook, sheet_specification, get_column_letter, f"spec.sheets[{index}]")
-        apply_default_formatting(worksheet, sheet_specification)
+        apply_default_formatting(worksheet, sheet_specification, f"spec.sheets[{index}]")
 
     return workbook
 
@@ -107,26 +109,50 @@ def read_delimited_rows(sheet_specification):
     delimiter = sheet_specification.get("delimiter") or ","
     if delimiter == "\\t":
         delimiter = "\t"
-    return [[typed_cell_value(text) for text in row] for row in csv.reader(io.StringIO(read_text_input(csv_path), newline=""), delimiter=delimiter)]
+    text = read_text_input(csv_path)
+    return [[typed_cell_value(value) for value in row] for row in csv.reader(io.StringIO(text, newline=""), delimiter=line_delimiter(text, delimiter))]
 
 
-def apply_default_formatting(worksheet, sheet_specification):
+def line_delimiter(text, delimiter):
+    first_line = text.split("\n", 1)[0]
+    return "\t" if delimiter == "," and "," not in first_line and "\t" in first_line else delimiter
+
+
+def apply_default_formatting(worksheet, sheet_specification, location):
     if worksheet.max_row == 0:
         return
     style_table(worksheet, bool(optional_text(sheet_specification.get("heading"))))
-    apply_column_widths(worksheet, sheet_specification)
-    apply_column_number_formats(worksheet, sheet_specification)
-
-
-def apply_column_widths(worksheet, sheet_specification):
-    for column_letter, width in (sheet_specification.get("columnWidths") or {}).items():
-        worksheet.column_dimensions[column_letter.upper()].width = max(float(width), 4.0)
-
-
-def apply_column_number_formats(worksheet, sheet_specification):
-    for column_letter, number_format in (sheet_specification.get("numberFormats") or {}).items():
-        for cell in worksheet[column_letter.upper()]:
+    headers = header_letters(worksheet, header_row_index(sheet_specification))
+    for column_letter, width in by_column_letter(sheet_specification, "columnWidths", headers, location).items():
+        worksheet.column_dimensions[column_letter].width = max(float(width), 4.0)
+    for column_letter, number_format in by_column_letter(sheet_specification, "numberFormats", headers, location).items():
+        for cell in worksheet[column_letter]:
             cell.number_format = number_format
+
+
+def header_letters(worksheet, header_row):
+    return {str(cell.value): cell.column_letter for cell in worksheet[header_row] if cell.value not in (None, "")}
+
+
+def by_column_letter(sheet_specification, field, headers, location):
+    return {keyed_column_letter(key, headers, f"{location}.{field}.{key}"): value for key, value in (sheet_specification.get(field) or {}).items()}
+
+
+def keyed_column_letter(key, headers, location):
+    if key.strip().isascii() and key.strip().isalpha():
+        return get_column_letter(column_index(key, location))
+    meant = meant_column(key.strip(), headers)
+    suggestion = f'use "{meant[0]}", {meant[1]}' if meant else "use a column letter such as \"C\""
+    raise OfficeFailure(INVALID_VALUE.issue(f"{location}: {key!r} is not a column letter", location, suggestion))
+
+
+def meant_column(key, headers):
+    header = key if key in headers else closest_name(key, list(headers))
+    if header is not None:
+        return headers[header], f"the column headed {header!r}"
+    if key.isdigit() and 1 <= int(key) <= MAXIMUM_COLUMN:
+        return get_column_letter(int(key)), f"column number {key}"
+    return None
 
 
 def build_specification(arguments):

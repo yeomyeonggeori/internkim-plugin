@@ -6,7 +6,7 @@ import re
 from typing import Iterator
 
 from core.css_color import named_color_hex
-from core.office_result import INVALID_VALUE, MISSING_FIELD, UNKNOWN_FIELD, WRONG_TYPE, Issue, OfficeFailure
+from core.office_result import INVALID_VALUE, MISSING_FIELD, UNKNOWN_FIELD, WRONG_TYPE, Issue, OfficeFailure, guide_reference
 
 
 HEX_COLOR_PATTERN = re.compile(r"#?[0-9A-Fa-f]{6}")
@@ -37,7 +37,7 @@ class Text(Shape):
         if not isinstance(value, str):
             return [wrong_type(self, value, location)]
         if self.non_empty and not value.strip():
-            return [MISSING_FIELD.issue(f"{location}: must not be empty", location)]
+            return [MISSING_FIELD.issue(f"{location}: the text is empty", location, "write the value in it")]
         if self.maximum_length is not None and len(value) > self.maximum_length:
             return [INVALID_VALUE.issue(f"{location}: {len(value)} characters, more than the {self.maximum_length} this field holds", location, f"shorten it to {self.maximum_length} characters or fewer")]
         return []
@@ -137,7 +137,7 @@ class ListOf(Shape):
         if not isinstance(value, list):
             return [wrong_type(self, value, location)]
         if self.non_empty and not value:
-            return [MISSING_FIELD.issue(f"{location}: must hold at least one item", location)]
+            return [MISSING_FIELD.issue(f"{location}: the list is empty and must hold at least one item", location, f"put at least one item in the list; {guide_reference()} describes its items")]
         return [problem for index, item in enumerate(value) for problem in self.item.problems(item, f"{location}[{index}]")]
 
     def structures(self) -> Iterator["Record | Variant"]:

@@ -104,6 +104,8 @@ def parse_arguments(arguments: list[str]) -> tuple[str, str, int]:
     output = parsed.output_option or parsed.output
     if not output:
         parser.error("give the output path as the second argument or --output")
+    if not parsed.query.strip():
+        parser.error("the query is empty; give a concrete English scene, such as \"harbor cranes at dawn\"")
     require_output_extension(output, tuple(SAVE_FORMATS))
     return parsed.query, output, max(1, parsed.count)
 

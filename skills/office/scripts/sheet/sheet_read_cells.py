@@ -24,6 +24,8 @@ def selected_columns(text: str | None, bounds: tuple[int, int, int, int]) -> lis
     for piece in text.split(","):
         first, _, last = piece.strip().partition(":")
         start, end = column_index(first, "--cols"), column_index(last or first, "--cols")
+        if start > end:
+            raise OfficeFailure(INVALID_VALUE.issue(f"--cols: {piece.strip()!r} runs from right to left, so it names no column", "--cols", f"write it left to right: {get_column_letter(end)}:{get_column_letter(start)}"))
         offsets.extend(range(start - bounds[1], end - bounds[1] + 1))
     outside = [offset for offset in offsets if not 0 <= offset < width]
     if outside:

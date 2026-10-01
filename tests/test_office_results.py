@@ -170,6 +170,11 @@ class OutputPathTest(unittest.TestCase):
                     self.assertEqual([issue["code"] for issue in envelope["issues"]], ["WRONG_OUTPUT_FORMAT"])
             self.assertEqual(sorted(path.name for path in working_directory.iterdir()), ["book.xlsx", "ops.json", "values.json"])
 
+    def test_an_empty_image_query_is_refused_before_any_search(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, envelope = run_office(["deck", "image", " ", "images/photo.jpg"], Path(directory))
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["INVALID_ARGUMENTS"])
+
     def test_a_read_only_disk_is_named_rather_than_raised(self):
         def write_on_read_only_disk():
             raise OSError(errno.EROFS, "Read-only file system", "/Volumes/archive/report.docx")
@@ -267,6 +272,14 @@ class SchemaTest(unittest.TestCase):
 
     def test_a_boolean_is_not_a_number(self):
         self.assertEqual(self.codes_and_locations({"name": "a", "size": True}), [("WRONG_TYPE", "spec.size")])
+
+    def test_an_empty_list_or_text_says_it_is_empty_rather_than_absent(self):
+        empty_list = ListOf(Text(), non_empty=True).problems([], "spec.blocks")[0]
+        empty_text = Text(non_empty=True).problems(" ", "spec.title")[0]
+        self.assertEqual((empty_list.kind.code, empty_text.kind.code), ("MISSING_FIELD", "MISSING_FIELD"))
+        self.assertIn("the list is empty", empty_list.message)
+        self.assertNotEqual(empty_list.suggestion, empty_list.kind.default_suggestion())
+        self.assertNotEqual(empty_text.suggestion, empty_text.kind.default_suggestion())
 
 
 class PaperworkSkeletonTest(unittest.TestCase):

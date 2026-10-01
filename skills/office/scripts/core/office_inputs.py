@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import codecs
 from contextlib import contextmanager
 from dataclasses import dataclass
 import glob
@@ -21,6 +22,7 @@ MAIN_PART_RELATIONSHIPS = (
     "http://purl.oclc.org/ooxml/officeDocument/relationships/officeDocument",
 )
 TEXT_ENCODINGS = ("utf-8-sig", "cp949")
+UTF16_BYTE_ORDER_MARKS = (codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)
 CONTENT_TYPES_NAMESPACE = "{http://schemas.openxmlformats.org/package/2006/content-types}"
 PDF_SIGNATURE = b"%PDF-"
 LEGACY_OFFICE_SIGNATURE = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
@@ -130,12 +132,14 @@ def read_text_input(path: str) -> str:
     kind = detected_kind(expanded_path)
     if kind != OTHER:
         raise OfficeFailure(WRONG_INPUT_FORMAT.issue(f"{path} is {kind.description}, not a text file", location=path, suggestion=redirect_suggestion(path, kind)))
+    if data.startswith(UTF16_BYTE_ORDER_MARKS):
+        return data.decode("utf-16")
     for encoding in TEXT_ENCODINGS:
         try:
             return data.decode(encoding)
         except UnicodeDecodeError:
             continue
-    raise OfficeFailure(WRONG_INPUT_FORMAT.issue(f"{path} is neither UTF-8 nor CP949 text", location=path, suggestion="save the file as UTF-8 text and rerun"))
+    raise OfficeFailure(WRONG_INPUT_FORMAT.issue(f"{path} is neither UTF-8, UTF-16 with a byte order mark, nor CP949 text", location=path, suggestion="save the file as UTF-8 text and rerun"))
 
 
 def detected_kind(path: str) -> InputKind:

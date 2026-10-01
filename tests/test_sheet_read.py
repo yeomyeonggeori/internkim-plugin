@@ -110,6 +110,11 @@ class ReadTest(WorkbookFixture):
         self.assertEqual(selected["columns"], ["A", "C", "D"])
         self.assertEqual(selected["values"][0], ["item", None, 120])
 
+    def test_a_column_span_written_right_to_left_is_refused(self):
+        envelope = run_office(["sheet", "read", "fixture.xlsx", "--range", "A1:D3", "--cols", "D:A"], self.directory)
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("INVALID_VALUE", "--cols")])
+        self.assertIn("A:D", envelope["issues"][0]["suggestion"])
+
     def test_formats_show_what_is_styled(self):
         formats = self.read("--range", "A1:B2", "--formats")["range"]
         by_cell = {cell["cell"]: cell for cell in formats["cells"]}
