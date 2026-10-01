@@ -20,19 +20,16 @@ NATIVE_RENDER_SOURCE = "nativeFallback"
 @dataclass(frozen=True)
 class ReviewCheck:
     kind: IssueKind
-    label: str = ""
-    weight: int = 0
 
     def issue(self, text: str, location: str | None = None) -> Issue:
-        message = f"{self.label}: {text}" if self.label else text
-        return self.kind.issue(message, location)
+        return self.kind.issue(text, location)
 
     def deck_issue(self, text: str) -> Issue:
         return self.issue(text, DECK_LOCATION)
 
 
-def review_check(code: str, meaning: str, suggestion: str, label: str = "", weight: int = 0) -> ReviewCheck:
-    return ReviewCheck(IssueKind(code, WARNING, meaning, suggestion), label, weight)
+def review_check(code: str, meaning: str, suggestion: str) -> ReviewCheck:
+    return ReviewCheck(IssueKind(code, WARNING, meaning, suggestion))
 
 
 SLIDE_BLANK = review_check("SLIDE_BLANK", "the slide render shows no content", "check that the slide's content is not hidden or outside the frame")
@@ -43,54 +40,40 @@ SLIDE_TOO_CROWDED = review_check("SLIDE_TOO_CROWDED", "the slide is visually cro
 CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is larger than its box, so it is clipped or spills out", "enlarge the box, cut the content, or lower the type size")
 OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "move or resize the element so it sits inside the slide")
 TEXT_OVERLAP = review_check("TEXT_OVERLAP", "two pieces of text cover each other", "separate the two text blocks or shorten the one that spills")
+TINY_TEXT = review_check("TINY_TEXT", "rendered text is smaller than 1% of the slide width (16px on a 1600px slide)", "raise the text size, or shorten the slide so the kit does not shrink it")
 IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "set object-fit: cover or contain, or size the image to its ratio")
 GEOMETRY_NOT_MEASURED = review_check("GEOMETRY_NOT_MEASURED", "no renderer measured element geometry, so overflow, overlap and stretched images were not checked", "install bun or node 18 and build again, or say the layout was not measured")
-FRAME_FIT_RISK = review_check("FRAME_FIT_RISK", "content is close to the right or bottom frame edge", "check the contact sheet for clipped text", label="frameFitRisk")
-UNRELIABLE_VISUAL_EVIDENCE = review_check("UNRELIABLE_VISUAL_EVIDENCE", "review images were not drawn from the deck's layout", "treat the previews as approximate and say so when delivering", label="unreliableVisualEvidenceWarning")
+FRAME_FIT_RISK = review_check("FRAME_FIT_RISK", "content is close to the right or bottom frame edge", "check the contact sheet for clipped text")
+UNRELIABLE_VISUAL_EVIDENCE = review_check("UNRELIABLE_VISUAL_EVIDENCE", "review images were not drawn from the deck's layout", "treat the previews as approximate and say so when delivering")
 
-WEAK_VISUAL_IDENTITY = review_check("WEAK_VISUAL_IDENTITY", "the deck declares no visual system", "add data-visual-system to slides.html and describe the system in DESIGN.md", "weakVisualIdentityWarning", 24)
-MISSING_SLIDE_ROLE = review_check("MISSING_SLIDE_ROLE", "a slide lacks data-slide-role", "give every slide section a data-slide-role", "missingSlideRoleWarning", 16)
-SIDE_STRIPE = review_check("SIDE_STRIPE", "thick side border accents carry the visual identity", "carry the identity through composition, type, and color instead", "sideStripeWarning", 14)
-GHOST_CARD = review_check("GHOST_CARD", "thin-bordered soft-shadow boxes read as a default template", "replace them with the deck's own surfaces", "ghostCardWarning", 14)
-TINY_TEXT = review_check("TINY_TEXT", "several CSS font sizes are below 16px", "raise text to at least 16px", "tinyTextWarning", 8)
-REPEATED_COMPOSITION = review_check("REPEATED_COMPOSITION", "three or more slides share one composition", "vary slide composition by role", "repeatedCompositionWarning", 14)
-RAW_STRUCTURE_PATTERN = review_check("RAW_STRUCTURE_PATTERN", "several slides are a raw table or bare list", "turn the tables and lists into designed compositions", "rawStructurePatternWarning", 12)
-RAW_TABLE = review_check("RAW_TABLE", "a raw table is the slide's main composition", "design the comparison instead of dropping in a table", "rawTableWarning", 10)
-BARE_LIST = review_check("BARE_LIST", "a bare list is the slide's main composition", "design the points instead of listing them", "bareListWarning", 10)
-TOPIC_TITLE = review_check("TOPIC_TITLE", "the title is a topic label, not a claim", "write the title as the slide's conclusion", "topicTitleWarning", 8)
-LANGUAGE_MISMATCH = review_check("LANGUAGE_MISMATCH", "slide titles are Latin-only in a Korean deck", "write the titles in the request language", "languageMismatchWarning", 10)
-UNSOURCED_CURRENT_DATE = review_check("UNSOURCED_CURRENT_DATE", "a slide shows today's date that the source does not", "show only dates from the source material", "unsourcedCurrentDateWarning", 10)
-VERTICAL_DEAD_ZONE = review_check("VERTICAL_DEAD_ZONE", "an empty band spans much of the slide height, between content or under the body", "distribute content to fill the frame", "verticalDeadZoneWarning", 10)
-ABSOLUTE_FOOTER = review_check("ABSOLUTE_FOOTER", "an absolutely positioned bottom strip carries text", "make header, body, and footer sibling flow children", "absoluteFooterWarning", 12)
-EMOJI_ICON = review_check("EMOJI_ICON", "a slide uses emoji glyphs", "use text labels, CSS markers, or inline SVG", "emojiIconWarning", 8)
-MISSING_REQUIRED_TEXT = review_check("MISSING_REQUIRED_TEXT", "required-visible-text.txt lines are not visible", "put every required line on a slide", "missingRequiredTextWarning", 14)
-INCONSISTENT_FOOTER_BASELINE = review_check("INCONSISTENT_FOOTER_BASELINE", "the content bottom edge varies across slides", "keep the footer on one baseline", "inconsistentFooterBaselineWarning", 8)
-UNPINNED_FOOTER = review_check("UNPINNED_FOOTER", "the recurring footer is not pinned to the frame bottom", "give it margin-top: auto inside the flex column slide", "unpinnedFooterWarning", 10)
-MISSING_SPEAKER_NOTES = review_check("MISSING_SPEAKER_NOTES", "a slide has no speaker notes", 'add an <aside class="notes"> script to every slide', "missingSpeakerNotesWarning", 8)
+SIDE_STRIPE = review_check("SIDE_STRIPE", "thick side border accents carry the visual identity", "carry the identity through composition, type, and color instead")
+GHOST_CARD = review_check("GHOST_CARD", "thin-bordered soft-shadow boxes read as a default template", "replace them with the deck's own surfaces")
+REPEATED_COMPOSITION = review_check("REPEATED_COMPOSITION", "three or more slides share one composition", "vary slide composition by role")
+TOPIC_TITLE = review_check("TOPIC_TITLE", "the title is a topic label, not a claim", "write the title as the slide's conclusion")
+LANGUAGE_MISMATCH = review_check("LANGUAGE_MISMATCH", "slide titles are Latin-only in a Korean deck", "write the titles in the request language")
+UNSOURCED_CURRENT_DATE = review_check("UNSOURCED_CURRENT_DATE", "a slide shows today's date that the source does not", "show only dates from the source material")
+VERTICAL_DEAD_ZONE = review_check("VERTICAL_DEAD_ZONE", "an empty band spans much of the slide height, between content or under the body", "distribute content to fill the frame")
+ABSOLUTE_FOOTER = review_check("ABSOLUTE_FOOTER", "an absolutely positioned bottom strip carries text", "make header, body, and footer sibling flow children")
+EMOJI_ICON = review_check("EMOJI_ICON", "a slide uses emoji glyphs", "use text labels, CSS markers, or inline SVG")
+INCONSISTENT_FOOTER_BASELINE = review_check("INCONSISTENT_FOOTER_BASELINE", "the content bottom edge varies across slides", "keep the footer on one baseline")
+UNPINNED_FOOTER = review_check("UNPINNED_FOOTER", "the recurring footer is not pinned to the frame bottom", "give it margin-top: auto inside the flex column slide")
+MISSING_SPEAKER_NOTES = review_check("MISSING_SPEAKER_NOTES", "a slide has no speaker notes", 'add an <aside class="notes"> script to every slide')
 
-SLIDE_RENDER_CHECKS = (SLIDE_BLANK, SAFE_MARGIN_INTRUSION, EDGE_CLIPPING, SLIDE_TOO_SPARSE, SLIDE_TOO_CROWDED, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, IMAGE_DISTORTED, GEOMETRY_NOT_MEASURED, FRAME_FIT_RISK, UNRELIABLE_VISUAL_EVIDENCE)
+SLIDE_RENDER_CHECKS = (SLIDE_BLANK, SAFE_MARGIN_INTRUSION, EDGE_CLIPPING, SLIDE_TOO_SPARSE, SLIDE_TOO_CROWDED, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, IMAGE_DISTORTED, TINY_TEXT, GEOMETRY_NOT_MEASURED, FRAME_FIT_RISK, UNRELIABLE_VISUAL_EVIDENCE)
 DESIGN_CHECKS = (
-    WEAK_VISUAL_IDENTITY,
-    MISSING_SLIDE_ROLE,
     SIDE_STRIPE,
     GHOST_CARD,
-    TINY_TEXT,
     REPEATED_COMPOSITION,
-    RAW_STRUCTURE_PATTERN,
-    RAW_TABLE,
-    BARE_LIST,
     TOPIC_TITLE,
     LANGUAGE_MISMATCH,
     UNSOURCED_CURRENT_DATE,
     VERTICAL_DEAD_ZONE,
     ABSOLUTE_FOOTER,
     EMOJI_ICON,
-    MISSING_REQUIRED_TEXT,
     INCONSISTENT_FOOTER_BASELINE,
     UNPINNED_FOOTER,
     MISSING_SPEAKER_NOTES,
 )
-DESIGN_WARNING_WEIGHTS = {check.kind.code: check.weight for check in DESIGN_CHECKS}
 REVIEW_ISSUE_KINDS = tuple(check.kind for check in SLIDE_RENDER_CHECKS + DESIGN_CHECKS)
 
 SOURCE_NOT_HTML = IssueKind("SOURCE_NOT_HTML", ERROR, "the deck source is not an .html file", "write slides.html, or pass --source with an .html file")
@@ -107,6 +90,8 @@ LAYOUT_PART_MISSING = IssueKind("LAYOUT_PART_MISSING", ERROR, "a slide lacks a p
 LAYOUT_PART_EXCESS = IssueKind("LAYOUT_PART_EXCESS", ERROR, "a slide holds more of one part than its layout can lay out", "split the slide in two, or move the detail to a table slide")
 LAYOUT_REPEATED = IssueKind("LAYOUT_REPEATED", ERROR, "three slides in a row use the same layout", "change the middle slide to another layout that fits its content")
 TOO_FEW_LAYOUTS = IssueKind("TOO_FEW_LAYOUTS", ERROR, "a deck of six or more slides uses fewer than three layouts", "pick each slide's layout from its content: one number, metrics, comparison, sequence, table or chart")
+FIRST_SLIDE_NOT_COVER = IssueKind("FIRST_SLIDE_NOT_COVER", WARNING, "the deck does not open with a cover slide", 'make slide 1 data-layout="cover" with the deck title and who presents it')
+LAST_SLIDE_NOT_CLOSING = IssueKind("LAST_SLIDE_NOT_CLOSING", WARNING, "a deck of three or more slides does not end on a closing slide", 'end with data-layout="closing": the decision asked for or the next steps')
 SLIDE_COUNT_MISMATCH = IssueKind("SLIDE_COUNT_MISMATCH", ERROR, "the slide count differs from --slide-count", "add or remove slides until the count matches the request")
 SLIDE_WITHOUT_CONTENT = IssueKind("SLIDE_WITHOUT_CONTENT", ERROR, "a slide has no visible text, image or chart", "give the slide its content or delete it")
 CHART_DATA_INVALID = IssueKind("CHART_DATA_INVALID", ERROR, "a chart's data attributes do not parse or do not line up", "give data-labels and data-values (or data-series) the same number of plain numbers")
@@ -123,6 +108,8 @@ SOURCE_CHECK_ISSUE_KINDS = (
     LAYOUT_PART_EXCESS,
     LAYOUT_REPEATED,
     TOO_FEW_LAYOUTS,
+    FIRST_SLIDE_NOT_COVER,
+    LAST_SLIDE_NOT_CLOSING,
     SLIDE_COUNT_MISMATCH,
     SLIDE_WITHOUT_CONTENT,
     CHART_DATA_INVALID,

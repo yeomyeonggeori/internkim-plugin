@@ -10,6 +10,7 @@ import { render as renderPdf } from "takumi-pdf";
 import { exportedAfterShapeAttribute, exportedBeforeShapeAttribute, exportedShapeAttribute, extractBoxLayout, hideExportedBoxes } from "./box_layout.mjs";
 import { writeContactSheets } from "./contact_sheets.mjs";
 import { readFontMetrics } from "./font_metrics.mjs";
+import { resampleImages } from "./image_resampling.mjs";
 import { dataURIBytes, imageSize } from "./image_size.mjs";
 import { generatedContentStyle, materializeGeneratedContent } from "./generated_content.mjs";
 import { createInlineStyleFilter } from "./inline_styles.mjs";
@@ -18,7 +19,7 @@ import { measurePageGeometry } from "./page_geometry.mjs";
 import { analyzePagePixels } from "./page_pixels.mjs";
 import { exportedListAttribute, exportedTextAttribute, extractTextLayout, hideExportedText, insertMarkerProbes, markerProbeAttribute, markerProbeHostId } from "./text_layout.mjs";
 
-const geometryThresholds = { pixelTolerance: 4, overlapRatioMinimum: 0.12, aspectRatioTolerance: 0.05, textPreviewLength: 40 };
+const geometryThresholds = { pixelTolerance: 4, overlapRatioMinimum: 0.12, aspectRatioTolerance: 0.05, textPreviewLength: 40, smallestTextShareOfWidth: 0.01 };
 const pageAttribute = "data-render-page";
 const pdfPageStyle = `[${pageAttribute}] { break-after: page; overflow: hidden; margin: 0 !important; } [${pageAttribute}="last"] { break-after: auto; }`;
 const resetStyle = "html, body { margin: 0 !important; padding: 0 !important; }";
@@ -201,7 +202,9 @@ async function main() {
   const request = JSON.parse(await fs.readFile(process.argv[2], "utf8"));
   const timer = createTimer();
   const { window, document } = parseHTML(await fs.readFile(request.html, "utf8"));
-  const bytesOf = imageResolver(path.dirname(request.html));
+  const resolveSource = imageResolver(path.dirname(request.html));
+  let resampled = new Map();
+  const bytesOf = (source) => resampled.get(source) || resolveSource(source);
   const fonts = await loadFonts(request.fonts);
   const renderer = new Renderer();
   for (const font of fonts) await renderer.registerFont({ name: font.family, weight: font.weight, style: font.style || "normal", data: font.data });
@@ -227,6 +230,8 @@ async function main() {
     result.geometry = request.geometry;
     timer.mark("geometry");
   }
+  resampled = await resampleImages(renderer, pages, bytesOf);
+  timer.mark("resampled");
   if (request.png) {
     const drawn = await drawPages(renderer, layout, inlineStyles, pages, css, bytesOf, Boolean(request.pixels));
     result.png = await writeDrawnPages(drawn, (index) => pngPath(request, index));

@@ -8,12 +8,13 @@ import pathlib
 from deck_definitions import (
     CONTENT_OVERFLOW,
     IMAGE_DISTORTED,
-    MISSING_REQUIRED_TEXT,
     OFF_PALETTE_COLOR,
     OUT_OF_FRAME,
     SLIDE_BLANK,
+    SLIDE_TOO_SPARSE,
     TEXT_OVERLAP,
     TINY_TEXT,
+    VERTICAL_DEAD_ZONE,
 )
 from office_result import Issue
 from text_checks import REQUIRED_TEXT_MISSING
@@ -29,8 +30,9 @@ OBJECTIVE_DEFECT_CODES = frozenset(
         TEXT_OVERLAP.kind,
         IMAGE_DISTORTED.kind,
         SLIDE_BLANK.kind,
+        SLIDE_TOO_SPARSE.kind,
+        VERTICAL_DEAD_ZONE.kind,
         TINY_TEXT.kind,
-        MISSING_REQUIRED_TEXT.kind,
         REQUIRED_TEXT_MISSING,
         OFF_PALETTE_COLOR,
     )
@@ -69,17 +71,34 @@ class Acceptance:
 
 def judge_build(build_path: pathlib.Path, source_text: str, issues: list[Issue], deliverable: str, measured: bool) -> Acceptance:
     defects = tuple(issue for issue in issues if issue.kind.code in OBJECTIVE_DEFECT_CODES)
-    fix_round = record_source_version(build_path / HISTORY_FILE_NAME, source_digest(source_text))
-    return Acceptance(measured and not defects, defects, fix_round, deliverable, measured)
+    acceptable = measured and not defects
+    fix_round = record_build(build_path / HISTORY_FILE_NAME, source_digest(source_text), acceptable)
+    return Acceptance(acceptable, defects, fix_round, deliverable, measured)
 
 
 def source_digest(source_text: str) -> str:
     return hashlib.sha256(source_text.encode("utf-8")).hexdigest()
 
 
-def record_source_version(history_path: pathlib.Path, digest: str) -> int:
-    versions = json.loads(history_path.read_text(encoding="utf-8")) if history_path.exists() else []
-    if digest not in versions:
-        versions.append(digest)
-        history_path.write_text(json.dumps(versions, indent=2) + "\n", encoding="utf-8")
-    return versions.index(digest)
+def read_history(history_path: pathlib.Path) -> list[dict]:
+    if not history_path.exists():
+        return []
+    entries = json.loads(history_path.read_text(encoding="utf-8"))
+    return [entry for entry in entries if isinstance(entry, dict)]
+
+
+def next_fix_round(previous: dict | None) -> int:
+    if previous is None or previous["acceptable"] or previous["fixRound"] >= FIX_ROUNDS_ALLOWED:
+        return 0
+    return previous["fixRound"] + 1
+
+
+def record_build(history_path: pathlib.Path, digest: str, acceptable: bool) -> int:
+    entries = read_history(history_path)
+    position = next((index for index, entry in enumerate(entries) if entry["digest"] == digest), len(entries))
+    previous = entries[position - 1] if position > 0 else None
+    fix_round = next_fix_round(previous)
+    entry = {"digest": digest, "acceptable": acceptable, "fixRound": fix_round}
+    entries = entries[:position] + [entry] + entries[position + 1:]
+    history_path.write_text(json.dumps(entries, indent=2) + "\n", encoding="utf-8")
+    return fix_round

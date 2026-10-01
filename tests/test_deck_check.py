@@ -56,6 +56,13 @@ class DeckCheckTest(unittest.TestCase):
         self.assertEqual([entry["layout"] for entry in result.details["outline"]], ["cover", "statement", "kpi", "chart", "table", "closing"])
         self.assertEqual(result.details["outline"][2]["title"], "매출과 이익이 모두 늘었습니다")
 
+    def test_a_deck_that_does_not_open_on_a_cover_or_end_on_a_closing_is_warned(self):
+        codes = self.codes(kit_deck(STATEMENT, KPI, CHART))
+        self.assertIn(("FIRST_SLIDE_NOT_COVER", "slide 1"), codes)
+        self.assertIn(("LAST_SLIDE_NOT_CLOSING", "slide 3"), codes)
+        self.assertEqual(self.check(kit_deck(STATEMENT, KPI, CHART)).status, "warning")
+        self.assertNotIn("LAST_SLIDE_NOT_CLOSING", [code for code, _ in self.codes(kit_deck(COVER, STATEMENT))])
+
     def test_an_unknown_layout_names_the_closest_one(self):
         result = self.check(kit_deck(COVER, '<section data-layout="kpis"><h2>지표가 좋아졌습니다</h2></section>'))
         issue = next(issue for issue in result.issues if issue.kind.code == "LAYOUT_UNKNOWN")
@@ -133,6 +140,13 @@ class DeckCheckTest(unittest.TestCase):
         self.assertIn("radar", " ".join(messages["slide 4"]))
         self.assertIn("positive shares", " ".join(messages["slide 5"]))
         self.assertIn("data-highlight", " ".join(messages["slide 5"]))
+
+    def test_grouped_thousands_are_one_number_when_values_are_comma_space_separated(self):
+        grouped = '<section data-layout="chart"><h2>매출이 늘었습니다</h2><figure data-chart="column" data-labels="1월, 2월" data-values="1,200, 1,350" data-unit="만원"></figure></section>'
+        self.assertNotIn("CHART_DATA_INVALID", [code for code, _ in self.codes(kit_deck(COVER, grouped))])
+        packed = grouped.replace("1,200, 1,350", "1,200,1,350")
+        messages = [issue.message for issue in self.check(kit_deck(COVER, packed)).issues if issue.kind.code == "CHART_DATA_INVALID"]
+        self.assertIn("comma and a space", " ".join(messages))
 
     def test_images_must_be_local_files_that_exist(self):
         slides = (

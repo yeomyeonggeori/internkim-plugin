@@ -104,7 +104,7 @@ def write_derived_outputs(request: ExportRequest, html_output_path: pathlib.Path
         print_stage("notes")
         write_notes(slide_sources, request.output_path("-notes.txt"))
     print_stage("review")
-    review = review_deck(request.source_path, request.deck_name, request.review_path)
+    review = review_deck(request.source_path, request.deck_name, request.review_path, request.check.required_text)
     issues.extend(review.issues)
     return DerivedOutputs(issues, pptx_details, review)
 

@@ -180,28 +180,25 @@ def skeleton_shape(document, definitions):
 
 
 class DeckReviewResultTest(unittest.TestCase):
-    def test_the_review_reports_every_warning_it_writes_as_an_issue(self):
+    def test_the_review_reports_every_warning_it_writes_as_an_issue_without_legacy_codes(self):
+        from render_review import review_deck
+
         with tempfile.TemporaryDirectory() as temporary_directory:
             deck_path = Path(temporary_directory)
             (deck_path / "slides.html").write_text(
                 "<section><h2>개요</h2><ul><li>하나</li><li>둘</li></ul></section>"
-                "<section data-slide-role=\"closing\"><h2>승인을 요청드립니다</h2><p>본문</p></section>",
+                "<section><h2>승인을 요청드립니다</h2><p>본문</p></section>",
                 encoding="utf-8",
             )
             review_path = deck_path / "review"
-            completed = subprocess.run(
-                [sys.executable, str(SCRIPTS_PATH / "deck" / "render_review.py"), str(deck_path / "slides.html"), "deck", str(review_path)],
-                capture_output=True,
-                text=True,
-                env={"PYTHONPATH": str(SCRIPTS_PATH)},
-            )
-            envelope = json.loads(completed.stdout)
+            result = review_deck(deck_path / "slides.html", "deck", review_path)
             report = json.loads((review_path / "slide-review.json").read_text(encoding="utf-8"))
-        written_warnings = {warning for slide in report["slides"] for warning in slide["warnings"]}
-        self.assertEqual({issue["message"] for issue in envelope["issues"]}, written_warnings)
-        self.assertIn(("MISSING_SLIDE_ROLE", "slide 1"), {(issue["code"], issue["location"]) for issue in envelope["issues"]})
-        self.assertIn(("WEAK_VISUAL_IDENTITY", "deck"), {(issue["code"], issue["location"]) for issue in envelope["issues"]})
-        self.assertEqual(envelope["details"]["visualQualityScore"], report["visualQualityScore"])
+        codes = {issue.kind.code for issue in result.issues}
+        self.assertEqual({issue.message for issue in result.issues}, {warning for slide in report["slides"] for warning in slide["warnings"]})
+        self.assertIn("MISSING_SPEAKER_NOTES", codes)
+        self.assertEqual(codes & {"MISSING_SLIDE_ROLE", "WEAK_VISUAL_IDENTITY", "RAW_TABLE", "BARE_LIST", "MISSING_REQUIRED_TEXT"}, set())
+        self.assertFalse(any(re.match(r"^[a-z]+[A-Z]\w*: ", issue.message) for issue in result.issues))
+        self.assertNotIn("visualQualityScore", report)
 
 
 if __name__ == "__main__":

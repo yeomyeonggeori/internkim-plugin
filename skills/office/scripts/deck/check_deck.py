@@ -13,6 +13,7 @@ from deck_definitions import (
     LAYOUT_MISSING,
     LAYOUT_PART_EXCESS,
     LAYOUT_PART_MISSING,
+    LAST_SLIDE_NOT_CLOSING,
     LAYOUT_REPEATED,
     LAYOUT_UNKNOWN,
     NO_SLIDE_SECTIONS,
@@ -22,11 +23,12 @@ from deck_definitions import (
     SOURCE_NOT_HTML,
     THEME_UNKNOWN,
     TOO_FEW_LAYOUTS,
+    FIRST_SLIDE_NOT_COVER,
     KitLayout,
     kit_layout,
     part_label,
 )
-from deck_kit import DEFAULT_THEME, chart_types, theme_palettes, uses_deck_kit
+from deck_kit import DEFAULT_THEME, chart_number, chart_types, split_chart_list, theme_palettes, uses_deck_kit
 from deck_source import Element, find_all, normalized_text, parse_source, style_texts, visible_text
 from design_tokens import design_front_matter
 from office_inputs import PPTX, require_kind
@@ -37,6 +39,9 @@ from text_checks import DRAFT_PLACEHOLDER_PATTERN, PLACEHOLDER_LEFT, REQUIRED_TE
 
 
 REPEAT_LIMIT = 3
+COVER_LAYOUT = "cover"
+CLOSING_LAYOUT = "closing"
+CLOSING_SLIDE_MINIMUM = 3
 VARIETY_SLIDE_MINIMUM = 6
 VARIETY_LAYOUT_MINIMUM = 3
 DONUT_SLICE_MAXIMUM = 8
@@ -150,6 +155,15 @@ def sequence_issues(slides: list[Slide]) -> list[Issue]:
     layouts = {slide.layout for slide in slides if slide.layout}
     if len(slides) >= VARIETY_SLIDE_MINIMUM and len(layouts) < VARIETY_LAYOUT_MINIMUM:
         issues.append(TOO_FEW_LAYOUTS.issue(f"{len(slides)} slides use only {', '.join(sorted(layouts))}", "deck"))
+    return issues + outline_issues(slides)
+
+
+def outline_issues(slides: list[Slide]) -> list[Issue]:
+    issues = []
+    if slides[0].layout != COVER_LAYOUT:
+        issues.append(FIRST_SLIDE_NOT_COVER.issue(f'slide 1 uses data-layout="{slides[0].layout}"', slides[0].location))
+    if len(slides) >= CLOSING_SLIDE_MINIMUM and slides[-1].layout != CLOSING_LAYOUT:
+        issues.append(LAST_SLIDE_NOT_CLOSING.issue(f'the last slide uses data-layout="{slides[-1].layout}"', slides[-1].location))
     return issues
 
 
@@ -207,8 +221,14 @@ def series_problem(name: str, values: list[str], label_count: int) -> str:
     if not_numbers:
         return f"{name} holds {', '.join(not_numbers[:3])}, which are not plain numbers; put the unit in data-unit"
     if len(values) != label_count:
-        return f"{name} has {len(values)} numbers for {label_count} labels"
+        return f"{name} has {len(values)} numbers for {label_count} labels{thousands_hint(values)}"
     return ""
+
+
+def thousands_hint(values: list[str]) -> str:
+    if not any(len(value) == 3 and value.isdigit() for value in values[1:]):
+        return ""
+    return '; if a comma groups thousands, separate the values with a comma and a space ("1,200, 1,350") or write them without the grouping comma ("1200, 1350")'
 
 
 def shape_problems(chart_type: str, labels: list[str], series: list[tuple[str, list[str]]], highlight: str | None) -> list[str]:
@@ -217,7 +237,7 @@ def shape_problems(chart_type: str, labels: list[str], series: list[tuple[str, l
         problems.append(f'data-highlight="{highlight}" is not one of the labels')
     if chart_type not in ("donut", "pie"):
         return problems
-    values = [float(value) for value in series[0][1] if is_number(value)]
+    values = [chart_number(value) for value in series[0][1] if is_number(value)]
     if len(series) > 1:
         problems.append(f"a {chart_type} chart takes one series in data-values")
     if any(value < 0 for value in values) or sum(values) <= 0:
@@ -228,15 +248,11 @@ def shape_problems(chart_type: str, labels: list[str], series: list[tuple[str, l
 
 
 def split_list(text: str) -> list[str]:
-    return [value.strip() for value in text.split(",") if value.strip()]
+    return split_chart_list(text)
 
 
 def is_number(text: str) -> bool:
-    try:
-        float(text.replace("−", "-"))
-        return True
-    except ValueError:
-        return False
+    return chart_number(text) is not None
 
 
 def image_issues(slide: Slide, base_path: pathlib.Path) -> list[Issue]:

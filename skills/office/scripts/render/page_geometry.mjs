@@ -1,5 +1,5 @@
 export function measurePageGeometry(pages, thresholds) {
-  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength } = thresholds;
+  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth } = thresholds;
 
   const isMeasurable = (element) => {
     const style = getComputedStyle(element);
@@ -106,6 +106,15 @@ export function measurePageGeometry(pages, thresholds) {
       .filter(({ renderedRatio, naturalRatio }) => Math.abs(renderedRatio / naturalRatio - 1) > aspectRatioTolerance)
       .map(({ image, renderedRatio, naturalRatio }) => ({ ...describe(image), renderedRatio: roundRatio(renderedRatio), naturalRatio: roundRatio(naturalRatio) }));
 
+  const smallText = (page) => {
+    const minimum = page.getBoundingClientRect().width * smallestTextShareOfWidth;
+    return elementsOf(page)
+      .filter((element) => ownTextRects(element).length > 0)
+      .map((element) => ({ element, size: parseFloat(getComputedStyle(element).fontSize) }))
+      .filter(({ size }) => size > 0 && size < minimum - 0.05)
+      .map(({ element, size }) => ({ ...describe(element), fontSize: round(size), minimum: round(minimum) }));
+  };
+
   const colorIsVisible = (color) => color !== "transparent" && !/(,\s*0\)|\/\s*0%?\))$/.test(color);
 
   const paintsBox = (style) =>
@@ -170,5 +179,6 @@ export function measurePageGeometry(pages, thresholds) {
     outOfFrame: elementsOutsideFrame(page).map((element) => ({ ...describe(element), rect: describeRect(element.getBoundingClientRect()) })),
     overlaps: overlappingText(page),
     distortedImages: distortedImages(page),
+    smallText: smallText(page),
   }));
 }

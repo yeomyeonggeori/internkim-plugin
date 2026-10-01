@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import json
 import pathlib
 
-from deck_definitions import CONTENT_OVERFLOW, GEOMETRY_NOT_MEASURED, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_OVERLAP
+from deck_definitions import CONTENT_OVERFLOW, GEOMETRY_NOT_MEASURED, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_OVERLAP, TINY_TEXT
 from design_warnings import append_deck_warning
 from office_result import Issue
 
@@ -67,6 +67,7 @@ def geometry_warnings(measured: dict[str, object] | None) -> list[Issue]:
         *finding_issues(OUT_OF_FRAME, measured["outOfFrame"], describe_out_of_frame, "{count} elements lie outside the slide"),
         *finding_issues(TEXT_OVERLAP, measured["overlaps"], describe_overlap, "{count} pairs of text overlap"),
         *finding_issues(IMAGE_DISTORTED, measured["distortedImages"], describe_distorted_image, "{count} images are stretched"),
+        *finding_issues(TINY_TEXT, measured.get("smallText", []), describe_small_text, "{count} text elements are smaller than the slide can show legibly"),
     ]
 
 
@@ -102,6 +103,10 @@ def describe_overlap(finding: dict[str, object]) -> str:
 
 def describe_distorted_image(finding: dict[str, object]) -> str:
     return f"{element_label(finding)} renders at ratio {finding['renderedRatio']} but is {finding['naturalRatio']}"
+
+
+def describe_small_text(finding: dict[str, object]) -> str:
+    return f"{element_label(finding)} is {finding['fontSize']}px, below the {finding['minimum']}px minimum (1% of the slide width)"
 
 
 def apply_geometry_not_measured_warning(slides: list[dict[str, object]], geometry: list[dict[str, object]] | None) -> None:

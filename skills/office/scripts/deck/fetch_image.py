@@ -1,21 +1,53 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from dataclasses import dataclass
+import io
 import json
 import pathlib
+import re
 import sys
 import urllib.parse
 import urllib.request
+
+from PIL import Image, UnidentifiedImageError
 
 from deck_definitions import IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND
 from office_result import OfficeArgumentParser, OfficeFailure, Result, run_command
 
 OPENVERSE_ENDPOINT = "https://api.openverse.org/v1/images/"
 SAFE_LICENSES = "cc0,pdm"
-MAXIMUM_BYTES = 3_500_000
+MAXIMUM_BYTES = 8_000_000
 USER_AGENT = "internkim-skill-image/1.0 (prototype image sourcing)"
 STRICT_FILTERS = {"aspect_ratio": "wide", "size": "large", "extension": "jpg"}
 RELAXED_FILTER_SETS = (STRICT_FILTERS, {"extension": "jpg"}, {})
+DEFAULT_CANDIDATE_COUNT = 3
+SMALLEST_USEFUL_WIDTH = 640
+SAVE_FORMATS = {".jpg": "JPEG", ".jpeg": "JPEG", ".png": "PNG", ".webp": "WEBP"}
+HANGUL_PATTERN = re.compile(r"[가-힣]")
+
+
+@dataclass(frozen=True)
+class Candidate:
+    path: pathlib.Path
+    width: int
+    height: int
+    written: int
+    result: dict
+
+    def to_json(self) -> dict:
+        return {
+            "path": str(self.path),
+            "referencePath": reference_path(self.path),
+            "width": self.width,
+            "height": self.height,
+            "aspectRatio": round(self.width / self.height, 2),
+            "license": str(self.result.get("license", "")).upper(),
+            "creator": self.result.get("creator"),
+            "title": self.result.get("title"),
+            "sourceUrl": self.result.get("foreign_landing_url"),
+            "bytes": self.written,
+        }
 
 
 def search_openverse(query: str) -> list:
@@ -39,27 +71,40 @@ def search_openverse_with(query: str, filters: dict[str, str]) -> list:
         return json.load(response).get("results", [])
 
 
-def download(url: str, output_path: pathlib.Path) -> int:
+def download(url: str) -> bytes | None:
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=30) as response:
         data = response.read(MAXIMUM_BYTES + 1)
-    if len(data) > MAXIMUM_BYTES:
-        return 0
+    return data if len(data) <= MAXIMUM_BYTES else None
+
+
+def save_as(data: bytes, output_path: pathlib.Path) -> tuple[int, int, int] | None:
+    try:
+        image = Image.open(io.BytesIO(data))
+        image.load()
+    except (UnidentifiedImageError, OSError):
+        return None
+    if image.width < SMALLEST_USEFUL_WIDTH:
+        return None
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_bytes(data)
-    return len(data)
+    save_format = SAVE_FORMATS.get(output_path.suffix.casefold(), "JPEG")
+    if save_format == "JPEG" and image.mode != "RGB":
+        image = image.convert("RGB")
+    image.save(output_path, save_format, **({"quality": 90} if save_format == "JPEG" else {}))
+    return image.width, image.height, output_path.stat().st_size
 
 
-def parse_arguments(arguments: list[str]) -> tuple[str, str]:
-    parser = OfficeArgumentParser(description="Download one public-domain (CC0 or PDM) photo that matches an English search query, and report its size, ratio and source page.")
+def parse_arguments(arguments: list[str]) -> tuple[str, str, int]:
+    parser = OfficeArgumentParser(description="Download up to three public-domain (CC0 or PDM) photos that match an English search query, saved as <output>, <output stem>-2 and -3 in the output's format, and report each one's size, ratio, licence, creator and source page.")
     parser.add_argument("query", help="a concrete English scene, such as \"harbor cranes at dawn\"; one or two words find more")
     parser.add_argument("output", nargs="?", help="where to save the photo, such as images/harbor.jpg")
     parser.add_argument("--output", "-o", dest="output_option", help="the same as the second argument")
+    parser.add_argument("--count", type=int, default=DEFAULT_CANDIDATE_COUNT, help=f"how many candidates to save (default {DEFAULT_CANDIDATE_COUNT})")
     parsed = parser.parse_args(arguments)
     output = parsed.output_option or parsed.output
     if not output:
         parser.error("give the output path as the second argument or --output")
-    return parsed.query, output
+    return parsed.query, output, max(1, parsed.count)
 
 
 def anchor_site_output(output_value: str) -> pathlib.Path:
@@ -86,49 +131,59 @@ def reference_path(output_path: pathlib.Path) -> str:
 
 
 def main() -> Result:
-    query, output_value = parse_arguments(sys.argv[1:])
+    query, output_value, count = parse_arguments(sys.argv[1:])
     output_path = anchor_site_output(output_value)
     try:
         results = search_openverse(query)
     except (OSError, ValueError) as error:
         raise OfficeFailure(IMAGE_SEARCH_FAILED.issue(f"image search failed: {error}")) from error
+    candidates = save_candidates(results, output_path, count)
+    if not candidates:
+        raise OfficeFailure(no_image_issue(query))
+    listed = "; ".join(f"{candidate.path.name} {candidate.width}x{candidate.height}" for candidate in candidates)
+    return Result(
+        summary=f"saved {len(candidates)} candidates for {query!r}: {listed}; look at each, keep the one that shows the slide's subject, delete the others, and name its source in .source",
+        output_path=str(candidates[0].path),
+        details={"candidates": [candidate.to_json() for candidate in candidates]},
+    )
+
+
+def no_image_issue(query: str):
+    if HANGUL_PATTERN.search(query):
+        return NO_IMAGE_FOUND.issue(f"nothing matched {query!r}; the photo index searches English titles and tags", suggestion="write the query as a concrete English scene, such as \"convenience store shelves\"")
+    return NO_IMAGE_FOUND.issue(f"no usable cc0/public-domain image found for {query!r}")
+
+
+def candidate_path(output_path: pathlib.Path, position: int) -> pathlib.Path:
+    if position == 1:
+        return output_path
+    return output_path.with_name(f"{output_path.stem}-{position}{output_path.suffix}")
+
+
+def save_candidates(results: list, output_path: pathlib.Path, count: int) -> list[Candidate]:
+    candidates = []
     for result in results:
-        saved = try_download(result, output_path)
-        if saved:
-            return saved
-    raise OfficeFailure(NO_IMAGE_FOUND.issue(f"no usable cc0/public-domain image found for {query!r}"))
+        if len(candidates) == count:
+            break
+        candidate = try_download(result, candidate_path(output_path, len(candidates) + 1))
+        if candidate:
+            candidates.append(candidate)
+    return candidates
 
 
-def try_download(result: dict, output_path: pathlib.Path) -> Result | None:
+def try_download(result: dict, path: pathlib.Path) -> Candidate | None:
     image_url = result.get("url") or ""
     if not image_url:
         return None
     try:
-        written = download(image_url, output_path)
+        data = download(image_url)
     except (OSError, ValueError):
         return None
-    if not written:
+    saved = save_as(data, path) if data else None
+    if saved is None:
         return None
-    title = result.get("title") or "untitled"
-    creator = result.get("creator") or "unknown"
-    license_name = str(result.get("license", "?")).upper()
-    width, height = result.get("width"), result.get("height")
-    ratio = f"{width / height:.2f}" if width and height else "unknown"
-    return Result(
-        summary=f"saved {output_path} ({written // 1024}KB, ratio {ratio}), \"{title}\" by {creator}, license {license_name}; look at it before using it, and reference it as {reference_path(output_path)}",
-        output_path=str(output_path),
-        details={
-            "title": title,
-            "creator": creator,
-            "license": license_name,
-            "sourceUrl": result.get("foreign_landing_url"),
-            "width": width,
-            "height": height,
-            "aspectRatio": ratio,
-            "referencePath": reference_path(output_path),
-            "bytes": written,
-        },
-    )
+    width, height, written = saved
+    return Candidate(path, width, height, written, result)
 
 
 if __name__ == "__main__":

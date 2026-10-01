@@ -7,6 +7,8 @@
   const svgNamespace = "http://www.w3.org/2000/svg";
   const barScaleShare = 0.84;
   const lineInsetShare = 5;
+  const coverRingRadii = [442, 342, 242];
+  const groupedNumberPattern = /^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/;
 
   function slides() {
     return Array.from(document.querySelectorAll("section[data-layout]"));
@@ -98,6 +100,13 @@
     });
   }
 
+  function addCoverRings() {
+    document.querySelectorAll("section[data-layout='cover']").forEach((slide) => {
+      if (slide.querySelector(":scope > img, :scope > .kit-ring")) return;
+      coverRingRadii.forEach((radius) => slide.appendChild(element("span", "kit-ring", { width: `${radius}px`, height: `${radius}px` })));
+    });
+  }
+
   function addQuoteMarks() {
     document.querySelectorAll("section[data-layout='quote'] > blockquote").forEach((quote) => {
       if (quote.firstElementChild?.classList.contains("kit-quote-mark")) return;
@@ -137,11 +146,13 @@
   }
 
   function parseList(text) {
-    return (text || "").split(",").map((value) => value.trim()).filter((value) => value !== "");
+    const separator = /,\s/.test(text || "") ? /,\s+/ : /,/;
+    return (text || "").split(separator).map((value) => value.trim()).filter((value) => value !== "");
   }
 
   function parseNumber(text) {
-    return Number(String(text).replace(/\s/g, "").replace("−", "-"));
+    const compact = String(text).replace(/\s/g, "").replace("−", "-");
+    return Number(groupedNumberPattern.test(compact) ? compact.replace(/,/g, "") : compact);
   }
 
   function chartData(figure) {
@@ -407,6 +418,7 @@
     markStructure();
     addListIndexes();
     groupSteps();
+    addCoverRings();
     addQuoteMarks();
     markNumericCells();
     document.querySelectorAll("section[data-layout] figure[data-chart]").forEach(renderChart);
