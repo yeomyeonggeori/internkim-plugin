@@ -59,6 +59,17 @@ class RenderedPagesTest(WorkbookFixture):
         self.assertEqual([page["drawings"] for page in contents], [[{"chart": "Daily sales", "type": "line", "shown": "part, cut at the page edge"}]] * 2)
         self.assertEqual(len(self.chart_svgs(preview)), 2)
 
+    def test_a_long_heading_stays_on_one_line_and_a_merged_title_does_not_grow_its_row(self):
+        heading = "판매 실적 원본 데이터 (판매실적_2026.csv · 2026-04~2026-09)"
+        self.create_workbook([{"title": "Sales", "heading": heading, "rows": MONTHS}])
+        sheet = load_workbook(self.directory / "book.xlsx")["Sales"]
+        self.assertFalse(sheet["A1"].alignment.wrap_text)
+        self.assertLess(sheet.column_dimensions["A"].width, 20)
+        self.apply([{"op": "merge_cells", "range": "A1:C1"}, {"op": "format_range", "range": "A1", "wrapText": True}])
+        _, preview = self.render()
+        first_row = re.search(r"grid-template-rows:([\d.]+)px", preview).group(1)
+        self.assertLess(float(first_row), 30)
+
     def test_a_page_with_nothing_on_it_is_reported_with_its_number(self):
         self.create_workbook([{"title": "Sales", "rows": MONTHS}])
         self.apply([{"op": "set_cell", "cell": "A200", "value": "note"}])

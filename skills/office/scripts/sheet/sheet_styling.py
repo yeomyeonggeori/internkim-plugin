@@ -76,6 +76,8 @@ def style_heading_row(worksheet) -> None:
     for cell in worksheet[1]:
         cell.font = Font(bold=True, size=HEADING_FONT_SIZE)
         cell.fill = PatternFill("solid", fgColor=HEADING_FILL_COLOR)
+        cell.alignment = Alignment(vertical="center", wrap_text=False)
+        cell.border = Border()
 
 
 def style_cell(cell, header_row: int) -> None:
@@ -92,7 +94,7 @@ def style_table(worksheet, has_heading: bool) -> None:
             style_cell(cell, header_row)
     if has_heading:
         style_heading_row(worksheet)
-    fit_column_widths(worksheet)
+    fit_column_widths(worksheet, first_row=header_row)
 
 
 def merged_bounds(existing: tuple[int, int, int, int] | None, block: tuple[int, int, int, int]) -> tuple[int, int, int, int] | None:
@@ -117,7 +119,7 @@ def style_written_cells(worksheet, cells: list, existing: tuple[int, int, int, i
             style_cell(cell, header_row)
 
 
-def fit_column_widths(worksheet) -> None:
-    for column_cells in worksheet.columns:
+def fit_column_widths(worksheet, first_row: int) -> None:
+    for column_cells in worksheet.iter_cols(min_row=first_row):
         content_width = max(display_width(cell.value) for cell in column_cells)
         worksheet.column_dimensions[get_column_letter(column_cells[0].column)].width = min(max(content_width + 2, MINIMUM_COLUMN_WIDTH), MAXIMUM_COLUMN_WIDTH)

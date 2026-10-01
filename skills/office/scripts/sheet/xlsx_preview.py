@@ -82,8 +82,9 @@ class SheetPreviewer:
         columns = [column for column in range(min_column, max_column + 1) if not column_settings.get(column, {}).get("hidden")]
         rows = [row for row in range(min_row, max_row + 1) if not row_hidden(worksheet, row)]
         widths = {column: column_pixels(column_settings.get(column, {}).get("width") or default_column_width(worksheet)) for column in columns}
-        heights = {row: self.row_height(worksheet, sheet_values, row, columns, widths) for row in rows}
         merges, covered = merge_maps(worksheet)
+        # Excel's row AutoFit ignores merged cells (Microsoft support, "Change the column width or row height in Excel")
+        heights = {row: self.row_height(worksheet, sheet_values, row, [column for column in columns if (row, column) not in covered], widths) for row in rows}
         title_rows = print_title_rows(worksheet, rows)
         return SheetFrame(worksheet, sheet_values, columns, rows, widths, heights, merges, covered, title_rows)
 
