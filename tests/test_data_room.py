@@ -37,7 +37,7 @@ class DataRoomTreeTest(unittest.TestCase):
             template = json.loads((root / "company.json").read_text())["dataroom"]
             self.assertEqual(template, DATA_ROOM.TEMPLATE)
 
-    def test_a_business_parent_is_not_a_filing_destination(self):
+    def test_filing_destinations_follow_whether_the_category_has_children(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             arguments = DATA_ROOM.build_parser().parse_args(["init", str(root), "--slug", "sample"])
@@ -45,6 +45,11 @@ class DataRoomTreeTest(unittest.TestCase):
             with self.assertRaises(DATA_ROOM.Failure):
                 DATA_ROOM.resolve_category(root, "F")
             self.assertEqual(DATA_ROOM.resolve_category(root, "X"), "X-inbox")
+            company = DATA_ROOM.load_company(root)
+            company["dataroom"]["categories"] = [category for category in company["dataroom"]["categories"]
+                                                  if category["parent"] != "F"]
+            DATA_ROOM.write_json(root / "company.json", company)
+            self.assertEqual(DATA_ROOM.resolve_category(root, "F"), "F-finance")
 
 
 if __name__ == "__main__":

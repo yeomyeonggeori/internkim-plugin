@@ -15,7 +15,9 @@ and `INDEX.md`; its folders do not enforce access control.
 
 Read `company_dataroom_get` when live categories or roles are needed. Codes
 are stable mnemonic letters: a parent has one, an intermediate category has
-two. Documents go in an intermediate category or `X`, the unclassified inbox.
+two. Documents go in categories without children, including a parent with no
+children, or `X`, the unclassified inbox. Parents with children are not filing
+destinations.
 Classification follows the document's primary business function. File format
 and intended audience do not determine where it belongs.
 

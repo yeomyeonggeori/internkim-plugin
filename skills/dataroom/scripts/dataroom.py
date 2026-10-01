@@ -114,7 +114,7 @@ def add_ingest_parser(subparsers):
     parser = subparsers.add_parser("ingest", help="file a document with its sidecar and derived text")
     parser.add_argument("directory")
     parser.add_argument("file")
-    parser.add_argument("--category", required=True, help="exact intermediate mnemonic code, or X")
+    parser.add_argument("--category", required=True, help="exact leaf mnemonic code, or X")
     parser.add_argument("--title")
     parser.add_argument("--kind", choices=KINDS)
     parser.add_argument("--date", help="YYYY-MM-DD, the date the document speaks from")
@@ -201,8 +201,9 @@ def category_folders(root, categories=None):
         if company.get("schemaVersion") != 2:
             raise Failure("legacy data rooms need semantic reclassification; their permissions cannot be converted by folder name")
         categories = company["dataroom"]["categories"]
+    parent_codes = {category["parent"] for category in categories}
     return [(category_path(category, categories), category["code"])
-            for category in categories if category["parent"] is not None or category["code"] == "X"]
+            for category in categories if category["code"] not in parent_codes]
 
 
 def category_code(folder):

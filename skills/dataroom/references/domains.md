@@ -1,4 +1,4 @@
-File by business function in an intermediate category or X. A parent grant includes current and future children.
+File by business function in a category without children or X. A parent without children is a filing destination. A parent grant includes current and future children.
 
 | Code | Category | Parent | Scope |
 |---|---|---|---|
