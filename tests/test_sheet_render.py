@@ -111,6 +111,8 @@ class NumberFormatTest(unittest.TestCase):
             (datetime.datetime(2026, 10, 1, 14, 5), "h:mm AM/PM", "2:05 오후"),
             (datetime.date(2026, 10, 1), "mm-dd-yy", "2026-10-01"),
             (3.14159, "General", "3.14159"),
+            (14.2, '#,##0.0"%"', "14.2%"),
+            (5, "0\\%", "5%"),
         ]
         self.assertEqual([displayed(value, number_format).text for value, number_format, _ in cases], [expected for _, _, expected in cases])
         self.assertEqual(displayed(-3, "#,##0;[Red]-#,##0").color, "#ff0000")

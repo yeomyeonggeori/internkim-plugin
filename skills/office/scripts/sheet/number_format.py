@@ -129,7 +129,7 @@ def number_text(value: float, section: str) -> str:
         while end < len(text) and text[end] in "0#":
             end += 1
     prefix, pattern, suffix = text[:start], text[start:end], text[end:]
-    return prefix + formatted_digits(value * 100 ** text.count("%"), pattern) + suffix
+    return prefix + formatted_digits(value * 100 ** literal_text_without_quotes(section).count("%"), pattern) + suffix
 
 
 def formatted_digits(value: float, pattern: str) -> str:
