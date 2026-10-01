@@ -250,6 +250,17 @@ class ChartTest(OperationFixture):
         issue = self.refused([{"op": "edit_chart", "chart": 0, "colors": ["red"]}])
         self.assertEqual((issue["code"], issue["location"]), ("INVALID_VALUE", "ops[0].colors[0]"))
 
+    def test_names_from_other_vocabularies_are_answered_with_the_exact_word(self):
+        cases = [
+            ({"op": "add_chart", "type": "column", "range": "A1:C4"}, "ops[0].type", "use 'bar'"),
+            ({"op": "add_chart", "type": "bar", "range": "A1:C4", "colors": ["red"]}, "ops[0].colors[0]", 'use "FF0000" for red'),
+            ({"op": "add_pivot_table", "range": "A1:D7", "row": "region", "values": ["amount"], "function": "avg"}, "ops[0].function", "use 'average'"),
+        ]
+        for operation, location, suggestion in cases:
+            with self.subTest(location=location):
+                issue = self.refused([operation])
+                self.assertEqual((issue["location"], issue["suggestion"]), (location, suggestion))
+
     def test_a_chart_index_beyond_the_sheet_is_refused(self):
         issue = self.refused([{"op": "delete_chart", "chart": 0}])
         self.assertIn("has 0 charts", issue["message"])

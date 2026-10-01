@@ -101,7 +101,21 @@ class HexColor(Shape):
             return [wrong_type(self, value, location)]
         if self.allows_none and value == "none" or HEX_COLOR_PATTERN.fullmatch(value):
             return []
-        return [INVALID_VALUE.issue(f"{location}: {value!r} is not {self.label}", location)]
+        return [color_problem(value, self.label, location)]
+
+
+def color_problem(value: str, label: str, location: str) -> Issue:
+    named = named_color_hex(value)
+    if named is None:
+        return INVALID_VALUE.issue(f"{location}: {value!r} is not {label}", location)
+    return INVALID_VALUE.issue(f"{location}: {value!r} is a color name, and this field takes {label}", location, f'use "{named}" for {value}')
+
+
+def named_color_hex(value: str) -> str | None:
+    from PIL import ImageColor
+
+    named = ImageColor.colormap.get(value.strip().casefold().replace(" ", ""))
+    return named.lstrip("#").upper() if named else None
 
 
 @dataclass(frozen=True)
@@ -278,6 +292,9 @@ NAME_SYNONYMS = {
     "columnField": ("column",),
     "text": ("value",),
     "content": ("text", "value"),
+    "column": ("bar",),
+    "avg": ("average",),
+    "mean": ("average",),
 }
 
 

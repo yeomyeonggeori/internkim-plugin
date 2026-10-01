@@ -6,7 +6,8 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from office_operations import OPERATION_NOT_APPLICABLE, Change
-from office_result import INVALID_VALUE, OfficeFailure
+from office_result import OfficeFailure
+from office_schema import color_problem
 from workbook_access import cell_rows, column_index, parse_range, resolve_sheet, sheet_of
 from workbook_structure import isolate_column
 
@@ -22,7 +23,7 @@ BORDER_EDGES = ("left", "right", "top", "bottom")
 def require_colors(operation: dict, location: str) -> None:
     for name in COLOR_FIELDS:
         if isinstance(operation.get(name), str) and not COLOR_PATTERN.match(operation[name]):
-            raise OfficeFailure(INVALID_VALUE.issue(f"{location}.{name}: {operation[name]!r} is not six hex digits such as DCEAF7", f"{location}.{name}"))
+            raise OfficeFailure(color_problem(operation[name], "six hex digits such as DCEAF7", f"{location}.{name}"))
 
 
 def plan_format_range(workbook, operation: dict, location: str) -> Change:
