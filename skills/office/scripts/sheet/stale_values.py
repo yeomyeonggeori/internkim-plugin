@@ -55,4 +55,4 @@ def stale_issue(sheet: str, cells: list) -> Issue:
     labels = [label for label, _, _ in cells]
     hidden = len(labels) - LISTED_CELL_LIMIT
     listed = ", ".join(labels[:LISTED_CELL_LIMIT]) + (f" and {hidden} more" if hidden > 0 else "")
-    return STALE_CACHED_VALUE.issue(f"{len(cells)} formula cells on {sheet} store a value that differs from the computed one ({examples}): {listed}", labels[0], suggestion={"op": "recalculate"})
+    return STALE_CACHED_VALUE.issue(f"{len(cells)} formula cells on {sheet} store a value that differs from the computed one ({examples}): {listed}", labels[0], fix=[{"op": "recalculate"}])

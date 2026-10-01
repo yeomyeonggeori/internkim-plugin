@@ -43,7 +43,7 @@ def east_asia_font_issues(document) -> list[Issue]:
     unfonted = [run for run in runs if not run_names_east_asia_font(run, document)]
     if not unfonted:
         return []
-    return [EAST_ASIA_FONT_MISSING.issue(f"{len(unfonted)} runs of Korean text have no East Asian font", "document", suggestion={"op": "set_east_asia_font", "font": DEFAULT_EAST_ASIA_FONT})]
+    return [EAST_ASIA_FONT_MISSING.issue(f"{len(unfonted)} runs of Korean text have no East Asian font", "document", fix=[{"op": "set_east_asia_font", "font": DEFAULT_EAST_ASIA_FONT}])]
 
 
 def default_east_asia_font_is_set(document) -> bool:

@@ -32,7 +32,7 @@ def missing_image_issues(document, elements: list) -> list[Issue]:
     for index, element in enumerate(elements):
         broken = [blip for blip in element.iter(BLIP_TAG) if not shows_a_picture(blip, document.part)]
         if broken:
-            issues.append(MISSING_IMAGE.issue(f"block {index} has {len(broken)} pictures whose image part is missing, so they show nothing", f"block {index}", suggestion=missing_image_suggestion(element, index)))
+            issues.append(missing_image_issue(element, index, len(broken)))
     return issues
 
 
@@ -45,15 +45,16 @@ def shows_a_picture(blip, part) -> bool:
     return relationship.target_part.content_type.startswith("image/")
 
 
-def missing_image_suggestion(element, index: int) -> dict | str:
+def missing_image_issue(element, index: int, broken_count: int) -> Issue:
+    message = f"block {index} has {broken_count} pictures whose image part is missing, so they show nothing"
     if element.tag == PARAGRAPH_TAG and not element_text(element).strip():
-        return {"op": "delete_block", "block": index}
-    return f"insert_image after block {index} with the picture file, then remove the broken one"
+        return MISSING_IMAGE.issue(message, f"block {index}", "delete the paragraph, which holds only the broken picture", fix=[{"op": "delete_block", "block": index}])
+    return MISSING_IMAGE.issue(message, f"block {index}", f"insert_image after block {index} with the picture file, then remove the broken one")
 
 
 def chart_empty_issues(document, elements: list) -> list[Issue]:
     return [
-        CHART_EMPTY.issue(f"chart {chart.index} has no number in any series, so it draws nothing", f"block {chart.block}", suggestion=chart_data_suggestion(chart))
+        CHART_EMPTY.issue(f"chart {chart.index} has no number in any series, so it draws nothing", f"block {chart.block}", fix=[chart_data_operation(chart)])
         for chart in document_charts(document, elements)
         if not has_numbers(chart.part)
     ]
@@ -64,7 +65,7 @@ def has_numbers(chart_part) -> bool:
     return any(is_number(value) for series in root.iter(f"{{{CHART_NAMESPACE}}}ser") for value in cached_points(series, "val"))
 
 
-def chart_data_suggestion(chart) -> dict:
+def chart_data_operation(chart) -> dict:
     specification = read_specification(chart.part)
     categories = list(specification.categories) or ["<label>"]
     names = [name for name, _values, _is_line in specification.series if name] or ["<series name>"]
@@ -80,12 +81,12 @@ def heading_issues(document, elements: list) -> list[Issue]:
             continue
         if not element_text(element).strip():
             if element.find(f".//{qn('w:drawing')}") is None:
-                issues.append(EMPTY_HEADING.issue(f"block {index} is a level {level} heading with no text", f"block {index}", suggestion={"op": "delete_block", "block": index}))
+                issues.append(EMPTY_HEADING.issue(f"block {index} is a level {level} heading with no text", f"block {index}", fix=[{"op": "delete_block", "block": index}]))
             continue
         if level == 0:
             continue
         if previous_level and level > previous_level + 1:
-            issues.append(HEADING_SKIP.issue(f"block {index} jumps from heading level {previous_level} to {level}", f"block {index}", suggestion={"op": "set_style", "block": index, "style": f"Heading {previous_level + 1}"}))
+            issues.append(HEADING_SKIP.issue(f"block {index} jumps from heading level {previous_level} to {level}", f"block {index}", fix=[{"op": "set_style", "block": index, "style": f"Heading {previous_level + 1}"}]))
         previous_level = level
     return issues
 
@@ -102,7 +103,7 @@ def unresolved_comment_issues(document, elements: list) -> list[Issue]:
         return []
     first = open_threads[0]
     location = f"block {first['block']}" if first["block"] is not None else "comments"
-    return [UNRESOLVED_COMMENTS.issue(f"{len(open_threads)} comment threads are unresolved; doc read lists them under comments", location, suggestion={"op": "resolve_comment", "comment": first["id"]})]
+    return [UNRESOLVED_COMMENTS.issue(f"{len(open_threads)} comment threads are unresolved; doc read lists them under comments", location, fix=[{"op": "resolve_comment", "comment": first["id"]}])]
 
 
 def field_result_issues(elements: list, fields_update_on_open: bool) -> list[Issue]:
@@ -112,7 +113,7 @@ def field_result_issues(elements: list, fields_update_on_open: bool) -> list[Iss
     if not empty:
         return []
     index, keyword = empty[0]
-    return [FIELD_NOT_EVALUATED.issue(f"{len(empty)} fields show no result until Word updates them, such as {keyword or 'a field'} in block {index}", f"block {index}", suggestion={"op": "update_fields_on_open"})]
+    return [FIELD_NOT_EVALUATED.issue(f"{len(empty)} fields show no result until Word updates them, such as {keyword or 'a field'} in block {index}", f"block {index}", fix=[{"op": "update_fields_on_open"}])]
 
 
 def fields_without_result(element) -> list[str]:

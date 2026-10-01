@@ -57,7 +57,7 @@ class Fact:
 
     def to_issue(self) -> Issue:
         message = f"{self.location}: expected {self.expected}, found {self.found}"
-        return self.kind.issue(message, self.location, suggestion={"expected": self.expected, "found": self.found})
+        return self.kind.issue(message, self.location, suggestion=f"{self.kind.default_suggestion()}: write {self.expected}")
 
 
 @dataclass(frozen=True)

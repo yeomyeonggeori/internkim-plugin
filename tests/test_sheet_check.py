@@ -51,9 +51,9 @@ class SheetCheckTest(WorkbookFixture):
         self.assertIn("#DIV/0!", message)
 
     def test_the_suggested_width_fixes_the_narrow_column(self):
-        suggestion = next(issue["suggestion"] for issue in self.check()["issues"] if issue["code"] == "NUMBER_TOO_WIDE")
-        self.assertEqual({key: suggestion[key] for key in ("op", "sheet", "column")}, {"op": "set_column_width", "sheet": "Sales", "column": "C"})
-        self.assertEqual(self.apply([suggestion], name="fixture.xlsx")["status"], "ok")
+        fix = next(issue["fix"] for issue in self.check()["issues"] if issue["code"] == "NUMBER_TOO_WIDE")
+        self.assertEqual([{key: operation[key] for key in ("op", "sheet", "column")} for operation in fix], [{"op": "set_column_width", "sheet": "Sales", "column": "C"}])
+        self.assertEqual(self.apply(fix, name="fixture.xlsx")["status"], "ok")
         self.assertNotIn(("NUMBER_TOO_WIDE", "Sales!C1"), self.findings())
 
     def test_a_number_that_fits_is_left_alone(self):
@@ -110,7 +110,7 @@ class StaleCachedValueTest(WorkbookFixture):
         self.assertEqual(issue["location"], "Sales!C2")
         self.assertIn("Sales!C2 stores 25 but computes 20", issue["message"])
         self.assertIn("Sales!D2", issue["message"])
-        self.assertEqual(self.apply([issue["suggestion"]])["status"], "ok")
+        self.assertEqual(self.apply(issue["fix"])["status"], "ok")
         self.assertEqual(self.findings(), [])
         self.assertEqual(stored_cells(self.directory / "book.xlsx")["C2"]["value"], "20")
 
@@ -227,11 +227,11 @@ class TextValueTest(WorkbookFixture):
         self.create_workbook([{"title": "매출", "rows": [["월", "매출", "비율"], ["1월", "1,200", "12.5%"], ["2월", "₩1,350", 0.2], ["합계", "SUM(B2:B3)", None]]}])
         issues = self.text_issues()
         self.assertEqual([issue["location"] for issue in issues], ["매출!B2", "매출!B3", "매출!B4", "매출!C2"])
-        self.assertEqual(issues[0]["suggestion"], [{"op": "set_cell", "sheet": "매출", "cell": "B2", "value": 1200}, {"op": "format_range", "sheet": "매출", "range": "B2", "numberFormat": "#,##0"}])
-        self.assertEqual(issues[2]["suggestion"], [{"op": "set_cell", "sheet": "매출", "cell": "B4", "value": "=SUM(B2:B3)"}])
+        self.assertEqual(issues[0]["fix"], [{"op": "set_cell", "sheet": "매출", "cell": "B2", "value": 1200}, {"op": "format_range", "sheet": "매출", "range": "B2", "numberFormat": "#,##0"}])
+        self.assertEqual(issues[2]["fix"], [{"op": "set_cell", "sheet": "매출", "cell": "B4", "value": "=SUM(B2:B3)"}])
         self.assertIn("missing its =", issues[2]["message"])
-        self.assertEqual(issues[3]["suggestion"][0]["value"], 0.125)
-        envelope = self.apply([operation for issue in issues for operation in issue["suggestion"]])
+        self.assertEqual(issues[3]["fix"][0]["value"], 0.125)
+        envelope = self.apply([operation for issue in issues for operation in issue["fix"]])
         self.assertEqual(envelope["status"], "ok", envelope)
         self.assertEqual(self.text_issues(), [])
         values = run_office(["sheet", "read", "book.xlsx", "--range", "B2:C4"], self.directory)["details"]["range"]["values"]
@@ -248,5 +248,5 @@ class TextValueTest(WorkbookFixture):
         self.apply([{"op": "set_cell", "sheet": "S", "cell": "A3", "value": "2026-09-02", "type": "text"}, {"op": "set_cell", "sheet": "S", "cell": "A4", "value": "2026.09.03"}])
         self.assertEqual(load_workbook(self.directory / "book.xlsx")["S"]["A3"].value, "2026-09-02")
         issues = self.text_issues()
-        self.assertEqual([(issue["location"], issue["suggestion"][0]["value"]) for issue in issues], [("S!A4", "2026-09-03")])
+        self.assertEqual([(issue["location"], issue["fix"][0]["value"]) for issue in issues], [("S!A4", "2026-09-03")])
 

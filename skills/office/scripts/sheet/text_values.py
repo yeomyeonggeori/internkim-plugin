@@ -104,10 +104,10 @@ def run_issue(run: Run) -> Issue:
     location = f"{run.sheet}!{reference}"
     shown = ", ".join(repr(text) for text in run.texts[:SHOWN_TEXT_LIMIT]) + (" and more" if len(run.texts) > SHOWN_TEXT_LIMIT else "")
     verb = "holds the text" if len(run.texts) == 1 else "hold the texts"
-    return VALUE_STORED_AS_TEXT.issue(f"{location} {verb} {shown}, which reads as {run.noun}", location, suggested_operations(run, first, reference))
+    return VALUE_STORED_AS_TEXT.issue(f"{location} {verb} {shown}, which reads as {run.noun}", location, fix=typing_operations(run, first, reference))
 
 
-def suggested_operations(run: Run, first: str, reference: str) -> list[dict]:
+def typing_operations(run: Run, first: str, reference: str) -> list[dict]:
     if len(run.values) == 1:
         operations = [{"op": "set_cell", "sheet": run.sheet, "cell": first, "value": run.values[0]}]
     else:

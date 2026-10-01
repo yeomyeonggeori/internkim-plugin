@@ -21,7 +21,7 @@ A CSV or TSV becomes a workbook with `<skill>/scripts/office convert <data.csv> 
 1. Clarify only missing columns, source data, formulas or format choices that change the structure. Preview a newly uploaded file before extraction.
 2. Parse CSV and TSV with Python's `csv`, preserve malformed data for review, and never silently drop rows or columns. Put rows you cannot repair confidently in an `Issues` sheet.
 3. Work in `~/documents/`. Write each formula's references for the row it lands in, counting a heading row.
-4. Run `sheet check` and `sheet validate` and fix what they report; each issue says how, and `NUMBER_TOO_WIDE` carries the exact operation. Then `sheet read` the ranges that hold totals and compare them with the source.
+4. Run `sheet check` and `sheet validate` and fix what they report; each issue says how, and an issue such as `NUMBER_TOO_WIDE` carries the exact operations in its `fix`. Then `sheet read` the ranges that hold totals and compare them with the source.
 5. Deliver source CSVs only when requested.
 
 ## Workbook quality

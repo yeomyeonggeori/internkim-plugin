@@ -67,7 +67,7 @@ def part_placeholder_issues(document) -> list[Issue]:
 
 def placeholders_in(element, location: str, block_index: int | None) -> list[Issue]:
     issues = [
-        PLACEHOLDER_LEFT.issue(f"{location} still holds {placeholder}", location, suggestion=replace_suggestion(placeholder, block_index))
+        PLACEHOLDER_LEFT.issue(f"{location} still holds {placeholder}", location, fix=[replacement(placeholder, block_index)])
         for paragraph in element.iter(qn("w:p"))
         for placeholder in PLACEHOLDER_PATTERN.findall(element_text(paragraph))
     ]
@@ -79,11 +79,11 @@ def placeholders_in(element, location: str, block_index: int | None) -> list[Iss
     return issues
 
 
-def replace_suggestion(placeholder: str, block_index: int | None) -> dict:
-    suggestion = {"op": "replace_text", "find": placeholder, "replace": "<value>"}
+def replacement(placeholder: str, block_index: int | None) -> dict:
+    operation = {"op": "replace_text", "find": placeholder, "replace": "<value>"}
     if block_index is not None:
-        suggestion["block"] = block_index
-    return suggestion
+        operation["block"] = block_index
+    return operation
 
 
 def field_instructions(element) -> list[str]:
@@ -130,7 +130,7 @@ def table_of_contents_issues(document, elements: list) -> list[Issue]:
     missing = [heading for heading in headings if heading and heading not in contents_text]
     if not missing:
         return []
-    return [STALE_TABLE_OF_CONTENTS.issue(f"the table of contents does not list {len(missing)} headings, such as {missing[0]!r}", location, suggestion={"op": "update_fields_on_open"})]
+    return [STALE_TABLE_OF_CONTENTS.issue(f"the table of contents does not list {len(missing)} headings, such as {missing[0]!r}", location, fix=[{"op": "update_fields_on_open"}])]
 
 
 def fields_update_on_open(document) -> bool:
@@ -154,7 +154,7 @@ def east_asia_language_issues(document) -> list[Issue]:
     mistagged = [run for run in runs if effective_east_asia_language(run, document) != KOREAN_LANGUAGE]
     if not mistagged:
         return []
-    return [EAST_ASIA_LANGUAGE_NOT_KOREAN.issue(f"{len(mistagged)} runs of Korean text have an East Asian language other than ko-KR", "document", suggestion={"op": "set_korean_language"})]
+    return [EAST_ASIA_LANGUAGE_NOT_KOREAN.issue(f"{len(mistagged)} runs of Korean text have an East Asian language other than ko-KR", "document", fix=[{"op": "set_korean_language"}])]
 
 
 def tracked_change_issues(document, elements: list) -> list[Issue]:

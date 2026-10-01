@@ -19,8 +19,8 @@ class IssueKind:
     meaning: str
     suggestion: str
 
-    def issue(self, message: str, location: str | None = None, suggestion: object = None) -> "Issue":
-        return Issue(self, message, location, self.default_suggestion() if suggestion is None else suggestion)
+    def issue(self, message: str, location: str | None = None, suggestion: str | None = None, fix: tuple[dict, ...] | list[dict] = ()) -> "Issue":
+        return Issue(self, message, location, self.default_suggestion() if suggestion is None else suggestion, tuple(fix))
 
     def default_suggestion(self) -> str:
         return self.suggestion.replace("{guide}", guide_reference())
@@ -31,7 +31,14 @@ class Issue:
     kind: IssueKind
     message: str
     location: str | None
-    suggestion: object
+    suggestion: str
+    fix: tuple[dict, ...] = ()
+
+    def __post_init__(self):
+        if not isinstance(self.suggestion, str):
+            raise TypeError(f"{self.kind.code}: a suggestion is text, not {type(self.suggestion).__name__}; operations go in fix")
+        if not all(isinstance(operation, dict) and isinstance(operation.get("op"), str) for operation in self.fix):
+            raise TypeError(f"{self.kind.code}: fix holds operations, each an object with an op")
 
     def to_json(self) -> dict:
         return {
@@ -40,6 +47,7 @@ class Issue:
             "message": self.message,
             "location": self.location,
             "suggestion": self.suggestion,
+            "fix": list(self.fix),
         }
 
 
@@ -69,11 +77,6 @@ class Result:
         if self.details is not None:
             envelope["details"] = self.details
         return envelope
-
-
-def issue_from_json(document: dict, kinds: tuple[IssueKind, ...]) -> Issue:
-    kind = next(kind for kind in kinds if kind.code == document["code"])
-    return Issue(kind, document["message"], document["location"], document["suggestion"])
 
 
 class OfficeFailure(Exception):

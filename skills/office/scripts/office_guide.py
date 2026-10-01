@@ -14,7 +14,9 @@ SCRIPTS_PATH = pathlib.Path(__file__).resolve().parent
 USAGE = "usage: office guide <format> [verb [operation]]"
 ENVELOPE_LINE = (
     "Every command prints one JSON result: {status: ok|warning|error, summary, outputPath, "
-    "issues: [{code, severity, message, location, suggestion}], details}. It exits 1 when status is error. "
+    "issues: [{code, severity, message, location, suggestion, fix}], details}. It exits 1 when status is error. "
+    "suggestion is always text saying what to do; fix is a list of operations for the format's apply command that make that change, "
+    "empty when no operation does, and a value in angle brackets such as <value> is yours to fill in. "
     "A null field counts as absent. A cell is text, a number, true/false, or null."
 )
 

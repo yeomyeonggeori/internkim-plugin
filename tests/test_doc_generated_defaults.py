@@ -183,7 +183,7 @@ class KoreanLanguageCheckTest(GeneratedDocumentTest):
         """, self.directory)
         envelope = run_office(["doc", "check", path.name], self.directory)
         issue = next(issue for issue in envelope["issues"] if issue["code"] == "EAST_ASIA_LANGUAGE_NOT_KOREAN")
-        write_json(self.directory / "fix.json", [issue["suggestion"]])
+        write_json(self.directory / "fix.json", issue["fix"])
         self.assertEqual(run_office(["doc", "apply", path.name, "fix.json"], self.directory)["status"], "ok")
         self.assertNotIn("EAST_ASIA_LANGUAGE_NOT_KOREAN", self.codes(path))
         self.assertNotIn("ja-JP", package_part(path, "word/document.xml"))

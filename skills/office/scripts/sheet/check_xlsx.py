@@ -153,8 +153,8 @@ def too_wide_issue(worksheet, column: int, needed: int, coordinate: str) -> Issu
     letter = coordinate.rstrip("0123456789")
     width = math.ceil(needed) + WIDTH_MARGIN
     location = cell_label(worksheet.title, coordinate)
-    suggestion = {"op": "set_column_width", "sheet": worksheet.title, "column": letter, "width": width}
-    return NUMBER_TOO_WIDE.issue(f"{location} needs about {needed} characters but column {letter} holds {column_width(worksheet, column):g}", location, suggestion)
+    widening = {"op": "set_column_width", "sheet": worksheet.title, "column": letter, "width": width}
+    return NUMBER_TOO_WIDE.issue(f"{location} needs about {needed} characters but column {letter} holds {column_width(worksheet, column):g}", location, fix=[widening])
 
 
 def placeholder_issues(workbook) -> list[Issue]:

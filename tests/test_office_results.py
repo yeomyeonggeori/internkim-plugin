@@ -68,8 +68,22 @@ class ResultEnvelopeTest(unittest.TestCase):
                     self.assertEqual(completed.returncode, 1)
                     self.assertTrue(envelope["issues"])
                     for issue in envelope["issues"]:
-                        self.assertEqual(set(issue), {"code", "severity", "message", "location", "suggestion"})
+                        self.assertEqual(set(issue), {"code", "severity", "message", "location", "suggestion", "fix"})
+                        self.assertIsInstance(issue["suggestion"], str)
+                        self.assertEqual(issue["fix"], [])
                         self.assertIn(issue["code"], known_codes)
+
+    def test_an_issue_carries_its_suggestion_as_text_and_its_operations_in_fix(self):
+        kind = IssueKind("SAMPLE", "warning", "a sample", "do the sample thing")
+        self.assertEqual(kind.issue("found", "block 2", fix=[{"op": "delete_block", "block": 2}]).to_json(), {
+            "code": "SAMPLE", "severity": "warning", "message": "found", "location": "block 2",
+            "suggestion": "do the sample thing", "fix": [{"op": "delete_block", "block": 2}],
+        })
+        self.assertEqual(kind.issue("found").to_json()["fix"], [])
+        with self.assertRaises(TypeError):
+            kind.issue("found", suggestion={"op": "delete_block"})
+        with self.assertRaises(TypeError):
+            kind.issue("found", fix=[{"block": 2}])
 
     def test_an_unknown_command_is_an_issue(self):
         with tempfile.TemporaryDirectory() as working_directory:
