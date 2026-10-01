@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from charts.kinds import DOCUMENT_CHART_KINDS
-from fonts.registry import BODY_SIZE_POINTS, SANS_BODY, default_family
+from fonts.registry import BODY_SIZE_POINTS, MONOSPACE, SANS_BODY, default_family
 from office_preview import PREVIEW_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
@@ -477,6 +477,30 @@ GLYPH_NOT_COVERED = IssueKind("GLYPH_NOT_COVERED", WARNING, "some characters hav
 
 MATH_NOT_CONVERTED = IssueKind("MATH_NOT_CONVERTED", WARNING, "a $...$ or $$...$$ formula is not LaTeX the converter reads, so its source text was written as it is", "fix the LaTeX with standard commands such as \\frac, \\sqrt, \\sum, ^ and _, or write the formula in words")
 EXPORT_ISSUE_KINDS = (CHART_BLOCK_INVALID, IMAGE_UNAVAILABLE, MATH_NOT_CONVERTED, PDF_RENDERER_FAILED, PDF_RENDERER_UNAVAILABLE, GLYPH_NOT_COVERED)
+
+CHART_FENCE_KEYS = {
+    "type": f"one of {', '.join(DOCUMENT_CHART_KINDS)}; the deck's stacked and donut work too",
+    "title": "the chart title, with the unit",
+    "labels": "category names separated by a comma and a space",
+    "values": "one number per label, for a single series",
+    "series": '"name: 1, 2; other: 3, 4" for several series, each with one number per label',
+    "line": "series names drawn as lines over the columns",
+    "legend": "yes or no",
+}
+CHART_KEYS = tuple(CHART_FENCE_KEYS)
+
+
+def markdown_lines() -> list[str]:
+    return [
+        "  a ```chart fence holds one key: value per line and becomes a native Word chart:",
+        *(f"    {key}: {meaning}" for key, meaning in CHART_FENCE_KEYS.items()),
+        "  LaTeX in $...$, or alone on a $$...$$ line, becomes a Word equation",
+        f"  any other ``` fence is a code block in {default_family(MONOSPACE).name}",
+        "  links, local images, tables and nested lists keep their Markdown meaning",
+    ]
+
+
+GUIDE_SECTIONS = (("Markdown that doc export reads", markdown_lines),)
 
 GUIDE_INPUTS = (
     ("doc create --spec <file>", DOCUMENT_SPECIFICATION),

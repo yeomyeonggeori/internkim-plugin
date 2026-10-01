@@ -1,7 +1,7 @@
 ---
 name: office
 description: Create, read, edit, validate, and attach office files — Word .docx, PDF, Excel .xlsx/.csv/.tsv, slide decks (HTML, PDF, PPTX), and standardized Korean company forms and contracts on letterhead. Use for reports, memos, letters, workbooks, formulas, decks, pitch decks, PowerPoint, Keynote, 워드, 문서, 보고서, PDF, 엑셀, 스프레드시트, 표, 발표자료, 파워포인트, 피피티, 견적서, 거래명세서, 청구서, 발주서, 품의서, 지출결의서, 회의록, 주간업무보고, 출장보고서, 재직증명서, 경력증명서, 휴가신청서, 위임장, 오퍼레터, 근로계약서, 비밀유지계약서, NDA, 업무협약서, MOU, 용역계약서, quotation, invoice, purchase order, certificate, and contract requests.
-compatibility: Requires python3 and uv, and bun or node 18 to draw pages; no browser or office suite. The first run installs the packages the scripts declare, and the first `--ocr` run installs an OCR engine of about 150 MB, so both need network access. Every page is drawn with fonts the skill ships, so no font needs to be installed. Company forms and reading attached files need InternKim's tool server.
+compatibility: Requires python3 and uv, and bun or node 18 to draw pages; no browser or office suite. The first run installs the packages the scripts declare, and the first `--ocr` run installs an OCR engine, so both need network access. Every page is drawn with fonts the skill ships, so no font needs to be installed. Company forms and reading attached files need InternKim's tool server.
 metadata:
   kim.intern.tool-references: "read company_info_get company_info_set company_document_register company_document_update company_document_list company_document_search"
 ---
@@ -18,7 +18,7 @@ One command, `<skill>/scripts/office <format> <verb> [arguments]`, writes and ch
 | Existing PDF to read, look at, extract, split, merge, or append to; a PDF whose placement is the point | `pdf read`, `pdf render`, `pdf create`, `pdf edit`, `pdf validate` | `references/pdf.md` |
 | Workbook, CSV or TSV cleanup, formulas, charts | `sheet create`, `sheet edit`, `sheet read`, `sheet apply`, `sheet merge`, `sheet check`, `sheet render`, `sheet validate` | `references/sheet.md` |
 | Deck, presentation, PPTX, or checking an existing .pptx | `deck check`, `deck build`, `deck read`, `deck apply`, `deck merge`, `deck restore`, `deck image` | `references/deck.md` |
-| Converting a file to another format (md, docx, html, pdf, xlsx, xls, xlsb, ods, csv, pptx; the guide lists every route) | `convert` | `office guide convert` |
+| Converting a file to another format | `convert` | `office guide convert` |
 | Standardized company form or contract on letterhead (견적서, 품의서, 증명서, 계약서, NDA, MOU) | `paperwork check`, `paperwork render`, `paperwork fill` | `references/paperwork.md` |
 
 A standardized form belongs to paperwork even when it ships as .docx or PDF: its letterhead, approval boxes, seals, and fixed clauses live there. Work the listed commands do not cover, such as merging PDFs, goes in a task-local Python file run with `<skill>/scripts/office python <script.py> [arguments]`, which provides every office package.

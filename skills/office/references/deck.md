@@ -4,7 +4,7 @@ A deck is one file, `slides.html`, written with the built-in kit and built into 
 
 ## Write slides.html
 
-Work in `artifacts/<deck-slug>/`. Write the whole file in one step with your file tool, never through a heredoc. To change an existing deck, edit its `slides.html` in place; `deck restore` recovers it from a delivered `.html`.
+Work in `artifacts/<deck-slug>/`. First run `<skill>/scripts/office guide deck`: it gives the slide order rules, the themes, every layout with its purpose and parts, and the chart attributes. Then write the whole file in one step with your file tool, never through a heredoc. To change an existing deck, edit its `slides.html` in place; `deck restore` recovers it from a delivered `.html`.
 
 ```html
 <!doctype html>
@@ -23,37 +23,9 @@ Work in `artifacts/<deck-slug>/`. Write the whole file in one step with your fil
 </html>
 ```
 
-- `data-theme`: `editorial` (warm paper, the default), `corporate` (white and blue), `midnight` (dark), `swiss` (white, black and red). A brand color goes in `data-accent="#E4002B"` on `<body>`.
 - Every part is a direct child of its `<section>`.
 - A title states the slide's conclusion as a sentence in the request's language. `<em>` colors key words.
-- Any slide takes `.eyebrow` (kicker), `.lead` (subtitle), `.takeaway` (conclusion band), `.source` (source line, shown in the footer) and `<aside class="notes">` (speaker notes).
-- `.pick` highlights one card, column, KPI or table row; `.up` and `.down` color a change.
-
-## Layouts
-
-Slide 1 is a `cover` and, from three slides on, the last is a `closing`. Choose every slide between from its content. Three slides in a row never share a layout, and six or more slides use at least three.
-
-| Content | Layout |
-| --- | --- |
-| the deck's claim, who presents and when | `cover` |
-| order of the talk | `agenda` |
-| part divider | `section` |
-| one sentence to remember | `statement` |
-| one number that carries the point | `number` |
-| two to four metrics, one unit system | `kpi` |
-| two to four parallel points; four form a 2x2 | `cards` |
-| two options or before and after | `comparison` |
-| three to six steps or dates | `timeline` |
-| rows the audience must read | `table` |
-| trend, ranking or share | `chart` |
-| a person's words | `quote` |
-| steps in order, joined by arrows | `process` |
-| stages that repeat | `cycle` |
-| an org chart or a breakdown | `hierarchy` |
-| levels that build on each other | `pyramid` |
-| four options on two axes | `matrix` |
-| a photo that shows the subject | `image` |
-| the decision or next actions | `closing` |
+- Choose each slide's layout from its content. Every layout in use:
 
 ```html
 <section data-layout="agenda"><h2>오늘 다룰 내용</h2><ol><li>3분기 성과</li><li>지역별 실적</li><li>4분기 계획</li></ol></section>
@@ -91,9 +63,7 @@ Slide 1 is a `cover` and, from three slides on, the last is a `closing`. Choose 
 
 ## Charts
 
-A chart is data in attributes; the kit draws it with value labels and the theme's colors. `data-chart` is `column`, `bar`, `stacked`, `stacked100` (shares of each column), `line`, `area` (stacked bands over time), `combo`, `scatter`, `donut` or `pie`. Give `data-labels` and `data-values` with one number per label, separated by a comma and a space (`1,200, 1,350`), or several series as `data-series="2025: 82, 96; 2026: 90, 110"`. The unit goes in `data-unit`, never in the numbers. `data-highlight="3Q26"` draws one label in the accent and mutes the rest. Put the unit, period and source in `<figcaption>`. Keep one unit and one source per chart.
-
-Two charts have two axes and take one unit per axis. In a `combo`, the last series is a line on its own axis over columns of the others; in a `scatter`, the first series runs across, the second up, and each label names a point:
+A chart is data in attributes; the kit draws it with value labels and the theme's colors. Numbers are separated by a comma and a space (`1,200, 1,350`), and the unit goes in `data-unit`, never in the numbers. Put the unit, period and source in `<figcaption>`, with one unit and one source per chart; a `combo` or `scatter` takes one unit per axis:
 
 ```html
 <figure data-chart="combo" data-labels="1Q, 2Q, 3Q, 4Q" data-series="매출: 96, 104, 113, 128; 영업이익률: 11.2, 12.5, 13.1, 14.2" data-unit="억, %"><figcaption>분기 매출(억 원)과 영업이익률(%)</figcaption></figure>
@@ -109,10 +79,10 @@ Run from `artifacts/<deck-slug>`, passing the slide count the user asked for and
 
 It writes `build/<deck-slug>.pdf`; add `--format pptx` for PowerPoint or `--format all` for both. `<skill>/scripts/office deck check` runs its first stage alone.
 
-1. The build first checks the markup of `slides.html`: an unknown layout, a missing part, a repeated layout, a placeholder such as `XX` or `TODO`, a missing required fact, a wrong slide count, chart numbers that do not parse, or a missing image stops it. Every such problem is listed at once, each naming the slide and the fix.
+1. The build first checks the markup of `slides.html` and stops on any problem it finds, listing them all at once, each naming the slide and the fix.
 2. It then renders and measures every slide. The summary starts with the verdict:
    - `ACCEPTABLE`: deliver the file it names. Other issues are advice; do not redesign a slide that is clean.
-   - `FIX ROUND 1 OF 2` or `2 OF 2`: fix only the listed defects (text that overflows, overlaps or hides under a box, content off the slide or in the footer, a title over three lines, a missing fact, an off-palette color, tiny text, a mostly empty slide) by shortening, splitting or filling, then build again.
+   - `FIX ROUND 1 OF 2` or `2 OF 2`: fix only the listed defects by shortening, splitting or filling, then build again.
    - `STOP FIXING`: deliver and name the defects that remain.
    - `NOT MEASURED`: neither bun nor node 18 could draw the slides, so there is no PDF and a requested PPTX holds only the slide text in stock layouts; deliver the file the verdict names and say the layout was not checked.
 3. Before attaching, open `build/review/contact-sheet-01.png` once and confirm the slides read as intended.

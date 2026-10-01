@@ -7,6 +7,12 @@ import re
 
 from css_color import parse_css_color
 from deck_definitions import (
+    CLOSING_LAYOUT,
+    CLOSING_SLIDE_MINIMUM,
+    COVER_LAYOUT,
+    REPEAT_LIMIT,
+    VARIETY_LAYOUT_MINIMUM,
+    VARIETY_SLIDE_MINIMUM,
     CHART_DATA_INVALID,
     IMAGE_NOT_FOUND,
     KIT_LAYOUT_NAMES,
@@ -41,12 +47,6 @@ from resource_inlining import resolve_resource_path
 from text_checks import DRAFT_PLACEHOLDER_PATTERN, PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
 
 
-REPEAT_LIMIT = 3
-COVER_LAYOUT = "cover"
-CLOSING_LAYOUT = "closing"
-CLOSING_SLIDE_MINIMUM = 3
-VARIETY_SLIDE_MINIMUM = 6
-VARIETY_LAYOUT_MINIMUM = 3
 DONUT_SLICE_MAXIMUM = 8
 ALWAYS_ALLOWED_COLORS = {"FFFFFF", "000000"}
 COLOR_LITERAL_PATTERN = re.compile(r"#[0-9A-Fa-f]{3,8}\b|(?:rgba?|hsla?)\([^)]*\)")

@@ -239,6 +239,22 @@ def count_label(minimum: int, maximum: int | None) -> str:
     return str(minimum) if maximum == minimum else f"{minimum}-{maximum}" if maximum else f"{minimum}+"
 
 
+REPEAT_LIMIT = 3
+COVER_LAYOUT = "cover"
+CLOSING_LAYOUT = "closing"
+CLOSING_SLIDE_MINIMUM = 3
+VARIETY_SLIDE_MINIMUM = 6
+VARIETY_LAYOUT_MINIMUM = 3
+
+
+def order_lines() -> list[str]:
+    return [
+        f"  slide 1 is a {COVER_LAYOUT}; from {CLOSING_SLIDE_MINIMUM} slides on, the last is a {CLOSING_LAYOUT}",
+        f"  {REPEAT_LIMIT} slides in a row never share a layout, and {VARIETY_SLIDE_MINIMUM} or more slides use at least {VARIETY_LAYOUT_MINIMUM} layouts",
+        "  choose every other slide's layout from its content, by the purposes below",
+    ]
+
+
 def theme_lines() -> list[str]:
     palettes = theme_palettes()
     return [
@@ -262,6 +278,7 @@ def chart_lines() -> list[str]:
 
 
 GUIDE_SECTIONS = (
+    ("Slide order", order_lines),
     ("Themes (<body data-theme=\"...\">)", theme_lines),
     ("Layouts (<section data-layout=\"...\">; parts are direct children of the section)", layout_lines),
     ("Diagrams (process, cycle, hierarchy, pyramid, matrix)", diagram_lines),

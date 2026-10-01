@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from amounts import ROUNDING_RULE, VAT_RATE_PERCENT
 from office_result import ERROR, WARNING, IssueKind
 from office_schema import AnyOf, Boolean, CellValue, Field, ListOf, Number, Record, Text, Variant
@@ -124,6 +126,22 @@ GUIDE_INPUTS = (
 GUIDE_ISSUES = (("paperwork check", AMOUNT_ISSUE_KINDS),)
 
 
+SPECIFICATIONS_PATH = Path(__file__).resolve().parents[2] / "references" / "paperwork"
+
+
+def form_slugs() -> list[str]:
+    return sorted(path.stem for path in (SPECIFICATIONS_PATH / "ko").glob("*.md"))
+
+
+def form_lines() -> list[str]:
+    templates = set(template_names())
+    rendered = [slug for slug in form_slugs() if slug not in templates]
+    return [
+        f"  paperwork render: {', '.join(rendered)}",
+        f"  paperwork fill (a Korean contract template; in English, paperwork render): {', '.join(sorted(templates))}",
+    ]
+
+
 def template_guide_lines() -> list[str]:
     lines = []
     for name in template_names():
@@ -162,6 +180,7 @@ def amount_rule_lines() -> list[str]:
 
 
 GUIDE_SECTIONS = (
+    ("Forms (each slug's spec is references/paperwork/<ko|en>/<slug>.md)", form_lines),
     ("Templates of paperwork fill <template> <context.json> <output>.docx; the context JSON holds these fields", template_guide_lines),
     ("Amount rules of paperwork check <input.json>", amount_rule_lines),
 )

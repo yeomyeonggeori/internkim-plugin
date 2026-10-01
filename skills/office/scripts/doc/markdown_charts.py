@@ -4,11 +4,10 @@ from dataclasses import dataclass, field
 
 from charts.kinds import DOCUMENT_CHART_KINDS, ROUND_CHART_KINDS, kit_document_kind
 from charts.numbers import chart_number, split_chart_list
-from doc_definitions import CHART_BLOCK_INVALID
+from doc_definitions import CHART_BLOCK_INVALID, CHART_KEYS
 from office_result import OfficeFailure
 
 
-CHART_KEYS = ("type", "title", "labels", "values", "series", "line", "legend")
 TRUE_WORDS = ("yes", "true", "on")
 FALSE_WORDS = ("no", "false", "off")
 FENCE = "```"

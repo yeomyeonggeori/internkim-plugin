@@ -4,7 +4,7 @@ Create standardized business documents with the bundled letterhead renderer and 
 
 ## Catalog and specs
 
-Read the requested language's spec first at `references/paperwork/<ko|en>/<slug>.md`; the spec is the source of truth for required content, fixed wording, output format, and the content JSON. Supported slugs are `quote`, `transaction-statement`, `invoice`, `purchase-order`, `approval-request`, `expense-approval`, `meeting-minutes`, `weekly-report`, `business-trip-report`, `employment-certificate`, `career-certificate`, `leave-request`, `power-of-attorney`, `offer-letter`, `employment-contract`, `nda`, `mou`, and `service-agreement`.
+Read the requested language's spec first at `references/paperwork/<ko|en>/<slug>.md`; the spec is the source of truth for required content, fixed wording, output format, and the content JSON. `<skill>/scripts/office guide paperwork` lists every slug and whether it renders or fills a template.
 
 ## Workflow
 

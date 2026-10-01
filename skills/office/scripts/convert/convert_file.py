@@ -29,7 +29,7 @@ from markdown_charts import require_valid_charts  # noqa: E402
 from office_inputs import KINDS_BY_NAME, PDF, add_password_argument, office_file, require_unlocked_pdf
 from office_result import INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
 from office_inputs import read_text_input, unlocked_pdf_bytes  # noqa: E402
-from pdf.pdf_definitions import OCR_UNAVAILABLE, PAGE_READ_BY_OCR, page_reading_suggestion  # noqa: E402
+from pdf.pdf_definitions import OCR_DOWNLOAD_SIZE, OCR_UNAVAILABLE, PAGE_READ_BY_OCR, page_reading_suggestion  # noqa: E402
 from pdf_ocr import OcrUnavailable, pages_without_words, read_pages_by_ocr  # noqa: E402
 from pdf_to_blocks import read_pdf_blocks  # noqa: E402
 from pdf_workbook import read_pdf_tables, table_details, write_pdf_workbook  # noqa: E402
@@ -412,7 +412,7 @@ def parse_arguments():
     parser.add_argument("input_path", help="the file to convert")
     parser.add_argument("output_path", help="the file to write; its extension names the target format")
     parser.add_argument("--sheet", help="xlsx to csv, tsv or pdf: convert only this sheet; default every sheet, one file each for csv and tsv")
-    parser.add_argument("--ocr", action="store_true", help="pdf to docx, md or xlsx: read pages that have no text layer from their image by OCR; the first use installs the OCR engine, about 150 MB")
+    parser.add_argument("--ocr", action="store_true", help=f"pdf to docx, md or xlsx: read pages that have no text layer from their image by OCR; the first use installs the OCR engine, {OCR_DOWNLOAD_SIZE}")
     add_password_argument(parser)
     return parser.parse_args()
 
