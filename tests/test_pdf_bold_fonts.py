@@ -38,8 +38,13 @@ def embedded_font_names(pdf_path):
     names = set()
     for page in PdfReader(str(pdf_path)).pages:
         fonts = page["/Resources"].get("/Font", {})
-        names.update(str(fonts[key].get_object()["/BaseFont"]).split("+")[-1] for key in fonts)
+        names.update(str(face_font(fonts[key].get_object())["/BaseFont"]).split("+")[-1] for key in fonts)
     return names
+
+
+def face_font(font):
+    descendants = font.get("/DescendantFonts")
+    return descendants[0].get_object() if descendants else font
 
 
 def issue_codes(result):

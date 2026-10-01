@@ -58,6 +58,16 @@ class ApplyTest(DocumentFixture):
         self.assertEqual(len(envelope["details"]["changes"]), 1)
         self.assertEqual((self.directory / "fixture.docx").read_bytes(), original)
 
+    def test_a_misspelled_operation_or_field_suggests_the_close_name(self):
+        write_json(self.directory / "ops.json", [{"op": "replace_txt", "find": "a", "replace": "b"}, {"op": "set_text", "block": 1, "texts": "바뀜"}])
+        envelope = run_office(["doc", "apply", "fixture.docx", "ops.json"], self.directory)
+        self.assertEqual([issue["suggestion"] for issue in envelope["issues"] if issue["code"] in ("INVALID_VALUE", "UNKNOWN_FIELD")], ["did you mean 'replace_text'?", "did you mean 'text'?"])
+
+    def test_a_block_out_of_range_names_the_valid_range(self):
+        write_json(self.directory / "ops.json", [{"op": "set_text", "block": 40, "text": "바뀜"}])
+        envelope = run_office(["doc", "apply", "fixture.docx", "ops.json"], self.directory)
+        self.assertEqual(envelope["issues"][0]["suggestion"], "use a block index from 0 to 4; doc read lists them")
+
     def test_deleting_a_block_another_operation_uses_is_refused(self):
         write_json(self.directory / "ops.json", [{"op": "set_text", "block": 2, "text": "바뀜"}, {"op": "delete_block", "block": 2}])
         envelope = run_office(["doc", "apply", "fixture.docx", "ops.json"], self.directory)

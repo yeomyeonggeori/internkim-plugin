@@ -6,6 +6,10 @@ from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml.ns import qn
 
 from docx_blocks import block_kind, body_block_elements, element_text, has_page_break, heading_level, table_cell_texts, wrap_block
+from docx_comments import describe_comment_threads
+from docx_reference_operations import bookmark_names, describe_notes
+from docx_revisions import collect_revisions
+from docx_text import visible_text
 from office_result import OfficeArgumentParser, Result, run_command
 
 
@@ -28,8 +32,18 @@ def main() -> Result:
         "sections": [describe_section(section, index) for index, section in enumerate(document.sections)],
         "paragraphStyles": style_names(document, WD_STYLE_TYPE.PARAGRAPH),
         "tableStyles": style_names(document, WD_STYLE_TYPE.TABLE),
-        "comments": describe_comments(document, elements),
+        "comments": describe_comment_threads(document, elements),
     }
+    bookmarks = sorted(bookmark_names(document) - {"_GoBack"})
+    if bookmarks:
+        details["bookmarks"] = bookmarks
+    notes = describe_notes(document)
+    if notes:
+        details["notes"] = notes
+    revisions = collect_revisions(document.element.body, elements)
+    details["revisionCount"] = len(revisions)
+    if arguments.revisions:
+        details["revisions"] = [revision.to_json() for revision in revisions]
     return Result(summary=f"read {len(blocks)} of {len(elements)} blocks from {arguments.document_path}", output_path=arguments.document_path, details=details)
 
 
@@ -44,7 +58,7 @@ def describe_block(element, document, index: int) -> dict:
         return describe_table(block, index)
     if kind == "contentControl":
         return {"index": index, "kind": kind, "text": limited(element_text(element))}
-    description = {"index": index, "kind": kind, "style": block.style.name if block.style is not None else "", "text": limited(block.text)}
+    description = {"index": index, "kind": kind, "style": block.style.name if block.style is not None else "", "text": limited(element_text(element))}
     if kind == "heading":
         description["level"] = heading_level(block)
     if has_page_break(block):
@@ -76,6 +90,9 @@ def has_merged_cells(table) -> bool:
 def describe_section(section, index: int) -> dict:
     return {
         "index": index,
+        "orientation": "landscape" if section.page_width and section.page_height and section.page_width > section.page_height else "portrait",
+        "pageInches": [inches(section.page_width), inches(section.page_height)],
+        "marginsInches": [inches(section.top_margin), inches(section.right_margin), inches(section.bottom_margin), inches(section.left_margin)],
         "header": limited(part_text(section.header)),
         "footer": limited(part_text(section.footer)),
         "headerLinkedToPrevious": section.header.is_linked_to_previous,
@@ -83,31 +100,12 @@ def describe_section(section, index: int) -> dict:
     }
 
 
+def inches(length) -> float | None:
+    return round(length.inches, 2) if length is not None else None
+
+
 def part_text(header_or_footer) -> str:
-    paragraphs = [paragraph.text for paragraph in header_or_footer.paragraphs if paragraph.text.strip()]
-    cells = [cell.text for table in header_or_footer.tables for row in table.rows for cell in row.cells if cell.text.strip()]
-    return "\n".join(paragraphs + cells)
-
-
-def describe_comments(document, elements: list) -> list[dict]:
-    anchors = comment_anchor_blocks(elements)
-    return [
-        {
-            "id": comment.comment_id,
-            "author": comment.author,
-            "text": limited(comment.text),
-            "block": anchors.get(str(comment.comment_id)),
-        }
-        for comment in document.comments
-    ]
-
-
-def comment_anchor_blocks(elements: list) -> dict[str, int]:
-    anchors = {}
-    for index, element in enumerate(elements):
-        for start in element.iter(qn("w:commentRangeStart")):
-            anchors.setdefault(start.get(qn("w:id")), index)
-    return anchors
+    return "\n".join(line for line in visible_text(header_or_footer._element).split("\n") if line.strip())
 
 
 def limited(text: str) -> str:
@@ -117,9 +115,10 @@ def limited(text: str) -> str:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Read a .docx as indexed blocks, section headers and footers, and comments. Block indexes are what doc apply takes.")
+    parser = OfficeArgumentParser(description="Read a .docx as indexed blocks, section headers and footers, comment threads, and tracked changes. Block indexes, comment ids and revision ids are what doc apply takes. Block text is the text as if every tracked change were accepted.")
     parser.add_argument("document_path")
     parser.add_argument("--start", type=int, default=0, help="first block index to show")
+    parser.add_argument("--revisions", action="store_true", help="list every tracked change with its id, type, author, date, block and text")
     parser.add_argument("--limit", type=int, default=DEFAULT_BLOCK_LIMIT, help=f"most blocks to show, default {DEFAULT_BLOCK_LIMIT}")
     return parser.parse_args()
 

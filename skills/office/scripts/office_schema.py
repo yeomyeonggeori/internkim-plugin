@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import difflib
+import re
 from typing import Iterator
 
 from office_result import INVALID_VALUE, MISSING_FIELD, UNKNOWN_FIELD, WRONG_TYPE, Issue, OfficeFailure
+
+
+HEX_COLOR_PATTERN = re.compile(r"#?[0-9A-Fa-f]{6}")
 
 
 class Shape:
@@ -75,6 +80,22 @@ class Choice(Shape):
 
     def problems(self, value: object, location: str) -> list[Issue]:
         if value in self.values:
+            return []
+        return [INVALID_VALUE.issue(f"{location}: {value!r} is not {self.label}", location)]
+
+
+@dataclass(frozen=True)
+class HexColor(Shape):
+    allows_none: bool = False
+
+    @property
+    def label(self) -> str:
+        return 'six hex digits such as 1F4E79, or "none"' if self.allows_none else "six hex digits such as 1F4E79"
+
+    def problems(self, value: object, location: str) -> list[Issue]:
+        if not isinstance(value, str):
+            return [wrong_type(self, value, location)]
+        if self.allows_none and value == "none" or HEX_COLOR_PATTERN.fullmatch(value):
             return []
         return [INVALID_VALUE.issue(f"{location}: {value!r} is not {self.label}", location)]
 
@@ -172,7 +193,11 @@ class Record(Shape):
     def field_problems(self, value: dict, location: str, known_names: set[str]) -> list[Issue]:
         field_names = {field.name for field in self.fields} | known_names
         problems = [
-            UNKNOWN_FIELD.issue(f"{join_location(location, name)}: {self.name} has no field {name!r}; it takes {', '.join(sorted(field_names))}", join_location(location, name))
+            UNKNOWN_FIELD.issue(
+                f"{join_location(location, name)}: {self.name} has no field {name!r}; it takes {', '.join(sorted(field_names))}",
+                join_location(location, name),
+                suggestion=closest_name_suggestion(name, sorted(field_names), UNKNOWN_FIELD.suggestion),
+            )
             for name in value
             if name not in field_names and not self.keeps_other_fields
         ]
@@ -208,7 +233,8 @@ class Variant(Shape):
             return [MISSING_FIELD.issue(f"{discriminator_location}: required field is missing; it is one of {', '.join(self.record_names())}", discriminator_location)]
         record = self.record_named(value[self.discriminator])
         if record is None:
-            return [INVALID_VALUE.issue(f"{discriminator_location}: {value[self.discriminator]!r} is not one of {', '.join(self.record_names())}", discriminator_location)]
+            suggestion = closest_name_suggestion(value[self.discriminator], self.record_names(), INVALID_VALUE.suggestion)
+            return [INVALID_VALUE.issue(f"{discriminator_location}: {value[self.discriminator]!r} is not one of {', '.join(self.record_names())}", discriminator_location, suggestion=suggestion)]
         return record.field_problems(value, location, known_names={self.discriminator})
 
     def record_names(self) -> list[str]:
@@ -225,6 +251,13 @@ def field_value_problems(field: Field, value: object, location: str) -> list[Iss
     if value is None:
         return [MISSING_FIELD.issue(f"{location}: required field is missing", location)] if field.required else []
     return field.shape.problems(value, location)
+
+
+def closest_name_suggestion(given: object, candidates: list[str], fallback: object) -> object:
+    if not isinstance(given, str):
+        return fallback
+    matches = difflib.get_close_matches(given, candidates, n=1, cutoff=0.5)
+    return f"did you mean {matches[0]!r}?" if matches else fallback
 
 
 def require_valid(shape: Shape, value: object, location: str) -> None:

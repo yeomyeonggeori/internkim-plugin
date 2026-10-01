@@ -17,7 +17,7 @@ def expand_range(part: str, page_count: int) -> range:
     last = parse_page_number(last_text, part) if separator else first
     for page in (first, last):
         if not 1 <= page <= page_count:
-            raise OfficeFailure(PAGE_NOT_IN_DOCUMENT.issue(f"page {page} is outside this {page_count}-page PDF", location=part))
+            raise OfficeFailure(PAGE_NOT_IN_DOCUMENT.issue(f"page {page} is outside this {page_count}-page PDF", location=part, suggestion=f"pass pages from 1 to {page_count}"))
     if first > last:
         raise OfficeFailure(INVALID_ARGUMENTS.issue(f"page range {part!r} runs backwards", location=part))
     return range(first, last + 1)

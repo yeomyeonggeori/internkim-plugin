@@ -6,16 +6,14 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Mm
 
+from docx_settings import insert_setting
+
 
 KOREAN_LANGUAGE = "ko-KR"
 DEFAULT_MARGIN_INCHES = 1.0
 A4_WIDTH = Mm(210)
 A4_HEIGHT = Mm(297)
 HEADING_STYLE_NAMES = ["Title"] + [f"Heading {level}" for level in range(1, 10)]
-SETTINGS_AFTER_THEME_FONT_LANGUAGE = {qn(f"w:{name}") for name in (
-    "clrSchemeMapping", "doNotIncludeSubdocsInStats", "doNotAutoCompressPictures", "forceUpgrade", "captions",
-    "readModeInkLockDown", "smartTagType", "schemaLibrary", "shapeDefaults", "doNotEmbedSmartTags", "decimalSymbol", "listSeparator",
-)}
 THEME_FONT_ATTRIBUTES = ("asciiTheme", "hAnsiTheme", "eastAsiaTheme", "cstheme")
 
 
@@ -58,11 +56,7 @@ def set_theme_font_language(document: Document) -> None:
     language = settings.find(qn("w:themeFontLang"))
     if language is None:
         language = OxmlElement("w:themeFontLang")
-        successor = next((child for child in settings if child.tag in SETTINGS_AFTER_THEME_FONT_LANGUAGE), None)
-        if successor is None:
-            settings.append(language)
-        else:
-            successor.addprevious(language)
+        insert_setting(settings, language)
     language.set(qn("w:eastAsia"), KOREAN_LANGUAGE)
 
 

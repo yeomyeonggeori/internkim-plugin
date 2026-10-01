@@ -1,34 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import difflib
 import re
 
-from office_result import INVALID_VALUE, UNKNOWN_FIELD, Issue
-from office_schema import Boolean, CellValue, Choice, Field, ListOf, MapOf, Number, Record, Shape, Text, Variant, wrong_type
+from office_result import Issue
+from office_schema import Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, wrong_type
 
 
-HEX_COLOR_PATTERN = re.compile(r"#?[0-9A-Fa-f]{6}")
 SHAPE_PATH_PATTERN = re.compile(r"\d+(\.\d+)*")
 THEME_COLOR_SLOTS = ("dk1", "lt1", "dk2", "lt2", "accent1", "accent2", "accent3", "accent4", "accent5", "accent6", "hlink", "folHlink")
 SHAPE_KINDS = ("rectangle", "rounded_rectangle", "oval", "triangle", "right_arrow", "chevron", "pentagon", "diamond")
 CHART_TYPES = ("column", "stacked_column", "bar", "stacked_bar", "line", "pie", "doughnut", "area")
-
-
-@dataclass(frozen=True)
-class HexColor(Shape):
-    allows_none: bool = False
-
-    @property
-    def label(self) -> str:
-        return 'six hex digits such as 1F4E79, or "none"' if self.allows_none else "six hex digits such as 1F4E79"
-
-    def problems(self, value: object, location: str) -> list[Issue]:
-        if not isinstance(value, str):
-            return [wrong_type(self, value, location)]
-        if self.allows_none and value == "none" or HEX_COLOR_PATTERN.fullmatch(value):
-            return []
-        return [INVALID_VALUE.issue(f"{location}: {value!r} is not {self.label}", location)]
 
 
 @dataclass(frozen=True)
@@ -41,30 +23,6 @@ class ShapeAddress(Shape):
         if isinstance(value, str) and SHAPE_PATH_PATTERN.fullmatch(value):
             return []
         return [wrong_type(self, value, location)]
-
-
-@dataclass(frozen=True)
-class GuidedVariant(Variant):
-    def problems(self, value: object, location: str) -> list[Issue]:
-        problems = Variant.problems(self, value, location)
-        if not isinstance(value, dict):
-            return problems
-        record = self.record_named(value.get(self.discriminator))
-        if record is None:
-            return [with_close_match(problem, value.get(self.discriminator), self.record_names()) for problem in problems]
-        field_names = [self.discriminator, *(field.name for field in record.fields)]
-        return [with_close_match(problem, problem.location.rsplit(".", 1)[-1], field_names) if problem.kind is UNKNOWN_FIELD else problem for problem in problems]
-
-
-def with_close_match(problem: Issue, given: object, candidates: list[str]) -> Issue:
-    if problem.kind not in (INVALID_VALUE, UNKNOWN_FIELD) or not isinstance(given, str):
-        return problem
-    return Issue(problem.kind, problem.message, problem.location, closest_name_suggestion(given, candidates, problem.suggestion))
-
-
-def closest_name_suggestion(given: str, candidates: list[str], fallback: object) -> object:
-    matches = difflib.get_close_matches(given, candidates, n=1, cutoff=0.5)
-    return f"did you mean {matches[0]!r}?" if matches else fallback
 
 
 SLIDE_NUMBER = Number(minimum=1, integer=True)
@@ -245,7 +203,7 @@ DECK_OPERATIONS = (
 )
 
 
-OPERATIONS = GuidedVariant(
+OPERATIONS = Variant(
     "operation",
     "one edit of deck apply; slide numbers, shape indexes and table rows refer to the deck as deck read showed it before the batch, "
     "operations run in order, and the batch applies whole or not at all; a slide added in the batch is edited in the next batch",

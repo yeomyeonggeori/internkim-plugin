@@ -19,6 +19,7 @@ from doc_definitions import (
     TABLE_EMPTY_CELLS,
     TABLE_TOO_WIDE,
 )
+from docx_text import paragraph_text, visible_text
 from office_result import Issue, OfficeArgumentParser, Result, run_command
 from text_checks import korean_font_issues, text_presence_issues
 
@@ -30,15 +31,15 @@ MARGIN_SIDES = ["topMarginInches", "rightMarginInches", "bottomMarginInches", "l
 def main() -> Result:
     arguments = parse_arguments()
     document = Document(arguments.document_path)
-    paragraphs = [paragraph.text for paragraph in document.paragraphs if paragraph.text.strip()]
-    table_texts = [cell.text for table in document.tables for row in table.rows for cell in row.cells if cell.text.strip()]
-    visible_text = "\n".join(paragraphs + table_texts)
+    paragraphs = [text for text in (paragraph_text(paragraph._p) for paragraph in document.paragraphs) if text.strip()]
+    table_texts = [text for text in (cell_text(cell) for table in document.tables for row in table.rows for cell in row.cells) if text.strip()]
+    document_text = "\n".join(paragraphs + table_texts)
     tables = [table_metrics(table) for table in document.tables]
-    typography = collect_typography(document, visible_text)
+    typography = collect_typography(document, document_text)
     issues = (
         paragraph_issues(paragraphs)
-        + text_presence_issues(visible_text, arguments.required_text, arguments.forbidden_text)
-        + korean_font_issues(visible_text, typography["fontNames"])
+        + text_presence_issues(document_text, arguments.required_text, arguments.forbidden_text)
+        + korean_font_issues(document_text, typography["fontNames"])
         + typography_issues(typography)
         + table_issues(tables)
     )
@@ -48,10 +49,14 @@ def main() -> Result:
         "tableCount": len(document.tables),
         "tables": tables,
         "firstParagraphs": paragraphs[:5],
-        "visibleTextLength": len(visible_text),
+        "visibleTextLength": len(document_text),
         "typography": typography,
     }
     return Result(summary=f"checked {arguments.document_path}: {len(issues)} issues", output_path=arguments.document_path, issues=tuple(issues), details=details)
+
+
+def cell_text(cell) -> str:
+    return visible_text(cell._tc)
 
 
 def table_metrics(table) -> dict:
@@ -59,14 +64,14 @@ def table_metrics(table) -> dict:
     return {
         "rows": len(table.rows),
         "columns": len(table.columns),
-        "emptyCellCount": sum(1 for cell in cells if not cell.text.strip()),
-        "denseCellCount": sum(1 for cell in cells if len(cell.text.strip()) > DENSE_CELL_CHARACTERS),
+        "emptyCellCount": sum(1 for cell in cells if not cell_text(cell).strip()),
+        "denseCellCount": sum(1 for cell in cells if len(cell_text(cell).strip()) > DENSE_CELL_CHARACTERS),
     }
 
 
 def collect_typography(document, visible_text: str) -> dict:
     normal_style = document.styles["Normal"] if "Normal" in document.styles else None
-    paragraph_metrics = [metrics_for_paragraph(paragraph) for paragraph in document.paragraphs if paragraph.text.strip()]
+    paragraph_metrics = [metrics_for_paragraph(paragraph) for paragraph in document.paragraphs if paragraph_text(paragraph._p).strip()]
     return {
         "hasKoreanText": bool(re.search(r"[가-힣]", visible_text)),
         "fontNames": sorted({font_name for font_name in collect_font_names(document) if font_name}),

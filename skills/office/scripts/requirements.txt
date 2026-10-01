@@ -2,9 +2,11 @@ docxtpl
 fpdf2
 openpyxl
 pandas<3
+pdfplumber
 Pillow
 pypdf
 pypdfium2
 python-docx
 python-pptx
 xlcalculator>=0.5
+xlrd>=2

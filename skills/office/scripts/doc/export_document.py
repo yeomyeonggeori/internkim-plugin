@@ -4,8 +4,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from docx_markdown import markdown_document
-from markdown_blocks import parse_markdown
+from docx_markdown import DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, markdown_document
+from doc_definitions import PDF_RENDERER_UNAVAILABLE
+from document_pdf import can_render, render_document_pdf
+from markdown_blocks import Heading, parse_markdown
 from office_result import KOREAN_FONT_UNAVAILABLE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
 from pdf_fonts import register_regular_and_bold
 from pdf_markdown import MarkdownPdf
@@ -32,6 +34,17 @@ def main() -> Result:
 
 
 def export_pdf(blocks: list, markdown_text: str, output_path: Path, source_directory: Path, font_path_argument: str, font_size: float) -> list[Issue]:
+    if can_render():
+        return render_document_pdf(blocks, output_path, source_directory, document_title(blocks, output_path), Path(font_path_argument) if font_path_argument else None)
+    issues = export_plain_pdf(blocks, markdown_text, output_path, source_directory, font_path_argument, font_size)
+    return [PDF_RENDERER_UNAVAILABLE.issue("bun is not on PATH, so the plain fallback renderer drew the PDF", str(output_path)), *issues]
+
+
+def document_title(blocks: list, output_path: Path) -> str:
+    return next((block.text for block in blocks if isinstance(block, Heading)), output_path.stem)
+
+
+def export_plain_pdf(blocks: list, markdown_text: str, output_path: Path, source_directory: Path, font_path_argument: str, font_size: float) -> list[Issue]:
     font_path = resolve_pdf_font(font_path_argument)
     has_font = bool(font_path and font_path.exists())
     if not has_font and any(ord(character) > 0x2000 for character in markdown_text):
@@ -80,9 +93,9 @@ def parse_arguments():
     parser.add_argument("markdown_path", help="path to content.md")
     parser.add_argument("--output", help="output path; defaults next to the markdown")
     parser.add_argument("--format", default="docx", choices=["docx", "pdf"], help="deliverable format")
-    parser.add_argument("--font", default="맑은 고딕", help="base font family name for docx")
-    parser.add_argument("--font-size", type=float, default=10.5)
-    parser.add_argument("--font-path", default="", help="Korean-capable TTF for pdf output")
+    parser.add_argument("--font", default=DEFAULT_DOCUMENT_FONT, help="base font family name for docx")
+    parser.add_argument("--font-size", type=float, default=DEFAULT_DOCUMENT_FONT_SIZE)
+    parser.add_argument("--font-path", default="", help="Korean-capable TTF for pdf output instead of the bundled Paperlogy; a Bold file beside it is used for bold")
     return parser.parse_args()
 
 

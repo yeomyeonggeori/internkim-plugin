@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from office_operations import OPERATION_ISSUE_KINDS
+from template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
 from office_result import ERROR, WARNING, Issue, IssueKind
 from office_schema import ListOf
 from pptx_edit_definitions import OPERATIONS
@@ -150,6 +151,7 @@ CHECK_ISSUE_KINDS = (PPTX_NOT_RENDERED,)
 
 GUIDE_INPUTS = (
     ("deck apply <file.pptx> <ops.json>", ListOf(OPERATIONS, non_empty=True)),
+    ("deck merge <template.pptx> <values.json> <output.pptx>: values", MERGE_VALUES),
 )
 GUIDE_INPUTS_ON_REQUEST = ("deck apply",)
 GUIDE_ISSUES = (
@@ -157,6 +159,7 @@ GUIDE_ISSUES = (
     ("deck validate", VALIDATE_ISSUE_KINDS),
     ("deck apply", OPERATION_ISSUE_KINDS + APPLY_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS),
     ("deck check", LAYOUT_AUDIT_ISSUE_KINDS + CHECK_ISSUE_KINDS),
+    ("deck merge", PACKAGE_MERGE_ISSUE_KINDS),
     ("deck restore", (NO_SLIDE_SECTIONS,)),
     ("deck accept", ACCEPT_ISSUE_KINDS),
     ("deck image", IMAGE_ISSUE_KINDS),

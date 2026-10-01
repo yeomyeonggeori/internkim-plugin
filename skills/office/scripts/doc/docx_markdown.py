@@ -17,6 +17,8 @@ from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, i
 from office_result import Issue
 
 
+DEFAULT_DOCUMENT_FONT = "맑은 고딕"
+DEFAULT_DOCUMENT_FONT_SIZE = 10.5
 MAXIMUM_IMAGE_WIDTH = Inches(6)
 LINK_COLOR = "0563C1"
 

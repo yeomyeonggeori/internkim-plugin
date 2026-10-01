@@ -12,8 +12,12 @@ class Command:
     needs_packages: bool = True
 
     @property
+    def words(self) -> list[str]:
+        return [self.format_name, self.verb] if self.verb else [self.format_name]
+
+    @property
     def name(self) -> str:
-        return f"{self.format_name} {self.verb}"
+        return " ".join(self.words)
 
 
 @dataclass(frozen=True)
@@ -29,6 +33,7 @@ FORMATS = (
     Format("sheet", "workbooks (.xlsx)", "sheet/sheet_definitions.py"),
     Format("deck", "slide decks built from slides.html, and .pptx files to read, edit and check", "deck/deck_definitions.py"),
     Format("paperwork", "Korean company forms and contracts on letterhead", "paperwork/paperwork_definitions.py"),
+    Format("convert", "conversions between office formats", "convert/convert_definitions.py"),
 )
 
 COMMANDS = (
@@ -38,6 +43,7 @@ COMMANDS = (
     Command("doc", "read", "doc/read_docx.py", "list a .docx's blocks, headers, footers and comments by index"),
     Command("doc", "apply", "doc/apply_docx.py", "apply a batch of edits to a .docx, all or none, with --dry-run"),
     Command("doc", "merge", "doc/merge_docx.py", "fill a .docx template's {{ placeholders }} from a values file"),
+    Command("doc", "render", "doc/render_docx.py", "lay out a .docx page by page as preview HTML to look at"),
     Command("doc", "check", "doc/check_docx.py", "find placeholders left, broken cross-references, a stale contents list and missing East Asian fonts"),
     Command("doc", "validate", "doc/validate_docx.py", "check a .docx for required text, fonts and layout"),
     Command("pdf", "create", "pdf/create_pdf.py", "lay out a PDF from blocks or a JSON spec"),
@@ -50,23 +56,27 @@ COMMANDS = (
     Command("sheet", "read", "sheet/read_xlsx.py", "list a workbook's sheets, a range's values and formulas, panes, filters, tables, charts and defined names"),
     Command("sheet", "apply", "sheet/apply_xlsx.py", "apply a batch of edits to a workbook, all or none, with --dry-run"),
     Command("sheet", "check", "sheet/check_xlsx.py", "find computed formula errors, missing sheets, broken names, numbers too wide for their column and template placeholders"),
+    Command("sheet", "merge", "sheet/merge_xlsx.py", "fill an .xlsx template's {{ placeholders }} from a values file"),
+    Command("sheet", "render", "sheet/render_xlsx.py", "lay out each sheet as printed pages of preview HTML to look at"),
     Command("sheet", "validate", "sheet/validate_xlsx.py", "check an .xlsx for frozen headers, filters and blank headers"),
     Command("deck", "build", "deck/build.sh", "build slides.html in this directory into HTML, PDF, PPTX and review evidence", needs_packages=False),
     Command("deck", "validate", "deck/validate_pptx.py", "check a .pptx for design warnings"),
     Command("deck", "read", "deck/read_pptx.py", "list a .pptx's slides with each shape's index, kind, box, text and style, tables, charts and notes"),
     Command("deck", "apply", "deck/apply_pptx.py", "apply a batch of edits to a .pptx, all or none, with --dry-run, and report the layout problems they leave"),
+    Command("deck", "merge", "deck/merge_pptx.py", "fill a .pptx template's {{ placeholders }} from a values file, repeating table rows per list item"),
     Command("deck", "check", "deck/check_pptx.py", "find text that overflows its box, shapes off the slide and overlaps in a .pptx, and write an HTML preview of it"),
     Command("deck", "restore", "deck/restore_source.py", "recover controller-free slides.html from a delivered deck", needs_packages=False),
     Command("deck", "accept", "deck/accept_review.py", "check review-decision.json against the review evidence", needs_packages=False),
     Command("deck", "image", "deck/fetch_image.py", "download a public-domain photo for a search query", needs_packages=False),
     Command("paperwork", "render", "paperwork/render_paperwork.py", "render a company form to PDF on letterhead"),
     Command("paperwork", "fill", "paperwork/fill_template.py", "fill a standard contract template to .docx"),
+    Command("convert", "", "convert/convert_file.py", "convert a file to another format, such as docx to md, pdf to docx, or xlsx to csv"),
     Command("paperwork", "check", "paperwork/check_amounts.py", "report row amounts, totals, VAT and the amount in words of a priced form, never rewriting it", needs_packages=False),
 )
 
 
 def find_command(words: list[str]) -> Command | None:
-    return next((command for command in COMMANDS if [command.format_name, command.verb] == words), None)
+    return next((command for command in COMMANDS if words[:len(command.words)] == command.words), None)
 
 
 def find_format(name: str) -> Format | None:

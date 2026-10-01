@@ -6,10 +6,10 @@ import os
 from docxtpl import DocxTemplate
 from jinja2 import Environment, StrictUndefined, TemplateSyntaxError, UndefinedError
 
-from doc_definitions import MERGE_VALUES, TEMPLATE_SYNTAX_ERROR, UNRESOLVED_PLACEHOLDER, UNUSED_VALUE
 from office_operations import save_atomically
 from office_result import Issue, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
+from template_merge import MERGE_VALUES, TEMPLATE_SYNTAX_ERROR, UNRESOLVED_PLACEHOLDER, UNUSED_VALUE
 
 
 def main() -> Result:

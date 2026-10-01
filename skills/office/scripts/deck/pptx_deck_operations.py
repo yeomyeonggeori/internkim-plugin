@@ -7,7 +7,8 @@ from pptx.util import Emu
 
 from office_operations import Change
 from office_result import INVALID_VALUE, OfficeFailure
-from pptx_edit_definitions import THEME_COLOR_SLOTS, closest_name_suggestion
+from office_schema import closest_name_suggestion
+from pptx_edit_definitions import THEME_COLOR_SLOTS
 from pptx_element_operations import SHAPE_TAGS, write_local_box
 from pptx_geometry import Box, own_box
 from pptx_style import HANGUL_SCRIPT
