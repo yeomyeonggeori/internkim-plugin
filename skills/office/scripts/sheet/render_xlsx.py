@@ -30,7 +30,7 @@ def workbook_values(source_path: Path):
         return open_workbook(str(computed), data_only=True)
 
 
-def xlsx_preview(source_path: Path, sheet_name: str | None) -> tuple[Preview, list[dict]]:
+def xlsx_preview(source_path: Path, sheet_name: str | None) -> tuple[Preview, list[dict], list[dict]]:
     workbook = open_workbook(str(source_path))
     values = workbook_values(source_path)
     names = [sheet_name] if sheet_name else [sheet.title for sheet in workbook.worksheets if sheet.sheet_state == "visible"]
@@ -41,7 +41,7 @@ def xlsx_preview(source_path: Path, sheet_name: str | None) -> tuple[Preview, li
     previewer = SheetPreviewer(workbook, values, source_path.name, theme_palette(workbook.loaded_theme), fonts, preview)
     planned = [page for name in names for page in previewer.sheet_pages(workbook[name], values[name])]
     preview.pages = [previewer.page_html(number, len(planned), *page) for number, page in enumerate(planned, start=1)]
-    return preview, fonts.preview_fonts()
+    return preview, fonts.preview_fonts(), previewer.page_contents
 
 
 def main() -> Result:
@@ -50,11 +50,11 @@ def main() -> Result:
     if not source_path.is_file():
         raise FileNotFoundError(2, "no such file", str(source_path))
     output_directory = Path(arguments.output_directory).expanduser() if arguments.output_directory else source_path.with_name(f"{source_path.stem}-preview")
-    preview, preview_fonts = xlsx_preview(source_path, arguments.sheet)
+    preview, preview_fonts, page_contents = xlsx_preview(source_path, arguments.sheet)
     preview_path = write_preview(preview, output_directory)
     drawn, drawing_issues = draw_pages(preview_path, preview_fonts, output_directory / f"{source_path.stem}.pdf")
     issues = [*approximation_issues(preview, source_path.name), *blank_page_issues(preview, BLANK_PAGE_SUGGESTION), *drawing_issues]
-    details = {"preview": str(preview_path), "pageCount": len(preview.pages), "previewFonts": preview_fonts, "approximations": preview.approximations, **drawn}
+    details = {"preview": str(preview_path), "pageCount": len(preview.pages), "pageContents": page_contents, "previewFonts": preview_fonts, "approximations": preview.approximations, **drawn}
     return Result(summary=f"laid out {source_path.name} as {len(preview.pages)} printed pages in {preview_path}", output_path=str(preview_path), issues=tuple(issues), details=details)
 
 

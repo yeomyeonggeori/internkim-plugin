@@ -1,6 +1,8 @@
 import re
 import unittest
 
+from openpyxl import load_workbook
+
 from sheet_fixture import WorkbookFixture, run_office
 
 MONTHS = [["month", "sales", "margin"], ["Jan", 120, 0.21], ["Feb", 150, 0.24], ["Mar", 90, 0.18], ["Apr", 170, 0.27]]
@@ -45,6 +47,17 @@ class RenderedPagesTest(WorkbookFixture):
         self.assertEqual(north_won[1], north_lost[1])
         self.assertAlmostEqual(float(north_won[0]) + float(north_won[2]), float(north_lost[0]), delta=0.2)
         self.assertGreater(float(north_won[2]), float(north_won[3]))
+
+    def test_a_chart_across_a_page_break_draws_its_rest_on_the_next_page_and_says_so(self):
+        self.create_workbook([{"title": "Sales", "rows": [["day", "sales"]] + [[f"d{index}", index] for index in range(1, 61)]}])
+        self.apply([{"op": "add_chart", "type": "line", "range": "A1:B13", "anchor": "D40", "title": "Daily sales", "width": 10}])
+        envelope, preview = self.render()
+        self.assertNotIn("BLANK_PAGE", [issue["code"] for issue in envelope["issues"]])
+        contents = envelope["details"]["pageContents"]
+        self.assertEqual([(page["page"], page["sheet"]) for page in contents], [(1, "Sales"), (2, "Sales")])
+        self.assertTrue(contents[0]["cells"].startswith("A1:") and contents[1]["cells"].startswith("A"))
+        self.assertEqual([page["drawings"] for page in contents], [[{"chart": "Daily sales", "type": "line", "shown": "part, cut at the page edge"}]] * 2)
+        self.assertEqual(len(self.chart_svgs(preview)), 2)
 
     def test_a_page_with_nothing_on_it_is_reported_with_its_number(self):
         self.create_workbook([{"title": "Sales", "rows": MONTHS}])

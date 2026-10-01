@@ -116,7 +116,7 @@ def docx_to_pdf(conversion: Conversion) -> None:
 
 
 def workbook_to_pdf(conversion: Conversion) -> None:
-    preview, fonts = xlsx_preview(conversion.input_path, conversion.sheet)
+    preview, fonts, _ = xlsx_preview(conversion.input_path, conversion.sheet)
     report_simplified(conversion, preview)
     with tempfile.TemporaryDirectory(prefix="office-convert-") as directory:
         draw_pdf(conversion, write_preview(preview, Path(directory)), PAGE_SELECTOR, fonts)

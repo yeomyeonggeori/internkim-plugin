@@ -4,14 +4,14 @@ from dataclasses import dataclass, field
 import datetime
 import re
 
-from openpyxl.utils import range_boundaries
+from openpyxl.utils import get_column_letter, range_boundaries
 
 from number_format import Displayed, displayed
 from office_preview import PageGeometry, Preview, emu_to_pixels, escaped, inches_to_pixels, page_section, pixels, points_to_pixels, positioned, style_attribute
 from preview_fonts import FontRegistry, FontRequest, css_font_family
 from xlsx_colors import css_color
 from xlsx_conditional import ConditionalStyles
-from xlsx_preview_charts import chart_html, drawing_box, image_html
+from xlsx_preview_charts import chart_html, chart_kind, chart_title, drawing_box, image_html, is_whole
 
 
 PAPER_INCHES = {1: (8.5, 11), 5: (8.5, 14), 8: (11.69, 16.54), 9: (8.27, 11.69), 11: (5.83, 8.27), 13: (7.17, 10.12)}
@@ -56,6 +56,8 @@ class SheetPreviewer:
         self.fonts = fonts
         self.preview = preview
         self.page_painted = False
+        self.page_drawings: list[dict] = []
+        self.page_contents: list[dict] = []
 
     def sheet_pages(self, worksheet, sheet_values) -> list[tuple[PageGeometry, list[int], list[int], float, SheetFrame]]:
         frame = self.frame(worksheet, sheet_values)
@@ -126,6 +128,7 @@ class SheetPreviewer:
         grid = self.grid_html(frame, columns, rows, scale)
         if not self.page_painted:
             self.preview.blank_pages.append(f"page {page_number} ({frame.worksheet.title})")
+        self.page_contents.append(page_content(page_number, frame, columns, rows, self.page_drawings))
         grid_width = sum(frame.widths[column] for column in columns) * scale
         left = geometry.margin_left + max(0.0, (geometry.content_width - grid_width) / 2) if frame.worksheet.print_options.horizontalCentered else geometry.margin_left
         parts = [positioned(left, geometry.margin_top, grid_width, grid)]
@@ -156,7 +159,7 @@ class SheetPreviewer:
                 backgrounds.append(background)
                 texts.append(text)
         overlays = self.drawings_html(frame, columns, rows, scale)
-        self.page_painted = bool(overlays) or any(backgrounds) or any(texts) or drawing_reaches(frame.worksheet, columns, rows)
+        self.page_painted = bool(overlays) or any(backgrounds) or any(texts)
         declarations = {
             "position": "relative",
             "display": "grid",
@@ -239,18 +242,40 @@ class SheetPreviewer:
         return declarations
 
     def drawings_html(self, frame: SheetFrame, columns: list[int], rows: list[int], scale: float) -> str:
+        body_rows = [row for row in rows if row not in frame.title_rows]
+        page_width = sum(frame.widths[column] for column in columns) * scale
+        body_height = sum(frame.heights[row] for row in body_rows) * scale
+        title_height = sum(frame.heights[row] for row in rows if row in frame.title_rows) * scale
+        self.page_drawings = []
         html = []
         if getattr(frame.worksheet, "_charts", []):
             self.fonts.width(FontRequest(KOREAN_DEFAULT_FONT, KOREAN_DEFAULT_FONT, 10), "가")
         for chart in getattr(frame.worksheet, "_charts", []):
-            box = drawing_box(chart.anchor, frame, columns, rows, scale)
+            box = drawing_box(chart.anchor, frame, columns, body_rows, scale)
             if box is not None:
                 html.append(chart_html(chart, box, self.values, self.palette, self.preview))
+                self.page_drawings.append({"chart": chart_title(chart) or None, "type": chart_kind(chart), "shown": "whole" if is_whole(box, page_width, body_height) else "part, cut at the page edge"})
         for image in getattr(frame.worksheet, "_images", []):
-            box = drawing_box(image.anchor, frame, columns, rows, scale, image)
+            box = drawing_box(image.anchor, frame, columns, body_rows, scale, image)
             if box is not None:
                 html.append(image_html(image, box))
-        return "".join(html)
+                self.page_drawings.append({"image": True, "shown": "whole" if is_whole(box, page_width, body_height) else "part, cut at the page edge"})
+        if not html:
+            return ""
+        clip = {"position": "absolute", "left": "0", "top": pixels(title_height), "width": pixels(page_width), "height": pixels(body_height), "overflow": "hidden"}
+        return f"<div{style_attribute(clip)}>{''.join(html)}</div>"
+
+
+def page_content(page_number: int, frame: SheetFrame, columns: list[int], rows: list[int], drawings: list[dict]) -> dict:
+    body_rows = [row for row in rows if row not in frame.title_rows] or rows
+    cells = f"{get_column_letter(columns[0])}{body_rows[0]}:{get_column_letter(columns[-1])}{body_rows[-1]}"
+    content = {"page": page_number, "sheet": frame.worksheet.title, "cells": cells}
+    titles = [row for row in rows if row in frame.title_rows]
+    if titles:
+        content["repeatedRows"] = f"{titles[0]}:{titles[-1]}"
+    if drawings:
+        content["drawings"] = drawings
+    return content
 
 
 def font_request(font, scale: float = 1.0) -> FontRequest:
@@ -323,13 +348,6 @@ def drawing_spans(worksheet) -> list[tuple[int, int, int, int]]:
 
 def drawing_corners(worksheet) -> list[tuple[int, int]]:
     return [corner for top, left, bottom, right in drawing_spans(worksheet) for corner in ((top, left), (bottom, right))]
-
-
-def drawing_reaches(worksheet, columns: list[int], rows: list[int]) -> bool:
-    return any(
-        any(left <= column <= right for column in columns) and any(top <= row <= bottom for row in rows)
-        for top, left, bottom, right in drawing_spans(worksheet)
-    )
 
 
 def column_dimension_map(worksheet) -> dict[int, dict]:

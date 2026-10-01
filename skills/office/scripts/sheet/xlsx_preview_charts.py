@@ -22,26 +22,39 @@ class Box:
     height: float
 
 
-def drawing_box(anchor, frame, columns: list[int], rows: list[int], scale: float, image=None) -> Box | None:
+def drawing_box(anchor, frame, columns: list[int], body_rows: list[int], scale: float, image=None) -> Box | None:
     start = getattr(anchor, "_from", None)
-    if start is None or start.col + 1 not in columns or start.row + 1 not in rows:
+    if start is None or not columns or not body_rows:
         return None
-    left = offset(columns, frame.widths, start.col + 1) + emu_to_pixels(start.colOff or 0)
-    top = offset(rows, frame.heights, start.row + 1) + emu_to_pixels(start.rowOff or 0)
+    left = axis_position(start.col + 1, columns[0], frame.columns, frame.widths) + emu_to_pixels(start.colOff or 0)
+    top = axis_position(start.row + 1, body_rows[0], frame.rows, frame.heights) + emu_to_pixels(start.rowOff or 0)
     end = getattr(anchor, "to", None)
     extent = getattr(anchor, "ext", None)
     if end is not None:
-        width = offset(columns, frame.widths, end.col + 1) + emu_to_pixels(end.colOff or 0) - left
-        height = offset(rows, frame.heights, end.row + 1) + emu_to_pixels(end.rowOff or 0) - top
+        width = axis_position(end.col + 1, columns[0], frame.columns, frame.widths) + emu_to_pixels(end.colOff or 0) - left
+        height = axis_position(end.row + 1, body_rows[0], frame.rows, frame.heights) + emu_to_pixels(end.rowOff or 0) - top
     elif extent is not None:
         width, height = emu_to_pixels(extent.width), emu_to_pixels(extent.height)
     else:
         width, height = (image.width, image.height) if image is not None else (480, 288)
-    return Box(left * scale, top * scale, max(width, 1) * scale, max(height, 1) * scale)
+    box = Box(left * scale, top * scale, max(width, 1) * scale, max(height, 1) * scale)
+    page_width = sum(frame.widths[column] for column in columns) * scale
+    page_height = sum(frame.heights[row] for row in body_rows) * scale
+    return box if overlaps(box, page_width, page_height) else None
 
 
-def offset(items: list[int], sizes: dict, target: int) -> float:
-    return sum(sizes[item] for item in items if item < target)
+def axis_position(target: int, first_on_page: int, frame_items: list[int], sizes: dict) -> float:
+    if target >= first_on_page:
+        return sum(sizes[item] for item in frame_items if first_on_page <= item < target)
+    return -sum(sizes[item] for item in frame_items if target <= item < first_on_page)
+
+
+def overlaps(box: Box, page_width: float, page_height: float) -> bool:
+    return box.left < page_width and box.left + box.width > 0 and box.top < page_height and box.top + box.height > 0
+
+
+def is_whole(box: Box, page_width: float, page_height: float) -> bool:
+    return box.left >= -0.5 and box.top >= -0.5 and box.left + box.width <= page_width + 0.5 and box.top + box.height <= page_height + 0.5
 
 
 def image_html(image, box: Box) -> str:
@@ -161,6 +174,17 @@ def chart_categories(chart, values_workbook) -> list[str]:
         if values:
             return ["" if value is None else str(value) for value in values]
     return []
+
+
+def chart_kind(chart) -> str:
+    return "+".join(dict.fromkeys(series_kind_name(plot) for plot in chart_plots(chart)))
+
+
+def series_kind_name(plot) -> str:
+    kind = type(plot).__name__
+    if kind.startswith("BarChart"):
+        return "bar" if plot.barDir == "bar" else "column"
+    return ROUND_KINDS.get(kind) or kind.removesuffix("3D").removesuffix("Chart").lower()
 
 
 def chart_title(chart) -> str:
