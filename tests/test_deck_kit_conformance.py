@@ -15,6 +15,7 @@ from charts.numbers import GROUPED_NUMBER_PATTERN  # noqa: E402
 from deck_definitions import KIT_LAYOUT_NAMES, KIT_LAYOUTS, kit_layout  # noqa: E402
 from deck_kit import chart_types  # noqa: E402
 from kit_fixes import DEAD_ZONE_ADVICE, LIST_ADVICE, PART_LABELS  # noqa: E402
+from slide_render_checks import CENTERED_KIT_LAYOUTS  # noqa: E402
 
 
 def constant(source: str, name: str) -> str:
@@ -46,6 +47,9 @@ class KitConformanceTest(unittest.TestCase):
     def test_the_kit_script_names_only_layouts_the_checker_knows(self):
         named = set(re.findall(r"data-layout='(\w+)'", KIT_SCRIPT)) | set(re.findall(r'"(\w+)"', constant(KIT_SCRIPT, "footerlessLayouts")))
         self.assertLessEqual(named, set(KIT_LAYOUT_NAMES))
+
+    def test_the_render_checks_name_only_layouts_the_kit_has(self):
+        self.assertLessEqual(CENTERED_KIT_LAYOUTS, set(KIT_LAYOUT_NAMES))
 
     def test_the_kit_script_takes_its_layout_thresholds_from_the_build(self):
         self.assertNotIn("const geometryThresholds", renderer_source("render_html.mjs"))

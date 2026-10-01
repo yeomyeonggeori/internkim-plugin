@@ -39,7 +39,7 @@ def write_native_review_images(slide_models: list[SlideModel], design: dict[str,
         "small": preview_font(ImageFont, 17, False),
     }
     for model in slide_models:
-        image = Image.new("RGB", (SLIDE_WIDTH, SLIDE_HEIGHT), hex_to_rgb("111827" if model.kind == "cover" else colors["background"]))
+        image = Image.new("RGB", (SLIDE_WIDTH, SLIDE_HEIGHT), hex_to_rgb(colors["ink"] if model.kind == "cover" else colors["background"]))
         draw = ImageDraw.Draw(image)
         draw_native_preview_slide(draw, model, colors, fonts)
         image.save(review_path / slide_image_filename(deck_name, model.index))
