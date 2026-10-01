@@ -4,12 +4,13 @@ from dataclasses import dataclass
 import html
 import zipfile
 
+from deck_kit import slide_size
 from fonts.pptx_embedding import EmbeddedFont, default_run_font, embedded_font_list_xml, embedded_fonts, font_relationships_xml
 from fonts.truetype import TrueTypeFace, embedded_open_type
 
 
 PRESENTATION_WIDTH_EMU = 12192000
-PRESENTATION_HEIGHT_EMU = 6858000
+PRESENTATION_HEIGHT_EMU = PRESENTATION_WIDTH_EMU * slide_size()[1] // slide_size()[0]
 SLIDE_MASTER_RELATIONSHIP_ID = 2147483648
 
 

@@ -5,15 +5,18 @@ import json
 import pathlib
 
 from deck_definitions import CONTENT_OVERFLOW, FOOTER_CROSSED, GEOMETRY_NOT_MEASURED, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_COVERED, TEXT_OVERLAP, TINY_TEXT, TITLE_TOO_LONG
+from deck_kit import kit_length, slide_size
 from design_warnings import append_deck_warning
 from kit_fixes import capacity_fix, photo_fix, placement_fix, size_fix, text_fix
+from layout_thresholds import SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
 from office_result import Issue
 
 
 GEOMETRY_FILE_NAME = "geometry.json"
 FINDINGS_NAMED_PER_ISSUE = 3
-FOOTER_HEIGHT_RATIO = 0.08
-FOOTER_BOTTOM_RATIO = 0.85
+SLIDE_HEIGHT = slide_size()[1]
+FOOTER_HEIGHT_RATIO = kit_length("footer-height") / SLIDE_HEIGHT
+FOOTER_REACH_RATIO = 2 * FOOTER_HEIGHT_RATIO
 
 
 @dataclass(frozen=True)
@@ -50,7 +53,7 @@ def content_extent(measured: dict[str, object] | None) -> ContentExtent | None:
 
 
 def footer_start_index(bands: list[list[float]], height: float) -> int:
-    if bands[-1][1] < height * FOOTER_BOTTOM_RATIO:
+    if bands[-1][1] < height * (1 - FOOTER_REACH_RATIO):
         return len(bands)
     start = len(bands)
     for index in range(len(bands) - 1, 0, -1):
@@ -150,7 +153,7 @@ def describe_distorted_image(finding: dict[str, object]) -> str:
 
 
 def describe_small_text(finding: dict[str, object]) -> str:
-    return f"{element_label(finding)} is {finding['fontSize']}px, below the {finding['minimum']}px minimum (1% of the slide width)"
+    return f"{element_label(finding)} is {finding['fontSize']}px, below the {finding['minimum']}px minimum ({SMALLEST_TEXT_SHARE_OF_WIDTH:.0%} of the slide width)"
 
 
 GEOMETRY_FINDINGS = (
@@ -159,7 +162,7 @@ GEOMETRY_FINDINGS = (
     (TEXT_OVERLAP, "overlaps", describe_overlap, "{count} pairs of text overlap"),
     (TEXT_COVERED, "coveredText", describe_covered_text, "{count} text elements are hidden under a box drawn over them"),
     (FOOTER_CROSSED, "footerCrossings", describe_footer_crossing, "{count} parts of the slide reach into the footer"),
-    (TITLE_TOO_LONG, "longTitles", describe_long_title, "{count} titles run past three lines"),
+    (TITLE_TOO_LONG, "longTitles", describe_long_title, f"{{count}} titles run past {TITLE_LINE_MAXIMUM} lines"),
     (IMAGE_DISTORTED, "distortedImages", describe_distorted_image, "{count} images are stretched"),
     (TINY_TEXT, "smallText", describe_small_text, "{count} text elements are smaller than the slide can show legibly"),
 )

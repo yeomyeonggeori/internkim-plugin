@@ -3,11 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
+from deck_kit import slide_size
 from slide_model import SlideModel
 
 
-SLIDE_WIDTH = 1600
-SLIDE_HEIGHT = 900
+SLIDE_WIDTH, SLIDE_HEIGHT = slide_size()
 MISSING_SOURCE_TEXT = "제공된 자료 없음"
 DEFAULT_NATIVE_COLORS = {
     "background": "F8FAFC",

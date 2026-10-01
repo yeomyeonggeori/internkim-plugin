@@ -3,6 +3,8 @@ from __future__ import annotations
 import pathlib
 import re
 
+from deck_kit import slide_size
+
 
 SCRIPT_PATH = pathlib.Path(__file__).resolve().parent
 SLIDE_VIEWER_MARKER = "data-internkim-slide-viewer"
@@ -30,9 +32,14 @@ def inject_screen_slide_viewer(source_text: str) -> str:
 
 
 def slide_viewer_markup() -> str:
-    style = (SCRIPT_PATH / "slide-viewer.css").read_text(encoding="utf-8")
-    script = (SCRIPT_PATH / "slide-viewer.js").read_text(encoding="utf-8")
+    style = sized_template(SCRIPT_PATH / "slide-viewer.css")
+    script = sized_template(SCRIPT_PATH / "slide-viewer.js")
     return (
         f"<style {SLIDE_VIEWER_MARKER}>\n{style}</style>\n"
         f"<script {SLIDE_VIEWER_MARKER}>\n{script}</script>"
     )
+
+
+def sized_template(path: pathlib.Path) -> str:
+    width, height = slide_size()
+    return path.read_text(encoding="utf-8").replace("__SLIDE_WIDTH__", str(width)).replace("__SLIDE_HEIGHT__", str(height))

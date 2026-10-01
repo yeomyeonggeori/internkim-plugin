@@ -7,6 +7,7 @@ import math
 from pptx.oxml.ns import qn
 
 from deck_definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_OVERLAP, ReviewCheck
+from layout_thresholds import BACKGROUND_SHARE_OF_SLIDE, DISTORTION_TOLERANCE, OVERLAP_RATIO
 from office_result import Issue
 from pptx_geometry import EMU_PER_POINT, SLIDE_FRAME, Box, Frame, child_frame, local_box
 from pptx_inheritance import slide_context
@@ -18,9 +19,6 @@ from pptx_text_operations import apply_run_style, character_properties
 EDGE_TOLERANCE = EMU_PER_POINT
 OVERFLOW_TOLERANCE = 2 * EMU_PER_POINT
 SUGGESTION_SLACK = 4 * EMU_PER_POINT
-OVERLAP_RATIO = 0.12
-BACKGROUND_AREA_RATIO = 0.7
-DISTORTION_TOLERANCE = 0.05
 SMALLEST_SUGGESTED_SIZE = 10
 SHRINK_STEP = 0.05
 SHRINK_STEPS = 10
@@ -288,7 +286,7 @@ def picture_pixels(shape, kind: str) -> tuple[int, int] | None:
 
 def overlap_issues(entries: list[Entry], area: SlideArea) -> list[Issue]:
     slide_area = area.width * area.height
-    content = [entry for entry in entries if (entry.has_text or entry.kind in MEDIA_KINDS) and entry.visible_box.area < slide_area * BACKGROUND_AREA_RATIO]
+    content = [entry for entry in entries if (entry.has_text or entry.kind in MEDIA_KINDS) and entry.visible_box.area < slide_area * BACKGROUND_SHARE_OF_SLIDE]
     issues = []
     for index, first in enumerate(content):
         for second in content[index + 1:]:

@@ -6,6 +6,7 @@ import unittest
 
 OFFICE_PATH = Path(__file__).resolve().parents[1] / "skills" / "office"
 KIT_SCRIPT = (OFFICE_PATH / "assets" / "deck-kit" / "deck-kit.js").read_text(encoding="utf-8")
+KIT_STYLE = (OFFICE_PATH / "assets" / "deck-kit" / "deck-kit.css").read_text(encoding="utf-8")
 sys.path.insert(0, str(OFFICE_PATH / "scripts"))
 sys.path.insert(0, str(OFFICE_PATH / "scripts" / "deck"))
 
@@ -35,6 +36,17 @@ class KitConformanceTest(unittest.TestCase):
     def test_the_kit_grid_holds_as_many_cards_as_the_layout_allows(self):
         cards = next(part for part in kit_layout("cards").parts if part.selector == ".card")
         self.assertEqual(int(constant(KIT_SCRIPT, "gridCardCount")), cards.maximum)
+
+    def test_the_stylesheet_styles_every_layout_the_checker_knows_and_no_other(self):
+        self.assertEqual(set(re.findall(r'data-layout="(\w+)"', KIT_STYLE)), set(KIT_LAYOUT_NAMES))
+
+    def test_the_kit_script_names_only_layouts_the_checker_knows(self):
+        named = set(re.findall(r"data-layout='(\w+)'", KIT_SCRIPT)) | set(re.findall(r'"(\w+)"', constant(KIT_SCRIPT, "footerlessLayouts")))
+        self.assertLessEqual(named, set(KIT_LAYOUT_NAMES))
+
+    def test_the_kit_script_takes_its_layout_thresholds_from_the_build(self):
+        self.assertNotIn("const geometryThresholds", renderer_source("render_html.mjs"))
+        self.assertIn("request.geometryThresholds", renderer_source("render_html.mjs"))
 
     def test_advice_names_only_parts_and_layouts_the_kit_has(self):
         part_names = set(re.findall(r'\["[^"]+", "(\w+)"\]', constant(KIT_SCRIPT, "capacityPartNames")))

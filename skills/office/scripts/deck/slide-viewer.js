@@ -1,4 +1,6 @@
 (() => {
+  const slideWidth = __SLIDE_WIDTH__;
+  const slideHeight = __SLIDE_HEIGHT__;
   let activeIndex = 0;
   let slides = [];
   let deck = null;
@@ -203,7 +205,7 @@
     const bounds = parent.getBoundingClientRect();
     const availableWidth = Math.max(320, bounds.width - horizontalPadding);
     const availableHeight = Math.max(180, bounds.height - verticalPadding);
-    const scale = Math.min(availableWidth / 1600, availableHeight / 900);
+    const scale = Math.min(availableWidth / slideWidth, availableHeight / slideHeight);
     deck.style.setProperty("--internkim-deck-scale", String(Math.max(0.1, scale)));
     updateOverviewScale();
     updatePresenterNextScale();
@@ -287,7 +289,7 @@
 
   function updateOverviewScale() {
     overview?.querySelectorAll(".bespoke-marp-overview-thumb").forEach((thumb) => {
-      thumb.style.setProperty("--internkim-thumb-scale", String(thumb.clientWidth / 1600));
+      thumb.style.setProperty("--internkim-thumb-scale", String(thumb.clientWidth / slideWidth));
     });
   }
 
@@ -329,7 +331,7 @@
   function updatePresenterNextScale() {
     const nextContainer = presenterPanel?.querySelector(".bespoke-marp-presenter-next");
     if (!nextContainer) return;
-    const scale = Math.min(nextContainer.clientWidth / 1600, nextContainer.clientHeight / 900);
+    const scale = Math.min(nextContainer.clientWidth / slideWidth, nextContainer.clientHeight / slideHeight);
     nextContainer.style.setProperty("--internkim-presenter-next-scale", String(Math.max(0.1, scale)));
   }
 

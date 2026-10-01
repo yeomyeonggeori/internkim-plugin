@@ -6,10 +6,11 @@ import pathlib
 from acceptance import judge_build
 from check_deck import CheckRequest, check_deck
 from deck_definitions import FONT_NOT_EMBEDDED, LAYOUT_RENDER_SOURCE, NATIVE_RENDER_SOURCE, PPTX_WITHOUT_DESIGN, TEXT_KEPT_AS_PICTURE, UNKNOWN_FORMAT
-from deck_kit import KIT_MARKER, inject_deck_kit
+from deck_kit import KIT_MARKER, inject_deck_kit, slide_size
 from design_tokens import read_design_tokens
 from editable_pptx import EditablePptx, read_text_layers, text_layers_path, write_editable_pptx
 from geometry_checks import GEOMETRY_FILE_NAME
+from layout_thresholds import renderer_thresholds
 from native_pptx import write_native_text_pptx
 from native_preview import write_native_review_images
 from office_result import Issue, OfficeFailure, Result
@@ -133,7 +134,9 @@ def deck_render_request(request: ExportRequest, html_output_path: pathlib.Path) 
         png_directory=request.review_path,
         png_prefix=request.deck_name,
         pdf_path=request.output_path(".pdf") if "pdf" in request.formats else None,
+        viewport=slide_size(),
         geometry_path=request.review_path / GEOMETRY_FILE_NAME,
+        geometry_thresholds=renderer_thresholds(),
         layers_directory=text_layers_path(request.review_path) if "pptx" in request.formats else None,
         pixels_path=request.review_path / PIXELS_FILE_NAME,
         contact_sheet_directory=request.review_path,

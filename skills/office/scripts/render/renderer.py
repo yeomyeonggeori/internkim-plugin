@@ -71,6 +71,7 @@ class RenderRequest:
     script_selector: str | None = None
     excluded_styles: str | None = None
     extra_css: tuple[str, ...] = ()
+    geometry_thresholds: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -192,6 +193,8 @@ def request_json(request: RenderRequest) -> dict:
         payload["png"] = {"directory": str(request.png_directory), "prefix": request.png_prefix}
     optional_paths = {"pdf": request.pdf_path, "geometry": request.geometry_path, "layers": request.layers_directory, "pixels": request.pixels_path, "contactSheets": request.contact_sheet_directory}
     payload.update({name: str(path) for name, path in optional_paths.items() if path})
+    if request.geometry_thresholds:
+        payload["geometryThresholds"] = request.geometry_thresholds
     return payload
 
 

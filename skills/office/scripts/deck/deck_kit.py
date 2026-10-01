@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import pathlib
 import re
 
@@ -21,6 +22,7 @@ CHART_RENDERERS_PATTERN = re.compile(r"const chartRenderers = \{(.*?)\n  \};", r
 CHART_TYPE_PATTERN = re.compile(r"^\s{4}([a-z0-9]+):", re.MULTILINE)
 GROUPED_NUMBER_PATTERN = re.compile(r"^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$")
 SPACED_SEPARATOR_PATTERN = re.compile(r",\s")
+SLIDE_SIZE_PATTERN = re.compile(r"section\[data-layout\] \{[^}]*?\bwidth: (\d+)px;\s*height: (\d+)px;")
 
 
 def uses_deck_kit(source_text: str) -> bool:
@@ -47,9 +49,23 @@ def inject_deck_kit(source_text: str) -> str:
     return kit_markup + source_text
 
 
+@functools.lru_cache(maxsize=None)
+def kit_stylesheet() -> str:
+    return KIT_STYLESHEET_PATH.read_text(encoding="utf-8")
+
+
+def slide_size() -> tuple[int, int]:
+    width, height = SLIDE_SIZE_PATTERN.search(kit_stylesheet()).groups()
+    return int(width), int(height)
+
+
+def kit_length(token: str) -> int:
+    return int(re.search(rf"--{token}:\s*(\d+)px;", kit_stylesheet()).group(1))
+
+
 def theme_palettes() -> dict[str, dict[str, str]]:
     palettes = {}
-    for match in THEME_BLOCK_PATTERN.finditer(KIT_STYLESHEET_PATH.read_text(encoding="utf-8")):
+    for match in THEME_BLOCK_PATTERN.finditer(kit_stylesheet()):
         palettes[match.group(2)] = {name: value.upper() for name, value in COLOR_TOKEN_PATTERN.findall(match.group(3))}
     return palettes
 
