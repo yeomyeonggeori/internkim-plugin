@@ -2,6 +2,8 @@
   const fitSteps = [1, 0.95, 0.9, 0.86, 0.82, 0.78];
   const overflowTolerance = 2;
   const balanceSteps = 7;
+  const clauseEndPattern = /[,，、·:;]$/;
+  const phraseBreakPenalty = 0.35;
   const footerlessLayouts = new Set(["cover", "section"]);
   const itemClasses = ["kpi", "card", "step", "column"];
   const gridCardCount = 4;
@@ -24,6 +26,7 @@
   const matrixGapShare = 2;
   const capacityPartNames = [["h1, h2", "title"], [".lead", "lead"], [".eyebrow", "eyebrow"], [".takeaway", "takeaway"], [".card", "card"], [".kpi", "kpi"], [".column", "column"], [".step", "step"], [".kit-steps", "steps"], [".insight", "insight"], ["ol, ul", "list"], ["table", "table"], ["figure", "chart"], ["blockquote", "quote"], [".kit-diagram", "diagram"]];
   const hangulPattern = /[\u1100-\u11FF\u3130-\u318F\uAC00-\uD7AF]/;
+  const unitWordPattern = /^[\uAC00-\uD7AF][^\s\d\uAC00-\uD7AF]*$/;
   const keptInlineSelector = "em, strong, b, i, mark, small, span, a";
   const phrasingSelector = "em, strong, b, i, mark, a, span, code, sub, sup";
   const unkeptSelector = "aside, figure, table, svg, script, style, .kit-keep";
@@ -416,25 +419,54 @@
     return Array.from(element.classList).some((name) => name.startsWith("kit-"));
   }
 
+  function isUnitOf(number, word) {
+    return /\d/.test(number) && unitWordPattern.test(word);
+  }
+
+  function wordAfterInline(inline, text) {
+    const attached = text.match(/^\S+/);
+    if (attached) return isMixedWord(inline.textContent + attached[0]) ? attached[0] : null;
+    const unit = text.match(/^\s+(\S+)/);
+    return unit && isUnitOf(inline.textContent, unit[1]) ? unit[0] : null;
+  }
+
   function keepWordAfterInline(inline) {
     const next = inline.nextSibling;
     if (!next || next.nodeType !== 3) return;
-    const attached = next.textContent.match(/^\S+/);
-    if (!attached || !isMixedWord(inline.textContent + attached[0]) || isWholeText(inline.parentElement, inline.textContent + attached[0])) return;
-    next.textContent = next.textContent.slice(attached[0].length);
+    const word = wordAfterInline(inline, next.textContent);
+    if (!word || isWholeText(inline.parentElement, inline.textContent + word)) return;
+    next.textContent = next.textContent.slice(word.length);
     const kept = element("span", "kit-keep");
     inline.replaceWith(kept);
-    kept.append(inline, document.createTextNode(attached[0]));
+    kept.append(inline, document.createTextNode(word));
   }
 
   function isWholeText(parent, text) {
     return parent.textContent.trim() === text.trim();
   }
 
+  function textGroups(text) {
+    const pieces = text.split(/(\s+)/).filter(Boolean);
+    const groups = [];
+    for (let index = 0; index < pieces.length; index += 1) {
+      if (/\S/.test(pieces[index]) && index + 2 < pieces.length && isUnitOf(pieces[index], pieces[index + 2])) {
+        groups.push({ text: pieces.slice(index, index + 3).join(""), kept: true });
+        index += 2;
+      } else {
+        groups.push({ text: pieces[index], kept: isMixedWord(pieces[index]) });
+      }
+    }
+    return groups;
+  }
+
+  function isBlockText(textNode, text) {
+    return isWholeText(textNode.parentElement, text) && !textNode.parentElement.matches(phrasingSelector);
+  }
+
   function keepWordsInText(textNode) {
-    const pieces = textNode.textContent.split(/(\s+)/).filter(Boolean);
-    if (!pieces.some(isMixedWord) || (pieces.length === 1 && isWholeText(textNode.parentElement, pieces[0]))) return;
-    textNode.replaceWith(...pieces.map((piece) => (isMixedWord(piece) ? keptWord(document.createTextNode(piece)) : document.createTextNode(piece))));
+    const groups = textGroups(textNode.textContent);
+    if (!groups.some((group) => group.kept) || (groups.length === 1 && isBlockText(textNode, groups[0].text))) return;
+    textNode.replaceWith(...groups.map((group) => (group.kept ? keptWord(document.createTextNode(group.text)) : document.createTextNode(group.text))));
   }
 
   function keepMixedWords() {
@@ -486,11 +518,15 @@
     return parts.some((part, index) => parts.slice(index + 1).some((other) => rectanglesCollide(part, other)));
   }
 
-  function characterTop(node, offset) {
+  function characterBox(node, offset) {
     const range = document.createRange();
     range.setStart(node, offset);
     range.setEnd(node, offset + 1);
-    return range.getBoundingClientRect().top;
+    return range.getBoundingClientRect();
+  }
+
+  function characterTop(node, offset) {
+    return characterBox(node, offset).top;
   }
 
   function spansLines(title) {
@@ -501,8 +537,94 @@
     return characterTop(last, last.textContent.trimEnd().length - 1) > characterTop(first, first.textContent.search(/\S/)) + overflowTolerance;
   }
 
+  function titleWords(title) {
+    const words = [];
+    let breakAt = null;
+    textNodesIn(title, null).forEach((node) => {
+      const isKept = Boolean(node.parentElement.closest(".kit-keep"));
+      const text = node.textContent;
+      for (let offset = 0; offset < text.length; offset += 1) {
+        if (/\s/.test(text[offset])) {
+          if (!isKept && !breakAt) breakAt = { node, offset };
+          continue;
+        }
+        const box = characterBox(node, offset);
+        const word = words[words.length - 1];
+        if (word && !breakAt) Object.assign(word, { right: box.right, text: word.text + text[offset] });
+        else words.push({ left: box.left, right: box.right, text: text[offset], breakAt });
+        breakAt = null;
+      }
+    });
+    return words;
+  }
+
+  function lineWidth(words, first, last) {
+    return words[last].right - words[first].left;
+  }
+
+  function fewestLines(words, room) {
+    let lines = 1;
+    let first = 0;
+    for (let index = 1; index < words.length; index += 1) {
+      if (lineWidth(words, first, index) <= room) continue;
+      lines += 1;
+      first = index;
+    }
+    return lines;
+  }
+
+  function phraseBreaks(words, room) {
+    const lines = fewestLines(words, room);
+    const mean = lineWidth(words, 0, words.length - 1) / lines;
+    const fits = (first, last) => lineWidth(words, first, last) <= room;
+    const lineCost = (first, last) => (lineWidth(words, first, last) - mean) ** 2;
+    const breakCost = (last) => (clauseEndPattern.test(words[last].text) ? 0 : (room * phraseBreakPenalty) ** 2);
+    let best = words.map((_, last) => (fits(0, last) ? { cost: lineCost(0, last), starts: [] } : null));
+    for (let line = 2; line <= lines; line += 1) {
+      const previous = best;
+      best = words.map((_, last) => {
+        let chosen = null;
+        for (let first = 1; first <= last; first += 1) {
+          if (!previous[first - 1] || !fits(first, last)) continue;
+          const cost = previous[first - 1].cost + lineCost(first, last) + breakCost(first - 1);
+          if (!chosen || cost < chosen.cost) chosen = { cost, starts: [...previous[first - 1].starts, first] };
+        }
+        return chosen;
+      });
+    }
+    return best[words.length - 1]?.starts || null;
+  }
+
+  function breakBefore(word) {
+    const { node, offset } = word.breakAt;
+    const rest = document.createTextNode(node.textContent.slice(offset).replace(/^\s+/, ""));
+    node.textContent = node.textContent.slice(0, offset);
+    node.parentNode.insertBefore(rest, node.nextSibling);
+    node.parentNode.insertBefore(element("br", "kit-break"), rest);
+  }
+
+  async function breakAtPhrases(title, slide, layOut) {
+    const before = title.getBoundingClientRect();
+    title.style.setProperty("white-space", "nowrap");
+    if (layOut) await layOut(slide);
+    const words = titleWords(title);
+    title.style.removeProperty("white-space");
+    const starts = words.length > 1 ? phraseBreaks(words, before.width) : null;
+    if (starts) starts.slice().reverse().forEach((start) => breakBefore(words[start]));
+    if (layOut) await layOut(slide);
+    return Boolean(starts) && Math.abs(title.getBoundingClientRect().height - before.height) <= overflowTolerance && title.scrollWidth <= title.clientWidth + overflowTolerance;
+  }
+
   async function balanceTitle(title, slide, layOut) {
-    if (!spansLines(title)) return;
+    if (title.querySelector("br") || !spansLines(title)) return;
+    const original = Array.from(title.childNodes).map((node) => node.cloneNode(true));
+    if (await breakAtPhrases(title, slide, layOut)) return;
+    Array.from(title.childNodes).forEach((node) => node.remove());
+    original.forEach((node) => title.appendChild(node));
+    await narrowTitle(title, slide, layOut);
+  }
+
+  async function narrowTitle(title, slide, layOut) {
     const height = title.getBoundingClientRect().height;
     let fits = title.getBoundingClientRect().width;
     let wraps = fits / 2;

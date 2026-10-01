@@ -15,6 +15,15 @@ sys.path.insert(0, str(SCRIPTS_PATH))
 from deck.deck_kit import kit_length, slide_size  # noqa: E402
 
 
+COVER_SECTION = """<section data-layout="cover">
+  <p class="eyebrow">주식회사 예시랩 2026년 3분기 실적 보고</p>
+  <h1>분기 매출 <em>41.3억 원</em>, 목표 40억을 돌파했습니다</h1>
+  <p class="lead">클라우드 중심의 매출 성장과 수익률 개선을 보고합니다.</p>
+  <p class="meta">발표 박예시 본부장 · 2026년 10월 1일</p>
+</section>
+"""
+COVER_DECK = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>표지</title></head><body data-theme="corporate">
+""" + COVER_SECTION + "</body></html>"
 INDENTED_DECK = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>들여쓰기</title>
 <style>
 body { margin: 0; font-family: sans-serif; }
@@ -60,6 +69,23 @@ class IndentedMarkupTest(unittest.TestCase):
             pdf_path = Path(directory) / "build" / f"{Path(directory).name}.pdf"
             self.assertAlmostEqual(drawn_sizes(pdf_path, "첫째줄", 0)[0], 40, delta=0.5)
             self.assertAlmostEqual(drawn_sizes(pdf_path, "둘째줄", 0)[0], 30, delta=0.5)
+
+
+
+@unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+class CoverTitleTest(unittest.TestCase):
+    def test_a_number_stays_with_its_unit_and_the_cover_title_breaks_after_its_clause(self):
+        with tempfile.TemporaryDirectory() as directory:
+            deck_path = Path(directory) / "cover"
+            deck_path.mkdir()
+            envelope = build(deck_path, COVER_DECK, "pptx")
+            if envelope["details"]["review"]["renderSource"] != "layout":
+                self.skipTest("the renderer could not run on this host")
+            layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
+        title = next(block for block in layout["slides"][0]["blocks"] if "41.3" in "".join(run["text"] for paragraph in block["paragraphs"] for run in paragraph["runs"]))
+        lines = [line["text"] for paragraph in title["paragraphs"] for line in paragraph["lines"]]
+        self.assertTrue(lines[0].endswith("41.3억 원,"), lines)
+        self.assertFalse(any(line.startswith("원") for line in lines), lines)
 
 if __name__ == "__main__":
     unittest.main()
