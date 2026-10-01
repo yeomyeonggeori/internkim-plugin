@@ -42,9 +42,12 @@ export function extractNativeCharts({ pages }) {
       text: textStyleOf(label),
     }));
 
+  const ringOf = (chart) => chart.querySelector(".kit-donut-ring");
+
   const describe = (chart, origin) => {
     const { colors, text, ...data } = chart.nativeChart;
-    const rect = chart.getBoundingClientRect();
+    const ring = ringOf(chart);
+    const rect = (ring || chart).getBoundingClientRect();
     return {
       ...data,
       box: { left: round(rect.left - origin.left), top: round(rect.top - origin.top), right: round(rect.right - origin.left), bottom: round(rect.bottom - origin.top) },
@@ -55,11 +58,12 @@ export function extractNativeCharts({ pages }) {
   };
 
   const empty = (chart) => {
-    const rect = chart.getBoundingClientRect();
-    while (chart.firstChild) chart.firstChild.remove();
-    chart.style.setProperty("flex", "none");
-    chart.style.setProperty("width", `${rect.width}px`);
-    chart.style.setProperty("height", `${rect.height}px`);
+    const plot = ringOf(chart) || chart;
+    const rect = plot.getBoundingClientRect();
+    Array.from(plot.children).filter((child) => !child.matches(".kit-donut-center")).forEach((child) => child.remove());
+    plot.style.setProperty("flex", "none");
+    plot.style.setProperty("width", `${rect.width}px`);
+    plot.style.setProperty("height", `${rect.height}px`);
   };
 
   return pages.map((page) => {

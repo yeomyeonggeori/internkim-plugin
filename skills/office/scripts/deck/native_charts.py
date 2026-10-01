@@ -23,8 +23,6 @@ NATIVE_CHART_TYPES = (*BAR_DIRECTIONS, "line", *ROUND_CHART_TYPES)
 LABEL_POSITIONS = {"column": "outEnd", "stacked": "ctr", "bar": "outEnd", "line": "t", "pie": "ctr"}
 LINE_GRID_INTERVALS = 2
 DONUT_HOLE_PERCENT = 60
-ROUND_PLOT_SHARE = 0.5
-ROUND_LEGEND_LEFT = 0.56
 LINE_WIDTH_PIXELS = 5
 MARKER_PIXELS = 16
 SLICE_GAP_PIXELS = 2
@@ -89,9 +87,6 @@ def chart_frames_xml(parts: list[ChartPart], first_shape_id: int, context: TextC
     for part in parts:
         frames.append(graphic_frame_xml(shape_id, part, context.scale))
         shape_id += 1
-        if has_donut_center(part.layout):
-            frames.append(donut_center_xml(shape_id, part.layout, context))
-            shape_id += 1
     return "".join(frames)
 
 
@@ -109,7 +104,7 @@ def graphic_frame_xml(shape_id: int, part: ChartPart, scale: SlideScale) -> str:
 
 def chart_space_xml(layout: dict, context: TextContext) -> str:
     is_round = layout["type"] in ROUND_CHART_TYPES
-    plot_layout = manual_layout_xml(0, 0, ROUND_PLOT_SHARE, 1, inner=True) if is_round else ""
+    plot_layout = manual_layout_xml(0, 0, 1, 1, inner=True) if is_round else ""
     axes = "" if is_round else axes_xml(layout, context)
     return xml_document(
         f'<c:chartSpace {CHART_NAMESPACES}><c:date1904 val="0"/><c:lang val="{context.language}"/><c:roundedCorners val="0"/>'
@@ -316,12 +311,9 @@ def gridlines_xml(layout: dict, scale: SlideScale) -> str:
 
 
 def legend_xml(layout: dict, context: TextContext) -> str:
-    is_round = layout["type"] in ROUND_CHART_TYPES
-    if len(layout["series"]) < 2 and not is_round:
+    if layout["type"] in ROUND_CHART_TYPES or len(layout["series"]) < 2:
         return ""
-    position = "r" if is_round else "t"
-    placement = manual_layout_xml(ROUND_LEGEND_LEFT, 0, 1 - ROUND_LEGEND_LEFT, 1, inner=False) if is_round else ""
-    return f'<c:legend><c:legendPos val="{position}"/>{placement}<c:overlay val="0"/>{text_properties_xml(text_style(layout, "legend"), context)}</c:legend>'
+    return f'<c:legend><c:legendPos val="t"/><c:overlay val="0"/>{text_properties_xml(text_style(layout, "legend"), context)}</c:legend>'
 
 
 def manual_layout_xml(left: float, top: float, width: float, height: float, inner: bool) -> str:
@@ -343,29 +335,3 @@ def styled_run(style: dict, text: str = "") -> dict:
 def text_properties_xml(style: dict, context: TextContext) -> str:
     properties = run_properties_xml(styled_run(style), context, "a:defRPr", with_link=False)
     return f'<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr>{properties}</a:pPr><a:endParaRPr lang="{context.language}"/></a:p></c:txPr>'
-
-
-def has_donut_center(layout: dict) -> bool:
-    return layout["type"] == "donut" and bool(layout.get("center"))
-
-
-def donut_center_xml(shape_id: int, layout: dict, context: TextContext) -> str:
-    box = layout["box"]
-    scale = context.scale
-    plot_width = (box["right"] - box["left"]) * ROUND_PLOT_SHARE
-    height = box["bottom"] - box["top"]
-    hole = min(plot_width, height) * DONUT_HOLE_PERCENT / 100
-    left = box["left"] + plot_width / 2 - hole / 2
-    top = box["top"] + height / 2 - hole / 2
-    lines = [(layout["center"], "center"), (layout.get("centerLabel", ""), "centerLabel")]
-    paragraphs = "".join(
-        f'<a:p><a:pPr algn="ctr"/><a:r>{run_properties_xml(styled_run(text_style(layout, role)), context, "a:rPr", with_link=False)}<a:t>{text_content(text)}</a:t></a:r></a:p>'
-        for text, role in lines
-        if text
-    )
-    return (
-        f'<p:sp><p:nvSpPr><p:cNvPr id="{shape_id}" name="Chart Center {shape_id}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'
-        f'<p:spPr><a:xfrm><a:off x="{scale.x(left)}" y="{scale.y(top)}"/><a:ext cx="{scale.x(hole)}" cy="{scale.y(hole)}"/></a:xfrm>'
-        '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr>'
-        f'<p:txBody><a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="ctr"><a:noAutofit/></a:bodyPr><a:lstStyle/>{paragraphs}</p:txBody></p:sp>'
-    )

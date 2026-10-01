@@ -129,15 +129,14 @@ class NativeChartPackageTest(unittest.TestCase):
         self.assertEqual({label.find(qn("c:dLblPos")).get("val") for label in labels}, {"outEnd"})
         self.assertFalse(chart.value_axis.visible)
 
-    def test_a_donut_keeps_its_hole_its_slice_colors_and_its_center_text(self):
+    def test_a_donut_is_only_its_ring_so_the_kit_legend_and_center_stay_text(self):
         _, presentation = self.write([chart_layout("donut", [{"name": "", "values": [42, 30, 28]}])])
-        slide = presentation.slides[0]
-        chart = chart_frame(slide).chart
+        chart = chart_frame(presentation.slides[0]).chart
         self.assertEqual(chart._chartSpace.find(f".//{qn('c:holeSize')}").get("val"), "60")
         colors = [point.find(f".//{qn('a:solidFill')}/{qn('a:srgbClr')}").get("val") for point in chart.plots[0].series[0]._element.findall(qn("c:dPt"))]
         self.assertEqual(colors, ["1A56DB", "8DB0EE", "C8D2E0"])
-        center = next(shape for shape in slide.shapes if shape.has_text_frame)
-        self.assertEqual([paragraph.text for paragraph in center.text_frame.paragraphs], ["42%", "1분기"])
+        self.assertFalse(chart.has_legend)
+        self.assertFalse(any(shape.has_text_frame for shape in presentation.slides[0].shapes))
 
     def test_the_preview_draws_the_charts_own_colors_and_only_its_labels(self):
         highlighted = chart_layout("column", [{"name": "", "values": [96, 104, 128]}], colors={"series": [ACCENT], "points": [[MUTED, MUTED, ACCENT]], "grid": "rgb(213, 221, 232)", "background": "rgb(255, 255, 255)"})

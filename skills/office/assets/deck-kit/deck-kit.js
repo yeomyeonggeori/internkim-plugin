@@ -460,10 +460,8 @@
       startsAtZero: type !== "line" || lineStartsAtZero(figure),
       valueRange: type === "line" ? rangeLimits(niceRange(data.series.flatMap((item) => item.values), lineStartsAtZero(figure))) : null,
       gapWidth: gapWidth(type, data),
-      center: type === "donut" ? donutCenter(figure, data) : "",
-      centerLabel: type === "donut" ? donutCenterLabel(figure, data) : "",
       colors: { series: seriesColors(data.series.length), points: pointColors(figure, type, data), grid: "var(--line)", background: "var(--bg)" },
-      text: { category: ".kit-category", legend: ".kit-legend > span, .kit-donut-legend span", share: ".kit-donut-legend b", center: ".kit-donut-center > b", centerLabel: ".kit-donut-center > span" },
+      text: { category: ".kit-category", legend: ".kit-legend > span, .kit-donut-legend span", share: ".kit-donut-legend b" },
     };
   }
 

@@ -37,6 +37,7 @@ class Entry:
     fit: TextFit | None
     pixels: tuple[int, int] | None
     context: object
+    hole: Box | None = None
 
     @property
     def has_text(self) -> bool:
@@ -84,7 +85,18 @@ def walk_entries(shapes, prefix: str, frame: Frame, context):
             continue
         box = frame.to_slide(local_box(element, context))
         fit = measure_text(context, element, box) if kind in ("text", "shape") else None
-        yield Entry(address, shape.name, kind, box, element, fit, picture_pixels(shape, kind), context)
+        yield Entry(address, shape.name, kind, box, element, fit, picture_pixels(shape, kind), context, doughnut_hole(shape, kind, box))
+
+
+def doughnut_hole(shape, kind: str, box: Box) -> Box | None:
+    if kind != "chart":
+        return None
+    chart_space = shape.chart._chartSpace
+    hole_size = chart_space.find(f".//{qn('c:doughnutChart')}/{qn('c:holeSize')}")
+    if hole_size is None or chart_space.find(f".//{qn('c:legend')}") is not None:
+        return None
+    side = int(min(box.w, box.h) * int(hole_size.get("val")) / 100 / math.sqrt(2))
+    return Box(box.x + (box.w - side) // 2, box.y + (box.h - side) // 2, side, side)
 
 
 def slide_issues(entries: list[Entry], area: SlideArea) -> list[Issue]:
@@ -265,7 +277,7 @@ def overlap_issues(entries: list[Entry], area: SlideArea) -> list[Issue]:
     issues = []
     for index, first in enumerate(content):
         for second in content[index + 1:]:
-            if not first.has_text and not second.has_text:
+            if not first.has_text and not second.has_text or sits_in_hole(first, second) or sits_in_hole(second, first):
                 continue
             shared = first.visible_box.intersection(second.visible_box)
             if shared is None or shared.area < OVERLAP_RATIO * min(first.visible_box.area, second.visible_box.area):
@@ -274,6 +286,11 @@ def overlap_issues(entries: list[Entry], area: SlideArea) -> list[Issue]:
             fix = growth_fix(first, area) or growth_fix(second, area) or separation_fix(first, second, area, content)
             issues.append(Issue(TEXT_OVERLAP.kind, text, location(first, area), fix))
     return issues
+
+
+def sits_in_hole(text: Entry, chart: Entry) -> bool:
+    hole, box = chart.hole, text.visible_box
+    return hole is not None and hole.x <= box.x and hole.y <= box.y and box.right <= hole.right and box.bottom <= hole.bottom
 
 
 def separation_fix(first: Entry, second: Entry, area: SlideArea, content: list[Entry]) -> dict:
