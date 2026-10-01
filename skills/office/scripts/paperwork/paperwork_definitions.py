@@ -3,6 +3,8 @@ from __future__ import annotations
 from amounts import ROUNDING_RULE, VAT_RATE_PERCENT
 from office_result import ERROR, WARNING, IssueKind
 from office_schema import AnyOf, Boolean, CellValue, Field, ListOf, Number, Record, Text, Variant
+from paperwork_design import FONT_KOREAN_DOCX
+from fonts.pdf_registration import FONT_PATH_MEANING
 from template_context import caller_fields, default_values, derived_values
 from template_fields import template_list_fields, template_names
 
@@ -63,7 +65,7 @@ PAPERWORK_DOCUMENT = Record("document", "the JSON of paperwork render to a .pdf;
     Field("notes", AnyOf((Text(), ListOf(CellValue()))), "centered closing lines"),
     Field("signature", AnyOf((Text(), SIGNATURE)), "signature; text becomes date on its first line and signer after"),
     Field("footer", CellValue(), "footer line on every page"),
-    Field("fontPath", Text(), "TTF or TTC to embed; default the first Korean-capable font installed"),
+    Field("fontPath", Text(), FONT_PATH_MEANING),
 ))
 
 PAPERWORK_CONTENT_FIELDS = ("recipient", "meta", "items", "sections", "notes", "signature")
@@ -92,7 +94,7 @@ CONTRACT_BLOCK = Variant(
 
 CONTRACT_DOCUMENT = Record("contract", "the JSON of paperwork render to a .docx, for a clause the standard templates cannot express", (
     Field("title", CellValue(), "centered bold title"),
-    Field("fontName", CellValue(), "body font, default 맑은 고딕"),
+    Field("fontName", CellValue(), f"body font, default {FONT_KOREAN_DOCX}"),
     Field("fontSize", Number(minimum=1), "body size in points"),
     Field("page", Record("page", "page setup", (Field("marginInches", Number(minimum=0), "every margin, default 0.9"),)), "page setup"),
     Field("blocks", ListOf(CONTRACT_BLOCK, non_empty=True), "the content", required=True),

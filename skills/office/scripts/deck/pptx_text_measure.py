@@ -2,31 +2,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import functools
-import shutil
-import subprocess
 
 from PIL import ImageFont
 from pptx.oxml.ns import qn
 
-from pptx_fonts import PAPERLOGY_FONT_PATH, deck_face_paths, deck_faces
+from fonts.registry import BOLD_WEIGHT, REGULAR_WEIGHT, resolved_face
 from pptx_geometry import EMU_PER_POINT, Box
 from pptx_style import DEFAULT_SIZE, PERCENT_SCALE, ParagraphLevel, has_east_asian, is_east_asian, paragraph_chain, run_style
 
 
 MEASURE_SIZE = 200
 DEFAULT_INSETS = {"lIns": 91440, "rIns": 91440, "tIns": 45720, "bIns": 45720}
-FALLBACK_REGULAR = PAPERLOGY_FONT_PATH / "Paperlogy-4Regular.ttf"
-FALLBACK_BOLD = PAPERLOGY_FONT_PATH / "Paperlogy-7Bold.ttf"
-FONT_MATCH_TIMEOUT_SECONDS = 10
-METRIC_SUBSTITUTES = {
-    "calibri": ("Carlito",),
-    "cambria": ("Caladea",),
-    "arial": ("Liberation Sans", "Arimo"),
-    "helvetica": ("Liberation Sans", "Arimo"),
-    "times new roman": ("Liberation Serif", "Tinos"),
-    "courier new": ("Liberation Mono", "Cousine"),
-}
-GENERIC_LATIN_SUBSTITUTES = ("Liberation Sans", "Arimo", "Arial", "DejaVu Sans")
 
 
 @dataclass(frozen=True)
@@ -66,41 +52,8 @@ class TextFit:
 
 @functools.lru_cache(maxsize=None)
 def font_face(family: str, bold: bool, east_asian: bool) -> FontFace:
-    bundled = bundled_deck_face(family, bold)
-    if bundled is not None:
-        return bundled
-    requested = matched_font(family, bold, east_asian)
-    if requested is not None and not requested.substituted:
-        return requested
-    for substitute in METRIC_SUBSTITUTES.get(family.casefold(), ()) + (() if east_asian else GENERIC_LATIN_SUBSTITUTES):
-        candidate = matched_font(substitute, bold, east_asian)
-        if candidate is not None and not candidate.substituted:
-            return FontFace(candidate.path, candidate.index, candidate.family, True, bold)
-    if requested is not None:
-        return requested
-    return FontFace(str(FALLBACK_BOLD if bold else FALLBACK_REGULAR), 0, "Paperlogy", True, bold)
-
-
-def bundled_deck_face(family: str, bold: bool) -> FontFace | None:
-    paths = deck_face_paths()
-    weight = next((weight for weight, face in deck_faces().items() if face.family.casefold() == family.casefold()), None)
-    if weight is None:
-        return None
-    return FontFace(str(paths[weight]), 0, deck_faces()[weight].family, False, bold)
-
-
-def matched_font(family: str, bold: bool, east_asian: bool) -> FontFace | None:
-    command = shutil.which("fc-match")
-    if command is None:
-        return None
-    pattern = f"{family}:weight={'bold' if bold else 'regular'}{':lang=ko' if east_asian else ''}"
-    completed = subprocess.run([command, "-f", "%{file}|%{index}|%{family}", pattern], capture_output=True, text=True, timeout=FONT_MATCH_TIMEOUT_SECONDS)
-    path, _, rest = completed.stdout.partition("|")
-    index, _, families = rest.partition("|")
-    if completed.returncode != 0 or not path:
-        return None
-    names = {name.strip().casefold() for name in families.split(",")}
-    return FontFace(path, int(index or 0), families.split(",")[0], family.casefold() not in names, bold)
+    resolved = resolved_face(family, BOLD_WEIGHT if bold else REGULAR_WEIGHT)
+    return FontFace(str(resolved.path), 0, resolved.typeface, resolved.is_substitute, bold)
 
 
 @functools.lru_cache(maxsize=None)

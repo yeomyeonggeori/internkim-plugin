@@ -13,7 +13,7 @@ from formula_cache import cache_formula_values  # noqa: E402
 from office_preview import Preview, approximation_issues, blank_page_issues, draw_pages, write_preview  # noqa: E402
 from office_inputs import office_file
 from office_result import OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
-from preview_fonts import FontRegistry  # noqa: E402
+from fonts.preview import FontRegistry  # noqa: E402
 from xlsx_colors import theme_palette  # noqa: E402
 from workbook_access import missing_sheet_issue, open_workbook  # noqa: E402
 from xlsx_preview import SheetPreviewer  # noqa: E402

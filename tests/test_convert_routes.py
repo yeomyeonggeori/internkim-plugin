@@ -6,13 +6,12 @@ import tempfile
 import unittest
 
 from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, block_texts, run_office, run_office_python
-from pdf_fixture import STATEMENT_ROWS, newsletter_pdf_code, statement_pdf_code
+from pdf_fixture import STATEMENT_ROWS, newsletter_pdf_code, statement_pdf_code, with_fonts
 from pptx_edit_fixture import build_korean_deck
 from render_fixture import can_render, pdf_page_count
 from report_fixture import CHART_IMAGE, REPORT_MARKDOWN
 
 
-FONT_DIRECTORY = SCRIPTS_PATH.parent / "assets" / "fonts" / "paperlogy"
 WORKBOOK = """
 from openpyxl import Workbook
 book = Workbook()
@@ -83,7 +82,7 @@ class PdfSourceRouteTest(unittest.TestCase):
     def setUp(self):
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.directory = Path(self.temporary_directory.name)
-        run_office_python(newsletter_pdf_code(FONT_DIRECTORY), self.directory)
+        run_office_python(newsletter_pdf_code(), self.directory)
 
     def tearDown(self):
         self.temporary_directory.cleanup()
@@ -103,7 +102,7 @@ class PdfSourceRouteTest(unittest.TestCase):
 
 
     def test_a_table_laid_out_without_lines_becomes_a_table_between_its_paragraphs(self):
-        run_office_python(statement_pdf_code(FONT_DIRECTORY), self.directory)
+        run_office_python(statement_pdf_code(), self.directory)
         envelope = convert("statement.pdf", "statement.docx", self.directory)
         self.assertEqual(envelope["details"]["pages"][0]["tables"], 1)
         blocks = [block for block in block_texts(self.directory, "statement.docx") if block[1]]
@@ -112,17 +111,17 @@ class PdfSourceRouteTest(unittest.TestCase):
         self.assertEqual(blocks[3], ("paragraph", "문의는 sample@example.com 으로 보내 주십시오. 담당자 이샘플."))
 
     def test_each_page_becomes_a_slide_of_text_boxes_or_one_picture(self):
-        run_office_python("""
+        run_office_python(with_fonts("""
             from fpdf import FPDF
             pdf = FPDF(format="A4")
-            pdf.add_font("Korean", "", "{font}")
+            pdf.add_font("Korean", "", {regular!r})
             pdf.add_page()
             pdf.set_font("Korean", "", 12)
             pdf.set_xy(20, 20)
             pdf.cell(100, 8, "원형 도식 설명")
             pdf.ellipse(60, 60, 80, 80, style="F")
             pdf.output("circle.pdf")
-        """.replace("{font}", str(FONT_DIRECTORY / "Paperlogy-4Regular.ttf")), self.directory)
+        """), self.directory)
         envelope = convert("newsletter.pdf", "newsletter.pptx", self.directory)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["PAGE_WITHOUT_TEXT", "CONVERSION_APPROXIMATED"])
         self.assertIn("pdf render newsletter.pdf --pages 3 --scale 2", envelope["issues"][0]["suggestion"])

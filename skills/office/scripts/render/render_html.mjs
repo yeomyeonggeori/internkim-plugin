@@ -53,10 +53,19 @@ function unquote(name) {
   return name.trim().replace(/^["']|["']$/g, "").toLowerCase();
 }
 
+function registeredFamily(fonts, name) {
+  const font = fonts.find((candidate) => candidate.family.toLowerCase() === name || candidate.generic === name);
+  return font?.family.toLowerCase();
+}
+
+function registeredFont(font) {
+  return { name: font.family, weight: font.weight, style: font.style || "normal", data: font.data, ...(font.generic ? { generic: font.generic } : {}) };
+}
+
 function fontChooser(fonts) {
   return (familyList, weight) => {
     const families = String(familyList).split(",").map(unquote);
-    const family = families.find((name) => fonts.some((font) => font.family.toLowerCase() === name)) || fonts[0]?.family.toLowerCase();
+    const family = families.map((name) => registeredFamily(fonts, name)).find(Boolean) || fonts[0]?.family.toLowerCase();
     const candidates = fonts.filter((font) => font.family.toLowerCase() === family);
     if (!candidates.length) return null;
     return candidates.reduce((best, font) => (Math.abs(font.weight - weight) < Math.abs(best.weight - weight) ? font : best)).metrics;
@@ -175,7 +184,7 @@ async function writePdf(pdfPath, layout, inlineStyles, pages, css, fonts, bytesO
   const pdf = await renderPdf(html, {
     size: { width: size.width, height: size.height },
     margin: 0,
-    fonts: fonts.map((font) => ({ name: font.family, weight: font.weight, style: font.style || "normal", data: font.data })),
+    fonts: fonts.map(registeredFont),
     css: [...css, resetStyle, pdfPageStyle],
     images: imagesOf(pages, bytesOf),
   });
@@ -213,7 +222,7 @@ async function main() {
   const bytesOf = (source) => resampled.get(source) || resolveSource(source);
   const fonts = await loadFonts(request.fonts);
   const renderer = new Renderer();
-  for (const font of fonts) await renderer.registerFont({ name: font.family, weight: font.weight, style: font.style || "normal", data: font.data });
+  for (const font of fonts) await renderer.registerFont(registeredFont(font));
   const css = [...collectStyles(document, request.excludeStyles), ...(request.extraCss || []), generatedContentStyle];
   const viewport = request.viewport;
   const inlineStyles = createInlineStyleFilter(renderer);

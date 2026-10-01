@@ -8,7 +8,7 @@ from openpyxl.utils import get_column_letter, range_boundaries
 
 from number_format import Displayed, displayed
 from office_preview import PageGeometry, Preview, emu_to_pixels, escaped, inches_to_pixels, page_section, pixels, points_to_pixels, positioned, style_attribute
-from preview_fonts import FontRegistry, FontRequest, css_font_family
+from fonts.preview import FontRegistry, FontRequest, css_font_family, draws_scripts_apart, script_font_family, script_runs
 from xlsx_colors import css_color
 from xlsx_conditional import ConditionalStyles
 from xlsx_preview_charts import chart_html, chart_kind, chart_title, drawing_box, image_html, is_whole
@@ -196,6 +196,7 @@ class SheetPreviewer:
         alignment = cell.alignment
         horizontal = alignment.horizontal or ("right" if text.is_number else "center" if isinstance(value, bool) else "left")
         content = text.text
+        self.fonts.use(request, content)
         wraps = bool(alignment.wrap_text)
         if text.is_number and not wraps and self.fonts.width(request, content) > width - 2 * CELL_PADDING_PIXELS * scale:
             content = "#" * max(1, int((width - 2 * CELL_PADDING_PIXELS * scale) // max(self.fonts.width(request, "#"), 1)))
@@ -221,7 +222,7 @@ class SheetPreviewer:
             "line-height": pixels(self.fonts.line_height(request)),
             "text-align": horizontal if horizontal in ("left", "center", "right") else None,
         }
-        return f"<div{style_attribute(declarations)}><span>{escaped(content)}</span></div>"
+        return f"<div{style_attribute(declarations)}>{script_spans(request, content)}</div>"
 
     def border_css(self, frame: SheetFrame, row: int, column: int, last_row: int, last_column: int, scale: float) -> dict:
         worksheet = frame.worksheet
@@ -426,3 +427,9 @@ def header_text(text: str) -> str:
     for code, replacement in HEADER_CODES:
         cleaned = cleaned.replace(code, replacement)
     return cleaned
+
+
+def script_spans(request: FontRequest, text: str) -> str:
+    if not draws_scripts_apart(request):
+        return f"<span>{escaped(text)}</span>"
+    return "".join(f'<span{style_attribute({"font-family": script_font_family(request, piece)})}>{escaped(piece)}</span>' for piece in script_runs(text))

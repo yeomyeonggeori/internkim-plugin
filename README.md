@@ -62,10 +62,11 @@ the commands. Each command prints one JSON result with a status and coded
 issues, and `scripts/office guide <format>` prints the fields every input takes
 and every code a command reports, generated from the validators themselves.
 
-Those environments, the package cache and any host-supplied fonts live under
-`XDG_CACHE_HOME`, falling back to `~/.cache` when it is unset. A host with a
-shared package cache points `UV_CACHE_DIR` at it. Neither is required, and the
-skills read no variable named after the host that runs them.
+Those environments, the package cache and the bundled fonts unpacked for
+drawing live under `XDG_CACHE_HOME`, falling back to `~/.cache` when it is
+unset. A host with a shared package cache points `UV_CACHE_DIR` at it. Neither
+is required, and the skills read no variable named after the host that runs
+them.
 
 ## Tool server
 
@@ -122,6 +123,6 @@ a host.
 
 ## License
 
-[Apache-2.0](LICENSE), except the Paperlogy fonts under
-`skills/office/assets/fonts/paperlogy/`, which are under the
-[SIL Open Font License 1.1](skills/office/assets/fonts/paperlogy/OFL-1.1.txt).
+[Apache-2.0](LICENSE), except the fonts under `skills/office/assets/fonts/`,
+which are under the SIL Open Font License 1.1. Each family's folder holds its
+license text as `OFL.txt` and a README naming the release it came from.

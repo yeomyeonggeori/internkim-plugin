@@ -57,7 +57,7 @@ class ReadTest(PdfFixture):
 class ReadTablesTest(unittest.TestCase):
     def test_read_gives_the_rows_of_a_table_laid_out_without_lines(self):
         with tempfile.TemporaryDirectory() as directory:
-            run_office_python(statement_pdf_code(SCRIPTS_PATH.parent / "assets" / "fonts" / "paperlogy"), Path(directory))
+            run_office_python(statement_pdf_code(), Path(directory))
             page = run_office(["pdf", "read", "statement.pdf"], Path(directory))["details"]["pages"][0]
         self.assertEqual(page["tables"], [STATEMENT_ROWS])
 

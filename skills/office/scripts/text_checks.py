@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import re
 
+from fonts.registry import SANS_BODY, default_family, resolved_face
 from office_result import ERROR, Issue, IssueKind
 
 
 PLACEHOLDER_PATTERN = re.compile(r"\{\{.*?\}\}|\{%.*?%\}")
 DRAFT_PLACEHOLDER_PATTERN = re.compile(PLACEHOLDER_PATTERN.pattern + r"|(?i:lorem ipsum)|\b(?:TODO|TBD|FIXME)\b|(?<![A-Za-z])X{2,}(?![A-Za-z])|○○|(?i:\[(?:insert|placeholder)[^\]]*\])")
+SUBSET_TAG_PATTERN = re.compile(r"^[A-Z]{6}\+")
 KOREAN_FONT_NAME_FRAGMENTS = (
     "noto",
     "nanum",
@@ -27,7 +29,7 @@ KOREAN_FONT_NAME_FRAGMENTS = (
 REQUIRED_TEXT_MISSING = IssueKind("REQUIRED_TEXT_MISSING", ERROR, "a --required-text value does not appear in the file's visible text", "put the source fact in the visible content, then rebuild")
 FORBIDDEN_TEXT_PRESENT = IssueKind("FORBIDDEN_TEXT_PRESENT", ERROR, "a --forbidden-text value appears in the file's visible text", "remove the unsupported text, then rebuild")
 PLACEHOLDER_LEFT = IssueKind("PLACEHOLDER_LEFT", ERROR, "template placeholder syntax or a merge field is still in the text", "replace it with the real value")
-KOREAN_FONT_MISSING = IssueKind("KOREAN_FONT_MISSING", ERROR, "the file has Korean text but names no Korean-capable font", "set a Korean-capable font such as Nanum Gothic or Noto Sans CJK")
+KOREAN_FONT_MISSING = IssueKind("KOREAN_FONT_MISSING", ERROR, "the file has Korean text but names no Korean-capable font", f"set a Korean-capable font such as {default_family(SANS_BODY).name}, which the skill ships")
 
 TEXT_CHECK_ISSUE_KINDS = (REQUIRED_TEXT_MISSING, FORBIDDEN_TEXT_PRESENT, KOREAN_FONT_MISSING)
 
@@ -44,10 +46,16 @@ def korean_font_issues(visible_text: str, font_names: list[str]) -> list[Issue]:
     return [KOREAN_FONT_MISSING.issue("the file contains Korean text but no Korean-capable font name was detected")]
 
 
+def without_subset_tag(font_name: str) -> str:
+    return SUBSET_TAG_PATTERN.sub("", font_name)
+
+
 def contains_korean(text: str) -> bool:
     return any("가" <= character <= "힣" for character in text)
 
 
 def names_korean_capable_font(font_names: list[str]) -> bool:
+    if any(not resolved_face(without_subset_tag(font_name)).is_substitute for font_name in font_names):
+        return True
     normalized_names = " ".join(font_name.lower() for font_name in font_names)
     return any(fragment in normalized_names for fragment in KOREAN_FONT_NAME_FRAGMENTS)

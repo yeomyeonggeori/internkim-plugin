@@ -6,17 +6,14 @@ import mimetypes
 import pathlib
 import re
 
+from fonts.registry import DECK, BundledFace, default_family
+
 
 SKILL_ASSET_PATH = pathlib.Path(__file__).resolve().parents[2] / "assets"
 SKILL_ASSET_MARKER = "office/assets/"
-PAPERLOGY_FAMILY = "Paperlogy"
-VENDORED_PAPERLOGY_FAMILY = "PaperlogyLocal"
-VENDORED_PAPERLOGY_FONTS = (
-    (400, "Paperlogy-4Regular.woff2"),
-    (600, "Paperlogy-6SemiBold.woff2"),
-    (700, "Paperlogy-7Bold.woff2"),
-    (800, "Paperlogy-8ExtraBold.woff2"),
-)
+PAPERLOGY = default_family(DECK)
+PAPERLOGY_FAMILY = PAPERLOGY.name
+VENDORED_PAPERLOGY_FAMILY = PAPERLOGY.web_name
 PAPERLOGY_ALIASES = {
     "fonts/Paperlogy-Regular.woff2": "fonts/paperlogy/Paperlogy-4Regular.woff2",
     "fonts/Paperlogy-Medium.woff2": "fonts/paperlogy/Paperlogy-6SemiBold.woff2",
@@ -42,7 +39,7 @@ REMOTE_URL_PREFIXES = ("data:", "http:", "https:")
 VENDORED_FONTS_MARKER = "data-internkim-vendored-fonts"
 SOURCE_ATTRIBUTE = "data-internkim-source"
 SOURCE_COMMENT_PREFIX = "internkim-source:"
-VENDORED_FAMILY_INSERTION = ' "PaperlogyLocal",'
+VENDORED_FAMILY_INSERTION = f' "{VENDORED_PAPERLOGY_FAMILY}",'
 
 
 def inject_vendored_paperlogy_fallback(source_text: str) -> str:
@@ -70,31 +67,31 @@ def insert_text(source_text: str, insert_index: int, inserted_text: str) -> str:
 
 
 def add_paperlogy_local_to_font_family_lists(source_text: str) -> str:
-    if "PaperlogyLocal" in source_text:
+    if VENDORED_PAPERLOGY_FAMILY in source_text:
         return source_text
+    family, local = re.escape(PAPERLOGY_FAMILY), re.escape(VENDORED_PAPERLOGY_FAMILY)
     source_text = re.sub(
-        r'(["\']Paperlogy["\']\s*,)(?!\s*["\']PaperlogyLocal["\'])',
+        rf'(["\']{family}["\']\s*,)(?!\s*["\']{local}["\'])',
         r'\1' + VENDORED_FAMILY_INSERTION,
         source_text,
     )
     return re.sub(
-        r'(?<![-\w])Paperlogy\s*,(?!\s*["\']?PaperlogyLocal)',
-        'Paperlogy,' + VENDORED_FAMILY_INSERTION,
+        rf'(?<![-\w]){family}\s*,(?!\s*["\']?{local})',
+        f"{PAPERLOGY_FAMILY}," + VENDORED_FAMILY_INSERTION,
         source_text,
     )
 
 
 def vendored_paperlogy_fallback_style() -> str:
-    rules = [paperlogy_local_font_face(weight, file_name) for weight, file_name in VENDORED_PAPERLOGY_FONTS]
+    rules = [paperlogy_local_font_face(face) for face in PAPERLOGY.faces]
     return f'<style {VENDORED_FONTS_MARKER}>' + "\n".join(rules) + "</style>"
 
 
-def paperlogy_local_font_face(weight: int, file_name: str) -> str:
-    font_path = SKILL_ASSET_PATH / "fonts" / "paperlogy" / file_name
+def paperlogy_local_font_face(face: BundledFace) -> str:
     return (
         f'@font-face {{ font-family: "{VENDORED_PAPERLOGY_FAMILY}"; '
-        f"font-weight: {weight}; font-style: normal; font-display: swap; "
-        f'src: url("{base64_data_url("font/woff2", font_path)}") format("woff2"); }}'
+        f"font-weight: {face.weight}; font-style: normal; font-display: swap; "
+        f'src: url("{base64_data_url("font/woff2", PAPERLOGY.asset(face))}") format("woff2"); }}'
     )
 
 

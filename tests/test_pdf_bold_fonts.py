@@ -9,9 +9,10 @@ from pathlib import Path
 OFFICE_SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 sys.path.insert(0, str(OFFICE_SCRIPTS_PATH))
 
-from skill_runtime import HANGUL_FONT_PATHS, find_bold_face  # noqa: E402
+from fonts.registry import SANS_BODY, default_family, resolved_face  # noqa: E402
+from fonts.pdf_registration import bold_sibling  # noqa: E402
 
-SOURCE_FONT_PATHS = [Path(path) for path in HANGUL_FONT_PATHS if Path(path).exists()]
+SOURCE_FONT_PATH = resolved_face(default_family(SANS_BODY).name).path
 
 
 def save_renamed_font(source_path, target_path, postscript_name):
@@ -51,16 +52,15 @@ def issue_codes(result):
     return [issue["code"] for issue in result["issues"]]
 
 
-@unittest.skipUnless(SOURCE_FONT_PATHS, "no Korean-capable font installed to derive test fonts from")
 class BoldFontTest(unittest.TestCase):
     def setUp(self):
         self.directory = Path(tempfile.mkdtemp())
         self.addCleanup(lambda: __import__("shutil").rmtree(self.directory, ignore_errors=True))
         self.regular_path = self.directory / "TestGothic.ttf"
-        save_renamed_font(SOURCE_FONT_PATHS[0], self.regular_path, "TestGothicRegular")
+        save_renamed_font(SOURCE_FONT_PATH, self.regular_path, "TestGothicRegular")
 
     def add_bold_sibling(self):
-        save_renamed_font(SOURCE_FONT_PATHS[0], self.directory / "TestGothicBold.ttf", "TestGothicBoldFace")
+        save_renamed_font(SOURCE_FONT_PATH, self.directory / "TestGothicBold.ttf", "TestGothicBoldFace")
 
     def create_pdf(self):
         specification = {"title": "Report", "fontPath": str(self.regular_path), "sections": [{"title": "Summary", "paragraphs": ["Body text"]}]}
@@ -100,23 +100,18 @@ class BoldFontTest(unittest.TestCase):
         self.assertEqual(embedded_font_names(self.directory / "form.pdf"), {"TestGothicRegular", "TestGothicBoldFace"})
 
 
-class FindBoldFaceTest(unittest.TestCase):
+class BoldSiblingTest(unittest.TestCase):
     def test_a_bold_file_beside_the_regular_file_is_found(self):
         with tempfile.TemporaryDirectory() as directory:
             for name in ("NanumGothic.ttf", "NanumGothicBold.ttf", "NotoSansCJK-Regular.ttc", "NotoSansCJK-Bold.ttc"):
                 (Path(directory) / name).write_bytes(b"")
-            self.assertEqual(find_bold_face(Path(directory) / "NanumGothic.ttf"), (Path(directory) / "NanumGothicBold.ttf", 0))
-            self.assertEqual(find_bold_face(Path(directory) / "NotoSansCJK-Regular.ttc"), (Path(directory) / "NotoSansCJK-Bold.ttc", 0))
+            self.assertEqual(bold_sibling(Path(directory) / "NanumGothic.ttf"), Path(directory) / "NanumGothicBold.ttf")
+            self.assertEqual(bold_sibling(Path(directory) / "NotoSansCJK-Regular.ttc"), Path(directory) / "NotoSansCJK-Bold.ttc")
 
     def test_a_regular_file_alone_has_no_bold_face(self):
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / "NanumGothic.ttf").write_bytes(b"")
-            self.assertIsNone(find_bold_face(Path(directory) / "NanumGothic.ttf"))
-
-    @unittest.skipUnless(Path("/System/Library/Fonts/AppleSDGothicNeo.ttc").exists(), "macOS only")
-    def test_apple_sd_gothic_neo_bold_is_face_six_of_its_collection(self):
-        path = Path("/System/Library/Fonts/AppleSDGothicNeo.ttc")
-        self.assertEqual(find_bold_face(path), (path, 6))
+            self.assertIsNone(bold_sibling(Path(directory) / "NanumGothic.ttf"))
 
 
 if __name__ == "__main__":

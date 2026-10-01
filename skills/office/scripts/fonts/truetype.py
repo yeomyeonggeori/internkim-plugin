@@ -34,6 +34,7 @@ class TrueTypeFace:
     unicode_ranges: tuple[int, int, int, int]
     code_page_ranges: tuple[int, int]
     checksum_adjustment: int
+    has_truetype_outlines: bool
 
     @property
     def charset(self) -> int:
@@ -70,6 +71,7 @@ def read_truetype_face(path: pathlib.Path) -> TrueTypeFace:
         unicode_ranges=struct.unpack_from(">4I", data, os2_offset + 42),
         code_page_ranges=struct.unpack_from(">2I", data, os2_offset + 78) if os2_version >= 1 else (0, 0),
         checksum_adjustment=struct.unpack_from(">I", data, head_offset + 8)[0],
+        has_truetype_outlines=b"glyf" in tables,
     )
 
 

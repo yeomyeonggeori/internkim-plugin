@@ -6,6 +6,7 @@ from docx_pagination import NOTE_SEPARATOR_PIXELS, Page, ParagraphSlice, TableSl
 from docx_preview_css import border_value
 from docx_preview_model import FieldItem, TableBlock
 from office_preview import escaped, page_section, pixels, positioned, style_attribute
+from fonts.preview import draws_scripts_apart, script_font_family, script_runs
 
 
 FLEX_ALIGNMENT = {"center": "center", "right": "flex-end"}
@@ -166,7 +167,11 @@ class PageWriter:
 def span(text: str, style) -> str:
     if not text:
         return ""
-    return f"<span{style_attribute(style.declarations())}>{escaped(text)}</span>" if style is not None else escaped(text)
+    if style is None:
+        return escaped(text)
+    if not draws_scripts_apart(style.font):
+        return f"<span{style_attribute(style.declarations())}>{escaped(text)}</span>"
+    return "".join(f'<span{style_attribute({**style.declarations(), "font-family": script_font_family(style.font, piece)})}>{escaped(piece)}</span>' for piece in script_runs(text))
 
 
 def justify_spacing(fragments: list[Fragment], available: float) -> str | None:

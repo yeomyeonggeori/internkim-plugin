@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from office_result import ERROR, WARNING, IssueKind
 from office_schema import Boolean, CellValue, Field, ListOf, Number, Record, Text
+from fonts.pdf_registration import FONT_NAME_MEANING, FONT_PATH_MEANING
 from text_checks import TEXT_CHECK_ISSUE_KINDS
 
 
@@ -22,8 +23,8 @@ PDF_SPECIFICATION = Record("document", "the --spec file of pdf create", (
     Field("subtitle", Text(), "smaller line under the title"),
     Field("format", Text(non_empty=True), "page size fpdf2 knows, such as A4, A3, Letter; default A4"),
     Field("marginMillimeters", Number(minimum=0), "every margin, default 18"),
-    Field("fontPath", Text(), "TTF or TTC file to embed; default the first Korean-capable font installed"),
-    Field("fontName", Text(), "family name the embedded font is registered under"),
+    Field("fontPath", Text(), FONT_PATH_MEANING),
+    Field("fontName", Text(), FONT_NAME_MEANING),
     Field("pageNumbers", Boolean(), "centered page numbers in the footer, default true"),
     Field("sections", ListOf(SECTION), "the content"),
 ))

@@ -72,7 +72,7 @@
 }
 
 :root {
-  --font: "Paperlogy", "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+  --font: "Paperlogy", sans-serif;
   --fit: 1;
   --size-display: 92px;
   --size-hero: 168px;

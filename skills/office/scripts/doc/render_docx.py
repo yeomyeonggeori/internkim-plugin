@@ -14,7 +14,7 @@ from docx_preview_html import PageWriter  # noqa: E402
 from office_preview import Preview, approximation_issues, blank_page_issues, draw_pages, write_preview  # noqa: E402
 from office_inputs import office_file
 from office_result import OfficeArgumentParser, Result, run_command  # noqa: E402
-from preview_fonts import FontRegistry  # noqa: E402
+from fonts.preview import FontRegistry  # noqa: E402
 
 
 def docx_preview(source_path: Path) -> tuple[Preview, list[dict]]:

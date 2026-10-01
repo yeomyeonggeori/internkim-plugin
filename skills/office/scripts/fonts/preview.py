@@ -5,12 +5,12 @@ import functools
 
 from fontTools.ttLib import TTFont
 
+from fonts.registry import SANS_BODY, default_family, resolved_face
 from office_preview import points_to_pixels
 from pptx_text_measure import FontFace, font_face, has_east_asian, is_east_asian, is_hangul, split_breakable, text_width_points
 
 
-DEFAULT_FAMILY = "Malgun Gothic"
-KOREAN_FALLBACK_FAMILY = "Korean Fallback"
+DEFAULT_FAMILY = default_family(SANS_BODY).name
 
 
 @dataclass(frozen=True)
@@ -30,12 +30,16 @@ class FontRegistry:
 
     def face(self, family: str, bold: bool, east_asian: bool) -> FontFace:
         chosen = font_face(family, bold, east_asian)
-        registered = KOREAN_FALLBACK_FAMILY if east_asian and chosen.substituted else family
-        self.used.setdefault((registered, 700 if bold else 400), chosen)
+        self.used.setdefault((family, 700 if bold else 400), chosen)
         return chosen
 
     def korean_family(self) -> str:
-        return KOREAN_FALLBACK_FAMILY if self.face(DEFAULT_FAMILY, False, True).substituted else DEFAULT_FAMILY
+        self.face(DEFAULT_FAMILY, False, True)
+        return DEFAULT_FAMILY
+
+    def use(self, request: FontRequest, text: str) -> None:
+        for piece in script_runs(text):
+            self.face(request.family_for(piece), request.bold, has_east_asian(piece))
 
     def width(self, request: FontRequest, text: str) -> float:
         return sum(self.script_width(request, piece) for piece in script_runs(text))
@@ -68,13 +72,14 @@ def line_height_ratio(path: str, index: int) -> float:
 
 
 def script_runs(text: str) -> list[str]:
-    runs: list[str] = []
+    runs: list[tuple[bool | None, str]] = []
     for character in text:
-        if runs and has_east_asian(runs[-1][-1]) == has_east_asian(character):
-            runs[-1] += character
+        script = None if character.isspace() else has_east_asian(character)
+        if runs and (script is None or runs[-1][0] in (None, script)):
+            runs[-1] = (runs[-1][0] if script is None else script, runs[-1][1] + character)
         else:
-            runs.append(character)
-    return runs
+            runs.append((script, character))
+    return [run for _, run in runs]
 
 
 def breakable_pieces(text: str) -> list[str]:
@@ -86,5 +91,13 @@ def is_ideograph(piece: str) -> bool:
 
 
 def css_font_family(*families: str | None) -> str:
-    names = dict.fromkeys(name for name in (*families, KOREAN_FALLBACK_FAMILY) if name)
+    names = dict.fromkeys(name for name in families if name)
     return ", ".join(f'"{name}"' for name in names)
+
+
+def draws_scripts_apart(request: FontRequest) -> bool:
+    return resolved_face(request.latin).path != resolved_face(request.east_asia).path
+
+
+def script_font_family(request: FontRequest, text: str) -> str:
+    return css_font_family(request.family_for(text), request.latin, request.east_asia)

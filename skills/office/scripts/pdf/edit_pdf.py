@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import json
 
 from fpdf import FPDF
 from pypdf import PdfReader, PdfWriter
@@ -12,7 +13,7 @@ from office_inputs import add_password_argument, office_file, require_unlocked_p
 from office_result import OfficeArgumentParser, Result, read_json_file, run_command
 from office_schema import require_valid
 from pdf_definitions import SECTION
-from pdf_fonts import register_regular_and_bold
+from fonts.pdf_registration import register_document_font
 
 
 def main() -> Result:
@@ -21,7 +22,6 @@ def main() -> Result:
     pdf_path = resolve_document_path(arguments.pdf_path, "pdf")
     require_unlocked_pdf(pdf_path, arguments.password)
     font_name, font_path = pdf_helper.resolve_font({})
-    pdf_helper.validate_font_availability(section, font_path)
     appended_page_bytes, font_issues = build_appended_page(section, font_name, font_path)
     merge_into_original(pdf_path, appended_page_bytes, arguments.password)
     return Result(summary=f"appended a section page to {pdf_path}", output_path=pdf_path, issues=tuple(font_issues))
@@ -42,7 +42,7 @@ def build_appended_page(section: dict, font_name: str, font_path) -> tuple[bytes
     appended_pdf = FPDF(orientation="P", unit="mm", format="A4")
     appended_pdf.set_margins(18, 18, 18)
     appended_pdf.set_auto_page_break(auto=True, margin=16)
-    font_issues = register_regular_and_bold(appended_pdf, font_name, font_path) if font_path else []
+    font_issues = register_document_font(appended_pdf, font_name, font_path, json.dumps(section, ensure_ascii=False))
     appended_pdf.add_page()
     appended_pdf.set_font(font_name, size=11)
     appended_pdf.set_text_color(31, 41, 55)

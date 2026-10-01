@@ -116,8 +116,7 @@ def markdown_to_html(conversion: Conversion) -> None:
 
 
 def markdown_to_pdf(conversion: Conversion) -> None:
-    text = read_text(conversion.input_path)
-    conversion.issues.extend(export_pdf(markdown_blocks(conversion), text, conversion.output_path, conversion.input_path.parent, "", DEFAULT_DOCUMENT_FONT_SIZE))
+    conversion.issues.extend(export_pdf(markdown_blocks(conversion), conversion.output_path, conversion.input_path.parent, "", DEFAULT_DOCUMENT_FONT_SIZE))
 
 
 def docx_to_pdf(conversion: Conversion) -> None:

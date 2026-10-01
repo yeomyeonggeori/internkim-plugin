@@ -9,12 +9,12 @@ import zipfile
 
 from native_charts import ChartPart, chart_count, chart_frames_xml, chart_relationships_xml, chart_text_styles, slide_chart_parts, write_chart_parts
 from native_tables import cell_blocks, table_count, table_frames_xml
-from pptx_fonts import run_font
+from fonts.pptx_embedding import run_font
 from pptx_notes import noted_slide_numbers, notes_relationship_xml, write_notes_parts
-from pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU, DeckFonts, slide_document, write_pptx_static_files, xml_document
+from pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU, DeckFonts, default_theme_fonts, slide_document, write_pptx_static_files, xml_document
 from pptx_shapes import shape_xml
 from pptx_text import SlideScale, TextContext, language_tag, text_box_xml
-from truetype_font import TrueTypeFace
+from fonts.truetype import TrueTypeFace
 
 
 TEXT_LAYERS_DIRECTORY_NAME = "pptx-layers"
@@ -145,7 +145,7 @@ def used_faces(runs: list[dict]) -> list[TrueTypeFace]:
     for run in runs:
         face = run_font(run["fontFamily"], run["fontWeight"]).embedded_face
         if face is not None:
-            faces[face.family] = face
+            faces[(face.family, face.subfamily)] = face
     return sorted(faces.values(), key=lambda face: face.weight)
 
 
@@ -158,4 +158,4 @@ def theme_typefaces(runs: list[dict]) -> tuple[str, str]:
     for run in runs:
         font = run_font(run["fontFamily"], run["fontWeight"])
         character_counts[(font.latin, font.east_asian)] += len(run["text"])
-    return character_counts.most_common(1)[0][0] if character_counts else DeckFonts().theme_fonts
+    return character_counts.most_common(1)[0][0] if character_counts else default_theme_fonts()

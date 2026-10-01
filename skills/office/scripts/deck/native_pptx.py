@@ -6,8 +6,10 @@ import zipfile
 
 from native_pptx_layouts import draw_native_slide
 from native_rendering import SLIDE_HEIGHT, SLIDE_WIDTH, native_colors
+from fonts.registry import BOLD_WEIGHT, DECK, REGULAR_WEIGHT, default_family
+from fonts.pptx_embedding import RunFont, run_font
 from pptx_notes import noted_slide_numbers, notes_relationship_xml, write_notes_parts
-from pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU, slide_document, write_pptx_static_files, xml_document
+from pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU, DeckFonts, slide_document, write_pptx_static_files, xml_document
 from slide_model import SlideModel
 
 
@@ -31,7 +33,7 @@ class NativeSlideCanvas:
 def write_native_text_pptx(slide_models: list[SlideModel], design: dict[str, str], pptx_path: pathlib.Path) -> None:
     with zipfile.ZipFile(pptx_path, "w", zipfile.ZIP_DEFLATED) as archive:
         notes = [model.notes for model in slide_models]
-        write_pptx_static_files(archive, len(slide_models), noted_slide_numbers(notes))
+        write_pptx_static_files(archive, len(slide_models), noted_slide_numbers(notes), native_deck_fonts())
         write_notes_parts(archive, notes)
         for model in slide_models:
             archive.writestr(f"ppt/slides/slide{model.index}.xml", native_slide_xml(model, design))
@@ -77,14 +79,25 @@ def transform_xml(x: int, y: int, width: int, height: int) -> str:
     return f'<a:xfrm><a:off x="{x_emu(x)}" y="{y_emu(y)}"/><a:ext cx="{x_emu(width)}" cy="{y_emu(height)}"/></a:xfrm>'
 
 
+def native_run_font(bold: bool) -> RunFont:
+    return run_font(default_family(DECK).name, BOLD_WEIGHT if bold else REGULAR_WEIGHT)
+
+
+def native_deck_fonts() -> DeckFonts:
+    regular = native_run_font(False)
+    faces = tuple(font.embedded_face for font in (regular, native_run_font(True)) if font.embedded_face is not None)
+    return DeckFonts((regular.latin, regular.east_asian), faces)
+
+
 def text_paragraph_xml(value: str, font_size: int, color: str, bold: bool, align: str) -> str:
-    bold_xml = ' b="1"' if bold else ""
+    font = native_run_font(bold)
+    bold_xml = ' b="1"' if font.bold else ""
     alignment = "ctr" if align == "ctr" else "l"
     return (
         f'<a:p><a:pPr algn="{alignment}"/>'
         f'<a:r><a:rPr lang="ko-KR" sz="{font_size * 100}"{bold_xml}>'
         f'<a:solidFill><a:srgbClr val="{color}"/></a:solidFill>'
-        '<a:latin typeface="Arial"/><a:ea typeface="Apple SD Gothic Neo"/></a:rPr>'
+        f'<a:latin typeface="{html.escape(font.latin)}"/><a:ea typeface="{html.escape(font.east_asian)}"/></a:rPr>'
         f'<a:t>{xml_escape(value)}</a:t></a:r>'
         f'<a:endParaRPr lang="ko-KR" sz="{font_size * 100}"/></a:p>'
     )

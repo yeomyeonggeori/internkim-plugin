@@ -1,23 +1,21 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from docx_markdown import DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, markdown_document
 from doc_definitions import PDF_RENDERER_UNAVAILABLE
-from document_pdf import can_render, render_document_pdf
+from document_pdf import can_render, markdown_source_text, render_document_pdf
 from latex_math import math_issues
 from markdown_blocks import Heading, parse_markdown
 from markdown_charts import require_valid_charts
 from office_inputs import read_text_input
-from office_result import INVALID_VALUE, KOREAN_FONT_UNAVAILABLE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
-from pdf_fonts import register_regular_and_bold
+from fonts.registry import REGULAR_WEIGHT, SANS_BODY, default_family, resolved_face
+from office_result import INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
+from fonts.pdf_registration import register_document_font
 from pdf_markdown import MarkdownPdf
-from skill_runtime import HANGUL_FONT_PATHS, cache_home_path
 
 
-PDF_FONT_CANDIDATES = [Path(candidate) for candidate in HANGUL_FONT_PATHS]
 PDF_FONT_FAMILY = "DocumentFont"
 EXPORT_FORMATS = ("docx", "pdf")
 
@@ -32,7 +30,7 @@ def main() -> Result:
     blocks = parse_markdown(markdown_text)
     require_valid_charts(blocks, markdown_path.name)
     if output_format == "pdf":
-        issues = export_pdf(blocks, markdown_text, output_path, markdown_path.parent, arguments.font_path, arguments.font_size)
+        issues = export_pdf(blocks, output_path, markdown_path.parent, arguments.font_path, arguments.font_size)
     else:
         document, issues = markdown_document(blocks, arguments.font, arguments.font_size, markdown_path.parent)
         document.save(output_path)
@@ -51,10 +49,10 @@ def require_export_format(output_path: Path) -> str:
     ))
 
 
-def export_pdf(blocks: list, markdown_text: str, output_path: Path, source_directory: Path, font_path_argument: str, font_size: float) -> list[Issue]:
+def export_pdf(blocks: list, output_path: Path, source_directory: Path, font_path_argument: str, font_size: float) -> list[Issue]:
     if can_render():
         return render_document_pdf(blocks, output_path, source_directory, document_title(blocks, output_path), Path(font_path_argument) if font_path_argument else None)
-    issues = export_plain_pdf(blocks, markdown_text, output_path, source_directory, font_path_argument, font_size)
+    issues = export_plain_pdf(blocks, output_path, source_directory, font_path_argument, font_size)
     return [PDF_RENDERER_UNAVAILABLE.issue("neither bun nor node 18 is on PATH, so the plain fallback renderer drew the PDF", str(output_path)), *issues]
 
 
@@ -62,48 +60,20 @@ def document_title(blocks: list, output_path: Path) -> str:
     return next((block.text for block in blocks if isinstance(block, Heading)), output_path.stem)
 
 
-def export_plain_pdf(blocks: list, markdown_text: str, output_path: Path, source_directory: Path, font_path_argument: str, font_size: float) -> list[Issue]:
-    font_path = resolve_pdf_font(font_path_argument)
-    has_font = bool(font_path and font_path.exists())
-    if not has_font and any(ord(character) > 0x2000 for character in markdown_text):
-        raise OfficeFailure(KOREAN_FONT_UNAVAILABLE.issue("non-Latin PDF text requires --font-path or an installed Korean-capable font"))
-    renderer = MarkdownPdf(PDF_FONT_FAMILY if has_font else "Helvetica", font_size, source_directory)
-    font_issues = register_document_fonts(renderer.pdf, font_path) if has_font else []
+def export_plain_pdf(blocks: list, output_path: Path, source_directory: Path, font_path_argument: str, font_size: float) -> list[Issue]:
+    font_path = Path(font_path_argument) if font_path_argument else None
+    renderer = MarkdownPdf(PDF_FONT_FAMILY, font_size, source_directory)
+    font_issues = register_document_fonts(renderer.pdf, font_path, markdown_source_text(blocks))
     issues = font_issues + [issue for block in blocks for issue in renderer.add_block(block)]
     renderer.pdf.output(str(output_path))
     return issues
 
 
-def register_document_fonts(pdf, font_path: Path) -> list[Issue]:
-    issues = register_regular_and_bold(pdf, PDF_FONT_FAMILY, font_path)
-    pdf.add_font(PDF_FONT_FAMILY, "I", str(font_path))
+def register_document_fonts(pdf, font_path: Path | None, text: str) -> list[Issue]:
+    body_name = default_family(SANS_BODY).name
+    issues = register_document_font(pdf, PDF_FONT_FAMILY, font_path, text, body_name)
+    pdf.add_font(PDF_FONT_FAMILY, "I", str(font_path or resolved_face(body_name, REGULAR_WEIGHT).path))
     return issues
-
-
-def is_embeddable_font(font_path: Path) -> bool:
-    try:
-        from fontTools.ttLib import TTFont
-    except ImportError:
-        return True
-    try:
-        font = TTFont(str(font_path), fontNumber=0, lazy=True)
-    except Exception:
-        return False
-    return "OS/2" in font and "cmap" in font
-
-
-def cached_font_paths() -> list[Path]:
-    fonts_directory = cache_home_path(os.environ) / "fonts"
-    return [fonts_directory / "NanumGothic.ttf", fonts_directory / "NotoSansKR-Regular.ttf"]
-
-
-def resolve_pdf_font(font_path_argument: str) -> Path | None:
-    if font_path_argument:
-        return Path(font_path_argument)
-    for candidate in cached_font_paths() + PDF_FONT_CANDIDATES:
-        if candidate.exists() and is_embeddable_font(candidate):
-            return candidate
-    return None
 
 
 def parse_arguments():
@@ -112,7 +82,7 @@ def parse_arguments():
     parser.add_argument("--output", help="the file to write; its extension, .docx or .pdf, picks the format; default <markdown name>.docx beside the markdown")
     parser.add_argument("--font", default=DEFAULT_DOCUMENT_FONT, help="base font family name for docx")
     parser.add_argument("--font-size", type=float, default=DEFAULT_DOCUMENT_FONT_SIZE)
-    parser.add_argument("--font-path", default="", help="Korean-capable TTF for pdf output instead of the bundled Paperlogy; a Bold file beside it is used for bold")
+    parser.add_argument("--font-path", default="", help=f"Korean-capable TTF for pdf output instead of the bundled {default_family(SANS_BODY).name}; a Bold file beside it is used for bold")
     return parser.parse_args()
 
 

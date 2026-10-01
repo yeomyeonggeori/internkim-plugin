@@ -16,14 +16,13 @@ from render_fixture import can_render
 
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"
 OFFICE_ENTRY = SCRIPTS_PATH.parent / "office"
-FONTS_PATH = SCRIPTS_PATH.parents[1] / "assets" / "fonts" / "paperlogy"
 sys.path.insert(0, str(SCRIPTS_PATH.parent))
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from editable_pptx import read_text_layers, write_editable_pptx  # noqa: E402
 from png_fixture import read_png, write_png  # noqa: E402
-from resource_inlining import VENDORED_PAPERLOGY_FONTS  # noqa: E402
-from truetype_font import read_truetype_face  # noqa: E402
+from resource_inlining import PAPERLOGY  # noqa: E402
+from fonts.truetype import read_truetype_face  # noqa: E402
 
 
 NAMESPACES = {
@@ -201,7 +200,7 @@ class EditablePptxPackageTest(unittest.TestCase):
         self.assertEqual(eot_size, len(font_data))
         self.assertEqual(version, 0x00020002)
         self.assertEqual(struct.unpack_from("<H", font_data, 34)[0], EOT_MAGIC_NUMBER)
-        self.assertEqual(font_data[-font_data_size:], (FONTS_PATH / "Paperlogy-4Regular.ttf").read_bytes())
+        self.assertEqual(font_data[-font_data_size:], PAPERLOGY.path(PAPERLOGY.face(400)).read_bytes())
         self.assertIn('Extension="fntdata"', archive.read("[Content_Types].xml").decode())
 
     def test_text_boxes_never_autofit_and_wrap_inside_the_slide(self):
@@ -279,13 +278,13 @@ class EditablePptxPackageTest(unittest.TestCase):
 
 
 class VendoredFontTest(unittest.TestCase):
-    def test_each_embedded_ttf_is_the_weight_its_browser_twin_is_declared_as(self):
-        for weight, woff2_name in VENDORED_PAPERLOGY_FONTS:
-            with self.subTest(font=woff2_name):
-                face = read_truetype_face((FONTS_PATH / woff2_name).with_suffix(".ttf"))
-                self.assertEqual(face.weight, weight)
-                self.assertTrue(face.family.startswith("Paperlogy "))
-                self.assertTrue(face.allows_embedding)
+    def test_each_paperlogy_face_is_the_weight_the_registry_declares(self):
+        for face in PAPERLOGY.faces:
+            with self.subTest(font=face.file_name):
+                truetype = read_truetype_face(PAPERLOGY.path(face))
+                self.assertEqual(truetype.weight, face.weight)
+                self.assertTrue(truetype.family.startswith("Paperlogy "))
+                self.assertTrue(truetype.allows_embedding)
 
 
 class RenderedEditablePptxTest(unittest.TestCase):

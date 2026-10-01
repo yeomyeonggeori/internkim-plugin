@@ -5,7 +5,7 @@ import html
 import re
 
 from css_color import Color, parse_css_color
-from pptx_fonts import RunFont, run_font
+from fonts.pptx_embedding import RunFont, run_font
 from pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU
 
 
