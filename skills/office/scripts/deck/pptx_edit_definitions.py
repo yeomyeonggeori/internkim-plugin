@@ -9,6 +9,7 @@ from core.office_theme import THEME_SLOTS
 from core.office_schema import Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, wrong_type
 from deck.pptx_connectors import ARROW_ENDS, CONNECTOR_KINDS, DEFAULT_ARROW, DEFAULT_WIDTH_POINTS, ELBOW_KIND, STRAIGHT_KIND
 from deck.pptx_lengths import LENGTH_EXAMPLES, Length
+from deck.table_styles import TABLE_STYLE_NAMES
 from core.units import EMU_PER_INCH, EMU_PER_POINT
 from core.image_formats import PICTURE_FORMATS_TEXT
 
@@ -64,6 +65,7 @@ RUN_STYLE_FIELDS = (
     Field("color", HexColor(), "text color"),
 )
 ALIGNMENT = Choice(("left", "center", "right", "justify"))
+ANCHOR = Choice(("top", "middle", "bottom"))
 TEXT_FIELD = Field("text", Text(), "new text; a newline starts a new paragraph", required=True)
 TABLE_ROW = Field("row", Number(minimum=0, integer=True), "from 0", required=True)
 TABLE_COLUMN = Field("column", Number(minimum=0, integer=True), "from 0", required=True)
@@ -100,7 +102,7 @@ TEXT_OPERATIONS = (
     operation("set_text_frame", "set how a shape's text fits its box", SLIDE_FIELD, SHAPE_FIELD,
         Field("autofit", Choice(("none", "shrink", "resize")), "none keeps the box and size; shrink lowers the text size to fit; resize grows the box to the text"),
         Field("wrap", Boolean(), "wrap lines at the box width"),
-        Field("anchor", Choice(("top", "middle", "bottom")), "vertical position of the text in the box"),
+        Field("anchor", ANCHOR, "vertical position of the text in the box"),
     ),
 )
 ELEMENT_OPERATIONS = (
@@ -190,7 +192,7 @@ INSERT_OPERATIONS = (
     ),
 )
 TABLE_AND_CHART_OPERATIONS = (
-    operation("set_table_cell", "replace one table cell's text, keeping its formatting", SLIDE_FIELD, SHAPE_FIELD, TABLE_ROW, TABLE_COLUMN, TEXT_FIELD),
+    operation("set_table_cell", "replace one table cell's text, keeping its formatting; format_table_cells styles it", SLIDE_FIELD, SHAPE_FIELD, TABLE_ROW, TABLE_COLUMN, TEXT_FIELD),
     operation("insert_table_row", "insert a row formatted like its neighbor; the table grows by its height", SLIDE_FIELD, SHAPE_FIELD,
         Field("at", Number(minimum=0, integer=True), "index the new row takes; default after the last row"),
         Field("values", ListOf(CellValue()), "cell values, left to right"),
@@ -201,6 +203,33 @@ TABLE_AND_CHART_OPERATIONS = (
         Field("values", ListOf(CellValue()), "cell values, top to bottom"),
     ),
     operation("delete_table_column", "delete a column; the table shrinks by its width", SLIDE_FIELD, SHAPE_FIELD, TABLE_COLUMN),
+    operation("set_table_style", "pick a table's built-in style and the parts it emphasizes; fields left out keep their value, and cell formatting stays", SLIDE_FIELD, SHAPE_FIELD,
+        Field("style", Choice(TABLE_STYLE_NAMES), "built-in style; an Accent style takes that theme color"),
+        Field("firstRow", Boolean(), "emphasize the header row"),
+        Field("lastRow", Boolean(), "emphasize the total row"),
+        Field("firstCol", Boolean(), "emphasize the first column"),
+        Field("lastCol", Boolean(), "emphasize the last column"),
+        Field("bandRow", Boolean(), "shade every other row"),
+        Field("bandCol", Boolean(), "shade every other column"),
+    ),
+    operation("format_table_cells", "fill, outline and restyle the text of a block of table cells; fields left out keep their value", SLIDE_FIELD, SHAPE_FIELD,
+        Field("row", Number(minimum=0, integer=True), "first row of the block, from 0; default every row"),
+        Field("rows", Number(minimum=1, integer=True), "how many rows from row, default 1"),
+        Field("column", Number(minimum=0, integer=True), "first column of the block, from 0; default every column"),
+        Field("columns", Number(minimum=1, integer=True), "how many columns from column, default 1"),
+        Field("fill", HexColor(allows_none=True), "cell fill; none leaves the cells transparent"),
+        *RUN_STYLE_FIELDS,
+        Field("align", ALIGNMENT, "horizontal alignment"),
+        Field("anchor", ANCHOR, "vertical position of the text in the cell"),
+        Field("borderColor", HexColor(allows_none=True), "color of all four edges of each cell; none removes them"),
+        Field("borderWidth", Number(minimum=0.25, maximum=20), "edge width in points, default 1"),
+    ),
+    operation("set_table_column_width", "set one column's width; the table grows or shrinks by the difference", SLIDE_FIELD, SHAPE_FIELD, TABLE_COLUMN,
+        Field("width", WIDTH, "new column width", required=True),
+    ),
+    operation("set_table_row_height", "set one row's height; text taller than the row still grows it", SLIDE_FIELD, SHAPE_FIELD, TABLE_ROW,
+        Field("height", HEIGHT, "new row height", required=True),
+    ),
     operation("merge_table_cells", "merge a block of cells into its top-left cell", SLIDE_FIELD, SHAPE_FIELD, TABLE_ROW, TABLE_COLUMN,
         Field("rows", Number(minimum=1, integer=True), "how many rows the block spans, default 1"),
         Field("columns", Number(minimum=1, integer=True), "how many columns the block spans, default 1"),

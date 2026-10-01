@@ -17,6 +17,7 @@ from deck.pptx_section_operations import SECTION_PLANNERS
 from deck.pptx_sections import normalize_sections
 from deck.pptx_show_operations import SHOW_PLANNERS
 from deck.pptx_slide_operations import SLIDE_PLANNERS
+from deck.pptx_table_format_operations import TABLE_FORMAT_PLANNERS
 from deck.pptx_table_operations import TABLE_AND_CHART_PLANNERS
 from deck.pptx_targets import PptxEditing
 from deck.pptx_text_operations import TEXT_PLANNERS
@@ -42,6 +43,7 @@ PPTX_OPERATIONS = OperationSet(OPERATIONS, {
     **LINK_PLANNERS,
     **INSERT_PLANNERS,
     **TABLE_AND_CHART_PLANNERS,
+    **TABLE_FORMAT_PLANNERS,
     **SLIDE_PLANNERS,
     **SHOW_PLANNERS,
     **COMMENT_PLANNERS,
