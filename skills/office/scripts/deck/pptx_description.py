@@ -8,7 +8,7 @@ from pptx_content import frame_text, notes_text
 from pptx_geometry import SLIDE_FRAME, Frame, child_frame, local_box, percent_of_slide, points, rotation_degrees
 from pptx_inheritance import SlideContext, slide_context
 from pptx_section_operations import describe_sections
-from pptx_shape_kinds import placeholder_type, shape_address, shape_identifier, shape_kind
+from pptx_shape_kinds import non_visual_properties, placeholder_type, shape_address, shape_identifier, shape_kind, shape_reference
 from pptx_style import resolve_color, run_style
 
 
@@ -111,6 +111,8 @@ def kind_details(shape, kind: str, address: str, frame: Frame, context: SlideCon
         return table_details(shape, detail)
     if kind == "chart":
         return {"chart": chart_details(shape.chart)}
+    if kind == "connector":
+        return connector_details(shape._element, address)
     details = {}
     if shape._element.find(qn("p:txBody")) is not None:
         details.update(text_details(shape, context, detail))
@@ -119,6 +121,15 @@ def kind_details(shape, kind: str, address: str, frame: Frame, context: SlideCon
     if detail and kind in ("shape", "text"):
         details.update(paint_details(shape, context))
     return details
+
+
+def connector_details(element, address: str) -> dict:
+    prefix = address.rpartition(".")[0]
+    siblings = [child for child in element.getparent() if non_visual_properties(child) is not None]
+    addresses = {shape_identifier(sibling): shape_address(prefix, index) for index, sibling in enumerate(siblings)}
+    ends = {name: element.find(f"{qn('p:nvCxnSpPr')}/{qn('p:cNvCxnSpPr')}/{qn(tag)}") for name, tag in (("from", "a:stCxn"), ("to", "a:endCxn"))}
+    connects = {name: shape_reference(addresses.get(int(end.get("id")))) for name, end in ends.items() if end is not None and int(end.get("id")) in addresses}
+    return {"connects": connects} if connects else {}
 
 
 def text_details(shape, context: SlideContext, detail: bool) -> dict:

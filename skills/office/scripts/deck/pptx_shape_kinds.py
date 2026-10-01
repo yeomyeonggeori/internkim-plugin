@@ -61,3 +61,7 @@ def shape_identifier(element) -> int:
 
 def shape_address(prefix: str, index: int) -> str:
     return f"{prefix}.{index}" if prefix else str(index)
+
+
+def shape_reference(address: str) -> int | str:
+    return int(address) if address.isdigit() else address
