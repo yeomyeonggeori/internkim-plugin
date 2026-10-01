@@ -148,9 +148,23 @@ def package_environment() -> pathlib.Path:
     environment = skill_cache_path(os.environ) / "render" / hashlib.sha256(manifest).hexdigest()[:16]
     if not (environment / "node_modules" / "@takumi-rs" / "core").exists():
         install_packages(environment, manifest)
-    for script in RENDER_DIRECTORY.glob("*.mjs"):
-        shutil.copyfile(script, environment / script.name)
-    return environment
+    return script_directory(environment, {script.name: script.read_bytes() for script in sorted(RENDER_DIRECTORY.glob("*.mjs"))})
+
+
+def script_directory(environment: pathlib.Path, scripts: dict[str, bytes]) -> pathlib.Path:
+    digest = hashlib.sha256(b"".join(name.encode() + b"\0" + content for name, content in sorted(scripts.items()))).hexdigest()[:16]
+    directory = environment / "scripts" / digest
+    if directory.exists():
+        return directory
+    directory.parent.mkdir(parents=True, exist_ok=True)
+    staging = pathlib.Path(tempfile.mkdtemp(dir=directory.parent))
+    for name, content in scripts.items():
+        (staging / name).write_bytes(content)
+    try:
+        staging.rename(directory)
+    except OSError:
+        shutil.rmtree(staging)
+    return directory
 
 
 def install_packages(environment: pathlib.Path, manifest: bytes) -> None:
