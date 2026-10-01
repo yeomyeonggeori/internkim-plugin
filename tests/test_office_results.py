@@ -78,6 +78,23 @@ class ResultEnvelopeTest(unittest.TestCase):
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["UNKNOWN_COMMAND"])
         self.assertIn("deck check", retired["issues"][0]["suggestion"])
 
+    def test_a_mistyped_format_or_verb_names_the_command_it_meant(self):
+        with tempfile.TemporaryDirectory() as working_directory:
+            _, format_typo = run_office(["dek", "build"], working_directory)
+            _, verb_typo = run_office(["deck", "biuld"], working_directory)
+        for envelope in (format_typo, verb_typo):
+            self.assertEqual(envelope["status"], "error")
+            self.assertEqual(envelope["issues"][0]["code"], "UNKNOWN_COMMAND")
+            self.assertIn("office deck build", envelope["issues"][0]["suggestion"])
+
+    def test_a_mistyped_flag_names_the_flag_it_meant(self):
+        with tempfile.TemporaryDirectory() as working_directory:
+            completed, envelope = run_office(["deck", "build", "--slide-cont", "3"], working_directory)
+        self.assertEqual(completed.returncode, 1)
+        issue = envelope["issues"][0]
+        self.assertEqual((issue["code"], issue["location"]), ("INVALID_ARGUMENTS", "--slide-cont"))
+        self.assertIn("--slide-count", issue["suggestion"])
+
     def test_issue_codes_are_unique(self):
         kinds = set(COMMAND_ISSUE_KINDS)
         for office_format in FORMATS:

@@ -126,6 +126,29 @@ class OfficeArgumentParser(argparse.ArgumentParser):
     def error(self, message):
         raise OfficeFailure(INVALID_ARGUMENTS.issue(f"{self.prog}: {message}", suggestion=f"run {self.prog} --help"))
 
+    def parse_args(self, args=None, namespace=None):
+        parsed, unrecognized = self.parse_known_args(args, namespace)
+        if unrecognized:
+            self.reject_unrecognized(unrecognized)
+        return parsed
+
+    def reject_unrecognized(self, unrecognized: list[str]):
+        flag, meant = self.closest_flag(unrecognized)
+        suggestion = f"did you mean {meant}? rerun with {meant}" if meant else f"run {self.prog} --help"
+        raise OfficeFailure(INVALID_ARGUMENTS.issue(f"{self.prog}: unrecognized arguments: {' '.join(unrecognized)}", flag, suggestion))
+
+    def closest_flag(self, unrecognized: list[str]) -> tuple[str | None, str | None]:
+        from office_schema import closest_name
+
+        flags = [option for option in self._option_string_actions if option.startswith("--")]
+        for written in unrecognized:
+            if not written.startswith("--"):
+                continue
+            meant = closest_name(written.split("=", 1)[0], flags)
+            if meant:
+                return written, meant
+        return None, None
+
 
 def guide_reference() -> str:
     command_words = os.environ.get("OFFICE_COMMAND", "").split()[1:]
