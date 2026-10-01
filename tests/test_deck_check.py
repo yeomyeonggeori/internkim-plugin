@@ -56,6 +56,13 @@ class DeckCheckTest(unittest.TestCase):
         self.assertEqual([entry["layout"] for entry in result.details["outline"]], ["cover", "statement", "kpi", "chart", "table", "closing"])
         self.assertEqual(result.details["outline"][2]["title"], "매출과 이익이 모두 늘었습니다")
 
+    def test_a_deck_that_does_not_open_on_a_cover_or_end_on_a_closing_is_warned(self):
+        codes = self.codes(kit_deck(STATEMENT, KPI, CHART))
+        self.assertIn(("FIRST_SLIDE_NOT_COVER", "slide 1"), codes)
+        self.assertIn(("LAST_SLIDE_NOT_CLOSING", "slide 3"), codes)
+        self.assertEqual(self.check(kit_deck(STATEMENT, KPI, CHART)).status, "warning")
+        self.assertNotIn("LAST_SLIDE_NOT_CLOSING", [code for code, _ in self.codes(kit_deck(COVER, STATEMENT))])
+
     def test_an_unknown_layout_names_the_closest_one(self):
         result = self.check(kit_deck(COVER, '<section data-layout="kpis"><h2>지표가 좋아졌습니다</h2></section>'))
         issue = next(issue for issue in result.issues if issue.kind.code == "LAYOUT_UNKNOWN")

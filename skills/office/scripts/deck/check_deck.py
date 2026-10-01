@@ -13,6 +13,7 @@ from deck_definitions import (
     LAYOUT_MISSING,
     LAYOUT_PART_EXCESS,
     LAYOUT_PART_MISSING,
+    LAST_SLIDE_NOT_CLOSING,
     LAYOUT_REPEATED,
     LAYOUT_UNKNOWN,
     NO_SLIDE_SECTIONS,
@@ -22,6 +23,7 @@ from deck_definitions import (
     SOURCE_NOT_HTML,
     THEME_UNKNOWN,
     TOO_FEW_LAYOUTS,
+    FIRST_SLIDE_NOT_COVER,
     KitLayout,
     kit_layout,
     part_label,
@@ -37,6 +39,9 @@ from text_checks import DRAFT_PLACEHOLDER_PATTERN, PLACEHOLDER_LEFT, REQUIRED_TE
 
 
 REPEAT_LIMIT = 3
+COVER_LAYOUT = "cover"
+CLOSING_LAYOUT = "closing"
+CLOSING_SLIDE_MINIMUM = 3
 VARIETY_SLIDE_MINIMUM = 6
 VARIETY_LAYOUT_MINIMUM = 3
 DONUT_SLICE_MAXIMUM = 8
@@ -150,6 +155,15 @@ def sequence_issues(slides: list[Slide]) -> list[Issue]:
     layouts = {slide.layout for slide in slides if slide.layout}
     if len(slides) >= VARIETY_SLIDE_MINIMUM and len(layouts) < VARIETY_LAYOUT_MINIMUM:
         issues.append(TOO_FEW_LAYOUTS.issue(f"{len(slides)} slides use only {', '.join(sorted(layouts))}", "deck"))
+    return issues + outline_issues(slides)
+
+
+def outline_issues(slides: list[Slide]) -> list[Issue]:
+    issues = []
+    if slides[0].layout != COVER_LAYOUT:
+        issues.append(FIRST_SLIDE_NOT_COVER.issue(f'slide 1 uses data-layout="{slides[0].layout}"', slides[0].location))
+    if len(slides) >= CLOSING_SLIDE_MINIMUM and slides[-1].layout != CLOSING_LAYOUT:
+        issues.append(LAST_SLIDE_NOT_CLOSING.issue(f'the last slide uses data-layout="{slides[-1].layout}"', slides[-1].location))
     return issues
 
 
