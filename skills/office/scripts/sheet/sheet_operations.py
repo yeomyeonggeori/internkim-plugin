@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import re
 
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -12,7 +13,9 @@ from formula_references import COLUMN_AXIS, ROW_AXIS, Shift
 from office_operations import Change, OperationSet
 from office_result import INVALID_VALUE, OfficeFailure
 from sheet_charts import build_chart, chart_anchor
-from sheet_definitions import OPERATIONS
+from sheet_definitions import CONTENT_DROPPED, CONTENT_WOULD_BE_LOST, OPERATIONS
+from workbook_fidelity import EditRecord, preserve_source_content
+from workbook_package import Package, read_package, write_package
 from sheet_styling import data_bounds, style_written_cells
 from workbook_access import cell_rows, open_workbook, parse_cell, parse_range, resolve_sheet
 from workbook_structure import isolate_column, rename_sheet_references, shift_workbook
@@ -24,12 +27,33 @@ COLOR_PATTERN = re.compile(r"^[0-9A-Fa-f]{6}$")
 MAXIMUM_COLUMN = 16384
 
 
-def load_editing(path: str):
-    return open_workbook(path)
+@dataclass
+class SheetEditing:
+    workbook: object
+    source: Package | None
+    allows_loss: bool = False
+    record: EditRecord = field(default_factory=EditRecord)
 
 
-def save_editing(workbook, path: str):
-    return save_workbook_with_values(workbook, path)
+def load_editing(path: str, allows_loss: bool = False) -> SheetEditing:
+    workbook = open_workbook(path)
+    return SheetEditing(workbook, read_package(path), allows_loss)
+
+
+def save_editing(editing: SheetEditing, path: str) -> list:
+    issues = save_workbook_with_values(editing.workbook, path)
+    if editing.source is None:
+        return issues
+    output = read_package(path)
+    lost = preserve_source_content(editing.source, output, editing.record)
+    if lost and not editing.allows_loss:
+        raise OfficeFailure(CONTENT_WOULD_BE_LOST.issue(f"saving would drop what the editor cannot carry: {', '.join(lost)}", lost[0]))
+    write_package(output, path)
+    return issues + ([CONTENT_DROPPED.issue(f"dropped what the editor cannot carry: {', '.join(lost)}", lost[0])] if lost else [])
+
+
+def on_workbook(planner):
+    return lambda editing, operation, location: planner(editing.workbook, operation, location)
 
 
 def sheet_of(workbook, operation: dict, location: str):
@@ -191,7 +215,8 @@ def plan_add_sheet(workbook, operation: dict, location: str) -> Change:
     return change
 
 
-def plan_rename_sheet(workbook, operation: dict, location: str) -> Change:
+def plan_rename_sheet(editing: SheetEditing, operation: dict, location: str) -> Change:
+    workbook = editing.workbook
     worksheet = resolve_sheet(workbook, operation["sheet"], f"{location}.sheet")
     validate_sheet_name(workbook, operation["name"], f"{location}.name", renaming=worksheet.title)
 
@@ -199,12 +224,14 @@ def plan_rename_sheet(workbook, operation: dict, location: str) -> Change:
         old_name = worksheet.title
         rewritten = rename_sheet_references(workbook, old_name, operation["name"])
         worksheet.title = operation["name"]
+        editing.record.renamed(old_name, operation["name"])
         return f"renamed sheet {old_name} to {operation['name']}; rewrote {rewritten} formulas"
     return change
 
 
 def plan_structure(axis: str, sign: int, noun: str, verb: str):
-    def plan(workbook, operation: dict, location: str) -> Change:
+    def plan(editing: SheetEditing, operation: dict, location: str) -> Change:
+        workbook = editing.workbook
         worksheet = sheet_of(workbook, operation, location)
         at = operation["at"] if axis == ROW_AXIS else column_index(operation["at"], f"{location}.at")
         count = operation.get("count", 1)
@@ -212,6 +239,7 @@ def plan_structure(axis: str, sign: int, noun: str, verb: str):
 
         def change() -> str:
             rewritten = shift_workbook(workbook, worksheet, shift)
+            editing.record.shifted(shift)
             return f"{verb} {count} {noun} {'before' if sign > 0 else 'from'} {axis} {operation['at']} of {worksheet.title}; rewrote {rewritten} formulas"
         return change
     return plan
@@ -235,18 +263,18 @@ def plan_add_chart(workbook, operation: dict, location: str) -> Change:
 
 
 SHEET_OPERATIONS = OperationSet(OPERATIONS, {
-    "set_cell": plan_set_cell,
-    "set_range": plan_set_range,
-    "format_range": plan_format_range,
-    "set_column_width": plan_set_column_width,
-    "freeze_panes": plan_freeze_panes,
-    "set_auto_filter": plan_set_auto_filter,
-    "add_sheet": plan_add_sheet,
+    "set_cell": on_workbook(plan_set_cell),
+    "set_range": on_workbook(plan_set_range),
+    "format_range": on_workbook(plan_format_range),
+    "set_column_width": on_workbook(plan_set_column_width),
+    "freeze_panes": on_workbook(plan_freeze_panes),
+    "set_auto_filter": on_workbook(plan_set_auto_filter),
+    "add_sheet": on_workbook(plan_add_sheet),
     "rename_sheet": plan_rename_sheet,
     "insert_rows": plan_structure(ROW_AXIS, 1, "rows", "inserted"),
     "delete_rows": plan_structure(ROW_AXIS, -1, "rows", "deleted"),
     "insert_columns": plan_structure(COLUMN_AXIS, 1, "columns", "inserted"),
     "delete_columns": plan_structure(COLUMN_AXIS, -1, "columns", "deleted"),
-    "recalculate": plan_recalculate,
-    "add_chart": plan_add_chart,
+    "recalculate": on_workbook(plan_recalculate),
+    "add_chart": on_workbook(plan_add_chart),
 }, sequential=True)
