@@ -28,7 +28,22 @@ def chart_model(chart, details: dict) -> ChartModel:
         stacked=bool(groupings & set(STACKED_GROUPINGS)),
         percent_stacked=PERCENT_GROUPING in groupings,
         secondary_axis=len({axis_identifiers(plot) for plot in plots}) > 1,
+        axis_titles=axis_titles(chart._chartSpace, "scatter" in kinds),
     )
+
+
+def axis_titles(space, is_scatter: bool) -> tuple[str, str]:
+    plot_area = space.find(f"{qn('c:chart')}/{qn('c:plotArea')}")
+    value_axes = plot_area.findall(qn("c:valAx"))
+    category_axis = value_axes[0] if is_scatter and value_axes else first_present(plot_area.find(qn("c:catAx")), plot_area.find(qn("c:dateAx")))
+    value_axis = value_axes[1] if is_scatter and len(value_axes) > 1 else value_axes[0] if value_axes and not is_scatter else None
+    return axis_title(category_axis), axis_title(value_axis)
+
+
+def axis_title(axis) -> str:
+    if axis is None:
+        return ""
+    return "".join(node.text or "" for node in axis.iterfind(f"{qn('c:title')}//{qn('a:t')}"))
 
 
 def plot_elements(space) -> list:

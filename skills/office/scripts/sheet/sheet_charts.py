@@ -9,7 +9,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.utils.cell import range_boundaries
 
 from charts.kinds import ROUND_CHART_KINDS, plot_kind
-from charts.look import LABEL_FLAGS
+from charts.look import LABEL_FLAG_NAMES, LABEL_FLAGS, labels_need_round_chart
 from core.office_operations import OPERATION_NOT_APPLICABLE, Change, chart_indexes_suggestion
 from core.office_result import MISSING_FIELD, OfficeFailure
 from sheet.sheet_definitions import CHART_COLUMN_LEFT_OUT
@@ -30,7 +30,6 @@ LEGEND_POSITIONS = {"bottom": "b", "right": "r", "top": "t"}
 LINE_PLOT_KINDS = ("line", "radar")
 GENERAL = "General"
 SHARE_FORMAT = "0%"
-SHOWN_LABEL_FLAGS = tuple(dict.fromkeys(flag for flags in LABEL_FLAGS.values() for flag in flags))
 
 
 def require_block(worksheet, bounds: tuple[int, int, int, int], location: str) -> None:
@@ -319,13 +318,13 @@ def label_mode(written: bool | str) -> str:
 
 
 def point_labels(mode: str) -> DataLabelList:
-    shown = {flag: flag in LABEL_FLAGS[mode] for flag in SHOWN_LABEL_FLAGS}
+    shown = {flag: flag in LABEL_FLAGS[mode] for flag in LABEL_FLAG_NAMES}
     return DataLabelList(showLegendKey=False, showSerName=False, showBubbleSize=False, **shown)
 
 
 def require_labels_fit(is_round: bool, operation: dict, location: str) -> None:
     mode = label_mode(operation["dataLabels"]) if operation.get("dataLabels") is not None else "none"
-    if "showPercent" in LABEL_FLAGS[mode] and not is_round:
+    if labels_need_round_chart(mode) and not is_round:
         raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(
             f"{location}.dataLabels: {mode} labels show each slice's share of a pie or doughnut, and Excel draws none on other charts",
             f"{location}.dataLabels",

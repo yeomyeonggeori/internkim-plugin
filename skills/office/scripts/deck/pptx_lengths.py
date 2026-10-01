@@ -44,10 +44,6 @@ def length_in_emu(value: int | float | str, axis_size: int) -> int:
     return round(amount * EMU_PER_UNIT[unit])
 
 
-def normalize_lengths(operations_shape: Variant, operations: list[dict], slide_size: tuple[int, int]) -> list[dict]:
-    return [normalized_operation(operations_shape, operation, index, slide_size) for index, operation in enumerate(operations)]
-
-
 def normalized_operation(operations_shape: Variant, operation: dict, index: int, slide_size: tuple[int, int]) -> dict:
     record = operations_shape.record_named(operation[operations_shape.discriminator])
     normalized = dict(operation)

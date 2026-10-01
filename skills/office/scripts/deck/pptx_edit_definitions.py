@@ -3,12 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
-from charts.kinds import OFFICE_CHART_KINDS
+from charts.kinds import DECK_CHART_KINDS
+from charts.look import LABEL_FLAGS
 from core.office_result import Issue
 from core.office_theme import THEME_SLOTS
 from core.office_schema import Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, wrong_type
 from deck.pptx_connectors import ARROW_ENDS, CONNECTOR_KINDS, DEFAULT_ARROW, DEFAULT_WIDTH_POINTS, ELBOW_KIND, STRAIGHT_KIND
 from deck.pptx_lengths import LENGTH_EXAMPLES, Length
+from deck.table_styles import TABLE_STYLE_NAMES
 from core.units import EMU_PER_INCH, EMU_PER_POINT
 from core.image_formats import PICTURE_FORMATS_TEXT
 
@@ -64,6 +66,7 @@ RUN_STYLE_FIELDS = (
     Field("color", HexColor(), "text color"),
 )
 ALIGNMENT = Choice(("left", "center", "right", "justify"))
+ANCHOR = Choice(("top", "middle", "bottom"))
 TEXT_FIELD = Field("text", Text(), "new text; a newline starts a new paragraph", required=True)
 TABLE_ROW = Field("row", Number(minimum=0, integer=True), "from 0", required=True)
 TABLE_COLUMN = Field("column", Number(minimum=0, integer=True), "from 0", required=True)
@@ -73,6 +76,12 @@ CELL_ROWS = ListOf(ListOf(CellValue()), non_empty=True)
 SERIES = Record("series", "one data series", (
     Field("name", Text(non_empty=True), "series name shown in the legend", required=True),
     Field("values", ListOf(Number(), non_empty=True), "one number per category", required=True),
+))
+
+
+CHART_SERIES = Record("series", "one data series", (
+    *SERIES.fields,
+    Field("line", Boolean(), "combo only: draw this series as a line over the columns"),
 ))
 
 
@@ -88,7 +97,10 @@ TEXT_OPERATIONS = (
         Field("slide", SLIDE_NUMBER, "only this slide; default every slide"),
         Field("shape", ShapeAddress(), "only this shape of that slide"),
     ),
-    operation("set_text_style", "restyle every run of a shape or of one paragraph; fields left out keep their value", SLIDE_FIELD, SHAPE_FIELD, PARAGRAPH_FIELD, *RUN_STYLE_FIELDS),
+    operation("set_text_style", "restyle the text of a shape or of one paragraph, or only each occurrence of find in it; fields left out keep their value", SLIDE_FIELD, SHAPE_FIELD, PARAGRAPH_FIELD,
+        Field("find", Text(non_empty=True), "only this exact text, every time it occurs; the rest keeps its formatting"),
+        *RUN_STYLE_FIELDS,
+    ),
     operation("set_paragraph", "set alignment, bullets, level and spacing of a shape's paragraphs", SLIDE_FIELD, SHAPE_FIELD, PARAGRAPH_FIELD,
         Field("align", ALIGNMENT, "horizontal alignment"),
         Field("bullet", Choice(("none", "bullet", "number")), "bullet kind"),
@@ -100,7 +112,7 @@ TEXT_OPERATIONS = (
     operation("set_text_frame", "set how a shape's text fits its box", SLIDE_FIELD, SHAPE_FIELD,
         Field("autofit", Choice(("none", "shrink", "resize")), "none keeps the box and size; shrink lowers the text size to fit; resize grows the box to the text"),
         Field("wrap", Boolean(), "wrap lines at the box width"),
-        Field("anchor", Choice(("top", "middle", "bottom")), "vertical position of the text in the box"),
+        Field("anchor", ANCHOR, "vertical position of the text in the box"),
     ),
 )
 ELEMENT_OPERATIONS = (
@@ -182,15 +194,20 @@ INSERT_OPERATIONS = (
         Field("rows", CELL_ROWS, "rows of cell values", required=True),
     ),
     operation("add_chart", "add a native chart with its own data workbook", SLIDE_FIELD, *BOX_FIELDS,
-        Field("type", Choice(OFFICE_CHART_KINDS), "chart kind", required=True),
-        Field("categories", ListOf(CellValue(), non_empty=True), "category labels along the axis", required=True),
-        Field("series", ListOf(SERIES, non_empty=True), "data series; pie and doughnut take one", required=True),
+        Field("type", Choice(DECK_CHART_KINDS), "chart kind; combo draws the series marked line as lines over columns, scatter places points by number", required=True),
+        Field("categories", ListOf(CellValue(), non_empty=True), "category labels along the axis; for scatter the x value of each point", required=True),
+        Field("series", ListOf(CHART_SERIES, non_empty=True), "data series; pie and doughnut take one", required=True),
         Field("title", Text(), "chart title"),
         Field("legend", Boolean(), "show the legend; default when there is more than one series or a pie"),
+        Field("colors", ListOf(HexColor()), "one color per series in order, or per slice of a pie or doughnut; the rest keep the theme's"),
+        Field("dataLabels", Choice(tuple(LABEL_FLAGS)), "label each point with its value or category, or each slice of a pie or doughnut with its percent of the whole"),
+        Field("xTitle", Text(), "category axis title, the x axis of a scatter"),
+        Field("yTitle", Text(), "value axis title"),
+        Field("secondaryAxis", Boolean(), "combo only: draw the lines against their own axis on the right; default when lines and columns differ more than tenfold"),
     ),
 )
 TABLE_AND_CHART_OPERATIONS = (
-    operation("set_table_cell", "replace one table cell's text, keeping its formatting", SLIDE_FIELD, SHAPE_FIELD, TABLE_ROW, TABLE_COLUMN, TEXT_FIELD),
+    operation("set_table_cell", "replace one table cell's text, keeping its formatting; format_table_cells styles it", SLIDE_FIELD, SHAPE_FIELD, TABLE_ROW, TABLE_COLUMN, TEXT_FIELD),
     operation("insert_table_row", "insert a row formatted like its neighbor; the table grows by its height", SLIDE_FIELD, SHAPE_FIELD,
         Field("at", Number(minimum=0, integer=True), "index the new row takes; default after the last row"),
         Field("values", ListOf(CellValue()), "cell values, left to right"),
@@ -201,6 +218,33 @@ TABLE_AND_CHART_OPERATIONS = (
         Field("values", ListOf(CellValue()), "cell values, top to bottom"),
     ),
     operation("delete_table_column", "delete a column; the table shrinks by its width", SLIDE_FIELD, SHAPE_FIELD, TABLE_COLUMN),
+    operation("set_table_style", "pick a table's built-in style and the parts it emphasizes; fields left out keep their value, and cell formatting stays", SLIDE_FIELD, SHAPE_FIELD,
+        Field("style", Choice(TABLE_STYLE_NAMES), "built-in style; an Accent style takes that theme color"),
+        Field("firstRow", Boolean(), "emphasize the header row"),
+        Field("lastRow", Boolean(), "emphasize the total row"),
+        Field("firstCol", Boolean(), "emphasize the first column"),
+        Field("lastCol", Boolean(), "emphasize the last column"),
+        Field("bandRow", Boolean(), "shade every other row"),
+        Field("bandCol", Boolean(), "shade every other column"),
+    ),
+    operation("format_table_cells", "fill, outline and restyle the text of a block of table cells; fields left out keep their value", SLIDE_FIELD, SHAPE_FIELD,
+        Field("row", Number(minimum=0, integer=True), "first row of the block, from 0; default every row"),
+        Field("rows", Number(minimum=1, integer=True), "how many rows from row, default 1"),
+        Field("column", Number(minimum=0, integer=True), "first column of the block, from 0; default every column"),
+        Field("columns", Number(minimum=1, integer=True), "how many columns from column, default 1"),
+        Field("fill", HexColor(allows_none=True), "cell fill; none leaves the cells transparent"),
+        *RUN_STYLE_FIELDS,
+        Field("align", ALIGNMENT, "horizontal alignment"),
+        Field("anchor", ANCHOR, "vertical position of the text in the cell"),
+        Field("borderColor", HexColor(allows_none=True), "color of all four edges of each cell; none removes them"),
+        Field("borderWidth", Number(minimum=0.25, maximum=20), "edge width in points, default 1"),
+    ),
+    operation("set_table_column_width", "set one column's width; the table grows or shrinks by the difference", SLIDE_FIELD, SHAPE_FIELD, TABLE_COLUMN,
+        Field("width", WIDTH, "new column width", required=True),
+    ),
+    operation("set_table_row_height", "set one row's height; text taller than the row still grows it", SLIDE_FIELD, SHAPE_FIELD, TABLE_ROW,
+        Field("height", HEIGHT, "new row height", required=True),
+    ),
     operation("merge_table_cells", "merge a block of cells into its top-left cell", SLIDE_FIELD, SHAPE_FIELD, TABLE_ROW, TABLE_COLUMN,
         Field("rows", Number(minimum=1, integer=True), "how many rows the block spans, default 1"),
         Field("columns", Number(minimum=1, integer=True), "how many columns the block spans, default 1"),
@@ -294,7 +338,7 @@ DECK_OPERATIONS = (
 OPERATIONS = Variant(
     "operation",
     "one edit of deck apply; slide numbers, shape indexes and table rows refer to the deck as deck read showed it before the batch, "
-    "operations run in order, and the batch applies whole or not at all; a slide added in the batch is edited in the next batch; "
+    "operations run in order, and the batch applies whole or not at all unless --mode says otherwise; a slide added in the batch is edited in the next batch; "
     f"a length is EMU ({EMU_PER_INCH} per inch, {EMU_PER_POINT} per point) or text with a unit such as {LENGTH_EXAMPLES} of the slide",
     "op",
     TEXT_OPERATIONS + ELEMENT_OPERATIONS + ARRANGE_OPERATIONS + INSERT_OPERATIONS + TABLE_AND_CHART_OPERATIONS + SLIDE_OPERATIONS + SECTION_OPERATIONS + DECK_OPERATIONS,

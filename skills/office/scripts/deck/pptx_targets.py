@@ -126,7 +126,7 @@ def text_body(element):
 def require_text(target: ShapeTarget, location: str):
     body = text_body(target.element)
     if body is None:
-        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}.shape: {target.label} is a {target.kind} that holds no text", f"{location}.shape", "use set_table_cell for a table, or pick a shape deck read shows with text"))
+        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}.shape: {target.label} is a {target.kind} that holds no text", f"{location}.shape", "use set_table_cell or format_table_cells for a table, or pick a shape deck read shows with text"))
     return target.shape.text_frame
 
 

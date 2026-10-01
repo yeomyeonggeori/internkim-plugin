@@ -127,7 +127,12 @@ def chart_model(chart, values_workbook, preview) -> ChartModel:
         stacked=any(is_stacked(plot) for plot in plots),
         percent_stacked=any(getattr(plot, "grouping", None) == PERCENT_GROUPING for plot in plots),
         secondary_axis=len({axis_identifier(plot) for plot in plots}) > 1,
+        axis_titles=(axis_title(chart, "x_axis"), axis_title(chart, "y_axis")),
     )
+
+
+def axis_title(chart, axis_name: str) -> str:
+    return title_text(getattr(getattr(chart, axis_name, None), "title", None))
 
 
 def numbers(source, values_workbook) -> tuple[float, ...]:
@@ -206,7 +211,10 @@ def chart_kind(chart) -> str:
 
 
 def chart_title(chart) -> str:
-    title = chart.title
+    return title_text(chart.title)
+
+
+def title_text(title) -> str:
     if title is None or title.tx is None or title.tx.rich is None:
         return ""
     return "".join(run.t or "" for paragraph in title.tx.rich.p for run in (paragraph.r or []))

@@ -5,14 +5,16 @@ from pptx.oxml.ns import qn
 from core.office_theme import OFFICE_THEME
 from deck.pptx_preview_paint import FILL_TAGS, element, paint_color
 from deck.pptx_preview_text import TextPaint, body_html, body_layout
-from deck.pptx_style import theme_slot_color
+from deck.pptx_style import TRUE_VALUES, theme_slot_color
+from deck.pptx_table_styles import part_flags, style_of
+from deck.table_styles import DEFAULT_TABLE_STYLE, GRID_FAMILY, MEDIUM_FAMILY
 
 
-TRUE_VALUES = ("1", "true")
 BANDED_TINT = 0.8
 PLAIN_TINT = 0.9
 CELL_BORDER = "1px solid #FFFFFF"
 HEADER_TEXT_COLOR = "#FFFFFF"
+TRANSPARENT = "transparent"
 BORDER_SIDES = (("left", "a:lnL"), ("right", "a:lnR"), ("top", "a:lnT"), ("bottom", "a:lnB"))
 
 
@@ -23,7 +25,7 @@ def table_html(context, frame_element, width: float, height: float, faces: set) 
     heights = [int(row.get("h")) for row in rows]
     width_scale = width / (sum(columns) or 1)
     height_scale = height / (sum(heights) or 1)
-    style = table_style(context, table.find(qn("a:tblPr")))
+    style = table_style(context, table.find(qn("a:tblPr")), len(rows), len(columns))
     cells = []
     for row_index, row in enumerate(rows):
         for column_index, cell in enumerate(row.findall(qn("a:tc"))):
@@ -36,22 +38,43 @@ def table_html(context, frame_element, width: float, height: float, faces: set) 
                 sum(columns[column_index:column_index + spans[1]]) * width_scale,
                 sum(heights[row_index:row_index + spans[0]]) * height_scale,
             )
-            cells.append(cell_html(context, frame_element, cell, place, style, row_index, faces, width_scale))
+            cells.append(cell_html(context, frame_element, cell, place, style, (row_index, column_index), faces, width_scale))
     return "".join(cells)
 
 
-def table_style(context, properties) -> dict:
-    accent = "#" + (theme_slot_color(context, "accent1") or OFFICE_THEME["accent1"]).lstrip("#")
-    flags = {name: properties is not None and properties.get(name) in TRUE_VALUES for name in ("firstRow", "bandRow")}
-    return {"accent": accent, **flags}
+def table_style(context, properties, row_count: int, column_count: int) -> dict:
+    style = style_of(properties) or DEFAULT_TABLE_STYLE
+    color = "#" + (theme_slot_color(context, style.color_slot) or OFFICE_THEME[style.color_slot]).lstrip("#")
+    return {"family": style.family, "color": color, "last": (row_count - 1, column_count - 1), **part_flags(properties)}
 
 
-def default_fill(style: dict, row_index: int) -> str:
-    if style["firstRow"] and row_index == 0:
-        return style["accent"]
+def is_emphasized(style: dict, row_index: int, column_index: int) -> bool:
+    last_row, last_column = style["last"]
+    return (
+        style["firstRow"] and row_index == 0
+        or style["lastRow"] and row_index == last_row
+        or style["firstCol"] and column_index == 0
+        or style["lastCol"] and column_index == last_column
+    )
+
+
+def default_fill(style: dict, row_index: int, column_index: int) -> str:
+    if style["family"] != MEDIUM_FAMILY:
+        return TRANSPARENT
+    if is_emphasized(style, row_index, column_index):
+        return style["color"]
     banded_row = row_index - (1 if style["firstRow"] else 0)
-    tint = BANDED_TINT if style["bandRow"] and banded_row % 2 == 0 else PLAIN_TINT
-    return mixed_with_white(style["accent"], tint)
+    banded_column = column_index - (1 if style["firstCol"] else 0)
+    banded = style["bandRow"] and banded_row % 2 == 0 or style["bandCol"] and banded_column % 2 == 0
+    return mixed_with_white(style["color"], BANDED_TINT if banded else PLAIN_TINT)
+
+
+def default_border(style: dict) -> str:
+    if style["family"] == MEDIUM_FAMILY:
+        return CELL_BORDER
+    if style["family"] == GRID_FAMILY:
+        return f"1px solid {style['color']}"
+    return "none"
 
 
 def mixed_with_white(color: str, amount: float) -> str:
@@ -59,12 +82,13 @@ def mixed_with_white(color: str, amount: float) -> str:
     return "#" + "".join(f"{round(channel + (255 - channel) * amount):02X}" for channel in channels)
 
 
-def cell_html(context, frame_element, cell, place: tuple, style: dict, row_index: int, faces: set, pixels_per_emu: float) -> str:
+def cell_html(context, frame_element, cell, place: tuple, style: dict, position: tuple[int, int], faces: set, pixels_per_emu: float) -> str:
     properties = cell.find(qn("a:tcPr"))
     own_fill = next((child for child in properties if child.tag in FILL_TAGS), None) if properties is not None else None
-    fill = paint_color(context, own_fill) if own_fill is not None else default_fill(style, row_index)
-    header = style["firstRow"] and row_index == 0
-    paint = TextPaint(context, frame_element, faces, HEADER_TEXT_COLOR if header else None, header)
+    fill = paint_color(context, own_fill) if own_fill is not None else default_fill(style, *position)
+    emphasized = is_emphasized(style, *position)
+    header_color = HEADER_TEXT_COLOR if emphasized and style["family"] == MEDIUM_FAMILY else None
+    paint = TextPaint(context, frame_element, faces, header_color, emphasized)
     body = cell.find(qn("a:txBody"))
     content = body_html(paint, body, body_layout(context, frame_element, body, [], properties)) if body is not None else ""
     box = {
@@ -74,21 +98,21 @@ def cell_html(context, frame_element, cell, place: tuple, style: dict, row_index
         "width": f"{place[2]:.2f}px",
         "height": f"{place[3]:.2f}px",
         "box-sizing": "border-box",
-        **cell_borders(context, properties, pixels_per_emu),
+        **cell_borders(context, properties, pixels_per_emu, default_border(style)),
         "background-color": fill,
     }
     return element("div", box, content)
 
 
-def cell_borders(context, properties, pixels_per_emu: float) -> dict:
-    sides = {f"border-{side}": cell_border(context, properties.find(qn(tag)) if properties is not None else None, pixels_per_emu) for side, tag in BORDER_SIDES}
+def cell_borders(context, properties, pixels_per_emu: float, fallback: str) -> dict:
+    sides = {f"border-{side}": cell_border(context, properties.find(qn(tag)) if properties is not None else None, pixels_per_emu, fallback) for side, tag in BORDER_SIDES}
     values = set(sides.values())
     return {"border": values.pop()} if len(values) == 1 else sides
 
 
-def cell_border(context, line, pixels_per_emu: float) -> str:
+def cell_border(context, line, pixels_per_emu: float, fallback: str) -> str:
     if line is None:
-        return CELL_BORDER
+        return fallback
     fill = next((child for child in line if child.tag in FILL_TAGS), None)
     if fill is None or fill.tag == qn("a:noFill"):
         return "none"

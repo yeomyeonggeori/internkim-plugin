@@ -12,6 +12,7 @@ from pptx.util import Pt
 from core.office_operations import TARGET_NOT_FOUND, Change
 from core.office_result import INVALID_VALUE, OfficeFailure
 from deck.pptx_content import text_frames_in
+from deck.pptx_runs import occurrences, runs_covering
 from deck.pptx_targets import PptxEditing, live_slides, require_text, resolve_paragraphs, resolve_shape, resolve_slide
 from core.run_replacement import joined_text, replace_in_runs
 
@@ -124,14 +125,23 @@ def plan_set_text_style(editing: PptxEditing, operation: dict, location: str) ->
     require_any(operation, RUN_STYLE_NAMES, location)
     target = resolve_shape(editing, operation, location)
     paragraphs = resolve_paragraphs(require_text(target, location), operation, target, location)
+    find = operation.get("find")
+    if find and not any(occurrences(paragraph._p, find) for paragraph in paragraphs):
+        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.find: {target.label} has no {find!r}", f"{location}.find", "copy the exact text from deck read; a match cannot span two paragraphs"))
 
     def change() -> str:
-        for paragraph in paragraphs:
-            for properties in character_properties(paragraph._p):
-                apply_run_style(properties, operation)
+        for properties in styled_properties(paragraphs, find):
+            apply_run_style(properties, operation)
         editing.mark_edited(target.slide)
-        return f"restyled the text of {target.label}"
+        scope = f"{find!r} in " if find else ""
+        return f"restyled {scope}the text of {target.label}"
     return change
+
+
+def styled_properties(paragraphs: list, find: str | None) -> list:
+    if not find:
+        return [properties for paragraph in paragraphs for properties in character_properties(paragraph._p)]
+    return [run.get_or_add_rPr() for paragraph in paragraphs for run in runs_covering(paragraph._p, find)]
 
 
 def require_any(operation: dict, names: tuple[str, ...], location: str) -> None:

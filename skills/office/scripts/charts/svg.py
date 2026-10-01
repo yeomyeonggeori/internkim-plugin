@@ -50,6 +50,7 @@ class ChartModel:
     stacked: bool = False
     percent_stacked: bool = False
     secondary_axis: bool = False
+    axis_titles: tuple[str, str] = ("", "")
 
     @property
     def is_round(self) -> bool:
@@ -93,7 +94,8 @@ def chart_svg(model: ChartModel, width: float, height: float, look: ChartLook, f
     area = Plot(EDGE, EDGE + title_space, width - 2 * EDGE, height - 2 * EDGE - title_space)
     entries = legend_entries(model, look)
     plot, legend = split_legend(area, look.legend_position if entries else None, entries, look.text)
-    parts = [frame_svg(width, height, look.frame), title_svg(model.title, width, look.title), body_svg(model, plot, look)]
+    plot, axis_titles = titled_plot(model, plot, look.text)
+    parts = [frame_svg(width, height, look.frame), title_svg(model.title, width, look.title), axis_titles, body_svg(model, plot, look)]
     if legend is not None:
         parts.append(legend_svg(entries, legend, look.legend_position, look.text))
     return (
@@ -108,6 +110,26 @@ def body_svg(model: ChartModel, plot: Plot, look: ChartLook) -> str:
     if model.is_scatter:
         return scatter_svg(model, plot, look)
     return axis_chart_svg(model, plot, look)
+
+
+def titled_plot(model: ChartModel, plot: Plot, look: TextLook) -> tuple[Plot, str]:
+    if model.is_round:
+        return plot, ""
+    category_title, value_title = model.axis_titles
+    bottom_title, left_title = (value_title, category_title) if model.is_horizontal else (category_title, value_title)
+    row = look.size * TITLE_LINE_SHARE
+    parts = []
+    if bottom_title:
+        plot = replace(plot, height=plot.height - row)
+        parts.append(text_svg(plot.left + plot.width / 2, plot.bottom + row / 2, bottom_title, look))
+    if left_title:
+        parts.append(rotated_text_svg(plot.left + row / 2, plot.top + plot.height / 2, left_title, look))
+        plot = Plot(plot.left + row, plot.top, plot.width - row, plot.height)
+    return plot, "".join(parts)
+
+
+def rotated_text_svg(x: float, y: float, text: str, look: TextLook) -> str:
+    return f'<g transform="rotate(-90 {x:.1f} {y:.1f})">{text_svg(x, y, text, look)}</g>'
 
 
 def frame_svg(width: float, height: float, color: str | None) -> str:
@@ -135,7 +157,7 @@ def text_width(text: str, look: TextLook) -> float:
 def legend_entries(model: ChartModel, look: ChartLook) -> list[tuple[str, str]]:
     if model.is_round:
         return [(str(category), look.slice_color(index)) for index, category in enumerate(model.categories)]
-    if model.is_scatter:
+    if model.is_scatter and len(model.series) < 2:
         return []
     return [(series.name, look.color_of(index, -1)) for index, series in enumerate(model.series)]
 
@@ -435,27 +457,31 @@ def line_label_svg(model: ChartModel, index: int, position: int, point: tuple[fl
 
 
 def scatter_svg(model: ChartModel, plot: Plot, look: ChartLook) -> str:
-    series = model.series[0]
-    xs = list(series.x_values) or [float(number) for number in range(1, len(series.values) + 1)]
-    ys = list(series.values)
+    points = [scatter_points(series) for series in model.series]
     area = Plot(plot.left + AXIS_LABEL_WIDTH, plot.top, plot.width - AXIS_LABEL_WIDTH - end_label_room(look), plot.height - CATEGORY_LABEL_HEIGHT)
-    across = value_scale(xs, look.horizontal_limits, None)
-    upward = value_scale(ys, look.value_limits, look.major_unit)
+    across = value_scale([x for series_points in points for x, _ in series_points], look.horizontal_limits, None)
+    upward = value_scale([y for series_points in points for _, y in series_points], look.value_limits, look.major_unit)
     parts = [grid_svg(area, upward, False, look, look.axis_format), grid_svg(area, across, True, look, look.axis_format)]
-    for position, (x, y) in enumerate(zip(xs, ys)):
-        center = (area.left + scaled(x, across, area.width), area.bottom - scaled(y, upward, area.height))
-        parts.append(f'<circle cx="{center[0]:.1f}" cy="{center[1]:.1f}" r="{SCATTER_RADIUS}" fill="{look.color_of(0, position)}"/>')
-        parts.append(point_name_svg(model, position, center, look))
+    for index, series_points in enumerate(points):
+        for position, (x, y) in enumerate(series_points):
+            center = (area.left + scaled(x, across, area.width), area.bottom - scaled(y, upward, area.height))
+            parts.append(f'<circle cx="{center[0]:.1f}" cy="{center[1]:.1f}" r="{SCATTER_RADIUS}" fill="{look.color_of(index, position)}"/>')
+            parts.append(point_name_svg(model, index, position, center, look))
     return "".join(parts)
 
 
-def point_name_svg(model: ChartModel, position: int, center: tuple[float, float], look: ChartLook) -> str:
-    label = point_label(look, 0, position)
+def scatter_points(series: ChartSeries) -> list[tuple[float, float]]:
+    xs = list(series.x_values) or [float(number) for number in range(1, len(series.values) + 1)]
+    return list(zip(xs, series.values))
+
+
+def point_name_svg(model: ChartModel, index: int, position: int, center: tuple[float, float], look: ChartLook) -> str:
+    label = point_label(look, index, position)
     if label is None:
         return ""
     on_left = label.position == LEFT_POSITION
     x = center[0] - LABEL_GAP * 2 if on_left else center[0] + LABEL_GAP * 2
-    return text_svg(x, center[1], label_text(model, model.series[0], position, label), label.text, "end" if on_left else "start")
+    return text_svg(x, center[1], label_text(model, model.series[index], position, label), label.text, "end" if on_left else "start")
 
 
 def round_svg(model: ChartModel, plot: Plot, look: ChartLook) -> str:

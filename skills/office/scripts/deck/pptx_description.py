@@ -10,6 +10,7 @@ from deck.pptx_inheritance import SlideContext, slide_context
 from deck.pptx_section_operations import describe_sections
 from deck.pptx_shape_kinds import non_visual_properties, placeholder_type, shape_address, shape_identifier, shape_kind, shape_reference
 from deck.pptx_style import resolve_color, run_style
+from deck.pptx_table_styles import described_style
 from core.units import EMU_PER_POINT
 
 
@@ -181,6 +182,7 @@ def table_details(shape, detail: bool) -> dict:
     table = shape.table
     details = {"rows": [[frame_text(cell.text_frame) for cell in row.cells] for row in table.rows]}
     if detail:
+        details.update(described_style(table._tbl.tblPr))
         details["merged"] = [
             {"row": row_index, "column": column_index, "rows": cell.span_height, "columns": cell.span_width}
             for row_index, row in enumerate(table.rows)

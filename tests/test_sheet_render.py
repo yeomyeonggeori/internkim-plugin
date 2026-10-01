@@ -45,6 +45,8 @@ sheet.conditional_formatting.add("C3:C4", CellIsRule(operator="lessThan", formul
 chart = BarChart()
 chart.add_data(Reference(sheet, min_col=2, min_row=2, max_row=4), titles_from_data=True)
 chart.set_categories(Reference(sheet, min_col=1, min_row=3, max_row=4))
+chart.x_axis.title = "지역"
+chart.y_axis.title = "매출액"
 sheet.add_chart(chart, "A6")
 detail = book.create_sheet("내역")
 detail.append(["번호", "금액"])
@@ -88,6 +90,11 @@ class SheetPreviewTest(unittest.TestCase):
         self.assertRegex(first, r">#{2,}<")
         self.assertIn("grid-column:1 / span 4", first)
         self.assertIn("<svg", first)
+
+    def test_chart_axis_titles_are_drawn_below_and_beside_the_plot(self):
+        first = self.pages[0][2]
+        self.assertIn(">지역</text>", first)
+        self.assertRegex(first, r'<g transform="rotate\(-90[^"]*"><text[^>]*>매출액</text></g>')
 
     def test_long_sheets_paginate_with_title_rows_and_page_numbers(self):
         landscape_width = pixels(inches_to_pixels(max(DEFAULT_PAPER.inches)))

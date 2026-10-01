@@ -14,8 +14,10 @@ OFFICE_CHART_TYPE_NAMES = {
 }
 OFFICE_CHART_KINDS = tuple(OFFICE_CHART_TYPE_NAMES)
 COMBO_CHART_KIND = "combo"
+SCATTER_CHART_KIND = "scatter"
 DOCUMENT_CHART_KINDS = (*OFFICE_CHART_KINDS, COMBO_CHART_KIND)
-SHEET_CHART_TYPES = ("bar", "line", "pie", "area", "doughnut", "scatter", "radar", COMBO_CHART_KIND)
+DECK_CHART_KINDS = (*DOCUMENT_CHART_KINDS, SCATTER_CHART_KIND)
+SHEET_CHART_TYPES = ("bar", "line", "pie", "area", "doughnut", SCATTER_CHART_KIND, "radar", COMBO_CHART_KIND)
 KIT_CHART_NAMES = {"stacked": "stacked_column", "donut": "doughnut"}
 KIT_STACKED_CHARTS = ("stacked", "stacked100", "area")
 STACKED_PREFIX = "stacked_"
