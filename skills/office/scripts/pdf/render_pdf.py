@@ -24,28 +24,32 @@ BACKGROUND = (235, 235, 235)
 
 def main() -> Result:
     arguments = parse_arguments()
-    require_scale(arguments.scale)
     source_path = Path(arguments.pdf_path).expanduser()
     output_directory = Path(arguments.output_directory).expanduser() if arguments.output_directory else source_path.with_name(f"{source_path.stem}-pages")
+    details = render_pages(source_path, arguments.pages, arguments.scale, output_directory)
+    return Result(summary=f"rendered {len(details['pages'])} of {details['pageCount']} pages to {output_directory}", output_path=str(output_directory), details=details)
+
+
+def render_pages(source_path: Path, selection: str, scale: float, output_directory: Path) -> dict:
+    require_scale(scale)
     document = pypdfium2.PdfDocument(str(source_path))
     try:
         page_count = len(document)
-        numbers = choose_pages(arguments.pages, page_count)
+        numbers = choose_pages(selection, page_count)
         output_directory.mkdir(parents=True, exist_ok=True)
-        images = {number: render_page(document, number, arguments.scale) for number in numbers}
+        images = {number: render_page(document, number, scale) for number in numbers}
     finally:
         document.close()
     pages = [save_page(image, number, output_directory) for number, image in images.items()]
     contact_sheet_path = output_directory / CONTACT_SHEET_NAME
     draw_contact_sheet(images).save(contact_sheet_path)
-    details = {
+    return {
         "pageCount": page_count,
-        "scale": arguments.scale,
-        "truncated": not arguments.pages and len(numbers) < page_count,
+        "scale": scale,
+        "truncated": not selection and len(numbers) < page_count,
         "pages": pages,
         "contactSheet": str(contact_sheet_path),
     }
-    return Result(summary=f"rendered {len(pages)} of {page_count} pages to {output_directory}", output_path=str(output_directory), details=details)
 
 
 def require_scale(scale: float):

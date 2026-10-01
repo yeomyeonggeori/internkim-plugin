@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from libreoffice import LIBREOFFICE_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
 from office_schema import Boolean, CellValue, Choice, Field, ListOf, MapOf, Number, Record, Text, Variant
@@ -142,4 +143,4 @@ GUIDE_INPUTS = (
     ("sheet apply <file.xlsx> <ops.json>", OPERATION_BATCH),
 )
 WRITE_ISSUE_KINDS = (FORMULA_NOT_EVALUATED,)
-GUIDE_ISSUES = (("sheet create, sheet edit and sheet apply", WRITE_ISSUE_KINDS), ("sheet check", CHECK_ISSUE_KINDS), ("sheet validate", VALIDATE_ISSUE_KINDS), ("sheet apply", OPERATION_ISSUE_KINDS))
+GUIDE_ISSUES = (("sheet create, sheet edit and sheet apply", WRITE_ISSUE_KINDS), ("sheet check", CHECK_ISSUE_KINDS), ("sheet validate", VALIDATE_ISSUE_KINDS), ("sheet apply", OPERATION_ISSUE_KINDS), ("sheet render", LIBREOFFICE_ISSUE_KINDS))

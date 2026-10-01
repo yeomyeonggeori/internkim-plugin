@@ -76,10 +76,11 @@ class ResultEnvelopeTest(unittest.TestCase):
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["UNKNOWN_COMMAND"])
 
     def test_issue_codes_are_unique(self):
-        codes = [kind.code for kind in COMMAND_ISSUE_KINDS]
+        kinds = set(COMMAND_ISSUE_KINDS)
         for office_format in FORMATS:
-            codes.extend(kind.code for kind in set(defined_issue_kinds(load_definitions(office_format))))
-        duplicates = sorted({code for code in codes if codes.count(code) > 1} - {"REQUIRED_TEXT_MISSING", "FORBIDDEN_TEXT_PRESENT", "KOREAN_FONT_MISSING", "PLACEHOLDER_LEFT"})
+            kinds.update(defined_issue_kinds(load_definitions(office_format)))
+        codes = [kind.code for kind in kinds]
+        duplicates = sorted({code for code in codes if codes.count(code) > 1})
         self.assertEqual(duplicates, [])
 
 
