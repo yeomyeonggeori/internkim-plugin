@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import copy
-
 from pptx.opc.constants import RELATIONSHIP_TYPE
 from pptx.oxml.ns import qn
 
 from core.office_operations import TARGET_NOT_FOUND, Change
 from core.office_result import INVALID_VALUE, OfficeFailure
 from deck.pptx_relationships import drop_unreferenced
+from deck.pptx_runs import run_text, split_runs_at
 from deck.pptx_targets import PptxEditing, ShapeTarget, require_text, resolve_shape, resolve_slide
 
 
@@ -55,41 +54,6 @@ def linked_runs(target: ShapeTarget, text: str, location: str):
         if start >= 0:
             return runs, start, start + len(text)
     raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.text: {target.label} has no paragraph holding {text!r}", f"{location}.text", "give text exactly as deck read shows it, inside one paragraph"))
-
-
-def run_text(run) -> str:
-    return "".join(node.text or "" for node in run.iter(qn("a:t")))
-
-
-def split_runs_at(runs: list, start: int, end: int) -> list:
-    covered = []
-    position = 0
-    for run in runs:
-        length = len(run_text(run))
-        run_start, run_end = position, position + length
-        position = run_end
-        if run_end <= start or run_start >= end:
-            continue
-        piece = run
-        if run_start < start:
-            piece = split_run(piece, start - run_start)
-        if run_end > end:
-            split_run(piece, len(run_text(piece)) - (run_end - end))
-        covered.append(piece)
-    return covered
-
-
-def split_run(run, offset: int):
-    text = run_text(run)
-    tail = copy.deepcopy(run)
-    set_run_text(run, text[:offset])
-    set_run_text(tail, text[offset:])
-    run.addnext(tail)
-    return tail
-
-
-def set_run_text(run, text: str) -> None:
-    run.find(qn("a:t")).text = text
 
 
 def link_run(target: ShapeTarget, run, url: str | None, destination) -> None:
