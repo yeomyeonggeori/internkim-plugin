@@ -339,12 +339,12 @@ OPERATIONS = Variant(
             Field("text", Text(non_empty=True), "comment text", required=True),
             Field("find", Text(non_empty=True), "exact text inside the block the comment marks; default the whole paragraph"),
             Field("occurrence", Number(minimum=1, integer=True), "which occurrence of find, default 1"),
-            Field("author", Text(), "author name; default the --author of a --track run"),
+            Field("author", Text(), "who the comment is from; required unless a --track --author run names them"),
         )),
         Record("reply_comment", "reply in a comment's thread", (
             COMMENT_ID,
             Field("text", Text(non_empty=True), "reply text", required=True),
-            Field("author", Text(), "author name; default the --author of a --track run"),
+            Field("author", Text(), "who the comment is from; required unless a --track --author run names them"),
         )),
         Record("resolve_comment", "mark a comment's thread resolved, or reopen it", (
             COMMENT_ID,

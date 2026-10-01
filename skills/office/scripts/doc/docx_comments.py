@@ -14,7 +14,7 @@ from docx_editing import DocxEditing, resolve_paragraph
 from docx_text import REMOVED_RUN_CONTAINER_TAGS, RUN_TAG, live_runs, run_text, visible_text
 from docx_tracking import runs_between, split_runs_at
 from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
-from office_result import OfficeFailure
+from office_result import MISSING_FIELD, OfficeFailure
 
 
 WORD_2010_NAMESPACE = "http://schemas.microsoft.com/office/word/2010/wordml"
@@ -143,10 +143,12 @@ def is_removed_run(run) -> bool:
     return False
 
 
-def comment_author(editing: DocxEditing, operation: dict) -> str:
+def comment_author(editing: DocxEditing, operation: dict, location: str) -> str:
     if operation.get("author"):
         return operation["author"]
-    return editing.tracking.author if editing.tracking is not None else ""
+    if editing.tracking is not None and editing.tracking.author:
+        return editing.tracking.author
+    raise OfficeFailure(MISSING_FIELD.issue(f"{location}.author: a comment needs the name of the person it is from", f"{location}.author", suggestion="give author, or run doc apply with --track --author"))
 
 
 def plan_add_comment(editing: DocxEditing, operation: dict, location: str) -> Change:
@@ -154,7 +156,7 @@ def plan_add_comment(editing: DocxEditing, operation: dict, location: str) -> Ch
     if not live_runs(paragraph._p):
         raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}: block {operation['block']} has no text to comment on", location))
     runs = anchor_runs(paragraph, anchor_span(paragraph._p, operation, location))
-    comment = editing.document.add_comment(runs, text=operation["text"], author=comment_author(editing, operation))
+    comment = editing.document.add_comment(runs, text=operation["text"], author=comment_author(editing, operation, location))
     ensure_paragraph_identifier(editing.document, comment._comment_elm)
 
     def change() -> str:
@@ -243,10 +245,11 @@ def set_extended_entry(editing: DocxEditing, comment, parent_identifier: str | N
 
 def plan_reply_comment(editing: DocxEditing, operation: dict, location: str) -> Change:
     parent = find_comment(editing, operation["comment"], location)
+    author = comment_author(editing, operation, location)
 
     def change() -> str:
         root = thread_root(editing, parent)
-        reply = editing.document.comments.add_comment(text=operation["text"], author=comment_author(editing, operation))
+        reply = editing.document.comments.add_comment(text=operation["text"], author=author)
         reply_element = reply._comment_elm
         set_extended_entry(editing, root)
         set_extended_entry(editing, reply_element, parent_identifier=ensure_paragraph_identifier(editing.document, root))
