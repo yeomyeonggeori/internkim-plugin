@@ -17,6 +17,7 @@ from doc.docx_tables import add_space_after_table, format_table
 from doc.docx_lists import add_list_paragraph, start_list
 from core.office_result import INVALID_ARGUMENTS, INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from core.office_schema import require_valid
+from core.office_outputs import output_file
 from fonts.registry import BODY_SIZE_POINTS
 
 
@@ -213,7 +214,7 @@ def build_inline_block(kind: str, value: str) -> dict:
 
 def parse_arguments() -> argparse.Namespace:
     parser = OfficeArgumentParser()
-    parser.add_argument("output_path", help="Path to the output .docx file")
+    parser.add_argument("output_path", type=output_file(".docx"), help="Path to the output .docx file")
     parser.add_argument("--title", metavar="TEXT", default="", help="Document title")
     parser.add_argument("--heading", action=AppendOrderedBlockAction, dest="ordered_arguments", default=[], metavar="TEXT", help="Add a level-1 heading (repeatable, position-sensitive)")
     parser.add_argument("--paragraph", action=AppendOrderedBlockAction, dest="ordered_arguments", default=[], metavar="TEXT", help="Add a paragraph (repeatable, position-sensitive)")

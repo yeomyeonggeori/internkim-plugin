@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import os
-
-from core.office_operations import apply_batch, apply_parser, read_batch, save_atomically
+from core.office_operations import apply_batch, apply_output_path, apply_parser, read_batch, save_atomically
 from core.office_result import Result, run_command
 from deck.pptx_layout_audit import audit_presentation, substitutions
 from deck.pptx_lengths import normalize_lengths
@@ -13,6 +11,7 @@ from deck.pptx_targets import PptxEditing, load_editing
 
 def main() -> Result:
     arguments = apply_parser("pptx").parse_args()
+    output_path = apply_output_path(arguments)
     operations = read_batch(PPTX_OPERATIONS, arguments.ops)
     editing = load_editing(arguments.path)
     operations = normalize_lengths(PPTX_OPERATIONS.shape, operations, (editing.presentation.slide_width, editing.presentation.slide_height))
@@ -23,7 +22,6 @@ def main() -> Result:
     details = {"dryRun": arguments.dry_run, "changes": changes, "auditedSlides": [number for number, _ in audited], "fontsMeasuredWith": substitutions(audit.faces)}
     if arguments.dry_run:
         return Result(summary=f"dry run: {len(changes)} operations would apply to {arguments.path}", issues=issues, details=details)
-    output_path = os.path.expanduser(arguments.output or arguments.path)
     save_atomically(lambda temporary_path: save_editing(editing, temporary_path), output_path)
     return Result(summary=f"applied {len(changes)} operations to {output_path}", output_path=output_path, issues=issues, details=details)
 

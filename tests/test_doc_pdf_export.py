@@ -84,7 +84,7 @@ class ExportFormatTest(unittest.TestCase):
 
     def test_an_output_that_is_neither_docx_nor_pdf_is_refused_before_writing(self):
         envelope = run_office(["doc", "export", "메모.md", "--output", "메모.doc"], self.directory)
-        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["INVALID_VALUE"])
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["WRONG_OUTPUT_FORMAT"])
         self.assertIn("메모.pdf", envelope["issues"][0]["suggestion"])
         self.assertFalse((self.directory / "메모.doc").exists())
 

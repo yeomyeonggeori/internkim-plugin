@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 import os
 from pathlib import Path
@@ -7,6 +8,7 @@ import tempfile
 from typing import Callable, Sequence
 
 from core.office_inputs import office_file
+from core.office_outputs import same_kind_output
 from core.office_result import ERROR, FILL_INS, VALUE_FILL_IN, Issue, IssueKind, OfficeArgumentParser, OfficeFailure, Result, read_json_file
 from core.office_schema import ListOf, Variant, join_location, require_valid
 
@@ -80,18 +82,32 @@ def fill_in_issues(value: object, location: str) -> list[Issue]:
 
 
 def save_atomically(save: Callable[[str], Sequence[Issue] | None], output_path: str) -> Sequence[Issue]:
-    directory = os.path.dirname(os.path.abspath(output_path))
-    os.makedirs(directory, exist_ok=True)
-    suffix = Path(output_path).suffix
-    descriptor, temporary_path = tempfile.mkstemp(prefix=".office-", suffix=suffix, dir=directory)
-    os.close(descriptor)
+    temporary_path = temporary_path_beside(output_path)
     try:
         issues = save(temporary_path) or ()
-        os.replace(temporary_path, output_path)
+        with failures_named(output_path):
+            os.replace(temporary_path, output_path)
         return issues
     finally:
         if os.path.exists(temporary_path):
             os.unlink(temporary_path)
+
+
+def temporary_path_beside(output_path: str) -> str:
+    directory = os.path.dirname(os.path.abspath(output_path))
+    os.makedirs(directory, exist_ok=True)
+    with failures_named(output_path):
+        descriptor, temporary_path = tempfile.mkstemp(prefix=".office-", suffix=Path(output_path).suffix, dir=directory)
+    os.close(descriptor)
+    return temporary_path
+
+
+@contextmanager
+def failures_named(path: str):
+    try:
+        yield
+    except OSError as error:
+        raise OSError(error.errno, error.strerror, path) from error
 
 
 def apply_parser(input_kind: str) -> OfficeArgumentParser:
@@ -103,11 +119,15 @@ def apply_parser(input_kind: str) -> OfficeArgumentParser:
     return parser
 
 
+def apply_output_path(arguments) -> str:
+    return os.path.expanduser(same_kind_output(arguments.output, arguments.path) if arguments.output else arguments.path)
+
+
 def run_apply(arguments, operation_set: OperationSet, load: Callable[[str], object], save: Callable[[object, str], Sequence[Issue] | None]) -> Result:
+    output_path = apply_output_path(arguments)
     operations = read_batch(operation_set, arguments.ops)
     document = load(arguments.path)
     changes = apply_batch(operation_set, document, operations)
-    output_path = os.path.expanduser(arguments.output or arguments.path)
     if arguments.dry_run:
         return Result(summary=f"dry run: {len(changes)} operations would apply to {arguments.path}", details={"dryRun": True, "changes": changes})
     issues = save_atomically(lambda temporary_path: save(document, temporary_path), output_path)

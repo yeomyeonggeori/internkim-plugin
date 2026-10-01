@@ -6,6 +6,7 @@ import pathlib
 from deck.deck_definitions import NO_SLIDE_SECTIONS
 from deck.deck_kit import strip_deck_kit
 from core.office_result import OfficeArgumentParser, OfficeFailure, Result, run_command
+from core.office_outputs import output_file
 from deck.resource_inlining import restore_authored_source
 from deck.slide_viewer import strip_screen_slide_viewer
 
@@ -25,7 +26,7 @@ def main() -> Result:
 def parse_arguments():
     parser = OfficeArgumentParser()
     parser.add_argument("delivered_path", help="the delivered deck .html")
-    parser.add_argument("source_path", help="where to write slides.html")
+    parser.add_argument("source_path", type=output_file(".html"), help="where to write slides.html")
     return parser.parse_args()
 
 

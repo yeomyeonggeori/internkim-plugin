@@ -19,6 +19,7 @@ from sheet.sheet_styling import style_table
 from sheet.sheet_workbook import validate_sheet_name
 from sheet.written_cells import require_writable_rows
 from core.excel_limits import fitting_sheet_name
+from core.office_outputs import output_file
 
 
 def optional_text(value):
@@ -141,7 +142,7 @@ def build_specification(arguments):
 
 def parse_arguments():
     parser = OfficeArgumentParser()
-    parser.add_argument("output_path", help="Path to the output .xlsx file")
+    parser.add_argument("output_path", type=output_file(".xlsx"), help="Path to the output .xlsx file")
     parser.add_argument("--title", metavar="TEXT", default="", help="Workbook title (also used as sheet name when --sheet is absent)")
     parser.add_argument("--sheet", metavar="NAME", default=None, help="Sheet name (default: title or Sheet1)")
     parser.add_argument("--row", action="append", default=[], metavar="CELLS", help="Add one row; comma-separated cell values (repeatable)")

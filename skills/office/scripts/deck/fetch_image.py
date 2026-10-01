@@ -12,6 +12,7 @@ import urllib.request
 from PIL import Image, UnidentifiedImageError
 
 from deck.deck_definitions import IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND
+from core.office_outputs import require_output_extension
 from core.office_result import OfficeArgumentParser, OfficeFailure, Result, run_command
 from core.text_script import has_hangul
 
@@ -86,7 +87,7 @@ def save_as(data: bytes, output_path: pathlib.Path) -> tuple[int, int, int] | No
     if image.width < SMALLEST_USEFUL_WIDTH:
         return None
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    save_format = SAVE_FORMATS.get(output_path.suffix.casefold(), "JPEG")
+    save_format = SAVE_FORMATS[output_path.suffix.casefold()]
     if save_format == "JPEG" and image.mode != "RGB":
         image = image.convert("RGB")
     image.save(output_path, save_format, **({"quality": 90} if save_format == "JPEG" else {}))
@@ -103,6 +104,7 @@ def parse_arguments(arguments: list[str]) -> tuple[str, str, int]:
     output = parsed.output_option or parsed.output
     if not output:
         parser.error("give the output path as the second argument or --output")
+    require_output_extension(output, tuple(SAVE_FORMATS))
     return parsed.query, output, max(1, parsed.count)
 
 

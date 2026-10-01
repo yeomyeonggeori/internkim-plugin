@@ -13,6 +13,7 @@ from core.office_inputs import office_file
 from core.office_result import OfficeArgumentParser, Result, read_json_file, run_command
 from core.office_schema import require_valid
 from core.template_merge import MERGE_VALUES, MergeReport, fill_text_nodes, repeated_list_name, write_package
+from core.office_outputs import same_kind_output
 
 
 DRAWING_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/main"
@@ -28,7 +29,7 @@ def main() -> Result:
     report = MergeReport(values)
     parts = merged_parts(template_path, report)
     report.require_complete()
-    output_path = os.path.expanduser(arguments.output_path)
+    output_path = os.path.expanduser(same_kind_output(arguments.output_path, arguments.template_path))
     save_atomically(lambda path: write_package(template_path, parts, path), output_path)
     return Result(summary=f"filled {report.filled} placeholders into {output_path}", output_path=output_path, issues=report.unused_issues(), details={"placeholders": sorted(report.placeholder_names)})
 

@@ -12,6 +12,7 @@ from core.office_schema import require_valid
 from fonts.pdf_registration import register_document_font
 from paperwork.paperwork_definitions import CONTRACT_DOCUMENT, PAPERWORK_CONTENT_FIELDS, PAPERWORK_DOCUMENT
 from core.page_sizes import DEFAULT_PAPER
+from core.office_outputs import output_file
 from paperwork.paperwork_design import (
     COLOR_BORDER,
     COLOR_HEADER_FILL,
@@ -505,7 +506,7 @@ def append_docx_block(word_document, block):
 def main():
     parser = OfficeArgumentParser()
     parser.add_argument("document_path", help="Path to the document JSON file")
-    parser.add_argument("output_path", help="Path to the output .pdf or .docx file")
+    parser.add_argument("output_path", type=output_file(".pdf", ".docx"), help="Path to the output .pdf or .docx file")
     arguments = parser.parse_args()
     output_path = Path(os.path.expanduser(arguments.output_path))
     document_path = os.path.expanduser(arguments.document_path)
