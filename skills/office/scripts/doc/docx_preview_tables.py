@@ -14,6 +14,7 @@ DEFAULT_CELL_MARGINS_TWIPS = {"top": 0, "left": 108, "bottom": 0, "right": 108}
 DEFAULT_LOOK = {"firstRow": True, "lastRow": False, "firstColumn": True, "lastColumn": False, "noHBand": False, "noVBand": True}
 LOOK_BITS = {"firstRow": 0x0020, "lastRow": 0x0040, "firstColumn": 0x0080, "lastColumn": 0x0100, "noHBand": 0x0200, "noVBand": 0x0400}
 VERTICAL_ALIGNMENTS = ("top", "center", "bottom")
+DEFAULT_COLUMN_TWIPS = 1440
 
 
 @dataclass
@@ -89,8 +90,54 @@ def table_look(properties) -> dict:
 
 
 def grid_columns(table) -> list[float]:
-    columns = [twips_to_pixels(number(column.get(qn("w:w"))) or 0) for column in table.findall(f"{qn('w:tblGrid')}/{qn('w:gridCol')}")]
-    return columns or [twips_to_pixels(number(attribute(cell.find(qn("w:tcPr")), "w:tcW", "w:w")) or 1440) for cell in table.find(qn("w:tr")).findall(qn("w:tc"))]
+    declared = [number(column.get(qn("w:w"))) or None for column in table.findall(f"{qn('w:tblGrid')}/{qn('w:gridCol')}")]
+    spans = [row_spans(row) for row in table.findall(qn("w:tr"))]
+    count = max([len(declared), *(sum(span for span, _width in row) for row in spans)])
+    widths = declared + [None] * (count - len(declared))
+    if None in widths:
+        fill_from_cell_widths(widths, spans)
+        fill_unknown_widths(widths, preferred_table_width(table))
+    return [twips_to_pixels(width) for width in widths]
+
+
+def row_spans(row) -> list[tuple[int, float | None]]:
+    properties = row.find(qn("w:trPr"))
+    before = int(attribute(properties, "w:gridBefore", "w:val") or 0)
+    after = int(attribute(properties, "w:gridAfter", "w:val") or 0)
+    cells = [(int(attribute(cell.find(qn("w:tcPr")), "w:gridSpan", "w:val") or 1), fixed_width(cell.find(qn("w:tcPr")), "w:tcW")) for cell in row_cells(row)]
+    return [(1, None)] * before + cells + [(1, None)] * after
+
+
+def fixed_width(properties, tag: str) -> float | None:
+    if attribute(properties, tag, "w:type") not in (None, "dxa"):
+        return None
+    return number(attribute(properties, tag, "w:w")) or None
+
+
+def fill_from_cell_widths(widths: list, spans: list) -> None:
+    for wanted_span in sorted({span for row in spans for span, _width in row}):
+        for row in spans:
+            column = 0
+            for span, width in row:
+                unknown = [index for index in range(column, column + span) if widths[index] is None]
+                if span == wanted_span and width and unknown:
+                    known = sum(widths[index] for index in range(column, column + span) if widths[index] is not None)
+                    for index in unknown:
+                        widths[index] = max(width - known, 0) / len(unknown) or None
+                column += span
+
+
+def preferred_table_width(table) -> float | None:
+    return fixed_width(table.find(qn("w:tblPr")), "w:tblW")
+
+
+def fill_unknown_widths(widths: list, table_width: float | None) -> None:
+    unknown = [index for index, width in enumerate(widths) if width is None]
+    known = [width for width in widths if width is not None]
+    remaining = (table_width or 0) - sum(known)
+    share = remaining / len(unknown) if remaining > 0 else (sum(known) / len(known) if known else DEFAULT_COLUMN_TWIPS)
+    for index in unknown:
+        widths[index] = share
 
 
 def table_block(table, part, builder, layers: TableLayers) -> TableBlock:

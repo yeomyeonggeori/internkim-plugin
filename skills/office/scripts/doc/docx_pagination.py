@@ -8,6 +8,7 @@ from office_preview import PageGeometry
 
 
 NOTE_SEPARATOR_PIXELS = 14
+VISIBLE_FRAGMENT_KINDS = frozenset({"image", "chart", "box", "field"})
 
 
 @dataclass
@@ -66,6 +67,19 @@ class Page:
     @property
     def is_empty(self) -> bool:
         return not self.placed
+
+    @property
+    def is_blank(self) -> bool:
+        return not any(shows_something(placed) for placed in self.placed)
+
+
+def shows_something(placed) -> bool:
+    if isinstance(placed, TableSlice):
+        return bool(placed.rows)
+    if not isinstance(placed, ParagraphSlice):
+        return False
+    lines = placed.layout.lines[placed.first_line:placed.last_line]
+    return any(fragment.kind in VISIBLE_FRAGMENT_KINDS or fragment.text.strip() for line in lines for fragment in line.fragments)
 
 
 class Paginator:
