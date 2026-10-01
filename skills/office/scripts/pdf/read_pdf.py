@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import io
+
+import pdfplumber
 from pypdf import PdfReader
 
-from office_inputs import add_password_argument, office_file, require_unlocked_pdf
+from office_inputs import add_password_argument, office_file, require_unlocked_pdf, unlocked_pdf_bytes
+from pdf_tables import page_tables
 from pdf_definitions import PAGE_WITHOUT_TEXT, page_reading_suggestion
 from office_result import OfficeArgumentParser, Result, run_command
 
@@ -19,7 +23,8 @@ def main() -> Result:
     page_count = len(reader.pages)
     first_index = max(arguments.start - 1, 0)
     shown = reader.pages[first_index:first_index + arguments.limit]
-    pages = [describe_page(page, first_index + offset + 1) for offset, page in enumerate(shown)]
+    with pdfplumber.open(io.BytesIO(unlocked_pdf_bytes(arguments.pdf_path, arguments.password))) as layout:
+        pages = [describe_page(page, layout.pages[first_index + offset], first_index + offset + 1) for offset, page in enumerate(shown)]
     details = {
         "pageCount": page_count,
         "start": first_index + 1,
@@ -37,9 +42,9 @@ def scanned_page_issues(pdf_path: str, pages: list[dict]) -> list:
     return [PAGE_WITHOUT_TEXT.issue(f"pages {scanned} have no text layer", f"pages {scanned}", suggestion=page_reading_suggestion(pdf_path, scanned))]
 
 
-def describe_page(page, number: int) -> dict:
+def describe_page(page, layout_page, number: int) -> dict:
     text = (page.extract_text() or "").strip()
-    return {
+    description = {
         "page": number,
         "widthPoints": round(float(page.mediabox.width), 2),
         "heightPoints": round(float(page.mediabox.height), 2),
@@ -47,6 +52,10 @@ def describe_page(page, number: int) -> dict:
         "characterCount": len(text),
         "text": limited(text),
     }
+    tables = [table.rows for table in page_tables(layout_page)] if text else []
+    if tables:
+        description["tables"] = tables
+    return description
 
 
 def limited(text: str) -> str:
@@ -56,7 +65,7 @@ def limited(text: str) -> str:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Read a PDF's text page by page, with page sizes and whether each page has extractable text.")
+    parser = OfficeArgumentParser(description="Read a PDF's text page by page, with page sizes, whether each page has extractable text, and the rows of every table found on it, ruled or laid out in aligned columns.")
     parser.add_argument("pdf_path", type=office_file("pdf"))
     parser.add_argument("--start", type=int, default=1, help="first page number to show, counting from 1")
     parser.add_argument("--limit", type=int, default=DEFAULT_PAGE_LIMIT, help=f"most pages to show, default {DEFAULT_PAGE_LIMIT}")

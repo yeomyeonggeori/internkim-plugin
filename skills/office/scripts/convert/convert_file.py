@@ -260,7 +260,7 @@ def legacy_workbook(conversion: Conversion) -> None:
 def pdf_to_workbook(conversion: Conversion) -> None:
     found = read_pdf_tables(conversion.input_path, conversion.password)
     if not found.tables:
-        raise OfficeFailure(TABLE_NOT_FOUND.issue(f"{conversion.input_path.name} has no ruled table on any of its pages", conversion.input_path.name))
+        raise OfficeFailure(TABLE_NOT_FOUND.issue(f"{conversion.input_path.name} has no table on any of its pages", conversion.input_path.name))
     write_pdf_workbook(found.tables, conversion.output_path, conversion.input_path.stem)
     conversion.details["tables"] = [table_details(table) for table in found.tables]
     if found.pages_without_tables:

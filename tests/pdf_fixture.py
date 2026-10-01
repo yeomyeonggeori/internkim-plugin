@@ -73,3 +73,58 @@ pdf.output("newsletter.pdf")
 
 def newsletter_pdf_code(font_directory):
     return NEWSLETTER_PDF.replace("{font_directory!r}", repr(str(font_directory)))
+
+
+STATEMENT_PDF = """
+FONT_DIRECTORY = {font_directory!r}
+from pathlib import Path
+from fpdf import FPDF
+FONTS = Path(FONT_DIRECTORY)
+pdf = FPDF(format="A4")
+pdf.add_font("Korean", "", str(FONTS / "Paperlogy-4Regular.ttf"))
+pdf.add_font("Korean", "B", str(FONTS / "Paperlogy-7Bold.ttf"))
+pdf.add_page()
+pdf.set_font("Korean", "B", 16)
+pdf.text(20, 25, "2026년 9월 거래 명세서")
+pdf.set_font("Korean", "", 10)
+pdf.text(20, 35, "공급받는 자: 주식회사 예시상사 (담당 박예시)")
+pdf.text(20, 41, "아래와 같이 9월 한 달 동안의 거래 내역을 알려 드립니다. 금액은 부가세를 포함합니다.")
+columns = ((20, "L"), (48, "L"), (120, "R"), (145, "R"), (185, "R"))
+rows = (
+    ("일자", "품목", "수량", "단가", "금액"),
+    ("2026-09-02", "사무용 의자", "12", "120,000", "1,440,000"),
+    ("2026-09-09", "모니터 받침대", "30", "18,000", "540,000"),
+    ("2026-09-16", "A4 복사 용지 (박스)", "45", "26,500", "1,192,500"),
+    ("2026-09-23", "무선 키보드", "8", "54,000", "432,000"),
+    ("2026-09-30", "회의실 화이트보드", "2", "210,000", "420,000"),
+)
+
+def place(x, align, y, value):
+    pdf.text(x - pdf.get_string_width(value) if align == "R" else x, y, value)
+
+y = 55
+for row in rows:
+    pdf.set_font("Korean", "B" if row is rows[0] else "", 10)
+    for (x, align), value in zip(columns, row):
+        place(x, align, y, value)
+    y += 8
+pdf.set_font("Korean", "B", 10)
+place(20, "L", y + 2, "합계")
+place(185, "R", y + 2, "4,024,500")
+pdf.set_font("Korean", "", 10)
+pdf.text(20, y + 16, "문의는 sample@example.com 으로 보내 주십시오. 담당자 이샘플.")
+pdf.output("statement.pdf")
+"""
+STATEMENT_ROWS = [
+    ["일자", "품목", "수량", "단가", "금액"],
+    ["2026-09-02", "사무용 의자", "12", "120,000", "1,440,000"],
+    ["2026-09-09", "모니터 받침대", "30", "18,000", "540,000"],
+    ["2026-09-16", "A4 복사 용지 (박스)", "45", "26,500", "1,192,500"],
+    ["2026-09-23", "무선 키보드", "8", "54,000", "432,000"],
+    ["2026-09-30", "회의실 화이트보드", "2", "210,000", "420,000"],
+    ["합계", "", "", "", "4,024,500"],
+]
+
+
+def statement_pdf_code(font_directory):
+    return STATEMENT_PDF.replace("{font_directory!r}", repr(str(font_directory)))

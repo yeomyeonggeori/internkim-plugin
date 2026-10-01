@@ -12,12 +12,10 @@ import pypdfium2
 
 from markdown_blocks import Heading, Image, ListItem, Paragraph, Table
 from office_inputs import unlocked_pdf_bytes
+from pdf_tables import page_tables
 
 
 RENDER_SCALE = 2.0
-WIDE_RULE_SHARE = 0.3
-MAXIMUM_ROW_POINTS = 60
-COLUMN_GAP_POINTS = 8
 LINE_TOLERANCE_POINTS = 3
 WORD_GAP_FACTOR = 2.2
 SPACE_FACTOR = 0.15
@@ -269,81 +267,9 @@ def read_page(reading: PdfReading, page, segments: list[Segment], rendered_page,
     reading.reports.append(report)
 
 
-@dataclass(frozen=True)
-class FoundTable:
-    bbox: tuple[float, float, float, float]
-    rows: list[list[str]]
-
-
-def page_tables(page) -> list[FoundTable]:
-    gridded = [FoundTable(tuple(table.bbox), clean_rows(table.extract())) for table in page.find_tables()]
-    gridded = [table for table in gridded if is_regular(table.rows)]
-    if gridded:
-        return gridded
-    return [table for table in (row_ruled_table(page, rules) for rules in rule_stacks(page)) if table is not None]
-
-
-def is_regular(rows: list[list[str]]) -> bool:
-    return len(rows) >= 2 and max(len(row) for row in rows) >= 2
-
-
-def rule_stacks(page) -> list[list[dict]]:
-    wide = [edge for edge in merged_rules(page.horizontal_edges) if edge["x1"] - edge["x0"] > float(page.width) * WIDE_RULE_SHARE]
-    stacks: list[list[dict]] = []
-    for edge in wide:
-        stack = stacks[-1] if stacks else None
-        if stack and abs(stack[-1]["x0"] - edge["x0"]) <= 3 and abs(stack[-1]["x1"] - edge["x1"]) <= 3 and edge["top"] - stack[-1]["top"] <= MAXIMUM_ROW_POINTS:
-            if edge["top"] - stack[-1]["top"] > 1:
-                stack.append(edge)
-        else:
-            stacks.append([edge])
-    return [stack for stack in stacks if len(stack) >= 3]
-
-
-def merged_rules(edges: list[dict]) -> list[dict]:
-    merged: list[dict] = []
-    for edge in sorted(edges, key=lambda edge: (round(edge["top"], 1), edge["x0"])):
-        last = merged[-1] if merged else None
-        if last and abs(last["top"] - edge["top"]) <= 0.5 and edge["x0"] - last["x1"] <= 2:
-            last["x1"] = max(last["x1"], edge["x1"])
-        else:
-            merged.append({"x0": edge["x0"], "x1": edge["x1"], "top": edge["top"]})
-    return sorted(merged, key=lambda edge: edge["top"])
-
-
-def row_ruled_table(page, rules: list[dict]) -> FoundTable | None:
-    left, right = min(rule["x0"] for rule in rules), max(rule["x1"] for rule in rules)
-    tops = [rule["top"] for rule in rules]
-    words = [word for word in page.extract_words(keep_blank_chars=False) if left <= word["x0"] and word["x1"] <= right and tops[0] <= word["top"] and word["bottom"] <= tops[-1]]
-    boundaries = column_boundaries(words, left, right)
-    if len(boundaries) < 3:
-        return None
-    rows = []
-    for top, bottom in zip(tops, tops[1:]):
-        row_words = [word for word in words if top <= (word["top"] + word["bottom"]) / 2 <= bottom]
-        rows.append([" ".join(word["text"] for word in row_words if start <= (word["x0"] + word["x1"]) / 2 < end) for start, end in zip(boundaries, boundaries[1:])])
-    rows = [row for row in rows if any(row)]
-    return FoundTable((left, tops[0], right, tops[-1]), rows) if is_regular(rows) else None
-
-
-def column_boundaries(words: list[dict], left: float, right: float) -> list[float]:
-    covered = sorted((word["x0"], word["x1"]) for word in words)
-    boundaries = [left]
-    reach = None
-    for start, end in covered:
-        if reach is not None and start - reach >= COLUMN_GAP_POINTS:
-            boundaries.append((reach + start) / 2)
-        reach = end if reach is None else max(reach, end)
-    return boundaries + [right]
-
-
 def inside_any(segment: Segment, boxes: list) -> bool:
     center_x, center_y = (segment.x0 + segment.x1) / 2, (segment.top + segment.bottom) / 2
     return any(x0 <= center_x <= x1 and top <= center_y <= bottom for x0, top, x1, bottom in boxes)
-
-
-def clean_rows(rows: list[list]) -> list[list[str]]:
-    return [[" ".join((cell or "").split()) for cell in row] for row in rows if any(cell for cell in row)]
 
 
 def page_image_bitmap(rendered_page):

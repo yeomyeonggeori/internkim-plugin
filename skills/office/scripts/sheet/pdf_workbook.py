@@ -10,7 +10,7 @@ import pdfplumber
 
 from create_xlsx import create_workbook
 from office_inputs import unlocked_pdf_bytes
-from pdf_to_blocks import page_tables
+from pdf_tables import page_tables
 
 
 NUMBER = re.compile(r"(?P<open>\()?(?P<sign>[-−])?(?P<currency>[₩$€£¥])?(?P<digits>\d{1,3}(?:,\d{3})+|\d+)(?P<fraction>\.\d+)?(?P<percent>%)?(?P<close>\))?")

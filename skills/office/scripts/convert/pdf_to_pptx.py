@@ -14,7 +14,8 @@ import pypdfium2
 
 from markdown_blocks import inline_segments, link_parts, strip_inline_markers
 from office_inputs import unlocked_pdf_bytes
-from pdf_to_blocks import MINIMUM_IMAGE_POINTS, Segment, crop, inside_any, page_image_bitmap, page_segments, page_tables
+from pdf_to_blocks import MINIMUM_IMAGE_POINTS, Segment, crop, inside_any, page_image_bitmap, page_segments
+from pdf_tables import page_tables
 
 
 EMU_PER_POINT = 12700

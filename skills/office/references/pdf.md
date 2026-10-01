@@ -4,7 +4,7 @@ Read, extract, merge, split, lightly edit, or create layout-critical PDFs in `~/
 
 ## Workflow
 
-1. For an earlier or uploaded PDF, run `<skill>/scripts/office pdf read <file>` first: text and size per page, and which pages are scans without text. There is no OCR: read a scanned page from its `pdf render --pages <n> --scale 2` PNG with your own image tool.
+1. For an earlier or uploaded PDF, run `<skill>/scripts/office pdf read <file>` first: text and size per page, the rows of each table it finds, ruled or laid out in aligned columns, and which pages are scans without text. There is no OCR: read a scanned page from its `pdf render --pages <n> --scale 2` PNG with your own image tool.
 2. For a short source-backed PDF, use `pdf create`, with a spec or a task-local script through `office python` only when tables or precise placement require it; `<skill>/scripts/office guide pdf` lists the spec fields. Merge and split with pypdf in a task-local script.
 3. Validate with `<skill>/scripts/office pdf validate ~/documents/<title>.pdf`: it checks page count, extractable text, required and forbidden facts, encryption, embedded fonts, and Korean-capable fonts. Fix its failures before delivery.
 
