@@ -37,6 +37,12 @@ def referenced_images(deck_path: Path) -> list[str]:
     return re.findall(r'src="(images/[^"]+\.png)"', (deck_path / "slides.html").read_text(encoding="utf-8"))
 
 
+def legend_amounts(deck_path: Path) -> list[str]:
+    source = (deck_path / "slides.html").read_text(encoding="utf-8")
+    round_charts = re.findall(r'data-chart="(?:donut|pie)"[^>]*data-values="([^"]+)"[^>]*data-unit="([^"]*)"', source)
+    return [f"{int(value):,}{unit}" for values, unit in round_charts for value in values.split(",")]
+
+
 def write_gradient_photo(path: Path) -> None:
     width, height = GENERATED_PHOTO_SIZE
     rows = [[(40 + 120 * column // width, 70 + 90 * row // height, 110, 255) for column in range(width)] for row in range(height)]
@@ -69,7 +75,7 @@ class SampleDeckBuildTest(unittest.TestCase):
                 deck_path = copy_sample_deck(sample_path, Path(directory))
                 count = slide_count(deck_path)
                 completed = subprocess.run(
-                    [sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pdf", "--slide-count", str(count)],
+                    [sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "all", "--slide-count", str(count)],
                     capture_output=True,
                     text=True,
                     cwd=deck_path,
@@ -79,8 +85,35 @@ class SampleDeckBuildTest(unittest.TestCase):
                     self.skipTest("the renderer could not run on this host")
                 self.assertEqual({issue["code"] for issue in envelope["issues"]} & LAYOUT_DEFECT_CODES, set())
                 self.assertTrue(envelope["details"]["acceptance"]["acceptable"], envelope["summary"])
-                self.assertEqual(pdf_page_count(envelope["outputPath"]), count)
+                self.assertEqual(pdf_page_count(str(deck_path / "build" / f"{deck_path.name}.pdf")), count)
                 self.assert_review_measured_every_page(deck_path, count)
+                self.assert_pptx_keeps_the_layout(deck_path / "build" / f"{deck_path.name}.pptx")
+
+    def assert_pptx_keeps_the_layout(self, pptx_path: Path):
+        check = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "check", str(pptx_path)], capture_output=True, text=True).stdout)
+        self.assertEqual([issue["message"] for issue in check["issues"]], [])
+        read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "read", str(pptx_path)], capture_output=True, text=True).stdout)
+        texts = [shape.get("text", "") for slide in read["details"]["slides"] for shape in slide["shapes"]]
+        for amount in legend_amounts(pptx_path.parent.parent):
+            self.assertIn(amount, texts)
+        self.assert_pdf_and_pptx_agree_on_text_sizes(pptx_path.with_suffix(".pdf"), read)
+
+    def assert_pdf_and_pptx_agree_on_text_sizes(self, pdf_path: Path, read: dict):
+        import pdfplumber
+
+        size = read["details"]["slideSize"]
+        with pdfplumber.open(pdf_path) as pdf:
+            for slide, page in zip(read["details"]["slides"], pdf.pages):
+                points_per_emu = page.width / size["w"]
+                words = page.extract_words(extra_attrs=["size"])
+                for shape in slide["shapes"]:
+                    if not shape.get("text") or not shape.get("style"):
+                        continue
+                    box = shape["box"]
+                    inside = [word["size"] for word in words if box["x"] * points_per_emu <= (word["x0"] + word["x1"]) / 2 <= (box["x"] + box["w"]) * points_per_emu and box["y"] * points_per_emu <= (word["top"] + word["bottom"]) / 2 <= (box["y"] + box["h"]) * points_per_emu]
+                    if inside:
+                        drawn_points = max(inside) / (points_per_emu * size["emuPerPoint"])
+                        self.assertAlmostEqual(drawn_points, shape["style"]["size"], delta=shape["style"]["size"] * 0.04, msg=f"slide {slide['slide']}: {shape['text'][:20]}")
 
     def assert_review_measured_every_page(self, deck_path: Path, count: int):
         review = json.loads((deck_path / "build" / "review" / "slide-review.json").read_text(encoding="utf-8"))
