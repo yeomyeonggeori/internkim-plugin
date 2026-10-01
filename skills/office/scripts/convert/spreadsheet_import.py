@@ -7,6 +7,7 @@ import zipfile
 
 from lxml import etree
 from openpyxl import Workbook
+from python_calamine import CalamineWorkbook
 import xlrd
 
 from convert_definitions import CONVERSION_APPROXIMATED
@@ -20,6 +21,9 @@ OPEN_DOCUMENT_NAMESPACES = {
     "text": "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
 }
 NUMERIC_VALUE_TYPES = ("float", "percentage", "currency")
+PACKAGE_RELATIONSHIP_NAMESPACE = "{http://schemas.openxmlformats.org/package/2006/relationships}"
+BUNDLE_SHEET_RECORD = 0x009C
+MERGE_CELL_RECORD = 0x00B0
 
 
 @dataclass
@@ -31,7 +35,7 @@ class SheetData:
 
 
 def legacy_workbook_to_xlsx(input_path: Path, output_path: Path) -> list[Issue]:
-    sheets = read_ods(input_path) if input_path.suffix.lower() == ".ods" else read_xls(input_path)
+    sheets = SPREADSHEET_READERS[input_path.suffix.lower()](input_path)
     write_workbook(sheets, output_path)
     issues = list(cache_formula_values(str(output_path)))
     formulas = sum(sheet.formulas for sheet in sheets)
@@ -132,6 +136,76 @@ def ods_date(text: str) -> datetime.date | datetime.datetime:
     return moment.date() if "T" not in text else moment
 
 
+def read_xlsb(input_path: Path) -> list[SheetData]:
+    book = CalamineWorkbook.from_path(str(input_path))
+    merges = xlsb_merges(input_path)
+    return [xlsb_sheet(name, book.get_sheet_by_name(name).to_python(skip_empty_area=False), merges.get(name, [])) for name in book.sheet_names]
+
+
+def xlsb_sheet(name: str, rows: list[list], merges: list) -> SheetData:
+    data = SheetData(name, merges=merges)
+    for row_index, row in enumerate(rows, start=1):
+        for column_index, value in enumerate(row, start=1):
+            if value != "" and value is not None:
+                data.cells[(row_index, column_index)] = int(value) if isinstance(value, float) and value.is_integer() else value
+    return data
+
+
+def xlsb_records(data: bytes):
+    position = 0
+    while position < len(data):
+        kind, position = variable_integer(data, position, 2)
+        size, position = variable_integer(data, position, 4)
+        yield kind, data[position:position + size]
+        position += size
+
+
+def variable_integer(data: bytes, position: int, limit: int) -> tuple[int, int]:
+    value = 0
+    for shift in range(limit):
+        byte = data[position]
+        position += 1
+        value |= (byte & 0x7F) << (7 * shift)
+        if not byte & 0x80:
+            break
+    return value, position
+
+
+def wide_text(payload: bytes, offset: int) -> tuple[str, int]:
+    length = int.from_bytes(payload[offset:offset + 4], "little")
+    end = offset + 4 + 2 * length
+    return payload[offset + 4:end].decode("utf-16-le"), end
+
+
+def xlsb_sheet_parts(archive: zipfile.ZipFile) -> dict[str, str]:
+    relationships = etree.fromstring(archive.read("xl/_rels/workbook.bin.rels"))
+    targets = {element.get("Id"): element.get("Target") for element in relationships.iter(f"{PACKAGE_RELATIONSHIP_NAMESPACE}Relationship")}
+    parts = {}
+    for kind, payload in xlsb_records(archive.read("xl/workbook.bin")):
+        if kind == BUNDLE_SHEET_RECORD:
+            identifier, end = wide_text(payload, 8)
+            name, _ = wide_text(payload, end)
+            parts[name] = "xl/" + targets.get(identifier, "").lstrip("/").removeprefix("xl/")
+    return parts
+
+
+def xlsb_merges(input_path: Path) -> dict[str, list[tuple[int, int, int, int]]]:
+    with zipfile.ZipFile(input_path) as archive:
+        names = set(archive.namelist())
+        merges = {}
+        for name, part in xlsb_sheet_parts(archive).items():
+            if part not in names:
+                continue
+            records = [payload for kind, payload in xlsb_records(archive.read(part)) if kind == MERGE_CELL_RECORD]
+            merges[name] = [merge_bounds(payload) for payload in records]
+    return merges
+
+
+def merge_bounds(payload: bytes) -> tuple[int, int, int, int]:
+    first_row, last_row, first_column, last_column = (int.from_bytes(payload[offset:offset + 4], "little") for offset in (0, 4, 8, 12))
+    return first_row + 1, first_column + 1, last_row + 1, last_column + 1
+
+
 def write_workbook(sheets: list[SheetData], output_path: Path) -> None:
     workbook = Workbook()
     workbook.remove(workbook.active)
@@ -150,3 +224,6 @@ def write_workbook(sheets: list[SheetData], output_path: Path) -> None:
 
 def open_document(prefix: str, name: str) -> str:
     return f"{{{OPEN_DOCUMENT_NAMESPACES[prefix]}}}{name}"
+
+
+SPREADSHEET_READERS = {".xls": read_xls, ".ods": read_ods, ".xlsb": read_xlsb}

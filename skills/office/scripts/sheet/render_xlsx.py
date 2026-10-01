@@ -10,13 +10,16 @@ SCRIPTS_PATH = Path(__file__).resolve().parents[1]
 sys.path[1:1] = [str(SCRIPTS_PATH / "deck")]
 
 from formula_cache import cache_formula_values  # noqa: E402
-from office_preview import Preview, approximation_issues, draw_pages, write_preview  # noqa: E402
+from office_preview import Preview, approximation_issues, blank_page_issues, draw_pages, write_preview  # noqa: E402
 from office_inputs import office_file
 from office_result import OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
 from preview_fonts import FontRegistry  # noqa: E402
 from xlsx_colors import theme_palette  # noqa: E402
 from workbook_access import missing_sheet_issue, open_workbook  # noqa: E402
 from xlsx_preview import SheetPreviewer  # noqa: E402
+
+
+BLANK_PAGE_SUGGESTION = "set the print area to the cells that hold content, or clear the far-off cell, empty formatted columns or page break that adds the page"
 
 
 def workbook_values(source_path: Path):
@@ -50,7 +53,7 @@ def main() -> Result:
     preview, preview_fonts = xlsx_preview(source_path, arguments.sheet)
     preview_path = write_preview(preview, output_directory)
     drawn, drawing_issues = draw_pages(preview_path, preview_fonts, output_directory / f"{source_path.stem}.pdf")
-    issues = [*approximation_issues(preview, source_path.name), *drawing_issues]
+    issues = [*approximation_issues(preview, source_path.name), *blank_page_issues(preview, source_path.name, BLANK_PAGE_SUGGESTION), *drawing_issues]
     details = {"preview": str(preview_path), "pageCount": len(preview.pages), "previewFonts": preview_fonts, "approximations": preview.approximations, **drawn}
     return Result(summary=f"laid out {source_path.name} as {len(preview.pages)} printed pages in {preview_path}", output_path=str(preview_path), issues=tuple(issues), details=details)
 

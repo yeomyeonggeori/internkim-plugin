@@ -32,15 +32,18 @@ ROUTES = (
     Route("tsv", "xlsx", "same as csv to xlsx"),
     Route("xls", "xlsx", "values, dates and merged cells; formulas kept as their values; fonts, colors, borders and widths dropped"),
     Route("ods", "xlsx", "same as xls to xlsx"),
+    Route("xlsb", "xlsx", "same as xls to xlsx; formulas kept as their saved values"),
+    Route("pdf", "xlsx", "each ruled table as a sheet; a table whose header repeats on the next page continues; first row is the header when it is all text; numbers, percents and dates typed; text outside tables is left out"),
 )
 EXTENSION_ALIASES = {"markdown": "md", "htm": "html", "xlsm": "xlsx"}
 
 UNSUPPORTED_CONVERSION = IssueKind("UNSUPPORTED_CONVERSION", ERROR, "no route converts the input's format to the output's", "pick an output extension office guide convert lists for this input")
 CONVERSION_APPROXIMATED = IssueKind("CONVERSION_APPROXIMATED", WARNING, "the output keeps the content but not everything the source had; the message says what changed", "render the output and compare it with the source before delivering")
 PAGE_WITHOUT_TEXT = IssueKind("PAGE_WITHOUT_TEXT", WARNING, "a PDF page has no text layer, so it was kept as a picture whose words cannot be edited", "say which pages are pictures; reading their text needs OCR")
+TABLE_NOT_FOUND = IssueKind("TABLE_NOT_FOUND", ERROR, "the PDF has no ruled table to turn into sheets, so no workbook was written", "convert it to .md to read its text, or pdf render the page and read the table from the image")
 FORMULA_VALUE_MISSING = IssueKind("FORMULA_VALUE_MISSING", WARNING, "a formula cell has no saved value, so its CSV cell is empty", "run sheet apply with recalculate, then convert again")
 
-CONVERT_ISSUE_KINDS = (UNSUPPORTED_CONVERSION, CONVERSION_APPROXIMATED, PAGE_WITHOUT_TEXT, FORMULA_VALUE_MISSING, RENDERER_UNAVAILABLE, RENDER_FAILED)
+CONVERT_ISSUE_KINDS = (UNSUPPORTED_CONVERSION, CONVERSION_APPROXIMATED, PAGE_WITHOUT_TEXT, TABLE_NOT_FOUND, FORMULA_VALUE_MISSING, RENDERER_UNAVAILABLE, RENDER_FAILED)
 
 
 def normalized_extension(extension: str) -> str:

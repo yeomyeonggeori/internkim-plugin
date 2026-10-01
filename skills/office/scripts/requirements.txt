@@ -6,6 +6,7 @@ pdfplumber
 Pillow
 pypdf
 pypdfium2
+python-calamine
 python-docx
 python-pptx
 xlrd>=2

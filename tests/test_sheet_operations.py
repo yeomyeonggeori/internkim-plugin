@@ -230,7 +230,7 @@ class PivotTest(OperationFixture):
         self.assertIn("added pivot table PivotTable1", envelope["details"]["changes"][0]["change"])
 
     def test_a_crosstab_pivot_and_a_second_edit_keep_the_pivot(self):
-        self.edit([{"op": "add_pivot_table", "range": "A1:D7", "row": "region", "column": "product", "values": ["amount"], "function": "count", "totalLabel": "합계", "valueLabels": ["건수"]}])
+        self.edit([{"op": "add_pivot_table", "range": "A1:D7", "row": "region", "column": "product", "values": [{"field": "amount", "label": "건수"}], "function": "count", "totalLabel": "합계"}])
         pivot = self.workbook()["Pivot"]
         grid = [[cell.value for cell in row] for row in pivot.iter_rows(min_row=3, max_row=8, max_col=4)]
         self.assertEqual(grid[0][:2], ["건수", "product"])
