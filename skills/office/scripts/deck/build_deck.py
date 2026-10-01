@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import os
 import pathlib
 import sys
 
@@ -17,7 +16,7 @@ def parse_arguments(arguments: list[str]):
     parser = OfficeArgumentParser(
         description="Check slides.html, then draw it without a browser into build/<name>.pdf (or .pptx, .html) with review images, geometry and an acceptance verdict.",
     )
-    parser.add_argument("--format", help=f"what to write: {', '.join(sorted(ALLOWED_FORMATS - {'review', 'notes'}))} or all, comma-separated; default {DEFAULT_FORMAT} (the FORMATS variable is read when this is absent)")
+    parser.add_argument("--format", help=f"what to write: {', '.join(sorted(ALLOWED_FORMATS - {'review', 'notes'}))} or all, comma-separated; default {DEFAULT_FORMAT}")
     parser.add_argument("--source", default="slides.html", help="the deck source (default slides.html)")
     parser.add_argument("--name", help="the output file name without extension (default this directory's name)")
     add_check_arguments(parser)
@@ -31,7 +30,7 @@ def export_request(parsed) -> ExportRequest:
         source_path=source_path,
         deck_name=parsed.name or working_directory.name,
         build_path=working_directory / "build",
-        formats=enabled_formats(parsed.format or os.environ.get("FORMATS") or DEFAULT_FORMAT),
+        formats=enabled_formats(parsed.format or DEFAULT_FORMAT),
         check=check_request(source_path, parsed),
     )
 

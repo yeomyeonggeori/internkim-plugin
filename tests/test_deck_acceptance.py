@@ -99,6 +99,13 @@ class BuildHelpTest(unittest.TestCase):
                 self.assertIn("usage:", completed.stdout)
                 self.assertEqual(list(Path(directory).iterdir()), [])
 
+    def test_build_help_names_only_its_flags_and_the_reference_states_not_measured_once(self):
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--help"], capture_output=True, text=True)
+        self.assertNotIn("FORMATS", completed.stdout)
+        reference = (SCRIPTS_PATH.parent / "references" / "deck.md").read_text(encoding="utf-8")
+        self.assertEqual(reference.count("NOT MEASURED"), 1)
+        self.assertNotIn("Without bun", reference)
+
     def test_an_unknown_format_is_refused_before_anything_renders(self):
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / "slides.html").write_text('<body data-theme="editorial"><section data-layout="statement"><h2>배송이 빨라집니다</h2></section></body>', encoding="utf-8")

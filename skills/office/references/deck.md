@@ -97,7 +97,7 @@ It writes `build/<deck-slug>.pdf`; add `--format pptx` for PowerPoint or `--form
    - `ACCEPTABLE`: deliver the file it names. Other issues are advice; do not redesign a slide that is clean.
    - `FIX ROUND 1 OF 2` or `2 OF 2`: fix only the listed defects (text that overflows or overlaps, content off the slide, a missing fact, an off-palette color, tiny text, a mostly empty slide) by shortening, splitting or filling, then build again.
    - `STOP FIXING`: deliver and name the defects that remain.
-   - `NOT MEASURED`: neither bun nor node 18 could draw the slides, so there is no PDF; deliver `build/<deck-slug>.html` and say the layout was not checked.
+   - `NOT MEASURED`: neither bun nor node 18 could draw the slides, so there is no PDF and a requested PPTX holds only the slide text in stock layouts; deliver the file the verdict names and say the layout was not checked.
 3. Before attaching, open `build/review/contact-sheet-01.png` once and confirm the slides read as intended.
 
 ## Images
@@ -115,7 +115,3 @@ The PPTX is built from the rendered slides: every word is an editable text box, 
 ## Editing a delivered .pptx
 
 When the user hands over a .pptx, or asks for a change to one with no `slides.html` beside it, run `<skill>/scripts/office deck read <file.pptx>`: each shape's index, kind, box and text style, with tables, charts and notes. Write the change as one batch for `deck apply <file.pptx> <ops.json>` with every number taken from that read; `<skill>/scripts/office guide deck apply` lists the operations. The batch applies whole or not at all; pass `--dry-run` to preview and `--output` to keep the original. Each layout problem the result reports carries a `suggestion` that is an operation to apply as it is. Before delivering, run `deck check <file.pptx>` and look at its contact sheet; if it reports `PPTX_NOT_RENDERED`, say the slides were not seen. Text a built deck kept as a picture cannot be edited this way; for a larger change to a built deck, edit `slides.html` and rebuild, or recover it with `deck restore`.
-
-## Without bun or node
-
-The build then writes a PPTX that re-lays the slide text into stock layouts, reported as `PPTX_WITHOUT_DESIGN`, and no PDF. Say so when delivering.
