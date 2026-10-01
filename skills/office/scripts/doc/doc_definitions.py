@@ -341,7 +341,12 @@ MERGE_ISSUE_KINDS = (UNRESOLVED_PLACEHOLDER, UNUSED_VALUE, TEMPLATE_SYNTAX_ERROR
 
 IMAGE_UNAVAILABLE = IssueKind("IMAGE_UNAVAILABLE", WARNING, "a Markdown image is not a readable local file, so its alt text was written instead", "fix the image path relative to the Markdown file, or save a remote image locally first")
 
-EXPORT_ISSUE_KINDS = (IMAGE_UNAVAILABLE,)
+PDF_RENDERER_FAILED = IssueKind("PDF_RENDERER_FAILED", ERROR, "the document PDF renderer (bun with takumi-pdf) could not be installed or could not render", "check that bun is on PATH and the network allows its first install, then rerun")
+PDF_RENDERER_UNAVAILABLE = IssueKind("PDF_RENDERER_UNAVAILABLE", WARNING, "bun is not installed, so the PDF was drawn by the plain fallback renderer without inline bold, links styling or page numbers", "install bun for the typeset PDF, or deliver this plainer one")
+
+GLYPH_NOT_COVERED = IssueKind("GLYPH_NOT_COVERED", WARNING, "some characters have no glyph in the bundled Paperlogy font or the installed Korean font, so they print as empty boxes", "replace those characters, such as an emoji or a rare Hanja, with words")
+
+EXPORT_ISSUE_KINDS = (IMAGE_UNAVAILABLE, PDF_RENDERER_FAILED, PDF_RENDERER_UNAVAILABLE, GLYPH_NOT_COVERED)
 
 GUIDE_INPUTS = (
     ("doc create --spec <file>", DOCUMENT_SPECIFICATION),

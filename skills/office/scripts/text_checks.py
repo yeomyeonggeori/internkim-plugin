@@ -9,6 +9,7 @@ PLACEHOLDER_PATTERN = re.compile(r"\{\{.*?\}\}|\{%.*?%\}")
 KOREAN_FONT_NAME_FRAGMENTS = (
     "noto",
     "nanum",
+    "paperlogy",
     "malgun",
     "apple sd",
     "applegothic",
