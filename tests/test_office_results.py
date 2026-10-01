@@ -77,6 +77,13 @@ class ResultEnvelopeTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             kind.issue("found", fix=[{"block": 2}])
 
+    def test_a_kind_whose_suggestion_applies_fix_refuses_an_issue_without_fix(self):
+        kind = IssueKind("SAMPLE", "warning", "a sample", "apply the operation in fix", suggestion_applies_fix=True)
+        self.assertEqual(kind.issue("found", fix=[{"op": "recalculate"}]).suggestion, "apply the operation in fix")
+        self.assertEqual(kind.issue("found", suggestion="leave it as it is").fix, ())
+        with self.assertRaises(TypeError):
+            kind.issue("found")
+
     def test_an_unknown_command_is_an_issue(self):
         with tempfile.TemporaryDirectory() as working_directory:
             _, envelope = run_office(["doc", "shred"], working_directory)

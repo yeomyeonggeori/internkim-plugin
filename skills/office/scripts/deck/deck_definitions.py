@@ -36,14 +36,14 @@ def review_check(code: str, meaning: str, suggestion: str) -> ReviewCheck:
 
 
 SLIDE_BLANK = review_check("SLIDE_BLANK", "the slide render shows no content", "check that the slide's content is not hidden or outside the frame")
-CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is larger than its box, so it is clipped or spills out", "cut or split what the message names; a build suggestion says how many rows, items or characters fit at full type size, and a .pptx suggestion is the operation to apply")
-OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "keep every part on the slide: split or cut what pushes it off, as the suggestion counts; in a .pptx, apply the operation the suggestion names")
+CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is larger than its box, so it is clipped or spills out", "cut or split what the message names, or give it a larger box; a build suggestion says how many rows, items or characters fit at full type size")
+OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "keep every part on the slide: split or cut what pushes it off, as a build suggestion counts, or move or resize it inside the slide's edges")
 TEXT_OVERLAP = review_check("TEXT_OVERLAP", "two pieces of text cover each other", "separate the two text blocks or shorten the one that spills")
 TEXT_COVERED = review_check("TEXT_COVERED", "a box painted over text hides part of it", "follow the suggestion, which names the cause: rows, items or text that do not fit, or a custom style that moves a part over another")
 FOOTER_CROSSED = review_check("FOOTER_CROSSED", "slide content reaches into the footer band", "shorten or split the content so it ends above the footer")
 TITLE_TOO_LONG = review_check("TITLE_TOO_LONG", f"a slide title runs past {TITLE_LINE_MAXIMUM} lines", "state the conclusion in one short sentence and move the detail into the body or the speaker notes")
 TINY_TEXT = review_check("TINY_TEXT", f"rendered text is smaller than {SMALLEST_TEXT_SHARE_OF_WIDTH:.0%} of the slide width ({SMALLEST_TEXT_SHARE_OF_WIDTH * slide_size()[0]:g}px on a {slide_size()[0]}px slide)", "shorten the slide so the kit does not shrink its type; the suggestion says how much fits at full size")
-IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "put the photo in a cover or image slide, which crops it to its frame; in a .pptx, apply the set_transform the suggestion names")
+IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "put the photo in a cover or image slide, which crops it to its frame, or give its box the image's own ratio")
 GEOMETRY_NOT_MEASURED = review_check("GEOMETRY_NOT_MEASURED", "no renderer measured element geometry, so overflow, overlap and stretched images were not checked", "install bun or node 18 and build again, or say the layout was not measured")
 UNRELIABLE_VISUAL_EVIDENCE = review_check("UNRELIABLE_VISUAL_EVIDENCE", "review images were not drawn from the deck's layout", "treat the previews as approximate and say so when delivering")
 

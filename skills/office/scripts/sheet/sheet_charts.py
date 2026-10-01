@@ -117,7 +117,7 @@ def left_out_issue(worksheet, bounds: tuple[int, int, int, int], columns: list[i
     )
 
 
-def text_column_suggestion(bounds: tuple[int, int, int, int], columns: list[int], left_out: list[int]) -> str | None:
+def text_column_suggestion(bounds: tuple[int, int, int, int], columns: list[int], left_out: list[int]) -> str:
     min_row, min_column, max_row, _ = bounds
     if min(left_out) > max(columns):
         trimmed = range_text((min_row, min_column, max_row, max(columns)))
@@ -125,7 +125,7 @@ def text_column_suggestion(bounds: tuple[int, int, int, int], columns: list[int]
     if max(left_out) < min(columns):
         relabelled = range_text((min_row, max(left_out), max_row, bounds[3]))
         return f"to label the categories with that text column instead, start the range at it: \"range\": \"{relabelled}\"; or leave it as it is"
-    return None
+    return "leave it as it is: the chart already draws only the number columns, and a range is one block, so text columns on both sides of the numbers stay inside it unless you move them"
 
 
 def range_text(bounds: tuple[int, int, int, int]) -> str:

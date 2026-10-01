@@ -18,8 +18,11 @@ class IssueKind:
     severity: str
     meaning: str
     suggestion: str
+    suggestion_applies_fix: bool = False
 
     def issue(self, message: str, location: str | None = None, suggestion: str | None = None, fix: tuple[dict, ...] | list[dict] = ()) -> "Issue":
+        if suggestion is None and self.suggestion_applies_fix and not fix:
+            raise TypeError(f"{self.code}: the default suggestion says to apply fix, so an issue without fix needs a suggestion of its own")
         return Issue(self, message, location, self.default_suggestion() if suggestion is None else suggestion, tuple(fix))
 
     def default_suggestion(self) -> str:
@@ -96,7 +99,7 @@ FILL_INS = (VALUE_FILL_IN, LABEL_FILL_IN, SERIES_NAME_FILL_IN, NUMBER_FILL_IN)
 INVALID_ARGUMENTS = IssueKind("INVALID_ARGUMENTS", ERROR, "the command line does not match the command's arguments", "run the command with --help and pass the arguments it lists")
 UNKNOWN_COMMAND = IssueKind("UNKNOWN_COMMAND", ERROR, "no office command has this format and verb", "run office --help for the command list")
 INPUT_NOT_FOUND = IssueKind("INPUT_NOT_FOUND", ERROR, "an input file or directory does not exist", "check the path, or write the file first")
-WRONG_INPUT_FORMAT = IssueKind("WRONG_INPUT_FORMAT", ERROR, "the input file is not the kind this command reads", "run the command the suggestion names for this kind of file")
+WRONG_INPUT_FORMAT = IssueKind("WRONG_INPUT_FORMAT", ERROR, "the input file is not the kind this command reads", "run the office command that reads this kind of file; office --help lists them")
 FILE_DAMAGED = IssueKind("FILE_DAMAGED", ERROR, "the file is the right kind but its structure is broken, as when a download or copy stopped early, so it cannot be read", "ask the user to send the complete file again; no office command can read this one")
 PDF_PASSWORD_REQUIRED = IssueKind("PDF_PASSWORD_REQUIRED", ERROR, "the PDF needs a password to open", "ask the user for the password and rerun with --password <password>; never guess one")
 NO_FILE_FOUND = IssueKind("NO_FILE_FOUND", ERROR, f"no path was given and {DOCUMENTS_FOLDER} holds no file of this kind", "pass the file path explicitly")
