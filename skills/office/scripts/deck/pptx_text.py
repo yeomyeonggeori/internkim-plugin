@@ -86,9 +86,15 @@ def placed_frame(block: dict, scale: SlideScale) -> tuple[Rectangle, Rectangle]:
         top, top_inset = top + top_inset, 0
     if bottom_inset < 0:
         bottom, bottom_inset = bottom - bottom_inset, 0
+    if block["anchor"] == "t":
+        bottom = max(bottom, top + top_inset + text_height_needed(block) + bottom_inset)
     left, right = widened_for_renderer(block, left, right)
     frame = Rectangle(max(0, left), max(0, top), min(scale.width_pixels, right), min(scale.height_pixels, bottom))
     return frame, Rectangle(insets["left"], top_inset, insets["right"], bottom_inset)
+
+
+def text_height_needed(block: dict) -> float:
+    return sum(paragraph["spaceBeforePx"] + len(paragraph["lines"]) * paragraph["lineHeightPx"] for paragraph in block["paragraphs"])
 
 
 def widened_for_renderer(block: dict, left: float, right: float) -> tuple[float, float]:
