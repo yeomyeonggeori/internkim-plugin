@@ -22,13 +22,16 @@ FORBIDDEN_SHEET_NAME_CHARACTERS = set("[]:*?/\\")
 
 
 def validate_sheet_name(workbook, name: str, location: str, renaming: str | None = None) -> None:
+    field = location.rsplit(".", 1)[-1]
     if len(name) > MAXIMUM_SHEET_NAME_LENGTH:
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: sheet names hold at most {MAXIMUM_SHEET_NAME_LENGTH} characters, {name!r} has {len(name)}", location))
+        shortened = name[:MAXIMUM_SHEET_NAME_LENGTH].rstrip()
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: Excel sheet names hold at most {MAXIMUM_SHEET_NAME_LENGTH} characters, and {name!r} has {len(name)}", location, f'use a name of {MAXIMUM_SHEET_NAME_LENGTH} characters or fewer, such as "{field}": "{shortened}"'))
     if FORBIDDEN_SHEET_NAME_CHARACTERS & set(name) or name.startswith("'") or name.endswith("'"):
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: a sheet name cannot hold any of [ ] : * ? / \\ or start or end with an apostrophe", location))
+        cleaned = "".join(character for character in name if character not in FORBIDDEN_SHEET_NAME_CHARACTERS).strip("'") or "Sheet"
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: a sheet name cannot hold any of [ ] : * ? / \\ or start or end with an apostrophe", location, f'use "{field}": "{cleaned}"'))
     taken = [title for title in workbook.sheetnames if title.casefold() == name.casefold() and title != renaming]
     if taken:
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: the workbook already has a sheet named {taken[0]!r}", location))
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: the workbook already has a sheet named {taken[0]!r}", location, f'pick a name no sheet has, such as "{field}": "{copy_title(workbook, name)}"'))
 
 
 def visible_sheets(workbook) -> list:

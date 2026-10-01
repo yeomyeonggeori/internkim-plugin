@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import datetime
 import os
+import re
 from typing import Iterable
 import warnings
 
 from openpyxl import load_workbook
 from openpyxl.worksheet.formula import ArrayFormula
-from openpyxl.utils import column_index_from_string
-from openpyxl.utils.cell import coordinate_from_string, range_boundaries
-from openpyxl.utils.exceptions import CellCoordinatesException
 
 from office_operations import TARGET_NOT_FOUND
 from office_result import INVALID_VALUE, OfficeFailure
@@ -48,36 +46,107 @@ def missing_sheet_issue(names: list[str], sheet_name: str, location: str):
 
 
 MAXIMUM_COLUMN = 16384
+MAXIMUM_ROW = 1048576
+CELL_GRAMMAR = re.compile(r"([A-Za-z]*)([0-9]*)")
+SHEET_LIMITS = "columns run from A to XFD and rows from 1 to 1048576"
 
 
 def sheet_of(workbook, operation: dict, location: str):
     return resolve_sheet(workbook, operation.get("sheet"), f"{location}.sheet")
 
 
+def letters_index(letters: str) -> int:
+    index = 0
+    for letter in letters.upper():
+        index = index * 26 + ord(letter) - ord("A") + 1
+    return index
+
+
 def column_index(text: str, location: str) -> int:
     letters = text.strip().upper()
-    if not letters.isalpha() or not letters.isascii() or len(letters) > 3 or column_index_from_string(letters) > MAXIMUM_COLUMN:
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: {text!r} is not a column letter such as C", location))
-    return column_index_from_string(letters)
+    if not letters.isalpha() or not letters.isascii():
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: {text!r} is not a column letter such as C", location, f"write only the column letters, such as {''.join(character for character in letters if character.isascii() and character.isalpha()) or 'C'}"))
+    if letters_index(letters) > MAXIMUM_COLUMN:
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: column {letters} is past XFD, the last column Excel has", location, f"use a column from A to XFD; {SHEET_LIMITS}"))
+    return letters_index(letters)
+
+
+def field_name(location: str) -> str:
+    return location.rsplit(".", 1)[-1].split("[", 1)[0]
+
+
+def refuse_sheet_prefix(text: str, location: str) -> None:
+    if "!" not in text:
+        return
+    sheet, _, cells = text.rpartition("!")
+    sheet = sheet.strip("'")
+    split = f"pass --sheet {sheet} {location} {cells}" if location.startswith("--") else f'put the sheet in its own field and the cells here: "sheet": "{sheet}", "{field_name(location)}": "{cells}"'
+    raise OfficeFailure(INVALID_VALUE.issue(f"{location}: {text!r} names the sheet inside the address, and this field takes only the cells", location, split))
+
+
+def cell_problems(text: str) -> list[str]:
+    match = CELL_GRAMMAR.fullmatch(text)
+    if match is None:
+        return ["it is not column letters followed by a row number"]
+    letters, digits = match.groups()
+    problems = []
+    if not letters:
+        problems.append("the column letters are missing")
+    elif letters_index(letters) > MAXIMUM_COLUMN:
+        problems.append(f"column {letters.upper()} is past XFD")
+    if not digits:
+        problems.append("the row number is missing")
+    elif not 1 <= int(digits) <= MAXIMUM_ROW:
+        problems.append(f"row {int(digits)} is outside 1 to {MAXIMUM_ROW}")
+    return problems
+
+
+def cell_example(text: str) -> str:
+    match = CELL_GRAMMAR.fullmatch(text)
+    letters, digits = match.groups() if match else ("", "")
+    column = letters.upper() if letters and letters_index(letters) <= MAXIMUM_COLUMN else "A"
+    row = digits if digits and 1 <= int(digits) <= MAXIMUM_ROW else "1"
+    return f"{column}{row}"
+
+
+def refuse_cell(text: str, location: str, problems: list[str]) -> None:
+    raise OfficeFailure(INVALID_VALUE.issue(
+        f"{location}: in {text!r}, {' and '.join(problems)}; {SHEET_LIMITS}",
+        location,
+        f'use a cell such as "{cell_example(text)}"',
+    ))
 
 
 def parse_cell(text: str, location: str) -> tuple[int, int]:
-    try:
-        column_letters, row = coordinate_from_string(text.replace("$", ""))
-    except CellCoordinatesException as error:
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: {text!r} is not a cell address such as B7", location)) from error
-    bounds = range_boundaries(f"{column_letters}{row}")
-    return bounds[1], bounds[0]
+    refuse_sheet_prefix(text, location)
+    written = text.strip().replace("$", "")
+    problems = cell_problems(written)
+    if problems:
+        refuse_cell(written, location, problems)
+    letters, digits = CELL_GRAMMAR.fullmatch(written).groups()
+    return int(digits), letters_index(letters)
 
 
 def parse_range(text: str, location: str) -> tuple[int, int, int, int]:
-    try:
-        min_column, min_row, max_column, max_row = range_boundaries(text.replace("$", "").upper())
-    except (ValueError, TypeError) as error:
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: {text!r} is not a range such as A1:D10", location)) from error
-    if None in (min_column, min_row, max_column, max_row):
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: {text!r} must name both corners, such as A1:D10", location))
-    return min_row, min_column, max_row, max_column
+    refuse_sheet_prefix(text, location)
+    corners = text.strip().replace("$", "").upper().split(":")
+    if len(corners) > 2 or not all(corners):
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: {text!r} is not a range such as A1:D10", location, "write two cells joined by a colon, such as A1:D10"))
+    if len(corners) == 2 and (all(corner.isalpha() for corner in corners) or all(corner.isdigit() for corner in corners)):
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: {text!r} must name both corners, such as A1:D10", location, f'add the row or column the corners lack, such as "{whole_line_example(corners)}"'))
+    for corner in corners:
+        problems = cell_problems(corner)
+        if problems:
+            raise OfficeFailure(INVALID_VALUE.issue(f"{location}: in the corner {corner} of {text!r}, {' and '.join(problems)}; {SHEET_LIMITS}", location, f'write each corner as a cell such as "{cell_example(corner)}"'))
+    first_row, first_column = parse_cell(corners[0], location)
+    last_row, last_column = parse_cell(corners[-1], location)
+    return min(first_row, last_row), min(first_column, last_column), max(first_row, last_row), max(first_column, last_column)
+
+
+def whole_line_example(corners: list[str]) -> str:
+    if all(corner.isalpha() for corner in corners):
+        return f"{corners[0]}1:{corners[-1]}100"
+    return f"A{corners[0]}:Z{corners[-1]}"
 
 
 def json_value(value):

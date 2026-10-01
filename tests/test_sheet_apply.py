@@ -82,6 +82,45 @@ class MisspelledInputTest(WorkbookEditTest):
         self.assertEqual(issue["suggestion"], "use one of the sheet names: 실적, 분석")
 
 
+class SpecificSuggestionTest(WorkbookEditTest):
+    def refusal(self, operations):
+        envelope = self.apply(operations, name="fixture.xlsx")
+        self.assertEqual(envelope["status"], "error", envelope)
+        return envelope["issues"][0]
+
+    def test_an_address_names_what_is_wrong_with_it(self):
+        issue = self.refusal([{"op": "set_cell", "sheet": "Sales", "cell": "ZZZZ99999999", "value": 1}])
+        self.assertIn("column ZZZZ is past XFD and row 99999999 is outside 1 to 1048576", issue["message"])
+        issue = self.refusal([{"op": "add_chart", "sheet": "Sales", "type": "bar", "range": "A1:B4", "anchor": "ZZ"}])
+        self.assertEqual((issue["location"], issue["suggestion"]), ("ops[0].anchor", 'use a cell such as "ZZ1"'))
+        issue = self.refusal([{"op": "add_chart", "type": "line", "range": "Sales!A1:B4"}])
+        self.assertEqual(issue["suggestion"], 'put the sheet in its own field and the cells here: "sheet": "Sales", "range": "A1:B4"')
+        envelope = run_office(["sheet", "read", "fixture.xlsx", "--range", "A1:ZZZ"], self.directory)
+        self.assertIn("in the corner ZZZ of 'A1:ZZZ', column ZZZ is past XFD and the row number is missing", envelope["summary"])
+        envelope = run_office(["sheet", "read", "fixture.xlsx", "--range", "XFE1"], self.directory)
+        self.assertEqual(envelope["status"], "error")
+
+    def test_a_taken_sheet_name_suggests_a_free_one(self):
+        issue = self.refusal([{"op": "add_sheet", "name": "Sales"}])
+        self.assertEqual(issue["suggestion"], 'pick a name no sheet has, such as "name": "Sales (2)"')
+        issue = self.refusal([{"op": "rename_sheet", "sheet": "Summary", "name": "sales"}])
+        self.assertEqual(issue["suggestion"], 'pick a name no sheet has, such as "name": "sales (2)"')
+
+    def test_a_field_written_under_another_word_names_the_field_it_means(self):
+        issues = self.apply([{"op": "add_chart", "sheet": "Sales", "type": "line", "data": "A1:B4"}], name="fixture.xlsx")["issues"]
+        self.assertEqual([(issue["location"], issue["suggestion"]) for issue in issues], [("ops[0].data", "rename the field to 'range'")])
+        write_json(self.directory / "spec.json", {"sheets": [{"name": "매출", "data": [["월", "매출"], ["1월", 5]]}]})
+        issues = run_office(["sheet", "create", "book.xlsx", "--spec", "spec.json"], self.directory)["issues"]
+        self.assertEqual([issue["suggestion"] for issue in issues], ["rename the field to 'title'", "rename the field to 'rows'"])
+
+    def test_rows_written_as_objects_are_answered_with_the_lists_they_mean(self):
+        write_json(self.directory / "spec.json", {"sheets": [{"title": "매출", "rows": [{"담당자": "이샘플", "매출": 5}, {"매출": 6, "담당자": "박예시"}]}]})
+        issue = run_office(["sheet", "create", "book.xlsx", "--spec", "spec.json"], self.directory)["issues"][0]
+        self.assertEqual((issue["code"], issue["location"]), ("WRONG_TYPE", "spec.sheets[0].rows"))
+        self.assertIn("spec.sheets[0].rows[1] lists its keys in another order", issue["message"])
+        self.assertIn('[["담당자", "매출"], ["이샘플", 5], ["박예시", 6]]', issue["suggestion"])
+
+
 class InsertAndDeleteTest(WorkbookEditTest):
     def test_inserted_rows_shift_every_reference_that_points_past_them(self):
         self.edit([{"op": "insert_rows", "sheet": "Sales", "at": 3, "count": 2}])

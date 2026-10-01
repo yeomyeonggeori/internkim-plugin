@@ -28,6 +28,12 @@ class ClosestNameTest(unittest.TestCase):
         self.assertEqual(closest_name("Heading1", ["Heading 1", "Heading 2", "Title"]), "Heading 1")
         self.assertEqual(closest_name("실젹", ["실적", "요약", "월별"]), "실적")
 
+    def test_a_word_that_means_a_field_names_that_field(self):
+        self.assertEqual(closest_name("data", ["dataLabels", "range", "title"]), "range")
+        self.assertEqual(closest_name("data", ["title", "rows", "heading"]), "rows")
+        self.assertEqual(closest_name("name", ["title", "rows"]), "title")
+        self.assertEqual(closest_name("title", ["name", "index"]), "name")
+
     def test_a_tie_suggests_nothing(self):
         self.assertIsNone(closest_name("colr", ["fillColr", "fontColr"]))
 

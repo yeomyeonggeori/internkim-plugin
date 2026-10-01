@@ -1,14 +1,38 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+import json
+
 from office_preview import PREVIEW_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
 from template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
-from office_result import ERROR, WARNING, IssueKind
+from office_result import ERROR, WARNING, WRONG_TYPE, Issue, IssueKind
 from office_schema import AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Text, Variant
 from text_checks import PLACEHOLDER_LEFT
 
 
-ROWS = ListOf(ListOf(CellValue()))
+SHOWN_ROW_LIMIT = 4
+
+
+@dataclass(frozen=True)
+class Rows(ListOf):
+    def problems(self, value: object, location: str) -> list[Issue]:
+        if not isinstance(value, list) or not value or not all(isinstance(row, dict) for row in value):
+            return super().problems(value, location)
+        header = list(dict.fromkeys(key for row in value for key in row))
+        reordered = [index for index, row in enumerate(value) if [key for key in header if key in row] != list(row)]
+        listed = ", ".join(f"{location}[{index}]" for index in reordered[:SHOWN_ROW_LIMIT])
+        order_note = f", and {listed} {'lists its' if len(reordered) == 1 else 'list their'} keys in another order" if reordered else ""
+        converted = [header, *([row.get(key) for key in header] for row in value)]
+        shown = json.dumps(converted[:SHOWN_ROW_LIMIT + 1], ensure_ascii=False) + (" and so on" if len(converted) > SHOWN_ROW_LIMIT + 1 else "")
+        return [WRONG_TYPE.issue(
+            f"{location}: rows are lists of cells, and these are objects keyed by header{order_note}",
+            location,
+            f"write the header once and every row as a list in the header's order: {shown}",
+        )]
+
+
+ROWS = Rows(ListOf(CellValue()))
 READ_ROW_LIMIT = 500
 
 SHEET = Record("sheet", "one worksheet; the first row, or the row after the heading, is the header", (

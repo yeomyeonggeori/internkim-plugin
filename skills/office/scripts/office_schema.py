@@ -199,16 +199,19 @@ class Record(Shape):
 
     def field_problems(self, value: dict, location: str, known_names: set[str]) -> list[Issue]:
         field_names = {field.name for field in self.fields} | known_names
+        unknown = [name for name in value if name not in field_names and not self.keeps_other_fields]
         problems = [
             UNKNOWN_FIELD.issue(
                 f"{join_location(location, name)}: {self.name} has no field {name!r}{did_you_mean(name, field_names)}; it takes {', '.join(sorted(field_names))}",
                 join_location(location, name),
                 closest_suggestion(name, field_names, "rename the field to {match!r}"),
             )
-            for name in value
-            if name not in field_names and not self.keeps_other_fields
+            for name in unknown
         ]
+        renamed = {closest_name(name, field_names) for name in unknown}
         for field in self.fields:
+            if field.name in renamed and field.name not in value:
+                continue
             problems.extend(field_value_problems(field, value.get(field.name), join_location(location, field.name)))
         return problems
 
@@ -258,9 +261,28 @@ class Variant(Shape):
                 yield from field.shape.structures()
 
 
+NAME_SYNONYMS = {
+    "name": ("title",),
+    "title": ("name",),
+    "data": ("rows", "range", "values"),
+    "cells": ("range", "values"),
+    "chartType": ("type",),
+    "kind": ("type",),
+    "sheetName": ("sheet",),
+    "tab": ("sheet",),
+    "rowFields": ("row",),
+    "columnField": ("column",),
+    "text": ("value",),
+    "content": ("text", "value"),
+}
+
+
 def closest_name(written: object, candidates) -> str | None:
     if not isinstance(written, str):
         return None
+    synonym = synonym_in(written, candidates)
+    if synonym is not None:
+        return synonym
     agreeing = [candidate for candidate in candidates if words_agree(written, candidate)]
     ranked = sorted(agreeing, key=lambda candidate: name_similarity(written, candidate), reverse=True)
     if not ranked:
@@ -268,6 +290,12 @@ def closest_name(written: object, candidates) -> str | None:
     if len(ranked) > 1 and name_similarity(written, ranked[0]) == name_similarity(written, ranked[1]):
         return None
     return ranked[0]
+
+
+def synonym_in(written: str, candidates) -> str | None:
+    present = {candidate.casefold(): candidate for candidate in candidates}
+    meanings = NAME_SYNONYMS.get(written, NAME_SYNONYMS.get(written.casefold(), ()))
+    return next((present[meaning.casefold()] for meaning in meanings if meaning.casefold() in present), None)
 
 
 def words_agree(written: str, candidate: str) -> bool:
