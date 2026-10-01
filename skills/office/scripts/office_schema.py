@@ -159,11 +159,18 @@ class AnyOf(Shape):
         candidate_problems = [shape.problems(value, location) for shape in self.shapes]
         if any(not problems for problems in candidate_problems):
             return []
+        kind_matches = [problems for problems in candidate_problems if not is_kind_mismatch(problems, location)]
+        if len(kind_matches) == 1:
+            return kind_matches[0]
         return [wrong_type(self, value, location)]
 
     def structures(self) -> Iterator["Record | Variant"]:
         for shape in self.shapes:
             yield from shape.structures()
+
+
+def is_kind_mismatch(problems: list[Issue], location: str) -> bool:
+    return len(problems) == 1 and problems[0].kind is WRONG_TYPE and problems[0].location == location
 
 
 @dataclass(frozen=True)

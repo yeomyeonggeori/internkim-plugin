@@ -58,11 +58,23 @@ def operation_text(office_format: Format, definitions: ModuleType, verb: str, op
     for variant in variants:
         record = variant.record_named(operation)
         if record is not None:
-            return "\n".join([f"office {command_name}, {variant.discriminator} \"{record.name}\": {record.description}", *field_lines(record.fields, "  ")])
+            return "\n".join([f"office {command_name}, {variant.discriminator} \"{record.name}\": {record.description}", *field_lines(record.fields, "  "), *nested_structure_lines(record)])
     names = [record.name for variant in variants for record in variant.records]
     match = closest_name(operation, names)
     suggestion = f"office guide {command_name} {match}" if match else f"one of: {', '.join(names)}" if names else f"office guide {command_name}"
     raise OfficeFailure(UNKNOWN_COMMAND.issue(f"office {command_name} has no operation {operation!r}", operation, suggestion))
+
+
+def nested_structure_lines(record: Record) -> list[str]:
+    described: list[Record | Variant] = [record]
+    lines = []
+    for field in record.fields:
+        for structure in field.shape.structures():
+            if any(existing is structure for existing in described):
+                continue
+            described.append(structure)
+            lines.extend(structure_lines(structure))
+    return lines
 
 
 def verb_inputs(definitions: ModuleType, command_name: str) -> list[tuple[str, Shape]]:
