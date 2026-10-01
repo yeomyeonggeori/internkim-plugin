@@ -59,7 +59,7 @@ XLSB = InputKind("xlsb", "a binary Excel workbook (.xlsb)", "office convert", fr
 }))
 OTHER_PACKAGE = InputKind("package", "a zip package that is not a Word, Excel or PowerPoint file", "")
 DAMAGED_PACKAGE = InputKind("damaged-package", "a zip package cut short or damaged", "")
-OTHER = InputKind("other", "neither an Office file nor a PDF", "")
+OTHER = InputKind("other", "not in any Office or PDF format", "")
 OPEN_XML_KINDS = (DOCX, XLSX, PPTX, XLSB)
 KINDS_BY_NAME = {kind.name: kind for kind in (DOCX, XLSX, PPTX, PDF)}
 
@@ -82,14 +82,22 @@ def require_kind(path: str, expected: InputKind) -> None:
     expanded_path = os.path.expanduser(path)
     if not os.path.isfile(expanded_path):
         raise OfficeFailure(INPUT_NOT_FOUND.issue(f"{path}: no such file", location=path))
+    if os.path.getsize(expanded_path) == 0:
+        raise OfficeFailure(FILE_DAMAGED.issue(f"{path} is empty (0 bytes)", location=path))
     actual = detected_kind(expanded_path)
     if actual == DAMAGED_PACKAGE:
         raise OfficeFailure(FILE_DAMAGED.issue(f"{path} is {actual.description}; it cannot be read as {expected.description}", location=path))
     if actual != expected:
-        raise OfficeFailure(WRONG_INPUT_FORMAT.issue(f"{path} is {actual.description}, not {expected.description}", location=path, suggestion=redirect_suggestion(path, actual)))
+        raise OfficeFailure(WRONG_INPUT_FORMAT.issue(kind_mismatch_message(path, actual, expected), location=path, suggestion=redirect_suggestion(path, actual)))
     problem = package_problem(expanded_path) if expected in OPEN_XML_KINDS else None
     if problem is not None:
         raise OfficeFailure(FILE_DAMAGED.issue(f"{path} cannot be read as {expected.description}: {problem}", location=path))
+
+
+def kind_mismatch_message(path: str, actual: InputKind, expected: InputKind) -> str:
+    if actual == OTHER:
+        return f"{path} is not {expected.description}: its content is {OTHER.description}"
+    return f"{path} is {actual.description}, not {expected.description}"
 
 
 def package_problem(path: str) -> str | None:

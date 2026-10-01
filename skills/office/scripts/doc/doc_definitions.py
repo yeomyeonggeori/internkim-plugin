@@ -399,15 +399,19 @@ OPERATIONS = Variant(
             Field("marginLeftInches", Number(minimum=0), "left margin"),
             Field("marginRightInches", Number(minimum=0), "right margin"),
             Field("columns", Number(1, 4, integer=True), "text columns"),
+            Field("pageNumberStart", Number(minimum=0, integer=True), "restart page numbering at this value, so {PAGE} fields count from it"),
         )),
         Record("insert_section_break", "start a new section after a block, so the pages after it can have their own orientation, margins, headers and footers", (
             Field("after", BLOCK_INDEX, "block index the current section ends with", required=True),
             Field("type", Choice(("nextPage", "continuous", "evenPage", "oddPage")), "where the new section starts, default nextPage"),
             Field("orientation", Choice(("portrait", "landscape")), "orientation of the new section"),
         )),
-        Record("set_watermark", "put large diagonal text such as 대외비 or DRAFT behind every page", (
-            Field("text", Text(), "watermark text; empty removes the watermark", required=True),
-            Field("color", HexColor(), "default light gray"),
+        Record("set_watermark", "put large diagonal text such as 대외비 or DRAFT, or a picture such as a logo, behind every page; give text or image", (
+            Field("text", Text(), "watermark text; empty removes the watermark"),
+            Field("image", Text(non_empty=True), "PNG, JPEG, GIF, BMP or TIFF file centered behind the body"),
+            Field("scale", Number(minimum=1, maximum=1000), "picture size as a percent of its natural size; default fit inside the margins"),
+            Field("washout", Boolean(), "fade the picture the way Word's washout does, default true"),
+            Field("color", HexColor(), "text color, default light gray"),
             Field("section", Number(minimum=0, integer=True), "section index; default every section"),
         )),
         Record("add_comment", "start a comment thread on a paragraph, or on exact text inside it; the document text is untouched", (

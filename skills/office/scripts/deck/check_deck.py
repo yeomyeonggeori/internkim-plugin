@@ -125,13 +125,12 @@ def layout_issues(slides: list[Slide]) -> list[Issue]:
     issues = []
     for slide in slides:
         if not slide.layout:
-            issues.append(LAYOUT_MISSING.issue(f"{slide.location} has no data-layout", slide.location, suggestion={"available": list(KIT_LAYOUT_NAMES)}))
+            issues.append(LAYOUT_MISSING.issue(f"{slide.location} has no data-layout", slide.location, suggestion=f"give the <section> a data-layout, one of: {', '.join(KIT_LAYOUT_NAMES)}"))
             continue
         layout = kit_layout(slide.layout)
         if layout is None:
-            suggestion = name_suggestion(slide.layout, KIT_LAYOUT_NAMES)
-            issues.append(LAYOUT_UNKNOWN.issue(f'{slide.location} uses data-layout="{slide.layout}"', slide.location, suggestion=suggestion))
-            layout = kit_layout(suggestion.get("didYouMean", ""))
+            issues.append(LAYOUT_UNKNOWN.issue(f'{slide.location} uses data-layout="{slide.layout}"', slide.location, suggestion=name_suggestion(slide.layout, KIT_LAYOUT_NAMES)))
+            layout = kit_layout(slide.intended_layout)
         if layout is not None:
             issues += part_issues(slide, layout)
     return issues
@@ -142,11 +141,10 @@ def part_issues(slide: Slide, layout: KitLayout) -> list[Issue]:
     children = slide.parts()
     for part in layout.parts:
         count = sum(1 for child in children if part.matches(child.tag, child.classes, child.attributes))
-        expected = {"layout": layout.name, "parts": [part_label(each) for each in layout.parts]}
         if count < part.minimum:
-            issues.append(LAYOUT_PART_MISSING.issue(f"{slide.location} ({layout.name}) has {count} of {part_label(part)} as a direct child of its <section>", slide.location, suggestion=expected))
+            issues.append(LAYOUT_PART_MISSING.issue(f"{slide.location} ({layout.name}) has {count} of {part_label(part)} as a direct child of its <section>", slide.location, suggestion=f"add it; {layout_parts(layout)}"))
         elif part.maximum is not None and count > part.maximum:
-            issues.append(LAYOUT_PART_EXCESS.issue(f"{slide.location} ({layout.name}) has {count} {part.selector}; the layout holds at most {part.maximum}", slide.location, suggestion=expected))
+            issues.append(LAYOUT_PART_EXCESS.issue(f"{slide.location} ({layout.name}) has {count} {part.selector}; the layout holds at most {part.maximum}", slide.location, suggestion=f"{LAYOUT_PART_EXCESS.default_suggestion()}; {layout_parts(layout)}"))
     return issues
 
 
@@ -190,9 +188,8 @@ def chart_issues(slide: Slide) -> list[Issue]:
         if "data-chart" in figure.attributes:
             chart_type = figure.attributes["data-chart"].strip()
             if chart_type not in chart_types():
-                suggestion = name_suggestion(chart_type, chart_types())
-                issues.append(CHART_DATA_INVALID.issue(f'{slide.location}: data-chart="{chart_type}" is not one of {", ".join(chart_types())}', slide.location, suggestion=suggestion))
-                chart_type = suggestion.get("didYouMean", "")
+                issues.append(CHART_DATA_INVALID.issue(f'{slide.location}: data-chart="{chart_type}" is not one of {", ".join(chart_types())}', slide.location, suggestion=name_suggestion(chart_type, chart_types())))
+                chart_type = closest_name(chart_type, chart_types()) or ""
             issues += [CHART_DATA_INVALID.issue(f"{slide.location}: {problem}", slide.location) for problem in chart_problems(chart_type, figure.attributes)]
     return issues
 
@@ -315,7 +312,8 @@ def palette_issues(root: Element, base_path: pathlib.Path, is_kit_deck: bool) ->
     if not off_palette:
         return []
     listed = ", ".join(f"#{color}" for color in off_palette)
-    return [OFF_PALETTE_COLOR.issue(f"{len(off_palette)} colors are outside the palette: {listed}", "slides.html", suggestion={"palette": sorted(f"#{color}" for color in palette), "offPalette": [f"#{color}" for color in off_palette]})]
+    palette_listed = ", ".join(sorted(f"#{color}" for color in palette))
+    return [OFF_PALETTE_COLOR.issue(f"{len(off_palette)} colors are outside the palette: {listed}", "slides.html", suggestion=f"{OFF_PALETTE_COLOR.default_suggestion()}; the palette is {palette_listed}")]
 
 
 def allowed_colors(root: Element, base_path: pathlib.Path, is_kit_deck: bool) -> set[str] | None:
@@ -375,12 +373,14 @@ def body_theme(root: Element) -> str | None:
     return body.attributes["data-theme"].strip()
 
 
-def name_suggestion(name: str, available: tuple[str, ...]) -> dict:
+def name_suggestion(name: str, available: tuple[str, ...]) -> str:
     match = closest_name(name, available)
-    suggestion = {"available": list(available)}
-    if match:
-        suggestion["didYouMean"] = match
-    return suggestion
+    listed = f"use one of: {', '.join(available)}"
+    return f"did you mean {match!r}? {listed}" if match else listed
+
+
+def layout_parts(layout: KitLayout) -> str:
+    return f"the {layout.name} layout takes, as direct children of its <section>: {', '.join(part_label(part) for part in layout.parts)}"
 
 
 def check_summary(slides: list[Slide], issues: list[Issue]) -> str:

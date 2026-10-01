@@ -24,16 +24,20 @@ PAPER_SIZES = {"A3": (Mm(297), Mm(420)), "A4": (Mm(210), Mm(297)), "A5": (Mm(148
 ORIENTATIONS = {"portrait": WD_ORIENT.PORTRAIT, "landscape": WD_ORIENT.LANDSCAPE}
 SECTION_STARTS = {"nextPage": WD_SECTION_START.NEW_PAGE, "continuous": WD_SECTION_START.CONTINUOUS, "evenPage": WD_SECTION_START.EVEN_PAGE, "oddPage": WD_SECTION_START.ODD_PAGE}
 MARGIN_FIELDS = {"marginTopInches": "top_margin", "marginBottomInches": "bottom_margin", "marginLeftInches": "left_margin", "marginRightInches": "right_margin"}
-PAGE_SETUP_FIELDS = ("paper", "orientation", "marginInches", *MARGIN_FIELDS, "columns")
+PAGE_SETUP_FIELDS = ("paper", "orientation", "marginInches", *MARGIN_FIELDS, "columns", "pageNumberStart")
 PAGE_FIELD_PATTERN = re.compile(r"(\{PAGE\}|\{NUMPAGES\})")
 PAGE_FIELD_INSTRUCTIONS = {"{PAGE}": "PAGE", "{NUMPAGES}": "NUMPAGES"}
 WATERMARK_SHAPE_PREFIX = "PowerPlusWaterMarkObject"
+PICTURE_WATERMARK_PREFIX = "WordPictureWatermark"
+WASHOUT_ATTRIBUTES = ' gain="19661f" blacklevel="22938f"'
+PICTURE_WATERMARK_TEMPLATE = """<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:w10="urn:schemas-microsoft-com:office:word"><w:pPr><w:pStyle w:val="Header"/></w:pPr><w:r><w:rPr><w:noProof/></w:rPr><w:pict><v:shapetype id="_x0000_t75" coordsize="21600,21600" o:spt="75" o:preferrelative="t" path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f"><v:stroke joinstyle="miter"/><v:formulas><v:f eqn="if lineDrawn pixelLineWidth 0"/><v:f eqn="sum @0 1 0"/><v:f eqn="sum 0 0 @1"/><v:f eqn="prod @2 1 2"/><v:f eqn="prod @3 21600 pixelWidth"/><v:f eqn="prod @3 21600 pixelHeight"/><v:f eqn="sum @0 0 1"/><v:f eqn="prod @6 1 2"/><v:f eqn="prod @7 21600 pixelWidth"/><v:f eqn="sum @8 21600 0"/><v:f eqn="prod @7 21600 pixelHeight"/><v:f eqn="sum @10 21600 0"/></v:formulas><v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect"/><o:lock v:ext="edit" aspectratio="t"/></v:shapetype><v:shape id="{shape_id}" o:spid="_x0000_s{spid}" type="#_x0000_t75" style="position:absolute;margin-left:0;margin-top:0;width:{width}pt;height:{height}pt;z-index:-251656192;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin" o:allowincell="f"><v:imagedata r:id="{relationship_id}" o:title="{title}"{washout}/><w10:wrap anchorx="margin" anchory="margin"/></v:shape></w:pict></w:r></w:p>"""
 WATERMARK_TEMPLATE = """<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w:pPr><w:pStyle w:val="Header"/></w:pPr><w:r><w:rPr><w:noProof/></w:rPr><w:pict><v:shapetype id="_x0000_t136" coordsize="21600,21600" o:spt="136" adj="10800" path="m@7,l@8,m@5,21600l@6,21600e"><v:formulas><v:f eqn="sum #0 0 10800"/><v:f eqn="prod #0 2 1"/><v:f eqn="sum 21600 0 @1"/><v:f eqn="sum 0 0 @2"/><v:f eqn="sum 21600 0 @3"/><v:f eqn="if @0 @3 0"/><v:f eqn="if @0 21600 @1"/><v:f eqn="if @0 0 @2"/><v:f eqn="if @0 @4 21600"/><v:f eqn="mid @5 @6"/><v:f eqn="mid @8 @5"/><v:f eqn="mid @7 @8"/><v:f eqn="mid @6 @7"/><v:f eqn="sum @6 0 @5"/></v:formulas><v:path textpathok="t" o:connecttype="custom" o:connectlocs="@9,0;@10,10800;@11,21600;@12,10800" o:connectangles="270,180,90,0"/><v:textpath on="t" fitshape="t"/><v:handles><v:h position="#0,bottomRight" xrange="6629,14971"/></v:handles><o:lock v:ext="edit" text="t" shapetype="t"/></v:shapetype><v:shape id="{shape_id}" o:spid="_x0000_s{spid}" type="#_x0000_t136" style="position:absolute;margin-left:0;margin-top:0;width:{width}pt;height:{height}pt;rotation:315;z-index:-251657216;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin" o:allowincell="f" fillcolor="#{color}" stroked="f"><v:fill opacity=".5"/><v:textpath style="font-family:&quot;{font}&quot;;font-size:1pt" string="{text}"/><w10:wrap anchorx="margin" anchory="margin"/></v:shape></w:pict></w:r></w:p>"""
 WATERMARK_FONT = "맑은 고딕"
 WATERMARK_HEIGHT_POINTS = 120
 WATERMARK_POINTS_PER_CHARACTER = 90
 WATERMARK_MAXIMUM_WIDTH_POINTS = 480
 DEFAULT_WATERMARK_COLOR = "C0C0C0"
+SECTION_PROPERTIES_AFTER_PAGE_NUMBERING = tuple(f"w:{name}" for name in ("cols", "formProt", "vAlign", "noEndnote", "titlePg", "textDirection", "bidi", "rtlGutter", "docGrid", "printerSettings", "sectPrChange"))
 
 
 def require_section(editing: DocxEditing, operation: dict, location: str) -> list:
@@ -132,6 +136,8 @@ def set_page(section, operation: dict) -> None:
             setattr(section, attribute, Inches(operation[field_name]))
     if operation.get("columns"):
         set_columns(section, operation["columns"])
+    if operation.get("pageNumberStart") is not None:
+        set_page_number_start(section, operation["pageNumberStart"])
 
 
 def current_orientation(section) -> str:
@@ -154,6 +160,14 @@ def set_columns(section, count: int) -> None:
         section._sectPr.append(columns)
     columns.set(qn("w:num"), str(count))
     columns.set(qn("w:space"), "425")
+
+
+def set_page_number_start(section, start: int) -> None:
+    numbering = section._sectPr.find(qn("w:pgNumType"))
+    if numbering is None:
+        numbering = OxmlElement("w:pgNumType")
+        section._sectPr.insert_element_before(numbering, *SECTION_PROPERTIES_AFTER_PAGE_NUMBERING)
+    numbering.set(qn("w:start"), str(start))
 
 
 def plan_insert_section_break(editing: DocxEditing, operation: dict, location: str) -> Change:
@@ -193,11 +207,12 @@ def governing_section_properties(editing: DocxEditing, carrier):
 
 
 def is_watermark(element) -> bool:
-    return any((shape.get("id") or "").startswith(WATERMARK_SHAPE_PREFIX) for shape in element.iter("{urn:schemas-microsoft-com:vml}shape"))
+    return any((shape.get("id") or "").startswith((WATERMARK_SHAPE_PREFIX, PICTURE_WATERMARK_PREFIX)) for shape in element.iter("{urn:schemas-microsoft-com:vml}shape"))
 
 
 def plan_set_watermark(editing: DocxEditing, operation: dict, location: str) -> Change:
     sections = require_section(editing, operation, location)
+    image_path = require_watermark_source(operation, location)
 
     def change() -> str:
         for number, section in enumerate(sections, start=1):
@@ -208,10 +223,49 @@ def plan_set_watermark(editing: DocxEditing, operation: dict, location: str) -> 
                 continue
             header.is_linked_to_previous = False
             remove_watermarks(header._element)
-            if operation["text"]:
+            if image_path:
+                header._element.append(picture_watermark_paragraph(header, section, operation, image_path, number, location))
+            elif operation["text"]:
                 header._element.append(watermark_paragraph(operation, number))
+        if image_path:
+            return f"set {os.path.basename(image_path)} as the watermark"
         return "removed the watermark" if not operation["text"] else f"set the watermark {operation['text']!r}"
     return change
+
+
+def require_watermark_source(operation: dict, location: str) -> str | None:
+    if (operation.get("text") is None) == (operation.get("image") is None):
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: give exactly one of text and image", location, suggestion='text "" removes the watermark'))
+    if operation.get("image") is None:
+        return None
+    path = os.path.expanduser(operation["image"])
+    if not os.path.isfile(path):
+        raise OfficeFailure(INPUT_NOT_FOUND.issue(f"{location}.image: {operation['image']} does not exist", f"{location}.image", suggestion="pass an absolute path, or one relative to the directory doc apply runs in"))
+    return path
+
+
+def picture_watermark_paragraph(header, section, operation: dict, image_path: str, number: int, location: str):
+    try:
+        relationship_id, image = header.part.get_or_add_image(image_path)
+    except UnrecognizedImageError as error:
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}.image: {os.path.basename(image_path)} is not a PNG, JPEG, GIF, BMP or TIFF image", f"{location}.image")) from error
+    scale = operation["scale"] / 100 if operation.get("scale") else fitting_scale(section, image)
+    return parse_xml(PICTURE_WATERMARK_TEMPLATE.format(
+        shape_id=f"{PICTURE_WATERMARK_PREFIX}{number}",
+        spid=2048 + number,
+        width=round(Emu(image.width * scale).pt, 1),
+        height=round(Emu(image.height * scale).pt, 1),
+        relationship_id=relationship_id,
+        title=xml_attribute(os.path.splitext(os.path.basename(image_path))[0]),
+        washout=WASHOUT_ATTRIBUTES if operation.get("washout", True) else "",
+    ))
+
+
+def fitting_scale(section, image) -> float:
+    text_width = section.page_width - section.left_margin - section.right_margin
+    text_height = section.page_height - section.top_margin - section.bottom_margin
+    return min(1, text_width / image.width, text_height / image.height)
+
 
 
 def remove_watermarks(header_element) -> None:

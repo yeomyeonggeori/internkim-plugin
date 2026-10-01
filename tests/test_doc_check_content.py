@@ -55,11 +55,11 @@ class ContentCheckTest(DocumentFixture):
         envelope = run_office(["doc", "check", "fixture.docx"], self.directory)
         findings = {issue["code"]: issue for issue in envelope["issues"] if issue["code"] in CONTENT_CODES}
         self.assertEqual(set(findings), CONTENT_CODES)
-        self.assertEqual(findings["HEADING_SKIP"]["suggestion"]["style"], "Heading 2")
-        chart_fix = findings["CHART_EMPTY"]["suggestion"]
+        self.assertEqual(findings["HEADING_SKIP"]["fix"][0]["style"], "Heading 2")
+        chart_fix = findings["CHART_EMPTY"]["fix"][0]
         self.assertEqual(chart_fix["categories"], ["1분기", "2분기"])
         chart_fix["series"] = [{"name": "매출", "values": [5, 6]}]
-        fixes = [findings[code]["suggestion"] for code in ("MISSING_IMAGE", "EMPTY_HEADING", "HEADING_SKIP", "UNRESOLVED_COMMENTS", "FIELD_NOT_EVALUATED")] + [chart_fix]
+        fixes = [operation for code in ("MISSING_IMAGE", "EMPTY_HEADING", "HEADING_SKIP", "UNRESOLVED_COMMENTS", "FIELD_NOT_EVALUATED") for operation in findings[code]["fix"]] + [chart_fix]
         write_json(self.directory / "fixes.json", fixes)
         self.assertEqual(run_office(["doc", "apply", "fixture.docx", "fixes.json"], self.directory)["status"], "ok")
         remaining = {issue["code"] for issue in run_office(["doc", "check", "fixture.docx"], self.directory)["issues"]}

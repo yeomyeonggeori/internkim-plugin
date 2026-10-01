@@ -1,3 +1,5 @@
+import base64
+import io
 import json
 from pathlib import Path
 import re
@@ -5,6 +7,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
+
+from PIL import Image
 
 from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, run_office, run_office_python
 from render_fixture import assert_pages_drawn, can_render, pdf_page_count
@@ -164,6 +168,72 @@ class PreviewDefectTest(unittest.TestCase):
     def test_a_page_with_nothing_in_its_body_is_reported_by_number(self):
         blank = [issue for issue in self.envelope["issues"] if issue["code"] == "BLANK_PAGE"]
         self.assertEqual([issue["location"] for issue in blank], ["page 2"])
+
+
+TWO_SECTIONS_AND_A_LOGO = """
+from docx import Document
+from PIL import Image
+Image.new("RGB", (400, 200), (29, 78, 216)).save("logo.png")
+document = Document()
+for number in range(3):
+    document.add_paragraph(f"첫 구역 문단 {number + 1}")
+document.add_paragraph("둘째 구역 문단")
+document.save("구역.docx")
+"""
+
+
+class WatermarkAndPageNumberingTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.temporary_directory = tempfile.TemporaryDirectory()
+        cls.directory = Path(cls.temporary_directory.name)
+        run_office_python(TWO_SECTIONS_AND_A_LOGO, cls.directory)
+        cls.apply([{"op": "set_footer", "text": "- {PAGE} -", "align": "center"}, {"op": "insert_section_break", "after": 2}])
+        cls.apply([{"op": "set_page_setup", "section": 1, "pageNumberStart": 7}, {"op": "set_watermark", "image": "logo.png"}])
+        cls.envelope = run_office(["doc", "render", "구역.docx"], cls.directory)
+        cls.pages = page_sections((cls.directory / "구역-preview" / "preview.html").read_text(encoding="utf-8"))
+
+    @classmethod
+    def apply(cls, operations):
+        (cls.directory / "ops.json").write_text(json.dumps(operations, ensure_ascii=False), encoding="utf-8")
+        envelope = run_office(["doc", "apply", "구역.docx", "ops.json"], cls.directory)
+        assert envelope["status"] == "ok", envelope
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.temporary_directory.cleanup()
+
+    def test_a_section_numbered_from_a_start_value_shows_it_on_its_first_page(self):
+        self.assertEqual(self.envelope["status"], "ok", self.envelope["issues"])
+        self.assertEqual([number for number, _, _ in self.pages], ["1", "2"])
+        self.assertEqual([re.findall(r">(\d+)<", body)[-1] for _, _, body in self.pages], ["1", "7"])
+
+    def test_a_picture_watermark_is_drawn_washed_out_behind_every_page_and_not_in_the_header(self):
+        for _, _, body in self.pages:
+            sources = re.findall(r'<img src="data:image/png;base64,([^"]+)"', body)
+            self.assertEqual(len(sources), 1)
+            self.assertTrue(body.index("<img") < body.index("문단"), "the watermark is drawn before the text, so the text covers it")
+            self.assertGreater(min(washed_pixel(sources[0])), 160)
+
+    def test_a_picture_watermark_keeps_its_colors_without_washout_and_takes_a_scale(self):
+        (self.directory / "plain.json").write_text(json.dumps([{"op": "set_watermark", "image": "logo.png", "washout": False, "scale": 50}]), encoding="utf-8")
+        envelope = run_office(["doc", "apply", "구역.docx", "plain.json", "--output", "원색.docx"], self.directory)
+        self.assertEqual(envelope["status"], "ok", envelope["issues"])
+        run_office(["doc", "render", "원색.docx"], self.directory)
+        _, _, body = page_sections((self.directory / "원색-preview" / "preview.html").read_text(encoding="utf-8"))[0]
+        source = re.search(r'<img src="data:image/png;base64,([^"]+)" style="([^"]*)"', body)
+        self.assertEqual(washed_pixel(source.group(1)), (29, 78, 216))
+        self.assertEqual(source.group(2).replace(" ", ""), "width:266.67px;height:133.33px")
+
+    def test_a_watermark_takes_text_or_an_image_but_not_both(self):
+        (self.directory / "both.json").write_text(json.dumps([{"op": "set_watermark", "text": "대외비", "image": "logo.png"}]), encoding="utf-8")
+        envelope = run_office(["doc", "apply", "구역.docx", "both.json", "--dry-run"], self.directory)
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("INVALID_VALUE", "ops[0]")])
+
+
+def washed_pixel(base64_png):
+    with Image.open(io.BytesIO(base64.b64decode(base64_png))) as picture:
+        return picture.convert("RGB").getpixel((0, 0))
 
 
 if __name__ == "__main__":

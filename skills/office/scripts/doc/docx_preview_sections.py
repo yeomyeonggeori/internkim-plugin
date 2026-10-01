@@ -43,6 +43,12 @@ def section_type(properties) -> str:
     return element.get(qn("w:val"), "nextPage") if element is not None else "nextPage"
 
 
+def page_number_start(properties) -> int | None:
+    numbering = properties.find(qn("w:pgNumType")) if properties is not None else None
+    start = numbering.get(qn("w:start"), "") if numbering is not None else ""
+    return int(start) if start.isdigit() else None
+
+
 def twips(element, name: str, default: float) -> float:
     if element is None or element.get(qn(name)) is None:
         return default

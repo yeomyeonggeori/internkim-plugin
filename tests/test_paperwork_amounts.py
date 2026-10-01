@@ -32,6 +32,10 @@ def quote(supply_total_text="1,000,000원", vat_text="100,000원", grand_total_t
     }
 
 
+def mismatches(envelope):
+    return {fact["code"]: (fact["expected"], fact["found"]) for fact in envelope["details"]["facts"] if not fact["holds"]}
+
+
 def fifteen_won_rows(row_vats, vat_total, grand_total="48"):
     headers = ["품명", "수량", "단가", "공급가액"] + ([] if row_vats is None else ["세액"])
     rows = [["품목", "1", "15", "15"] + ([] if row_vats is None else [row_vat]) for row_vat in (row_vats or ["", "", ""])]
@@ -86,8 +90,9 @@ class CheckCommandTest(unittest.TestCase):
         issues = {issue["code"]: issue for issue in envelope["issues"]}
         self.assertEqual(envelope["status"], "error")
         self.assertEqual(set(issues), {"VAT_MISMATCH", "GRAND_TOTAL_MISMATCH", "AMOUNT_IN_WORDS_MISMATCH"})
-        self.assertEqual(issues["VAT_MISMATCH"]["suggestion"], {"expected": 100_000, "found": 90_000})
-        self.assertEqual(issues["GRAND_TOTAL_MISMATCH"]["suggestion"], {"expected": 1_090_000, "found": 1_200_000})
+        self.assertEqual(mismatches(envelope)["VAT_MISMATCH"], (100_000, 90_000))
+        self.assertEqual(mismatches(envelope)["GRAND_TOTAL_MISMATCH"], (1_090_000, 1_200_000))
+        self.assertEqual(issues["VAT_MISMATCH"]["suggestion"], "correct the VAT line: write 100000")
         self.assertEqual(issues["VAT_MISMATCH"]["location"], "items.totals[1].value")
 
     def test_a_wrong_row_and_supply_total_are_reported(self):
@@ -101,19 +106,22 @@ class CheckCommandTest(unittest.TestCase):
         document = fifteen_won_rows(row_vats=["1", "1", "1"], vat_total="3")
         self.assertEqual(self.check(document)["issues"], [])
         document = fifteen_won_rows(row_vats=["1", "2", "1"], vat_total="4")
-        issues = {issue["code"]: issue for issue in self.check(document)["issues"]}
-        self.assertEqual(issues["ROW_VAT_MISMATCH"]["suggestion"], {"expected": 1, "found": 2})
+        envelope = self.check(document)
+        issues = {issue["code"]: issue for issue in envelope["issues"]}
+        self.assertEqual(mismatches(envelope)["ROW_VAT_MISMATCH"], (1, 2))
         self.assertEqual(issues["ROW_VAT_MISMATCH"]["location"], "items.rows[1][4]")
         self.assertNotIn("VAT_MISMATCH", issues)
 
     def test_the_vat_total_must_equal_the_row_vat_sum_not_the_truncated_supply_vat(self):
         envelope = self.check(fifteen_won_rows(row_vats=["1", "1", "1"], vat_total="4", grand_total="49"))
-        self.assertEqual([(issue["code"], issue["suggestion"]) for issue in envelope["issues"]], [("VAT_MISMATCH", {"expected": 3, "found": 4})])
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["VAT_MISMATCH"])
+        self.assertEqual(mismatches(envelope), {"VAT_MISMATCH": (3, 4)})
 
     def test_without_row_vats_the_vat_total_is_truncated_from_the_supply_total(self):
         self.assertEqual(self.check(fifteen_won_rows(row_vats=None, vat_total="4", grand_total="49"))["issues"], [])
         envelope = self.check(fifteen_won_rows(row_vats=None, vat_total="3", grand_total="48"))
-        self.assertEqual([(issue["code"], issue["suggestion"]) for issue in envelope["issues"]], [("VAT_MISMATCH", {"expected": 4, "found": 3})])
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["VAT_MISMATCH"])
+        self.assertEqual(mismatches(envelope), {"VAT_MISMATCH": (4, 3)})
 
     def test_a_spelled_total_with_the_old_hanja_suffix_matches(self):
         envelope = self.check(quote(words="일금 일백일십만원整 (₩1,100,000) (부가세 포함)"))
@@ -126,7 +134,8 @@ class CheckCommandTest(unittest.TestCase):
 
     def test_a_contract_amount_in_words_is_checked(self):
         envelope = self.check({"totalAmount": "50,000,000", "totalAmountKorean": "일금 오천만원整"})
-        self.assertEqual([(issue["code"], issue["suggestion"]["expected"]) for issue in envelope["issues"]], [("AMOUNT_IN_WORDS_MISMATCH", "오천만")])
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["AMOUNT_IN_WORDS_MISMATCH"])
+        self.assertEqual(mismatches(envelope)["AMOUNT_IN_WORDS_MISMATCH"][0], "오천만")
         self.assertEqual(self.check({"totalAmount": "50,000,000", "totalAmountKorean": "오천만"})["issues"], [])
 
     def test_an_input_without_amounts_warns(self):

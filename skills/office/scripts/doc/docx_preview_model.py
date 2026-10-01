@@ -137,3 +137,5 @@ class SectionModel:
     footer: list
     starts_new_page: bool = True
     watermark: str = ""
+    watermark_image: ImageItem | None = None
+    page_number_start: int | None = None

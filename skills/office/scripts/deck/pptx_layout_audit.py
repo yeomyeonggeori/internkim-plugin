@@ -6,7 +6,7 @@ import math
 
 from pptx.oxml.ns import qn
 
-from deck_definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_OVERLAP
+from deck_definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_OVERLAP, ReviewCheck
 from office_result import Issue
 from pptx_geometry import EMU_PER_POINT, SLIDE_FRAME, Box, Frame, child_frame, local_box
 from pptx_inheritance import slide_context
@@ -123,8 +123,14 @@ def card_spill_issues(entries: list[Entry], area: SlideArea) -> list[Issue]:
             continue
         grown = Box(card.box.x, card.box.y, max(card.box.w, entry.visible_box.right + (card.box.right - entry.box.right) - card.box.x), max(card.box.h, entry.visible_box.bottom + (card.box.bottom - entry.box.bottom) - card.box.y))
         text = f"{label(entry, area)} grows with its text past shape {card.address} {card.name!r} that holds it"
-        issues.append(Issue(CONTENT_OVERFLOW.kind, text, location(entry, area), growth_fix(entry, area) or transform_suggestion(card, area, inside(grown, area))))
+        issues.append(layout_issue(CONTENT_OVERFLOW, text, location(entry, area), growth_fix(entry, area) or transform_suggestion(card, area, inside(grown, area))))
     return issues
+
+
+def layout_issue(check: ReviewCheck, text: str, where: str, remedy: dict | str | None) -> Issue:
+    if isinstance(remedy, dict):
+        return check.kind.issue(text, where, fix=[remedy])
+    return check.kind.issue(text, where, remedy)
 
 
 def contains(outer: Box, inner: Box) -> bool:
@@ -167,7 +173,7 @@ def frame_issues(entry: Entry, area: SlideArea) -> list[Issue]:
     whole = box.right < 0 or box.bottom < 0 or box.x > area.width or box.y > area.height
     text = f"{label(entry, area)} lies {'wholly outside the slide' if whole else 'partly outside the slide'}: {', '.join(past)}"
     fix = growth_fix(entry, area) or changed_transform(entry, area, inside(entry.box, area))
-    return [Issue(OUT_OF_FRAME.kind, text, location(entry, area), fix)]
+    return [layout_issue(OUT_OF_FRAME, text, location(entry, area), fix)]
 
 
 def growth_fix(entry: Entry, area: SlideArea) -> dict | None:
@@ -193,10 +199,10 @@ def overflow_issues(entry: Entry, area: SlideArea, entries: list[Entry]) -> list
     issues = []
     if fit.height_overflow > OVERFLOW_TOLERANCE:
         text = f"{label(entry, area)}: its text needs {points(fit.needed_height)}pt of height and the box gives {points(fit.available_height)}pt{measured_with(entry)}"
-        issues.append(Issue(CONTENT_OVERFLOW.kind, text, location(entry, area), taller_box_or_smaller_text(entry, area, entries)))
+        issues.append(layout_issue(CONTENT_OVERFLOW, text, location(entry, area), taller_box_or_smaller_text(entry, area, entries)))
     if fit.width_overflow > OVERFLOW_TOLERANCE:
         text = f"{label(entry, area)}: a line is {points(fit.widest_line)}pt wide and the box gives {points(fit.available_width)}pt{measured_with(entry)}"
-        issues.append(Issue(CONTENT_OVERFLOW.kind, text, location(entry, area), wider_box_or_smaller_text(entry, area, entries)))
+        issues.append(layout_issue(CONTENT_OVERFLOW, text, location(entry, area), wider_box_or_smaller_text(entry, area, entries)))
     return issues
 
 
@@ -263,7 +269,7 @@ def distortion_issues(entry: Entry, area: SlideArea) -> list[Issue]:
     else:
         corrected = Box(entry.box.x, entry.box.y, entry.box.w, round(entry.box.w / expected))
     text = f"{label(entry, area)} is stretched {round(distortion * 100)}% away from its image's ratio"
-    return [Issue(IMAGE_DISTORTED.kind, text, location(entry, area), transform_suggestion(entry, area, inside(corrected, area)))]
+    return [layout_issue(IMAGE_DISTORTED, text, location(entry, area), transform_suggestion(entry, area, inside(corrected, area)))]
 
 
 def cropped_ratio(element, pixels: tuple[int, int]) -> float:
@@ -297,7 +303,7 @@ def overlap_issues(entries: list[Entry], area: SlideArea) -> list[Issue]:
                 continue
             text = f"{label(first, area)} and shape {second.address} {second.name!r} overlap by {points(shared.w)}x{points(shared.h)}pt"
             fix = growth_fix(first, area) or growth_fix(second, area) or separation_fix(first, second, area, content)
-            issues.append(Issue(TEXT_OVERLAP.kind, text, location(first, area), fix))
+            issues.append(layout_issue(TEXT_OVERLAP, text, location(first, area), fix))
     return issues
 
 

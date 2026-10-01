@@ -421,10 +421,10 @@ MISSING_SHEET_REFERENCE = IssueKind("MISSING_SHEET_REFERENCE", ERROR, "a formula
 BROKEN_DEFINED_NAME = IssueKind("BROKEN_DEFINED_NAME", ERROR, "a defined name points at #REF! or a sheet the workbook does not have", "read the workbook's defined names and recreate the reference")
 CONTENT_WOULD_BE_LOST = IssueKind("CONTENT_WOULD_BE_LOST", ERROR, "the workbook holds content the editor cannot carry through a save, such as form controls, embedded objects or an unknown extension, so nothing was written", "pass --allow-loss to save without it, or leave this workbook to Excel")
 CONTENT_DROPPED = IssueKind("CONTENT_DROPPED", WARNING, "--allow-loss saved the workbook without content the editor cannot carry", "tell the user what was dropped")
-VALUE_STORED_AS_TEXT = IssueKind("VALUE_STORED_AS_TEXT", WARNING, "a cell holds text that reads as a number, a date or a formula missing its =, so sums, sorting, filters and charts treat it as words", "apply the suggested operations: they write the typed value or formula and keep how it looked")
+VALUE_STORED_AS_TEXT = IssueKind("VALUE_STORED_AS_TEXT", WARNING, "a cell holds text that reads as a number, a date or a formula missing its =, so sums, sorting, filters and charts treat it as words", "apply the operations in fix: they write the typed value or formula and keep how it looked")
 CHART_REFERENCE_BROKEN = IssueKind("CHART_REFERENCE_BROKEN", ERROR, "a chart series reads a sheet the workbook does not have, a range with no values, or values that hold no number, so the chart draws nothing for it", "read the sheet and point the chart at its data with edit_chart and range")
 CHART_COLUMN_LEFT_OUT = IssueKind("CHART_COLUMN_LEFT_OUT", WARNING, "a column of a chart's range, other than its first, holds no number, so the chart leaves it out instead of drawing an empty series", "start the range at the column that should label the categories, or leave it as it is")
-NUMBER_TOO_WIDE = IssueKind("NUMBER_TOO_WIDE", ERROR, "a number is wider than its column and Excel shows it as ####", "apply the suggested set_column_width")
+NUMBER_TOO_WIDE = IssueKind("NUMBER_TOO_WIDE", ERROR, "a number is wider than its column and Excel shows it as ####", "apply the set_column_width in fix")
 
 VALIDATE_ISSUE_KINDS = (
     HEADER_NOT_FROZEN,

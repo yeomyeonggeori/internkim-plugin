@@ -82,6 +82,15 @@ def shows_something(placed) -> bool:
     return any(fragment.kind in VISIBLE_FRAGMENT_KINDS or fragment.text.strip() for line in lines for fragment in line.fragments)
 
 
+def displayed_page_numbers(pages: list[Page]) -> list[int]:
+    numbers: list[int] = []
+    for index, page in enumerate(pages):
+        starts_section = index == 0 or pages[index - 1].section is not page.section
+        restarts = starts_section and page.section.page_number_start is not None
+        numbers.append(page.section.page_number_start if restarts else (numbers[-1] + 1 if numbers else 1))
+    return numbers
+
+
 class Paginator:
     def __init__(self, layout: Layout):
         self.layout = layout

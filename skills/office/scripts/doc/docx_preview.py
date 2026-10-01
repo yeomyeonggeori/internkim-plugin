@@ -15,7 +15,7 @@ from docx_preview_model import (
     FieldItem, LineBreakItem, NoteReferenceItem, PageBreakBlock, PageBreakItem, ParagraphBlock, SectionModel, TabItem, TextItem, TextStyle,
 )
 from docx_preview_numbering import Numbering, readable_symbol
-from docx_preview_sections import document_sections, section_geometry
+from docx_preview_sections import document_sections, page_number_start, section_geometry
 from docx_preview_styles import StyleSheet, merged, paragraph_properties, run_properties
 from docx_preview_tables import TableLayers, table_block
 from office_preview import Preview, points_to_pixels, twips_to_pixels
@@ -67,6 +67,7 @@ class DocxModelBuilder:
         self.footnote_count = 0
         self.current_footnote = 0
         self.watermark = ""
+        self.watermark_image = None
 
     def related_part(self, suffix: str):
         return next((relationship.target_part for relationship in self.document.part.rels.values() if relationship.reltype.endswith(suffix)), None)
@@ -92,7 +93,13 @@ class DocxModelBuilder:
             footer = self.header_footer(section.properties, "w:footerReference", footer)
             geometry = section_geometry(section.properties, self.preview)
             blocks = self.blocks(section.elements, self.document.part, TableLayers())
-            models.append(SectionModel(geometry, blocks, header, footer, starts_new_page=not section.continues_page, watermark=self.watermark))
+            models.append(SectionModel(
+                geometry, blocks, header, footer,
+                starts_new_page=not section.continues_page,
+                watermark=self.watermark,
+                watermark_image=self.watermark_image,
+                page_number_start=page_number_start(section.properties),
+            ))
         self.count_comments()
         return models
 

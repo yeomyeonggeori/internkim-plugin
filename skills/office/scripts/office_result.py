@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
+import logging
 import os
 from typing import Callable
 
@@ -18,8 +19,8 @@ class IssueKind:
     meaning: str
     suggestion: str
 
-    def issue(self, message: str, location: str | None = None, suggestion: object = None) -> "Issue":
-        return Issue(self, message, location, self.default_suggestion() if suggestion is None else suggestion)
+    def issue(self, message: str, location: str | None = None, suggestion: str | None = None, fix: tuple[dict, ...] | list[dict] = ()) -> "Issue":
+        return Issue(self, message, location, self.default_suggestion() if suggestion is None else suggestion, tuple(fix))
 
     def default_suggestion(self) -> str:
         return self.suggestion.replace("{guide}", guide_reference())
@@ -30,7 +31,14 @@ class Issue:
     kind: IssueKind
     message: str
     location: str | None
-    suggestion: object
+    suggestion: str
+    fix: tuple[dict, ...] = ()
+
+    def __post_init__(self):
+        if not isinstance(self.suggestion, str):
+            raise TypeError(f"{self.kind.code}: a suggestion is text, not {type(self.suggestion).__name__}; operations go in fix")
+        if not all(isinstance(operation, dict) and isinstance(operation.get("op"), str) for operation in self.fix):
+            raise TypeError(f"{self.kind.code}: fix holds operations, each an object with an op")
 
     def to_json(self) -> dict:
         return {
@@ -39,6 +47,7 @@ class Issue:
             "message": self.message,
             "location": self.location,
             "suggestion": self.suggestion,
+            "fix": list(self.fix),
         }
 
 
@@ -70,11 +79,6 @@ class Result:
         return envelope
 
 
-def issue_from_json(document: dict, kinds: tuple[IssueKind, ...]) -> Issue:
-    kind = next(kind for kind in kinds if kind.code == document["code"])
-    return Issue(kind, document["message"], document["location"], document["suggestion"])
-
-
 class OfficeFailure(Exception):
     def __init__(self, *issues: Issue):
         super().__init__("; ".join(issue.message for issue in issues))
@@ -97,6 +101,7 @@ MISSING_FIELD = IssueKind("MISSING_FIELD", ERROR, "a required field is absent or
 UNKNOWN_FIELD = IssueKind("UNKNOWN_FIELD", ERROR, "a field is not part of this structure", "remove the field or correct its spelling; {guide} lists every field")
 WRONG_TYPE = IssueKind("WRONG_TYPE", ERROR, "a field holds the wrong kind of value", "give the field the type {guide} names")
 INVALID_VALUE = IssueKind("INVALID_VALUE", ERROR, "a field's value is outside what the command accepts", "use a value {guide} allows")
+LIBRARY_WARNING = IssueKind("LIBRARY_WARNING", WARNING, "a library the command uses reported a problem it worked around, such as a PDF whose cross-reference table points at the wrong place", "compare the result with the input; if part of it is missing, ask the user for the complete file")
 
 COMMAND_ISSUE_KINDS = (
     INVALID_ARGUMENTS,
@@ -115,6 +120,7 @@ COMMAND_ISSUE_KINDS = (
     UNKNOWN_FIELD,
     WRONG_TYPE,
     INVALID_VALUE,
+    LIBRARY_WARNING,
 )
 
 
@@ -141,7 +147,35 @@ def print_result(result: Result) -> int:
     return 1 if result.status == "error" else 0
 
 
+class LibraryWarnings(logging.Handler):
+    def __init__(self):
+        super().__init__(logging.WARNING)
+        self.messages_by_library: dict[str, list[str]] = {}
+
+    def emit(self, record: logging.LogRecord) -> None:
+        messages = self.messages_by_library.setdefault(record.name.split(".")[0], [])
+        if record.getMessage() not in messages:
+            messages.append(record.getMessage())
+
+    def issues(self) -> tuple[Issue, ...]:
+        return tuple(LIBRARY_WARNING.issue(f"{library} reported: {'; '.join(messages)}") for library, messages in self.messages_by_library.items())
+
+
 def command_result(command: Callable[[], Result]) -> Result:
+    library_warnings = LibraryWarnings()
+    root_logger = logging.getLogger()
+    root_logger.addHandler(library_warnings)
+    logging.captureWarnings(True)
+    try:
+        result = attempted_result(command)
+    finally:
+        root_logger.removeHandler(library_warnings)
+    if result.status == "error":
+        return result
+    return replace(result, issues=result.issues + library_warnings.issues())
+
+
+def attempted_result(command: Callable[[], Result]) -> Result:
     try:
         return command()
     except OfficeFailure as failure:

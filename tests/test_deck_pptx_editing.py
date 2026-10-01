@@ -329,9 +329,9 @@ class LayoutAuditTest(KoreanDeckFixture):
         envelope = self.apply([{"op": "set_text", "slide": 2, "shape": 3, "text": long_text}, {"op": "set_text_frame", "slide": 2, "shape": 3, "autofit": "none"}])
         overflow = [issue for issue in envelope["issues"] if issue["code"] == "CONTENT_OVERFLOW" and issue["location"] == "slide 2 shape 3"]
         self.assertEqual(len(overflow), 1)
-        suggestion = overflow[0]["suggestion"]
-        self.assertEqual((suggestion["slide"], suggestion["shape"]), (2, 3))
-        fixed = self.apply([suggestion])
+        fix = overflow[0]["fix"]
+        self.assertEqual([(operation["slide"], operation["shape"]) for operation in fix], [(2, 3)])
+        fixed = self.apply(fix)
         self.assertNotIn("slide 2 shape 3", [issue["location"] for issue in fixed["issues"] if issue["code"] == "CONTENT_OVERFLOW"])
 
     def test_off_slide_overlap_and_stretched_pictures_are_found(self):
@@ -341,9 +341,9 @@ class LayoutAuditTest(KoreanDeckFixture):
             {"op": "set_transform", "slide": 2, "shape": 4, "w": 6000000},
         ])
         by_code = {issue["code"]: issue for issue in envelope["issues"]}
-        self.assertEqual(by_code["OUT_OF_FRAME"]["suggestion"], {"op": "set_transform", "slide": 3, "shape": 1, "y": 6858000 - 4572000})
-        self.assertEqual(by_code["TEXT_OVERLAP"]["suggestion"]["op"], "set_transform")
-        self.assertEqual(by_code["IMAGE_DISTORTED"]["suggestion"]["op"], "set_transform")
+        self.assertEqual(by_code["OUT_OF_FRAME"]["fix"], [{"op": "set_transform", "slide": 3, "shape": 1, "y": 6858000 - 4572000}])
+        self.assertEqual([operation["op"] for operation in by_code["TEXT_OVERLAP"]["fix"]], ["set_transform"])
+        self.assertEqual([operation["op"] for operation in by_code["IMAGE_DISTORTED"]["fix"]], ["set_transform"])
 
     def test_text_that_grows_past_its_card_is_found(self):
         envelope = self.apply([
@@ -351,18 +351,18 @@ class LayoutAuditTest(KoreanDeckFixture):
             {"op": "set_text_frame", "slide": 2, "shape": 2, "wrap": True},
         ])
         spill = [issue for issue in envelope["issues"] if "grows with its text past shape 1" in issue["message"]]
-        self.assertEqual(spill[0]["suggestion"]["shape"], 1)
+        self.assertEqual([operation["shape"] for operation in spill[0]["fix"]], [1])
 
     def test_text_that_grows_past_the_slide_bottom_gets_an_operation_not_prose(self):
         long_text = "이 문장은 상자에 비해 훨씬 길어서 슬라이드 아래로 넘칠 것입니다. " * 30
         envelope = self.apply([{"op": "set_text", "slide": 2, "shape": 3, "text": long_text}, {"op": "set_text_frame", "slide": 2, "shape": 3, "autofit": "resize", "wrap": True}])
         off_slide = [issue for issue in envelope["issues"] if issue["code"] == "OUT_OF_FRAME" and issue["location"] == "slide 2 shape 3"]
         self.assertEqual(len(off_slide), 1)
-        suggestion = off_slide[0]["suggestion"]
-        self.assertIsInstance(suggestion, dict)
-        fixed = self.apply([suggestion])
+        fix = off_slide[0]["fix"]
+        self.assertEqual(len(fix), 1)
+        fixed = self.apply(fix)
         self.assertNotIn("slide 2 shape 3", [issue["location"] for issue in fixed["issues"] if issue["code"] == "OUT_OF_FRAME"])
-        self.assertTrue(all(isinstance(issue["suggestion"], dict) for issue in fixed["issues"] if issue["code"] in ("OUT_OF_FRAME", "CONTENT_OVERFLOW")))
+        self.assertTrue(all(issue["fix"] for issue in fixed["issues"] if issue["code"] in ("OUT_OF_FRAME", "CONTENT_OVERFLOW")))
 
     def test_each_suggested_operation_clears_its_issue_or_the_issue_says_no_single_operation_can(self):
         moderate = "3분기 매출은 128억 원으로 전년 동기 대비 23% 성장했고, 신규 고객 42곳과 재구매율 68%가 함께 성장을 이끌었습니다.\n" * 3
@@ -375,13 +375,13 @@ class LayoutAuditTest(KoreanDeckFixture):
                 found = [issue for issue in envelope["issues"] if issue["location"] == "slide 2 shape 3" and issue["code"] in ("CONTENT_OVERFLOW", "OUT_OF_FRAME")]
                 self.assertTrue(found)
                 for issue in found:
-                    if not isinstance(issue["suggestion"], dict):
+                    if not issue["fix"]:
                         self.assertIn("no single operation", issue["suggestion"])
                         continue
                     shutil.copy(self.directory / "deck.pptx", self.directory / "before.pptx")
-                    after = self.apply([issue["suggestion"]])
+                    after = self.apply(issue["fix"])
                     remaining = [(other["code"], other["location"]) for other in after["issues"]]
-                    self.assertNotIn((issue["code"], issue["location"]), remaining, issue["suggestion"])
+                    self.assertNotIn((issue["code"], issue["location"]), remaining, issue["fix"])
                     shutil.copy(self.directory / "before.pptx", self.directory / "deck.pptx")
 
     def test_check_without_a_preview_reports_the_same_findings(self):

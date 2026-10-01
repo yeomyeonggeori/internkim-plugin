@@ -67,8 +67,8 @@ class DeckCheckTest(unittest.TestCase):
         result = self.check(kit_deck(COVER, '<section data-layout="kpis"><h2>지표가 좋아졌습니다</h2></section>'))
         issue = next(issue for issue in result.issues if issue.kind.code == "LAYOUT_UNKNOWN")
         self.assertEqual(issue.location, "slide 2")
-        self.assertEqual(issue.suggestion["didYouMean"], "kpi")
-        self.assertIn("timeline", issue.suggestion["available"])
+        self.assertTrue(issue.suggestion.startswith("did you mean 'kpi'? use one of: "), issue.suggestion)
+        self.assertIn("timeline", issue.suggestion)
 
     def test_every_structural_error_is_reported_in_one_pass(self):
         typo_with_one_kpi = '<section data-layout="kpii"><h2>지표가 좋습니다</h2><div class="kpi"><p class="value">1</p><p class="label">매출</p></div></section>'
@@ -77,7 +77,7 @@ class DeckCheckTest(unittest.TestCase):
         errors = [(issue.kind.code, issue.location) for issue in result.issues if issue.kind.severity == "error"]
         self.assertEqual(errors, [("LAYOUT_UNKNOWN", "slide 2"), ("LAYOUT_PART_MISSING", "slide 2"), ("CHART_DATA_INVALID", "slide 3"), ("CHART_DATA_INVALID", "slide 3")])
         chart_type = next(issue for issue in result.issues if 'colum"' in issue.message)
-        self.assertEqual(chart_type.suggestion["didYouMean"], "column")
+        self.assertTrue(chart_type.suggestion.startswith("did you mean 'column'?"), chart_type.suggestion)
         for issue in result.issues:
             self.assertIn(issue.message, result.summary)
 
@@ -88,7 +88,7 @@ class DeckCheckTest(unittest.TestCase):
     def test_an_unknown_theme_names_the_closest_one(self):
         result = self.check(kit_deck(COVER, theme="midnite"))
         issue = next(issue for issue in result.issues if issue.kind.code == "THEME_UNKNOWN")
-        self.assertEqual(issue.suggestion["didYouMean"], "midnight")
+        self.assertTrue(issue.suggestion.startswith("did you mean 'midnight'?"), issue.suggestion)
 
     def test_a_slide_without_a_layout_in_a_kit_deck_is_an_error(self):
         self.assertIn(("LAYOUT_MISSING", "slide 2"), self.codes(kit_deck(COVER, "<section><h2>레이아웃이 없습니다</h2></section>")))
@@ -100,7 +100,7 @@ class DeckCheckTest(unittest.TestCase):
         missing = next(issue for issue in result.issues if issue.kind.code == "LAYOUT_PART_MISSING")
         self.assertEqual(missing.location, "slide 2")
         self.assertIn(".kpi x2-4", missing.message)
-        self.assertEqual(missing.suggestion["layout"], "kpi")
+        self.assertIn("the kpi layout takes", missing.suggestion)
         self.assertIn(("LAYOUT_PART_EXCESS", "slide 3"), [(issue.kind.code, issue.location) for issue in result.issues])
 
     def test_three_slides_in_a_row_with_one_layout_are_an_error(self):
@@ -194,8 +194,8 @@ class DeckCheckTest(unittest.TestCase):
         result = self.check(kit_deck(COVER, head=head))
         issue = next(issue for issue in result.issues if issue.kind.code == "OFF_PALETTE_COLOR")
         self.assertEqual(issue.kind.severity, "warning")
-        self.assertEqual(issue.suggestion["offPalette"], ["#008000", "#FF00AA"])
-        self.assertIn("#E4002B", issue.suggestion["palette"])
+        self.assertIn("#008000, #FF00AA", issue.message)
+        self.assertIn("#E4002B", issue.suggestion)
 
     def test_a_design_document_palette_also_governs_a_deck_without_the_kit(self):
         custom = '<html><head><style>h2 { color: #123456; } p { color: #654321; }</style></head><body><section><h2>제목</h2><p>본문</p></section></body></html>'
