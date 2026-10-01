@@ -8,7 +8,7 @@ from openpyxl.chart.shapes import GraphicalProperties
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.cell import range_boundaries
 
-from office_operations import OPERATION_NOT_APPLICABLE, Change
+from office_operations import OPERATION_NOT_APPLICABLE, Change, chart_indexes_suggestion
 from office_result import MISSING_FIELD, OfficeFailure
 from sheet_definitions import CHART_COLUMN_LEFT_OUT
 from workbook_access import parse_cell, parse_range, sheet_of
@@ -303,7 +303,7 @@ def plan_add_chart(editing, operation: dict, location: str) -> Change:
 def existing_chart(worksheet, operation: dict, location: str):
     charts = worksheet._charts
     if operation["chart"] >= len(charts):
-        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}.chart: {worksheet.title} has {len(charts)} charts, numbered from 0", f"{location}.chart"))
+        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}.chart: {worksheet.title} has {len(charts)} charts, numbered from 0", f"{location}.chart", chart_indexes_suggestion(worksheet.title, len(charts), "add_chart")))
     return charts[operation["chart"]]
 
 

@@ -3,6 +3,25 @@
   const overflowTolerance = 2;
   const footerlessLayouts = new Set(["cover", "section"]);
   const itemClasses = ["kpi", "card", "step", "column"];
+  const gridCardCount = 4;
+  const capacityAttribute = "data-kit-capacity";
+  const connectorLayerAttribute = "data-native-connectors";
+  const diagramGapShare = 4.5;
+  const arrowLength = 16;
+  const arrowWidth = 14;
+  const connectorWidth = 2.5;
+  const cycleRadii = { x: 35, y: 37 };
+  const cycleNodeWidth = 24;
+  const cycleSlotHeight = 26;
+  const hierarchySlotShare = 0.6;
+  const hierarchyNodeShare = 0.86;
+  const hierarchyNodeLimit = 22;
+  const pyramidWidths = { top: 34, bottom: 96 };
+  const pyramidGapShare = 3;
+  const processHeight = 62;
+  const matrixAxisInset = { left: 4, bottom: 9 };
+  const matrixGapShare = 2;
+  const capacityPartNames = [["h1, h2", "title"], [".lead", "lead"], [".eyebrow", "eyebrow"], [".takeaway", "takeaway"], [".card", "card"], [".kpi", "kpi"], [".column", "column"], [".step", "step"], [".kit-steps", "steps"], [".insight", "insight"], ["ol, ul", "list"], ["table", "table"], ["figure", "chart"], ["blockquote", "quote"], [".kit-diagram", "diagram"]];
   const numericCellPattern = /^[+\-−]?[₩$€£¥]?\s?[\d.,]+\s?(%|%p|[^\s\d]{0,4})?$/;
   const svgNamespace = "http://www.w3.org/2000/svg";
   const barScaleShare = 0.84;
@@ -78,9 +97,234 @@
     slides().forEach((slide) => {
       const itemCount = Math.max(...itemClasses.map((className) => directChildren(slide, className).length));
       if (itemCount > 1) slide.style.setProperty("--n", String(itemCount));
+      if (slide.getAttribute("data-layout") === "cards") arrangeCardGrid(slide);
       if (directChildren(slide, "insight").length) slide.classList.add("kit-with-insight");
       const hasBody = Array.from(slide.children).some((child) => child.classList.contains("card") || ["OL", "UL"].includes(child.tagName));
       if (!hasBody) slide.classList.add("kit-bare");
+    });
+  }
+
+  function arrangeCardGrid(slide) {
+    const cards = directChildren(slide, "card");
+    if (cards.length !== gridCardCount) return;
+    slide.classList.add("kit-grid");
+    slide.style.setProperty("--n", String(gridCardCount / 2));
+    cards.slice(gridCardCount / 2).forEach((card) => card.classList.add("kit-second-row"));
+    cards.filter((card) => card.firstElementChild?.matches(".label, .value")).forEach((card) => card.classList.add("kit-keyed"));
+  }
+
+  function diagramList(slide) {
+    return Array.from(slide.children).find((child) => ["OL", "UL"].includes(child.tagName)) || null;
+  }
+
+  function listItems(list) {
+    return list ? Array.from(list.children).filter((child) => child.tagName === "LI") : [];
+  }
+
+  function nestedList(item) {
+    return Array.from(item.children).find((child) => ["OL", "UL"].includes(child.tagName)) || null;
+  }
+
+  function nodeFor(item, index) {
+    const node = element("div", "kit-node");
+    if (item.classList.contains("pick")) node.classList.add("pick");
+    if (index !== null) {
+      const number = element("span", "kit-index");
+      number.textContent = String(index + 1).padStart(2, "0");
+      node.appendChild(number);
+    }
+    Array.from(item.childNodes).filter((child) => !["OL", "UL"].includes(child.tagName)).forEach((child) => node.appendChild(child.cloneNode(true)));
+    return node;
+  }
+
+  function placed(node, x, y, width, height, filled) {
+    const slot = element("div", filled ? "kit-slot kit-filled" : "kit-slot", { left: percent(x - width / 2), top: percent(y - height / 2), width: percent(width), height: percent(height) });
+    slot.appendChild(node);
+    return slot;
+  }
+
+  function chain(slots, sides, closed) {
+    const nodes = slots.map((slot) => slot.firstElementChild);
+    const links = nodes.slice(1).map((node, index) => ({ from: nodes[index], to: node, sides, elbow: false }));
+    return closed ? [...links, { from: nodes[nodes.length - 1], to: nodes[0], sides, elbow: false }] : links;
+  }
+
+  function planProcess(items) {
+    const width = (100 - diagramGapShare * (items.length - 1)) / items.length;
+    const nodes = items.map((item, index) => placed(nodeFor(item, index), index * (width + diagramGapShare) + width / 2, 50, width, processHeight, true));
+    return { nodes, links: chain(nodes, ["right", "left"], false), axes: [] };
+  }
+
+  function planCycle(items) {
+    const nodes = items.map((item, index) => {
+      const angle = -Math.PI / 2 + (2 * Math.PI * index) / items.length;
+      return placed(nodeFor(item, index), 50 + cycleRadii.x * Math.cos(angle), 50 + cycleRadii.y * Math.sin(angle), cycleNodeWidth, cycleSlotHeight, false);
+    });
+    return { nodes, links: chain(nodes, null, true), axes: [] };
+  }
+
+  function treeOf(item, depth) {
+    return { item, depth, children: listItems(nestedList(item)).map((child) => treeOf(child, depth + 1)) };
+  }
+
+  function leavesOf(tree) {
+    return tree.children.length ? tree.children.flatMap(leavesOf) : [tree];
+  }
+
+  function depthOf(tree) {
+    return Math.max(tree.depth, ...tree.children.map(depthOf));
+  }
+
+  function planHierarchy(items) {
+    const roots = items.map((item) => treeOf(item, 0));
+    const leaves = roots.flatMap(leavesOf);
+    const levels = Math.max(...roots.map(depthOf)) + 1;
+    const slot = 100 / leaves.length;
+    const nodes = [];
+    const links = [];
+    const place = (tree) => {
+      const children = tree.children.map(place);
+      const x = children.length ? (children[0].x + children[children.length - 1].x) / 2 : (leaves.indexOf(tree) + 0.5) * slot;
+      const node = nodeFor(tree.item, null);
+      node.classList.add(`kit-level-${tree.depth + 1}`);
+      nodes.push(placed(node, x, ((tree.depth + 0.5) / levels) * 100, Math.min(slot * hierarchyNodeShare, hierarchyNodeLimit), (100 / levels) * hierarchySlotShare, false));
+      children.forEach((child) => links.push({ from: node, to: child.node, sides: ["bottom", "top"], elbow: true }));
+      return { node, x };
+    };
+    roots.forEach(place);
+    return { nodes, links, axes: [] };
+  }
+
+  function planPyramid(items) {
+    const height = (100 - pyramidGapShare * (items.length - 1)) / items.length;
+    const step = items.length > 1 ? (pyramidWidths.bottom - pyramidWidths.top) / (items.length - 1) : 0;
+    const nodes = items.map((item, index) => placed(nodeFor(item, null), 50, index * (height + pyramidGapShare) + height / 2, pyramidWidths.top + step * index, height, true));
+    return { nodes, links: [], axes: [] };
+  }
+
+  function planMatrix(items, list) {
+    const hasAxes = list.hasAttribute("data-x") || list.hasAttribute("data-y");
+    const inset = hasAxes ? matrixAxisInset : { left: 0, bottom: 0 };
+    const width = (100 - inset.left - matrixGapShare) / 2;
+    const height = (100 - inset.bottom - matrixGapShare) / 2;
+    const nodes = items.map((item, index) => {
+      const column = index % 2;
+      const row = Math.floor(index / 2);
+      return placed(nodeFor(item, null), inset.left + column * (width + matrixGapShare) + width / 2, row * (height + matrixGapShare) + height / 2, width, height, true);
+    });
+    const origin = { x: inset.left / 2, y: 100 - inset.bottom + matrixGapShare };
+    const axes = hasAxes ? [{ start: origin, end: { x: origin.x, y: 0 } }, { start: origin, end: { x: 100, y: origin.y } }] : [];
+    return { nodes, links: [], axes, labels: hasAxes ? matrixLabels(list) : [] };
+  }
+
+  function matrixLabels(list) {
+    return [["data-y", "kit-axis-y"], ["data-x", "kit-axis-x"]]
+      .filter(([attribute]) => list.getAttribute(attribute))
+      .map(([attribute, className]) => {
+        const label = element("p", `kit-axis-label ${className}`);
+        label.textContent = list.getAttribute(attribute);
+        return label;
+      });
+  }
+
+  const diagramPlanners = {
+    process: (items) => planProcess(items),
+    cycle: (items) => planCycle(items),
+    hierarchy: (items) => planHierarchy(items),
+    pyramid: (items) => planPyramid(items),
+    matrix: (items, list) => planMatrix(items, list),
+  };
+
+  function buildDiagrams() {
+    slides().forEach((slide) => {
+      const planner = diagramPlanners[slide.getAttribute("data-layout")];
+      const list = diagramList(slide);
+      if (!planner || !list || directChildren(slide, "kit-diagram").length) return;
+      const plan = planner(listItems(list), list);
+      const diagram = element("div", "kit-diagram");
+      plan.nodes.forEach((node) => diagram.appendChild(node));
+      (plan.labels || []).forEach((label) => diagram.appendChild(label));
+      diagram.kitLinks = plan.links;
+      diagram.kitAxes = plan.axes;
+      list.classList.add("kit-source");
+      slide.insertBefore(diagram, list);
+    });
+  }
+
+  function slideScale(slide) {
+    return slide.getBoundingClientRect().width / (slide.offsetWidth || slide.getBoundingClientRect().width || 1);
+  }
+
+  function boxWithin(target, slide) {
+    const scale = slideScale(slide);
+    const frame = slide.getBoundingClientRect();
+    const rect = target.getBoundingClientRect();
+    return { left: (rect.left - frame.left) / scale, top: (rect.top - frame.top) / scale, right: (rect.right - frame.left) / scale, bottom: (rect.bottom - frame.top) / scale };
+  }
+
+  function sidePoint(box, side) {
+    const middle = { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 };
+    return { top: { x: middle.x, y: box.top }, bottom: { x: middle.x, y: box.bottom }, left: { x: box.left, y: middle.y }, right: { x: box.right, y: middle.y } }[side];
+  }
+
+  function facingSides(first, second) {
+    const horizontalGap = Math.max(second.left - first.right, first.left - second.right);
+    const verticalGap = Math.max(second.top - first.bottom, first.top - second.bottom);
+    if (verticalGap > horizontalGap) return second.top >= first.bottom ? ["bottom", "top"] : ["top", "bottom"];
+    return second.left >= first.right ? ["right", "left"] : ["left", "right"];
+  }
+
+  function linkConnector(link, slide) {
+    const first = boxWithin(link.from, slide);
+    const second = boxWithin(link.to, slide);
+    const sides = link.sides || facingSides(first, second);
+    return { from: link.from, to: link.to, sides, elbow: link.elbow, arrow: "end", start: sidePoint(first, sides[0]), end: sidePoint(second, sides[1]) };
+  }
+
+  function axisConnector(axis, diagramBox) {
+    const at = (point) => ({ x: diagramBox.left + ((diagramBox.right - diagramBox.left) * point.x) / 100, y: diagramBox.top + ((diagramBox.bottom - diagramBox.top) * point.y) / 100 });
+    return { from: null, to: null, sides: null, elbow: false, arrow: "end", start: at(axis.start), end: at(axis.end) };
+  }
+
+  function connectorPoints(connector) {
+    if (!connector.elbow) return [connector.start, connector.end];
+    const middle = (connector.start.y + connector.end.y) / 2;
+    return [connector.start, { x: connector.start.x, y: middle }, { x: connector.end.x, y: middle }, connector.end];
+  }
+
+  function arrowHead(points) {
+    const tip = points[points.length - 1];
+    const before = points[points.length - 2];
+    const length = Math.hypot(tip.x - before.x, tip.y - before.y) || 1;
+    const along = { x: (tip.x - before.x) / length, y: (tip.y - before.y) / length };
+    const base = { x: tip.x - along.x * arrowLength, y: tip.y - along.y * arrowLength };
+    const across = { x: -along.y * (arrowWidth / 2), y: along.x * (arrowWidth / 2) };
+    return [tip, { x: base.x + across.x, y: base.y + across.y }, { x: base.x - across.x, y: base.y - across.y }];
+  }
+
+  function pointList(points, origin) {
+    return points.map((point) => `${Math.round((point.x - origin.left) * 100) / 100},${Math.round((point.y - origin.top) * 100) / 100}`).join(" ");
+  }
+
+  function connectorShapes(connector, origin) {
+    const points = connectorPoints(connector);
+    const line = svgElement("polyline", { points: pointList(points, origin), fill: "none", stroke: "currentColor", "stroke-width": connectorWidth, "stroke-linejoin": "round" });
+    const head = svgElement("polygon", { points: pointList(arrowHead(points), origin), fill: "currentColor" });
+    return [line, head];
+  }
+
+  function drawConnectors(slide) {
+    directChildren(slide, "kit-diagram").forEach((diagram) => {
+      Array.from(diagram.children).filter((child) => child.hasAttribute(connectorLayerAttribute)).forEach((layer) => layer.remove());
+      const diagramBox = boxWithin(diagram, slide);
+      const connectors = [...(diagram.kitLinks || []).map((link) => linkConnector(link, slide)), ...(diagram.kitAxes || []).map((axis) => axisConnector(axis, diagramBox))];
+      if (!connectors.length) return;
+      const width = diagramBox.right - diagramBox.left;
+      const height = diagramBox.bottom - diagramBox.top;
+      const layer = svgLayer("var(--muted)", `0 0 ${width} ${height}`, "none", connectors.flatMap((connector) => connectorShapes(connector, diagramBox)));
+      layer.setAttribute(connectorLayerAttribute, "");
+      layer.nativeConnectors = connectors.map((connector) => ({ ...connector, widthPx: connectorWidth }));
+      diagram.appendChild(layer);
     });
   }
 
@@ -163,11 +407,69 @@
   }
 
   async function fitSlide(slide, layOut) {
+    slide.removeAttribute(capacityAttribute);
     for (const step of fitSteps) {
       slide.style.setProperty("--fit", String(step));
       if (layOut) await layOut(slide);
       if (!slide.clientHeight || !overflows(slide)) return;
+      if (step === fitSteps[0]) slide.setAttribute(capacityAttribute, JSON.stringify(slideCapacity(slide)));
     }
+  }
+
+  function contentFloor(slide) {
+    const footer = directChildren(slide, "kit-footer")[0];
+    return footer ? footer.getBoundingClientRect().top : slide.getBoundingClientRect().bottom;
+  }
+
+  function partName(element) {
+    const named = capacityPartNames.find(([selector]) => element.matches(selector));
+    return named ? named[1] : element.tagName.toLowerCase();
+  }
+
+  function partIndex(element) {
+    const siblings = Array.from(element.parentElement.children).filter((sibling) => partName(sibling) === partName(element));
+    return siblings.indexOf(element) + 1;
+  }
+
+  function itemsOf(part) {
+    if (part.tagName === "TABLE") return Array.from(part.querySelectorAll("tr")).filter((row) => row.querySelector("td"));
+    if (["OL", "UL"].includes(part.tagName)) return Array.from(part.children);
+    if (part.classList.contains("kit-steps")) return Array.from(part.children);
+    return [];
+  }
+
+  function spills(element, floor) {
+    const rect = element.getBoundingClientRect();
+    return element.scrollHeight > element.clientHeight + overflowTolerance || rect.bottom > floor + overflowTolerance;
+  }
+
+  function textShare(element, floor) {
+    const rect = element.getBoundingClientRect();
+    const room = Math.min(element.clientHeight || rect.height, floor - rect.top);
+    return Math.max(0, Math.min(1, room / Math.max(element.scrollHeight, rect.height, 1)));
+  }
+
+  function textCapacity(element, floor) {
+    const characters = element.textContent.replace(/\s+/g, " ").trim().length;
+    return { part: partName(element), index: partIndex(element), characters, fits: Math.floor(characters * textShare(element, floor)) };
+  }
+
+  function partCapacity(part, floor) {
+    const items = itemsOf(part);
+    const limit = Math.min(floor, part.getBoundingClientRect().bottom) + overflowTolerance;
+    const shown = items.filter((item) => item.getBoundingClientRect().bottom <= limit).length;
+    if (items.length && shown < items.length) return { part: partName(part), index: partIndex(part), items: items.length, fits: shown };
+    const crowded = items.find((item) => spills(item, floor));
+    return textCapacity(crowded || part, floor);
+  }
+
+  function slideCapacity(slide) {
+    const floor = contentFloor(slide);
+    const parts = Array.from(slide.children).filter((child) => !child.matches("aside, .kit-footer, .kit-ring") && child.getBoundingClientRect().height > 0);
+    const crowded = parts.filter((part) => spills(part, floor) || itemsOf(part).some((item) => spills(item, floor)));
+    if (crowded.length) return crowded.map((part) => partCapacity(part, floor));
+    const used = Math.max(...parts.map((part) => part.getBoundingClientRect().bottom)) - slide.getBoundingClientRect().top;
+    return [{ part: "slide", index: 1, share: Math.round(((floor - slide.getBoundingClientRect().top) / Math.max(used, 1)) * 100) / 100 }];
   }
 
   function parseList(text) {
@@ -679,6 +981,7 @@
     applyAccent();
     addFooters();
     markStructure();
+    buildDiagrams();
     addListIndexes();
     groupSteps();
     addCoverRings();
@@ -689,7 +992,10 @@
 
   async function render(layOut) {
     prepare();
-    for (const slide of slides()) await fitSlide(slide, layOut);
+    for (const slide of slides()) {
+      await fitSlide(slide, layOut);
+      drawConnectors(slide);
+    }
   }
 
   async function renderWhenFontsLoad() {

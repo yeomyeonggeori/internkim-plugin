@@ -188,6 +188,42 @@ class InsertOperationTest(KoreanDeckFixture):
         self.assertEqual(shapes[5]["rows"], [["항목", "값"], ["매출", "128"]])
         self.assertEqual(shapes[6]["chart"]["title"], "사업부 비중")
 
+    def test_a_text_box_without_a_color_reads_on_what_lies_under_it(self):
+        Image.new("RGB", (320, 180), (18, 24, 40)).save(self.directory / "dark.png")
+        envelope = self.apply([
+            {"op": "add_picture", "slide": 5, "image": "dark.png", "x": 0, "y": 0, "w": 12192000, "h": 6858000},
+            {"op": "add_text_box", "slide": 5, "x": 609600, "y": 5800000, "w": 4000000, "h": 400000, "text": "어두운 배경 위 글"},
+            {"op": "add_shape", "slide": 1, "kind": "rectangle", "x": 0, "y": 0, "w": 3000000, "h": 2000000, "fill": "F2F2F2"},
+            {"op": "add_text_box", "slide": 1, "x": 300000, "y": 300000, "w": 2000000, "h": 400000, "text": "밝은 도형 위 글"},
+        ])
+        self.assertNotEqual(envelope["status"], "error", envelope["issues"])
+        self.assertEqual(self.slide(5)["shapes"][-1]["style"]["color"], "#FFFFFF")
+        self.assertEqual(self.slide(1)["shapes"][-1]["style"]["color"], "#000000")
+
+    def test_a_connector_joins_two_shapes_at_their_facing_sides(self):
+        self.apply([
+            {"op": "add_shape", "slide": 5, "kind": "rounded_rectangle", "x": 1000000, "y": 1500000, "w": 2000000, "h": 800000, "text": "본부"},
+            {"op": "add_shape", "slide": 5, "kind": "oval", "x": 4000000, "y": 4000000, "w": 2000000, "h": 800000, "text": "팀"},
+        ])
+        parent, child = len(self.slide(5)["shapes"]) - 2, len(self.slide(5)["shapes"]) - 1
+        envelope = self.apply([
+            {"op": "add_connector", "slide": 5, "from": parent, "to": child, "kind": "elbow"},
+            {"op": "add_connector", "slide": 5, "from": child, "to": parent, "arrow": "both", "color": "C4471D"},
+        ])
+        self.assertNotEqual(envelope["status"], "error", envelope["issues"])
+        shapes = self.slide(5)["shapes"]
+        self.assertEqual([(shape["kind"], shape.get("connects")) for shape in shapes[-2:]], [("connector", {"from": parent, "to": child}), ("connector", {"from": child, "to": parent})])
+        slide_xml = part_contents(self.directory / "deck.pptx")["ppt/slides/slide5.xml"].decode("utf-8")
+        ids = [shapes[parent]["id"], shapes[child]["id"]]
+        self.assertIn(f'<a:stCxn id="{ids[0]}" idx="2"/><a:endCxn id="{ids[1]}" idx="0"/>', slide_xml)
+        self.assertIn('<a:xfrm rot="5400000" flipV="1">', slide_xml)
+        self.assertIn('prst="bentConnector3"', slide_xml)
+        self.assertIn('<a:headEnd type="triangle"/><a:tailEnd type="triangle"/>', slide_xml)
+
+    def test_a_connector_needs_two_different_shapes(self):
+        envelope = self.apply([{"op": "add_connector", "slide": 2, "from": 1, "to": 1}])
+        self.assertEqual((envelope["issues"][0]["code"], envelope["issues"][0]["location"]), ("INVALID_VALUE", "ops[0].to"))
+
     def test_series_must_match_the_categories(self):
         envelope = self.apply([{"op": "add_chart", "slide": 1, "type": "column", "x": 0, "y": 0, "w": 100, "h": 100, "categories": ["가", "나"], "series": [{"name": "값", "values": [1]}]}])
         self.assertEqual(envelope["issues"][0]["location"], "ops[0].series[0].values")
@@ -215,6 +251,13 @@ class TableAndChartOperationTest(KoreanDeckFixture):
         chart = self.slide(3)["shapes"][1]["chart"]
         self.assertEqual((chart["type"], chart["title"], chart["categories"]), ("column_clustered", "매출", ["2분기", "3분기"]))
         self.assertEqual(chart["series"], [{"name": "매출", "values": [110.0, 131.0]}])
+
+    def test_chart_data_on_a_shape_that_is_no_chart_names_the_chart_to_use(self):
+        envelope = self.apply([{"op": "set_chart_data", "slide": 3, "shape": 0, "series": [{"name": "매출", "values": [1, 2, 3]}]}])
+        self.assertEqual(codes(envelope), ["OPERATION_NOT_APPLICABLE"])
+        self.assertIn("use shape 1", envelope["issues"][0]["suggestion"])
+        envelope = self.apply([{"op": "set_chart_data", "slide": 2, "shape": 0, "series": [{"name": "매출", "values": [1, 2, 3]}]}])
+        self.assertIn("slide 2 holds no chart", envelope["issues"][0]["suggestion"])
 
 
 class SlideOperationTest(KoreanDeckFixture):

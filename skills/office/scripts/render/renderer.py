@@ -34,7 +34,7 @@ CONTACT_SHEETS_FILE_NAME = "contact-sheets.json"
 RENDERER_UNAVAILABLE = IssueKind("RENDERER_UNAVAILABLE", WARNING, "neither bun nor node 18 is installed, or the renderer's packages could not be installed, so no page was drawn", "install bun, or node 18 or newer, and run again")
 RENDER_FAILED = IssueKind("RENDER_FAILED", ERROR, "the renderer stopped before drawing every page", "read the message for the page or element that stopped it")
 LAYOUT_NOT_MAPPED = IssueKind("LAYOUT_NOT_MAPPED", WARNING, "part of a page's layout could not be matched to its HTML, so its boxes were not measured", "report the element the message names; the page images are still drawn")
-STYLE_NOT_DRAWN = IssueKind("STYLE_NOT_DRAWN", WARNING, "an inline style declaration the renderer cannot read was left out, as a browser leaves out an invalid one", "write that property in a stylesheet rule, or with a value the message does not name")
+STYLE_NOT_DRAWN = IssueKind("STYLE_NOT_DRAWN", WARNING, "an inline style declaration the renderer cannot read was left out, as a browser leaves out an invalid one", "remove the style attribute: the kit styles every part, data-accent on <body> sets a brand color, and theme tokens go in a <style> on :root")
 RENDER_ISSUE_KINDS = (RENDERER_UNAVAILABLE, RENDER_FAILED, LAYOUT_NOT_MAPPED, STYLE_NOT_DRAWN)
 
 

@@ -323,7 +323,7 @@ export function extractBoxLayout({ exportedShapeAttribute, exportedBeforeShapeAt
       if (verdict.kind === "none") continue;
       if (verdict.kind === "shape" && !pictureRegions.some((region) => overlaps(region, verdict.rect))) {
         markExported(item);
-        emitted.unshift(...verdict.shapes);
+        emitted.unshift(...verdict.shapes.map((shape) => ({ ...shape, exportId: String(markCount) })));
         continue;
       }
       pictureRegions.push(verdict.rect);

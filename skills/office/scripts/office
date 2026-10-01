@@ -82,11 +82,31 @@ def run_text_command(command) -> int:
 
 
 def reject_unknown_command(words: list[str]):
-    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"office: unknown command {' '.join(words)!r}", " ".join(words), suggestion=format_commands_suggestion(words[:1])))
+    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"office: unknown command {' '.join(words)!r}", " ".join(words), suggestion=unknown_command_suggestion(words)))
 
 
-def format_commands_suggestion(format_words: list[str]) -> str | None:
-    commands = [command.name for command in COMMANDS if command.words[:1] == format_words]
+def unknown_command_suggestion(words: list[str]) -> str | None:
+    format_name = words[0] if find_format(words[0]) else closest_name(words[0], [office_format.name for office_format in FORMATS])
+    if format_name is None:
+        return None
+    meant = closest_command(format_name, words[1:2])
+    if meant is not None:
+        return f"did you mean office {meant.name}? rerun with that command"
+    return format_commands_suggestion(format_name)
+
+
+def closest_command(format_name: str, verb_words: list[str]) -> Command | None:
+    commands = [command for command in COMMANDS if command.format_name == format_name]
+    if len(commands) == 1 and not commands[0].verb:
+        return commands[0]
+    if not verb_words:
+        return None
+    verb = verb_words[0] if any(command.verb == verb_words[0] for command in commands) else closest_name(verb_words[0], [command.verb for command in commands])
+    return next((command for command in commands if command.verb == verb), None)
+
+
+def format_commands_suggestion(format_name: str) -> str | None:
+    commands = [command.name for command in COMMANDS if command.format_name == format_name]
     return f"run one of {', '.join(commands)}" if commands else None
 
 

@@ -24,6 +24,7 @@ from deck_definitions import (
     THEME_UNKNOWN,
     TOO_FEW_LAYOUTS,
     FIRST_SLIDE_NOT_COVER,
+    ItemLimits,
     KitLayout,
     kit_layout,
     part_label,
@@ -145,7 +146,40 @@ def part_issues(slide: Slide, layout: KitLayout) -> list[Issue]:
             issues.append(LAYOUT_PART_MISSING.issue(f"{slide.location} ({layout.name}) has {count} of {part_label(part)} as a direct child of its <section>", slide.location, suggestion=f"add it; {layout_parts(layout)}"))
         elif part.maximum is not None and count > part.maximum:
             issues.append(LAYOUT_PART_EXCESS.issue(f"{slide.location} ({layout.name}) has {count} {part.selector}; the layout holds at most {part.maximum}", slide.location, suggestion=f"{LAYOUT_PART_EXCESS.default_suggestion()}; {layout_parts(layout)}"))
+        elif part.items is not None:
+            issues += item_issues(slide, layout, next(child for child in children if part.matches(child.tag, child.classes, child.attributes)), part.items)
     return issues
+
+
+def item_issues(slide: Slide, layout: KitLayout, items_list: Element, limits: ItemLimits) -> list[Issue]:
+    items = list_items(items_list)
+    where = f"{slide.location} ({layout.name})"
+    if len(items) < limits.minimum:
+        return [LAYOUT_PART_MISSING.issue(f"{where} has {len(items)} <li> in its <{items_list.tag}>; the layout needs at least {limits.minimum}", slide.location, suggestion=f"give the <{items_list.tag}> {limits.minimum} to {limits.maximum} <li>, or pick another layout")]
+    if len(items) > limits.maximum:
+        return [LAYOUT_PART_EXCESS.issue(f"{where} has {len(items)} <li> in its <{items_list.tag}>; the layout holds at most {limits.maximum}", slide.location, suggestion=f"keep {limits.maximum} <li> and move the rest to another slide")]
+    levels, leaves = tree_levels(items_list), tree_leaves(items_list)
+    if levels > limits.levels:
+        return [LAYOUT_PART_EXCESS.issue(f"{where} nests {levels} levels of <li>; the layout draws at most {limits.levels}", slide.location, suggestion=f"keep {limits.levels} levels and show the deeper ones on a slide of their own")]
+    if limits.leaves is not None and leaves > limits.leaves:
+        return [LAYOUT_PART_EXCESS.issue(f"{where} has {leaves} boxes on its lowest level; the layout fits at most {limits.leaves} side by side", slide.location, suggestion=f"group the lowest boxes into at most {limits.leaves}, or split the chart by branch over two slides")]
+    return []
+
+
+def list_items(items_list: Element) -> list[Element]:
+    return [child for child in items_list.child_elements() if child.tag == "li"]
+
+
+def nested_lists(item: Element) -> list[Element]:
+    return [child for child in item.child_elements() if child.tag in ("ul", "ol")]
+
+
+def tree_levels(items_list: Element) -> int:
+    return 1 + max((tree_levels(nested) for item in list_items(items_list) for nested in nested_lists(item)), default=0)
+
+
+def tree_leaves(items_list: Element) -> int:
+    return sum(sum(tree_leaves(nested) for nested in nested_lists(item)) or 1 for item in list_items(items_list))
 
 
 def sequence_issues(slides: list[Slide]) -> list[Issue]:

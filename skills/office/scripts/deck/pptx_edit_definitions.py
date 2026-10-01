@@ -5,6 +5,7 @@ import re
 
 from office_result import Issue
 from office_schema import Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, wrong_type
+from pptx_connectors import ARROW_ENDS, CONNECTOR_KINDS, DEFAULT_ARROW, DEFAULT_WIDTH_POINTS, ELBOW_KIND, STRAIGHT_KIND
 from pptx_lengths import LENGTH_EXAMPLES, Length
 
 
@@ -151,7 +152,7 @@ ARRANGE_OPERATIONS = (
     operation("ungroup_shape", "dissolve a group; its shapes stay where they are and take its place", SLIDE_FIELD, SHAPE_FIELD),
 )
 INSERT_OPERATIONS = (
-    operation("add_text_box", "add a text box that wraps at its width", SLIDE_FIELD, *BOX_FIELDS, TEXT_FIELD, *RUN_STYLE_FIELDS,
+    operation("add_text_box", "add a text box that wraps at its width; without a color its text takes the theme's dark or light text color, whichever reads better on what lies under the box", SLIDE_FIELD, *BOX_FIELDS, TEXT_FIELD, *RUN_STYLE_FIELDS,
         Field("align", ALIGNMENT, "horizontal alignment"),
     ),
     operation("add_shape", "add a filled shape, optionally with centered text", SLIDE_FIELD, *BOX_FIELDS,
@@ -159,6 +160,14 @@ INSERT_OPERATIONS = (
         Field("fill", HexColor(allows_none=True), "fill color; default the theme's"),
         Field("line", HexColor(allows_none=True), "outline color; default the theme's"),
         Field("text", Text(), "text inside the shape"),
+    ),
+    operation("add_connector", "draw a connector between two shapes of one slide, from the side of the first that faces the second; it stays attached when either shape moves", SLIDE_FIELD,
+        Field("from", ShapeAddress(), "shape the connector starts at, from deck read", required=True),
+        Field("to", ShapeAddress(), "shape the connector ends at, from deck read", required=True),
+        Field("kind", Choice(CONNECTOR_KINDS), f"{STRAIGHT_KIND} (default) or {ELBOW_KIND}, which turns at right angles"),
+        Field("arrow", Choice(tuple(ARROW_ENDS)), f"where arrowheads go; default {DEFAULT_ARROW}"),
+        Field("color", HexColor(), "line color; default the theme's dark or light text color, whichever reads on the slide"),
+        Field("width", Number(minimum=0.25, maximum=20), f"line width in points, default {DEFAULT_WIDTH_POINTS:g}"),
     ),
     operation("add_picture", "add an image; give w or h alone to keep its ratio", SLIDE_FIELD, *POSITION_FIELDS,
         Field("image", Text(non_empty=True), "path to a PNG, JPEG or GIF file", required=True),

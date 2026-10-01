@@ -6,6 +6,7 @@ import pathlib
 
 from deck_definitions import CONTENT_OVERFLOW, FOOTER_CROSSED, GEOMETRY_NOT_MEASURED, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_COVERED, TEXT_OVERLAP, TINY_TEXT, TITLE_TOO_LONG
 from design_warnings import append_deck_warning
+from kit_fixes import capacity_fix, photo_fix, placement_fix, size_fix, text_fix
 from office_result import Issue
 
 
@@ -59,28 +60,56 @@ def footer_start_index(bands: list[list[float]], height: float) -> int:
     return start
 
 
-def geometry_warnings(measured: dict[str, object] | None) -> list[Issue]:
+def geometry_warnings(measured: dict[str, object] | None, kit_layout: str = "") -> list[Issue]:
     if measured is None:
         return []
     return [
-        *finding_issues(CONTENT_OVERFLOW, measured["overflow"], describe_overflow, "{count} elements hold more than their box shows"),
-        *finding_issues(OUT_OF_FRAME, measured["outOfFrame"], describe_out_of_frame, "{count} elements lie outside the slide"),
-        *finding_issues(TEXT_OVERLAP, measured["overlaps"], describe_overlap, "{count} pairs of text overlap"),
-        *finding_issues(TEXT_COVERED, measured.get("coveredText", []), describe_covered_text, "{count} text elements are hidden under a box drawn over them"),
-        *finding_issues(FOOTER_CROSSED, measured.get("footerCrossings", []), describe_footer_crossing, "{count} parts of the slide reach into the footer"),
-        *finding_issues(TITLE_TOO_LONG, measured.get("longTitles", []), describe_long_title, "{count} titles run past three lines"),
-        *finding_issues(IMAGE_DISTORTED, measured["distortedImages"], describe_distorted_image, "{count} images are stretched"),
-        *finding_issues(TINY_TEXT, measured.get("smallText", []), describe_small_text, "{count} text elements are smaller than the slide can show legibly"),
+        issue
+        for check, key, describe, headline in GEOMETRY_FINDINGS
+        for issue in finding_issues(check, measured.get(key, []), describe, headline, kit_suggestion(check, measured, kit_layout))
     ]
 
 
-def finding_issues(check, findings: list[dict[str, object]], describe, headline: str) -> list[Issue]:
+def finding_issues(check, findings: list[dict[str, object]], describe, headline: str, kit_fix) -> list[Issue]:
     if not findings:
         return []
     named = "; ".join(describe(finding) for finding in findings[:FINDINGS_NAMED_PER_ISSUE])
     remainder = len(findings) - FINDINGS_NAMED_PER_ISSUE
     more = f"; and {remainder} more" if remainder > 0 else ""
-    return [check.issue(f"{headline.format(count=len(findings))}: {named}{more}")]
+    return [check.issue(f"{headline.format(count=len(findings))}: {named}{more}", suggestion=kit_fix(findings[0]) if kit_fix else None)]
+
+
+def kit_suggestion(check, measured: dict[str, object], kit_layout: str):
+    if not kit_layout or check is TITLE_TOO_LONG:
+        return None
+    if check is IMAGE_DISTORTED:
+        return lambda finding: photo_fix(kit_layout)
+    capacity = measured.get("capacity") or []
+    if capacity:
+        return lambda finding: capacity_fix(capacity, kit_layout)
+    return UNCROWDED_KIT_FIXES[check]
+
+
+def covered_fix(finding: dict[str, object]) -> str:
+    return placement_fix(f"{element_label(finding['box'])} is drawn over {element_label(finding['text'])}")
+
+
+def overlap_fix(finding: dict[str, object]) -> str:
+    return placement_fix(f"{element_label(finding['first'])} and {element_label(finding['second'])} share one place")
+
+
+def overflow_fix(finding: dict[str, object]) -> str:
+    return text_fix(element_label(finding), len(finding["text"]), round(len(finding["text"]) * finding["clientHeight"] / max(finding["scrollHeight"], 1)))
+
+
+UNCROWDED_KIT_FIXES = {
+    CONTENT_OVERFLOW: overflow_fix,
+    OUT_OF_FRAME: lambda finding: placement_fix(f"{element_label(finding)} lies off the slide"),
+    TEXT_OVERLAP: overlap_fix,
+    TEXT_COVERED: covered_fix,
+    FOOTER_CROSSED: lambda finding: placement_fix(f"{element_label(finding)} reaches into the footer"),
+    TINY_TEXT: lambda finding: size_fix(),
+}
 
 
 def element_label(element: dict[str, object]) -> str:
@@ -122,6 +151,18 @@ def describe_distorted_image(finding: dict[str, object]) -> str:
 
 def describe_small_text(finding: dict[str, object]) -> str:
     return f"{element_label(finding)} is {finding['fontSize']}px, below the {finding['minimum']}px minimum (1% of the slide width)"
+
+
+GEOMETRY_FINDINGS = (
+    (CONTENT_OVERFLOW, "overflow", describe_overflow, "{count} elements hold more than their box shows"),
+    (OUT_OF_FRAME, "outOfFrame", describe_out_of_frame, "{count} elements lie outside the slide"),
+    (TEXT_OVERLAP, "overlaps", describe_overlap, "{count} pairs of text overlap"),
+    (TEXT_COVERED, "coveredText", describe_covered_text, "{count} text elements are hidden under a box drawn over them"),
+    (FOOTER_CROSSED, "footerCrossings", describe_footer_crossing, "{count} parts of the slide reach into the footer"),
+    (TITLE_TOO_LONG, "longTitles", describe_long_title, "{count} titles run past three lines"),
+    (IMAGE_DISTORTED, "distortedImages", describe_distorted_image, "{count} images are stretched"),
+    (TINY_TEXT, "smallText", describe_small_text, "{count} text elements are smaller than the slide can show legibly"),
+)
 
 
 def apply_geometry_not_measured_warning(slides: list[dict[str, object]], geometry: list[dict[str, object]] | None) -> None:

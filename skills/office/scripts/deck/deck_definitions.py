@@ -21,8 +21,8 @@ NATIVE_RENDER_SOURCE = "nativeFallback"
 class ReviewCheck:
     kind: IssueKind
 
-    def issue(self, text: str, location: str | None = None) -> Issue:
-        return self.kind.issue(text, location)
+    def issue(self, text: str, location: str | None = None, suggestion: object = None) -> Issue:
+        return self.kind.issue(text, location, suggestion)
 
     def deck_issue(self, text: str) -> Issue:
         return self.issue(text, DECK_LOCATION)
@@ -33,22 +33,22 @@ def review_check(code: str, meaning: str, suggestion: str) -> ReviewCheck:
 
 
 SLIDE_BLANK = review_check("SLIDE_BLANK", "the slide render shows no content", "check that the slide's content is not hidden or outside the frame")
-CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is larger than its box, so it is clipped or spills out", "enlarge the box, cut the content, or lower the type size")
-OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "move or resize the element so it sits inside the slide")
+CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is larger than its box, so it is clipped or spills out", "cut or split what the message names; a build suggestion says how many rows, items or characters fit at full type size, and a .pptx suggestion is the operation to apply")
+OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "keep every part on the slide: split or cut what pushes it off, as the suggestion counts; in a .pptx, apply the operation the suggestion names")
 TEXT_OVERLAP = review_check("TEXT_OVERLAP", "two pieces of text cover each other", "separate the two text blocks or shorten the one that spills")
-TEXT_COVERED = review_check("TEXT_COVERED", "a box painted over text hides part of it", "shorten the slide's body so each part stays in its own place, or split the slide in two")
+TEXT_COVERED = review_check("TEXT_COVERED", "a box painted over text hides part of it", "follow the suggestion, which names the cause: rows, items or text that do not fit, or a custom style that moves a part over another")
 FOOTER_CROSSED = review_check("FOOTER_CROSSED", "slide content reaches into the footer band", "shorten or split the content so it ends above the footer")
 TITLE_TOO_LONG = review_check("TITLE_TOO_LONG", "a slide title runs past three lines", "state the conclusion in one short sentence and move the detail into the body or the speaker notes")
-TINY_TEXT = review_check("TINY_TEXT", "rendered text is smaller than 1% of the slide width (16px on a 1600px slide)", "raise the text size, or shorten the slide so the kit does not shrink it")
-IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "set object-fit: cover or contain, or size the image to its ratio")
+TINY_TEXT = review_check("TINY_TEXT", "rendered text is smaller than 1% of the slide width (16px on a 1600px slide)", "shorten the slide so the kit does not shrink its type; the suggestion says how much fits at full size")
+IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "put the photo in a cover or image slide, which crops it to its frame; in a .pptx, apply the set_transform the suggestion names")
 GEOMETRY_NOT_MEASURED = review_check("GEOMETRY_NOT_MEASURED", "no renderer measured element geometry, so overflow, overlap and stretched images were not checked", "install bun or node 18 and build again, or say the layout was not measured")
 UNRELIABLE_VISUAL_EVIDENCE = review_check("UNRELIABLE_VISUAL_EVIDENCE", "review images were not drawn from the deck's layout", "treat the previews as approximate and say so when delivering")
 
 TOPIC_TITLE = review_check("TOPIC_TITLE", "the title is a topic label, not a claim", "write the title as the slide's conclusion")
 LANGUAGE_MISMATCH = review_check("LANGUAGE_MISMATCH", "slide titles are Latin-only in a Korean deck", "write the titles in the request language")
 UNSOURCED_CURRENT_DATE = review_check("UNSOURCED_CURRENT_DATE", "a slide shows today's date that the source does not", "show only dates from the source material")
-VERTICAL_DEAD_ZONE = review_check("VERTICAL_DEAD_ZONE", "an empty band spans much of the slide height, between content or under the body", "distribute content to fill the frame")
-EMOJI_ICON = review_check("EMOJI_ICON", "a slide uses emoji glyphs", "use text labels, CSS markers, or inline SVG")
+VERTICAL_DEAD_ZONE = review_check("VERTICAL_DEAD_ZONE", "an empty band spans much of the slide height, between content or under the body", "give the body what its layout holds, such as a .takeaway band, more items or an .insight, or move the content to a layout that fills the frame")
+EMOJI_ICON = review_check("EMOJI_ICON", "a slide uses emoji glyphs", "write a .label word instead; the kit draws list markers and numbers itself")
 MISSING_SPEAKER_NOTES = review_check("MISSING_SPEAKER_NOTES", "a slide has no speaker notes", 'add an <aside class="notes"> script to every slide')
 
 SLIDE_RENDER_CHECKS = (SLIDE_BLANK, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, TEXT_COVERED, FOOTER_CROSSED, TITLE_TOO_LONG, IMAGE_DISTORTED, TINY_TEXT, GEOMETRY_NOT_MEASURED, UNRELIABLE_VISUAL_EVIDENCE)
@@ -126,10 +126,19 @@ APPLY_ISSUE_KINDS = (PICTURE_UNREADABLE,)
 PPTX_CHECK_ISSUE_KINDS = (PPTX_NOT_RENDERED,)
 
 @dataclass(frozen=True)
+class ItemLimits:
+    minimum: int
+    maximum: int
+    levels: int = 1
+    leaves: int | None = None
+
+
+@dataclass(frozen=True)
 class LayoutPart:
     selector: str
     minimum: int = 1
     maximum: int | None = 1
+    items: ItemLimits | None = None
 
     def matches(self, tag: str, classes: set[str], attributes: dict[str, str]) -> bool:
         return any(selector_matches(alternative, tag, classes, attributes) for alternative in self.selector.split("|"))
@@ -159,7 +168,7 @@ KIT_LAYOUTS = (
     KitLayout("statement", "one sentence the audience must remember; <em> marks the words in the accent color", (TITLE,)),
     KitLayout("number", "one number that carries the slide, with its .label and the points that explain it", (TITLE, LayoutPart(".value"), LayoutPart(".label", 0))),
     KitLayout("kpi", "two to four metrics in one unit system, each a .kpi with .value, .label and a change line", (TITLE, LayoutPart(".kpi", 2, 4))),
-    KitLayout("cards", "two to four parallel points, each a .card with an optional .label or .value, an <h3> and a <p>", (TITLE, LayoutPart(".card", 2, 4))),
+    KitLayout("cards", "two to four parallel points, each a .card with an optional .label or .value, an <h3> and a <p>; two or three stand side by side, four form a 2x2", (TITLE, LayoutPart(".card", 2, 4))),
     KitLayout("comparison", "two options side by side, each a .column with .label, <h3> and <ul>; .pick marks the recommended one", (TITLE, LayoutPart(".column", 2, 2))),
     KitLayout("timeline", "a sequence of three to six .step blocks, each with a .label date, <h3> and <p>; .done fills the dot", (TITLE, LayoutPart(".step", 3, 6))),
     KitLayout("table", "rows and columns the audience must read; numeric cells align right by themselves, tr.pick highlights a row", (TITLE, LayoutPart("table"))),
@@ -167,6 +176,11 @@ KIT_LAYOUTS = (
     KitLayout("quote", "a customer's or expert's words in a <blockquote> with a .by line", (LayoutPart("blockquote"),)),
     KitLayout("image", "a photo that carries meaning on the left half, the text on the right", (TITLE, LayoutPart("img"))),
     KitLayout("closing", "the decision or next actions as .card blocks or an <ol>, on the deck's dark feature color", (TITLE, LayoutPart(".card", 0, 4))),
+    KitLayout("process", "steps in order, each an <li> of an <ol> drawn as a box with an arrow to the next", (TITLE, LayoutPart("ol", items=ItemLimits(3, 6)))),
+    KitLayout("cycle", "stages that repeat, each an <li> of an <ol> placed around a circle with arrows clockwise back to the first", (TITLE, LayoutPart("ol", items=ItemLimits(3, 6)))),
+    KitLayout("hierarchy", "an org chart or breakdown as nested <ul>: one top <li>, each <li> holding its own <ul> of children; <small> adds a second line to a box", (TITLE, LayoutPart("ul", items=ItemLimits(1, 1, levels=3, leaves=8)))),
+    KitLayout("pyramid", "levels of an <ol>, the top <li> the narrowest and most important", (TITLE, LayoutPart("ol", items=ItemLimits(3, 5)))),
+    KitLayout("matrix", "a 2x2 of the <li> in a <ul>, read left to right then top to bottom; data-y and data-x on the <ul> name the axes", (TITLE, LayoutPart("ul", items=ItemLimits(4, 4)))),
 )
 KIT_LAYOUT_NAMES = tuple(layout.name for layout in KIT_LAYOUTS)
 SHARED_PARTS = (
@@ -176,6 +190,12 @@ SHARED_PARTS = (
     ".source: the source line, placed in the footer beside the page number",
     "<em>: words in the accent color; .up and .down color a change; .pick highlights one item",
     "<aside class=\"notes\">: the speaker notes",
+)
+DIAGRAM_NOTES = (
+    "each <li> is one box: a short phrase, or an <h3> and a <p>; .pick on an <li> fills its box with the accent",
+    "process and cycle number their boxes; the top box of a hierarchy is dark and the top level of a pyramid takes the accent",
+    "the PPTX draws each box as a native shape and each arrow as a connector attached to the boxes it joins",
+    "deck check refuses a list with fewer or more items than the layout holds and names the count",
 )
 CHART_ATTRIBUTES = (
     "data-chart: " + ", ".join(chart_types()),
@@ -199,8 +219,21 @@ def kit_layout(name: str) -> KitLayout | None:
 
 
 def part_label(part: LayoutPart) -> str:
-    count = str(part.minimum) if part.maximum == part.minimum else f"{part.minimum}-{part.maximum}" if part.maximum else f"{part.minimum}+"
-    return f"{part.selector.replace('|', ' or ')} x{count}"
+    label = f"{part.selector.replace('|', ' or ')} x{count_label(part.minimum, part.maximum)}"
+    return f"{label} holding {items_label(part.items)}" if part.items else label
+
+
+def items_label(limits: ItemLimits) -> str:
+    label = f"{count_label(limits.minimum, limits.maximum)} <li>"
+    if limits.levels > 1:
+        label += f", nested at most {limits.levels} levels deep"
+    if limits.leaves is not None:
+        label += f" with at most {limits.leaves} on the lowest level"
+    return label
+
+
+def count_label(minimum: int, maximum: int | None) -> str:
+    return str(minimum) if maximum == minimum else f"{minimum}-{maximum}" if maximum else f"{minimum}+"
 
 
 def theme_lines() -> list[str]:
@@ -217,6 +250,10 @@ def layout_lines() -> list[str]:
     return lines + ["  Any layout also takes:"] + [f"    {part}" for part in SHARED_PARTS]
 
 
+def diagram_lines() -> list[str]:
+    return [f"  {note}" for note in DIAGRAM_NOTES]
+
+
 def chart_lines() -> list[str]:
     return [f"  {attribute}" for attribute in CHART_ATTRIBUTES]
 
@@ -224,6 +261,7 @@ def chart_lines() -> list[str]:
 GUIDE_SECTIONS = (
     ("Themes (<body data-theme=\"...\">)", theme_lines),
     ("Layouts (<section data-layout=\"...\">; parts are direct children of the section)", layout_lines),
+    ("Diagrams (process, cycle, hierarchy, pyramid, matrix)", diagram_lines),
     ("Charts (<figure data-chart=\"...\"> in a chart slide)", chart_lines),
 )
 

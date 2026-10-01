@@ -17,6 +17,14 @@ OPERATION_NOT_APPLICABLE = IssueKind("OPERATION_NOT_APPLICABLE", ERROR, "an oper
 OPERATION_ISSUE_KINDS = (TARGET_NOT_FOUND, OPERATION_NOT_APPLICABLE)
 
 Change = Callable[[], str]
+
+
+def chart_indexes_suggestion(owner: str, chart_count: int, add_operation: str) -> str:
+    if chart_count == 0:
+        return f"{owner} holds no chart; add one with {add_operation}, or name the place that holds it"
+    if chart_count == 1:
+        return f"use chart 0, the only chart of {owner}"
+    return f"use a chart from 0 to {chart_count - 1}"
 Planner = Callable[[object, dict, str], Change]
 
 

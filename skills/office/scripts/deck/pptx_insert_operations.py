@@ -7,7 +7,10 @@ from pptx.util import Emu
 
 from office_operations import Change
 from office_result import INVALID_VALUE, OfficeFailure
+from pptx_backdrop import readable_text_color
+from pptx_connector_operations import plan_add_connector
 from pptx_element_operations import readable_image_size, rgb
+from pptx_geometry import Box
 from pptx_targets import PptxEditing, resolve_slide
 from pptx_text_operations import ALIGNMENTS, apply_run_style, character_properties, replace_text
 
@@ -52,10 +55,11 @@ def plan_add_text_box(editing: PptxEditing, operation: dict, location: str) -> C
     slide = resolve_slide(editing, operation["slide"], f"{location}.slide")
 
     def change() -> str:
+        color = operation.get("color") or readable_text_color(editing.presentation, slide, Box(*(int(argument) for argument in box_arguments(operation))))
         shape = slide.shapes.add_textbox(*box_arguments(operation))
         shape.text_frame.word_wrap = True
         replace_text(shape.text_frame, None, operation["text"])
-        style_new_text(shape.text_frame, operation)
+        style_new_text(shape.text_frame, {**operation, "color": color})
         editing.mark_edited(slide)
         return f"added text box {len(slide.shapes) - 1} to slide {operation['slide']}"
     return change
@@ -165,6 +169,7 @@ def set_chart_title(chart, title: str | None) -> None:
 
 INSERT_PLANNERS = {
     "add_text_box": plan_add_text_box,
+    "add_connector": plan_add_connector,
     "add_shape": plan_add_shape,
     "add_picture": plan_add_picture,
     "add_table": plan_add_table,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from css_color import parse_css_color
+from pptx_connectors import Attachment, Point, Route, connection_site, connector_xml, line_xml
 from pptx_text import SlideScale, color_xml
 
 
@@ -67,3 +68,36 @@ def rule_xml(shape_id: int, shape: dict, scale: SlideScale) -> str:
         f'<a:ext cx="{scale.x(abs(end["x"] - start["x"]))}" cy="{scale.y(abs(end["y"] - start["y"]))}"/></a:xfrm>'
         f'<a:prstGeom prst="line"><a:avLst/></a:prstGeom>{outline_xml(shape["line"], scale)}</p:spPr></p:cxnSp>'
     )
+
+
+def connectors_xml(connectors: list[dict], shapes: list[dict], first_shape_id: int, scale: SlideScale) -> str:
+    exported = exported_shapes(shapes, first_shape_id)
+    first_id = first_shape_id + len(shapes)
+    return "".join(
+        kit_connector_xml(shape_id, connector, exported, scale)
+        for shape_id, connector in enumerate(connectors, start=first_id)
+    )
+
+
+def exported_shapes(shapes: list[dict], first_shape_id: int) -> dict[str, tuple[int, str]]:
+    exported = {}
+    for shape_id, shape in enumerate(shapes, start=first_shape_id):
+        if shape.get("exportId") and shape["geometry"] != "line":
+            exported.setdefault(shape["exportId"], (shape_id, shape["geometry"]))
+    return exported
+
+
+def kit_connector_xml(shape_id: int, connector: dict, exported: dict[str, tuple[int, str]], scale: SlideScale) -> str:
+    start, end = connector["start"], connector["end"]
+    sides = tuple(connector["sides"]) if connector.get("sides") else ("", "")
+    route = Route(Point(scale.x(start["x"]), scale.y(start["y"])), Point(scale.x(end["x"]), scale.y(end["y"])), sides, sides[0] in ("top", "bottom"))
+    attachments = (attachment(exported.get(connector.get("fromShape") or ""), sides[0]), attachment(exported.get(connector.get("toShape") or ""), sides[1]))
+    outline = line_xml(scale.x(connector["line"]["widthPx"]), fill_xml({"color": connector["line"]["color"], "opacity": 1}), connector["arrow"])
+    return connector_xml(shape_id, f"Connector {shape_id}", route, connector["elbow"], outline, attachments)
+
+
+def attachment(exported: tuple[int, str] | None, side: str) -> Attachment | None:
+    if exported is None:
+        return None
+    site = connection_site(exported[1], side)
+    return Attachment(exported[0], site) if site is not None else None

@@ -90,3 +90,18 @@ def gamma_encoded(linear: float) -> float:
 
 def hex_of(channels: tuple[float, float, float]) -> str:
     return "".join(f"{round(min(1.0, max(0.0, channel)) * 255):02X}" for channel in channels)
+
+
+def relative_luminance(hex_value: str) -> float:
+    channels = [int(hex_value.lstrip("#")[index:index + 2], 16) / 255 for index in (0, 2, 4)]
+    linear = [channel / 12.92 if channel <= 0.03928 else ((channel + 0.055) / 1.055) ** 2.4 for channel in channels]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def contrast_ratio(first: str, second: str) -> float:
+    lighter, darker = sorted((relative_luminance(first), relative_luminance(second)), reverse=True)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def most_contrasting(candidates: list[str], backdrop: str) -> str:
+    return max(candidates, key=lambda candidate: contrast_ratio(parse_css_color(candidate).hex_value, parse_css_color(backdrop).hex_value))

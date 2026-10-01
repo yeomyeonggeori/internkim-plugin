@@ -80,6 +80,13 @@ class DocumentChartTest(unittest.TestCase):
         charts = self.charts("edited.docx")
         self.assertEqual([(chart["type"], chart.get("title")) for chart in charts], [("bar", None), ("pie", "부문 비중")])
 
+    def test_a_chart_index_the_document_lacks_names_the_indexes_it_has(self):
+        self.export("--output", "report.docx")
+        write_json(self.directory / "ops.json", [{"op": "edit_chart", "chart": 3, "title": "부문 비중"}])
+        envelope = run_office(["doc", "apply", "report.docx", "ops.json", "--output", "edited.docx"], self.directory)
+        self.assertEqual(envelope["issues"][0]["code"], "TARGET_NOT_FOUND")
+        self.assertIn("use a chart from 0 to 1", envelope["issues"][0]["suggestion"])
+
     def test_a_series_that_does_not_line_up_is_refused_with_its_location(self):
         self.export("--output", "report.docx")
         write_json(self.directory / "ops.json", [{"op": "insert_chart", "after": 0, "type": "column", "categories": ["가", "나"], "series": [{"name": "값", "values": [1]}]}])

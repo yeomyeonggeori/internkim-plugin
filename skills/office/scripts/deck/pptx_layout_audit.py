@@ -10,7 +10,7 @@ from deck_definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, TE
 from office_result import Issue
 from pptx_geometry import EMU_PER_POINT, SLIDE_FRAME, Box, Frame, child_frame, local_box
 from pptx_inheritance import slide_context
-from pptx_shape_kinds import shape_address, shape_kind
+from pptx_shape_kinds import shape_address, shape_kind, shape_reference
 from pptx_text_measure import TextFit, grown_box, grows_with_text, largest_text_size, measure_text, wraps
 from pptx_text_operations import apply_run_style, character_properties
 
@@ -148,10 +148,6 @@ def location(entry: Entry, area: SlideArea) -> str:
 def transform_suggestion(entry: Entry, area: SlideArea, box: Box) -> dict:
     changed = {name: value for name, value in box.to_json().items() if value != getattr(entry.box, name)}
     return {"op": "set_transform", "slide": area.number, "shape": shape_reference(entry.address), **changed}
-
-
-def shape_reference(address: str) -> int | str:
-    return int(address) if address.isdigit() else address
 
 
 def inside(box: Box, area: SlideArea) -> Box:

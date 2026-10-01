@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import zipfile
 
 from chart_workbook import SHEET_NAME, cell_reference, chart_workbook_bytes, number_text
-from css_color import parse_css_color
+from css_color import most_contrasting, parse_css_color
 from pptx_package import xml_document
 from pptx_text import SlideScale, TextContext, attribute, color_xml, run_properties_xml, text_content
 
@@ -31,7 +31,6 @@ SCATTER_MARKER_PIXELS = 22
 SLICE_GAP_PIXELS = 2
 AXIS_LINE_PIXELS = 2
 GRID_LINE_PIXELS = 1
-LIGHT_LUMINANCE = 0.6
 PERCENT_FORMAT = "0%"
 CATEGORY_AXIS_ID = 1001
 VALUE_AXIS_ID = 1002
@@ -318,10 +317,7 @@ def round_labels_xml(layout: dict, context: TextContext) -> str:
 
 
 def contrasting_text(fill_color: str, layout: dict) -> str:
-    hex_value = parse_css_color(fill_color).hex_value
-    red, green, blue = (int(hex_value[offset:offset + 2], 16) / 255 for offset in (0, 2, 4))
-    luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
-    return text_style(layout, "share")["color"] if luminance > LIGHT_LUMINANCE else layout["colors"]["background"]
+    return most_contrasting([text_style(layout, "share")["color"], layout["colors"]["background"]], fill_color)
 
 
 def axes_xml(layout: dict, context: TextContext) -> str:
