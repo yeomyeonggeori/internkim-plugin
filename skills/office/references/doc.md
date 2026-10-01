@@ -12,18 +12,18 @@ Create or modify Word documents as local `.docx` files, PDF on request, authored
 
 ## Source and layout quality
 
-Use real Word tables for structured data, concise headers, sensible widths, readable margins, and Korean-capable fonts. Body text is normally 10–11 pt with compact headings and line spacing around 1.05–1.2; avoid giant titles, tiny cells, clipped tables, and excess blank space.
+Use real Word tables for structured data, concise headers, sensible widths, readable margins, and Korean-capable fonts. Body text is normally 10–11 pt with compact headings and line spacing around 1.05–1.2; avoid giant titles, tiny cells, clipped tables, and blank space.
 
 For business reports, make a source checklist of names, dates, totals, percentages, owners, missing values, and forbidden invented facts, and confirm those values appear in the document body after generation. Fix warnings for dense cells, blank cells, wide tables, missing text, font problems, or unreadable spacing.
 
 ## Editing
 
-`doc apply` edits the file in place: text, styles, blocks, table cells and rows, headers, footers, and comments, with every operation listed by `office guide doc`. Parts no operation touches keep their XML. Tracked changes are out of scope: `doc apply` neither reads nor writes revisions, and `doc check` reports a file that holds them, so accept or reject them in Word first. Work no operation covers goes in a task-local script run through `office python`.
+`doc apply` edits the file in place, and `office guide doc` lists every operation. Parts no operation touches keep their XML. When the reader should see what changed, as in a contract under negotiation, pass `--track`: edits are written as tracked changes under `--author`. `doc read` shows comment threads and `--revisions` lists tracked changes; settle those with `accept_revisions` or `reject_revisions`. Work no operation covers goes in a task-local script run through `office python`.
 
 ## Templates
 
-A user's .docx template with `{{ name }}` placeholders and `{% %}` tags is filled with `<skill>/scripts/office doc merge <template.docx> <values.json> <output.docx>`. It refuses to write while any placeholder has no value, and it warns about values the template never uses, which usually means a misspelled name.
+A user's template with `{{ name }}` placeholders is filled with `<skill>/scripts/office doc merge`, `deck merge` or `sheet merge <template> <values.json> <output>`. It refuses to write while any placeholder has no value and warns about values the template never uses, usually a misspelled name.
 
 ## Final check
 
-Run `doc check` for placeholders left, broken cross-references, a stale table of contents, missing East Asian fonts, and Korean text tagged with another East Asian language; each issue suggests the `doc apply` operation that fixes it. Confirm required source facts and visible headings. A Word file cannot be rendered here, so say its layout was not seen. A PDF exported from Markdown can: run `<skill>/scripts/office pdf render <file.pdf>` and look at the pages before attaching. For a contract, preserve every standard clause and checklist item from its governing spec.
+Run `doc check` for placeholders left, broken cross-references, a stale table of contents, missing East Asian fonts, and Korean text tagged with another East Asian language; each issue suggests the `doc apply` operation that fixes it. Confirm required source facts and visible headings. Before attaching, look at the pages from `<skill>/scripts/office doc render <file.docx>`, or `pdf render` for a PDF; on `PAGES_NOT_RENDERED`, say the layout was not seen. For a contract, preserve every standard clause and checklist item from its governing spec.

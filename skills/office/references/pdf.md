@@ -1,22 +1,22 @@
 # PDF
 
-Read, extract, merge, split, lightly edit, or create layout-critical PDFs in `~/documents`. Reach for this when placement carries meaning. When it does not, write the content and export it with `doc export`; when the layout belongs to someone else's letterhead or contract template, fill that template with paperwork. SKILL.md's rules for source truth, totals, earlier files, naming, and verification apply here.
+Read, extract, merge, split, lightly edit, or create layout-critical PDFs in `~/documents`, when placement carries meaning. When it does not, write the content and export it with `doc export`; when the layout belongs to someone else's letterhead or contract template, fill that template with paperwork. SKILL.md's rules for source truth, totals, earlier files, naming, and verification apply here.
 
 ## Workflow
 
-1. For an earlier or uploaded PDF, run `<skill>/scripts/office pdf read <file>` first: text per page, page sizes, and which pages have no extractable text, which are scans. Append a section page with `pdf edit`.
-2. For a short source-backed PDF, use `pdf create`; use a spec, or a task-local script run through `office python`, only when tables or precise placement require it; `<skill>/scripts/office guide pdf` lists the spec fields. Merging and splitting use pypdf in a task-local script.
-3. Validate with `<skill>/scripts/office pdf validate ~/documents/<title>.pdf`: it checks page count, extractable text, required and forbidden facts, encryption, embedded fonts, and Korean-capable fonts. Revise missing text or font failures before delivery.
+1. For an earlier or uploaded PDF, run `<skill>/scripts/office pdf read <file>` first: text and size per page, and which pages are scans without text.
+2. For a short source-backed PDF, use `pdf create`, with a spec or a task-local script through `office python` only when tables or precise placement require it; `<skill>/scripts/office guide pdf` lists the spec fields. Merge and split with pypdf in a task-local script.
+3. Validate with `<skill>/scripts/office pdf validate ~/documents/<title>.pdf`: it checks page count, extractable text, required and forbidden facts, encryption, embedded fonts, and Korean-capable fonts. Fix its failures before delivery.
 
 Put source facts in extractable PDF text, not in images.
 
 ## Layout quality
 
-Use readable margins, wrapped text, clear headings, real tables, and consistent page numbering when appropriate. Keep table text concise, split very wide tables, and avoid giant title blocks, clipped cells, tiny text, and excess blank space.
+Use readable margins, wrapped text, clear headings, real tables, and consistent page numbering. Keep table text concise, split very wide tables, and avoid giant titles, clipped cells, tiny text, and blank space.
 
 ## Editing
 
-For ordinary edits, use `pdf edit` and save in place. For custom layout, write a task-local script and run it through `office python`; preserve existing pages, metadata, encryption state, and source facts unless the user requests a change.
+To append a section page, use `pdf edit` and save in place. To rework a PDF's words, `<skill>/scripts/office convert <file.pdf> <file.docx>` and edit that. For custom layout, write a task-local script and run it through `office python`; preserve existing pages, metadata, encryption state, and source facts unless the user requests a change.
 
 ## Final check
 
