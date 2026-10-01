@@ -7,6 +7,7 @@
   const svgNamespace = "http://www.w3.org/2000/svg";
   const barScaleShare = 0.84;
   const lineInsetShare = 5;
+  const coverRingRadii = [442, 342, 242];
 
   function slides() {
     return Array.from(document.querySelectorAll("section[data-layout]"));
@@ -95,6 +96,13 @@
       const group = element("div", "kit-steps");
       slide.insertBefore(group, steps[0]);
       steps.forEach((step) => group.appendChild(step));
+    });
+  }
+
+  function addCoverRings() {
+    document.querySelectorAll("section[data-layout='cover']").forEach((slide) => {
+      if (slide.querySelector(":scope > img, :scope > .kit-ring")) return;
+      coverRingRadii.forEach((radius) => slide.appendChild(element("span", "kit-ring", { width: `${radius}px`, height: `${radius}px` })));
     });
   }
 
@@ -407,6 +415,7 @@
     markStructure();
     addListIndexes();
     groupSteps();
+    addCoverRings();
     addQuoteMarks();
     markNumericCells();
     document.querySelectorAll("section[data-layout] figure[data-chart]").forEach(renderChart);
