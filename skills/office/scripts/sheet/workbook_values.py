@@ -285,16 +285,21 @@ def criteria_roots(model, cells: list[FormulaCell], plan: EvaluationPlan) -> set
     probe_index = len(model.get_worksheets_properties()) - 1
     for position, (key, pair) in enumerate(probes):
         criteria_range = qualified(pair.range_text, key[0])
-        model.set_user_input(probe_index, 2 * position + 1, 1, f'=ROWS({criteria_range})*COLUMNS({criteria_range})-COUNTIF({criteria_range},"*")')
-        model.set_user_input(probe_index, 2 * position + 2, 1, f"={qualified(pair.criteria_text, key[0])}")
+        criteria = qualified(pair.criteria_text, key[0])
+        model.set_user_input(probe_index, position + 1, 1, f'=ROWS({criteria_range})*COLUMNS({criteria_range})-COUNTIF({criteria_range},"*")')
+        model.set_user_input(probe_index, position + 1, 2, f"={criteria}")
+        model.set_user_input(probe_index, position + 1, 3, f"=IFERROR(ROWS({criteria})*COLUMNS({criteria}),COUNTA({criteria}))")
     model.evaluate()
-    roots = set()
-    for position, (key, _) in enumerate(probes):
-        cells_without_text = model.get_cell_value(probe_index, 2 * position + 1, 1)
-        criteria = model.get_cell_value(probe_index, 2 * position + 2, 1)
-        if not isinstance(cells_without_text, (int, float)) or cells_without_text > 0 and is_divergent_criteria(criteria):
-            roots.add(key)
-    return roots
+    return {key for position, (key, _) in enumerate(probes) if criteria_diverges(model, probe_index, position + 1)}
+
+
+def criteria_diverges(model, probe_index: int, row: int) -> bool:
+    cells_without_text = model.get_cell_value(probe_index, row, 1)
+    criteria = model.get_cell_value(probe_index, row, 2)
+    criteria_cells = model.get_cell_value(probe_index, row, 3)
+    if not isinstance(cells_without_text, (int, float)) or criteria_cells != 1:
+        return True
+    return cells_without_text > 0 and is_divergent_criteria(criteria)
 
 
 def qualified(expression: str, host_sheet: str) -> str:
