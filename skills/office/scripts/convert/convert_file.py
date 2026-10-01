@@ -102,7 +102,7 @@ def require_route(input_path: Path, output_path: Path) -> Route:
 def markdown_blocks(conversion: Conversion) -> list:
     blocks = parse_markdown(read_text(conversion.input_path))
     require_valid_charts(blocks, conversion.input_path.name)
-    conversion.issues.extend(math_issues(blocks))
+    conversion.issues.extend(math_issues(blocks, normalized_extension(conversion.output_path.suffix)))
     return blocks
 
 

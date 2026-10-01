@@ -8,6 +8,7 @@ import latex2mathml.converter
 from latex2mathml.exceptions import NoAvailableTokensError
 import mathml2omml
 from docx.oxml import parse_xml
+from lxml import etree
 
 from doc_definitions import MATH_NOT_CONVERTED
 from markdown_blocks import Equation, Table, inline_segments, math_latex
@@ -18,6 +19,7 @@ OMML_NAMESPACE = "http://schemas.openxmlformats.org/officeDocument/2006/math"
 UNKNOWN_COMMAND = re.compile(r"\\[A-Za-z]")
 TOKEN_ELEMENTS = ("mi", "mn", "mo", "mtext", "ms")
 STACKED_ELEMENTS = {"munder": ("under",), "mover": ("over",), "munderover": ("under", "over")}
+OVERBARS = frozenset("¯‾―")
 ARGUMENT_COUNTS = {"mfrac": 2, "msup": 2, "msub": 2, "msubsup": 3, "mroot": 2, "munder": 2, "mover": 2, "munderover": 3}
 RULE = "1px solid #1f2328"
 ROW = "display:inline-flex;align-items:center;white-space:nowrap"
@@ -48,10 +50,11 @@ def latex_mathml(latex: str, display: bool) -> str:
     return mathml
 
 
-def math_issues(blocks: list) -> list[Issue]:
+def math_issues(blocks: list, target: str) -> list[Issue]:
+    convert = latex_omml if target == "docx" else latex_html
     formulas = [(block.latex, True) for block in blocks if isinstance(block, Equation)]
     formulas += [(latex, False) for text in block_texts(blocks) for latex in map(math_latex, inline_segments(text)) if latex is not None]
-    return [MATH_NOT_CONVERTED.issue(str(problem), latex) for latex, display in formulas for problem in latex_problems(latex, display)]
+    return [MATH_NOT_CONVERTED.issue(str(problem), latex) for latex, display in formulas for problem in latex_problems(convert, latex, display)]
 
 
 def block_texts(blocks: list) -> list[str]:
@@ -66,9 +69,9 @@ def texts_of(block) -> list[str]:
     return [getattr(block, "text", "")]
 
 
-def latex_problems(latex: str, display: bool) -> list[LatexNotReadable]:
+def latex_problems(convert, latex: str, display: bool) -> list[LatexNotReadable]:
     try:
-        latex_omml(latex, display)
+        convert(latex, display)
     except LatexNotReadable as problem:
         return [problem]
     return []
@@ -80,7 +83,7 @@ def text_with_math_drawn(text: str) -> str:
 
 def math_text(latex: str, display: bool = False) -> str:
     try:
-        return "".join(ElementTree.fromstring(latex_mathml(latex, display)).itertext())
+        return "".join(ElementTree.fromstring(latex_html(latex, display)).itertext())
     except LatexNotReadable:
         return latex
 
@@ -89,9 +92,9 @@ def latex_omml(latex: str, display: bool = False):
     mathml = latex_mathml(latex, display)
     try:
         omml = mathml2omml.convert(mathml)
-    except (ValueError, IndexError, KeyError, AttributeError, TypeError) as error:
-        raise LatexNotReadable(f"{latex!r} has no Word equation form ({error or type(error).__name__})") from error
-    return parse_xml(f'<m:oMath xmlns:m="{OMML_NAMESPACE}">{omml.removeprefix("<m:oMath>").removesuffix("</m:oMath>")}</m:oMath>')
+        return parse_xml(f'<m:oMath xmlns:m="{OMML_NAMESPACE}">{omml.removeprefix("<m:oMath>").removesuffix("</m:oMath>")}</m:oMath>')
+    except (ValueError, IndexError, KeyError, AttributeError, TypeError, etree.XMLSyntaxError) as error:
+        raise LatexNotReadable(f"{latex!r} has no Word equation form: mathml2omml wrote {error or type(error).__name__}") from error
 
 
 def latex_html(latex: str, display: bool = False) -> str:
@@ -121,6 +124,8 @@ def element_html(element) -> str:
         return radical("", "".join(parts))
     if name == "mroot":
         return radical(parts[1], parts[0])
+    if name == "mover" and (element[1].text or "").strip() in OVERBARS:
+        return f'<span style="{ROW};border-top:{RULE}">{parts[0]}</span>'
     if name in STACKED_ELEMENTS:
         return limits(parts, STACKED_ELEMENTS[name])
     if name == "mtable":

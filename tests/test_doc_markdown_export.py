@@ -125,6 +125,14 @@ class MathTest(unittest.TestCase):
         self.assertIn("$100에서 $200 사이", document_xml)
         self.assertIn("$\\foo{x}$", document_xml)
 
+    def test_a_formula_word_cannot_hold_is_named_for_docx_and_still_typeset_in_the_pdf(self):
+        (self.directory / "평균.md").write_text("분기 평균은 $\\bar{x} = 3$ 이다.\n", encoding="utf-8")
+        word = run_office(["doc", "export", "평균.md", "--output", "평균.docx"], self.directory)
+        self.assertEqual([issue["code"] for issue in word["issues"]], ["MATH_NOT_CONVERTED"])
+        self.assertIn("no Word equation form", word["issues"][0]["message"])
+        pdf = run_office(["doc", "export", "평균.md", "--output", "평균.pdf"], self.directory)
+        self.assertEqual(pdf["issues"], [])
+
     def test_the_pdf_typesets_the_formulas_instead_of_printing_latex(self):
         self.assertEqual([issue["code"] for issue in self.export("수식.pdf")["issues"]], ["MATH_NOT_CONVERTED"])
         text = pdf_text("수식.pdf", self.directory)

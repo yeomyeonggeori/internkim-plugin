@@ -36,7 +36,7 @@ def main() -> Result:
     else:
         document, issues = markdown_document(blocks, arguments.font, arguments.font_size, markdown_path.parent)
         document.save(output_path)
-    return Result(summary=f"exported {output_path} from {markdown_path}", output_path=str(output_path), issues=(*math_issues(blocks), *issues))
+    return Result(summary=f"exported {output_path} from {markdown_path}", output_path=str(output_path), issues=(*math_issues(blocks, output_format), *issues))
 
 
 def require_export_format(output_path: Path) -> str:
