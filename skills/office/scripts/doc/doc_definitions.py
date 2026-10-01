@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from office_render import LIBREOFFICE_ISSUE_KINDS
+from office_preview import PREVIEW_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
 from office_schema import AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Text, Variant
@@ -356,5 +356,5 @@ GUIDE_ISSUES = (
     ("doc check", CHECK_ISSUE_KINDS),
     ("doc apply", OPERATION_ISSUE_KINDS),
     ("doc merge", MERGE_ISSUE_KINDS),
-    ("doc render", LIBREOFFICE_ISSUE_KINDS),
+    ("doc render", PREVIEW_ISSUE_KINDS),
 )
