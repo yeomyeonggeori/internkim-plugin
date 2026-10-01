@@ -208,6 +208,7 @@ CHART_ATTRIBUTES = (
     "data-chart: " + ", ".join(chart_types()),
     "data-labels: category names separated by commas",
     "data-values: one number per label, for a single series",
+    "numbers are separated by a comma and a space, so \"1,200, 1,350\" is two numbers, and the unit goes in data-unit, never in the numbers",
     "data-series: \"name: 1, 2, 3; other: 4, 5, 6\" for several series, each with one number per label",
     "combo: the last series is a line on its own axis, the ones before it are columns",
     "scatter: two series, the horizontal axis first and the vertical second; each label names one point",
@@ -217,7 +218,7 @@ CHART_ATTRIBUTES = (
     "data-highlight: one label drawn in the accent color while the others are muted (single series, or a scatter point)",
     "data-center, data-center-label: the text in a donut's hole; default the first slice's share",
     "data-zero: true starts a line chart's axis at zero",
-    "<figcaption>: the unit, period and source under the chart",
+    "<figcaption>: the unit, period and source under the chart, one unit and one source per chart",
 )
 
 

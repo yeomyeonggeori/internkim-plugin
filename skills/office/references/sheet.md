@@ -10,7 +10,7 @@ A CSV or TSV becomes a workbook with `<skill>/scripts/office convert <data.csv> 
 | --- | --- |
 | CSV or TSV to a workbook | `office convert <data.csv> ~/documents/<title>.xlsx`, then `sheet apply` |
 | New workbook | `sheet create ~/documents/<title>.xlsx --spec spec.json`: sheets with `rows` or `csvPath`, then `operations` for formats, rules, charts and pivots |
-| Append rows | `sheet edit <file> --rows rows.json`; with no path it targets the newest workbook |
+| Append rows | `sheet edit <file> --rows rows.json` |
 | See an existing workbook | `sheet read <file>`, then `--sheet`, `--range`, `--stats` for column totals, `--where error` or `--where formula` |
 | Change it | `sheet apply <file> ops.json` |
 | Verify | `sheet check`, then `sheet validate`, then `sheet render`, whose `details.pageContents` names each page's sheet, cells and charts, whole or cut, for a check without looking at images |
@@ -19,7 +19,7 @@ A CSV or TSV becomes a workbook with `<skill>/scripts/office convert <data.csv> 
 ## Workflow
 
 1. Clarify only missing columns, source data, formulas or format choices that change the structure. Preview a newly uploaded file before extraction.
-2. Parse CSV and TSV with Python's `csv`, preserve malformed data for review, and never silently drop rows or columns. Put rows you cannot repair confidently in an `Issues` sheet.
+2. Bring a CSV or TSV in with `office convert`, never a parser of your own, then `sheet read` it and compare its row and column counts with the source; never drop rows or columns. Put rows you cannot repair confidently in an `Issues` sheet.
 3. Work in `~/documents/`. Write each formula's references for the row it lands in, counting a heading row.
 4. Run `sheet check` and `sheet validate` and fix what they report; each issue says how, and an issue such as `NUMBER_TOO_WIDE` carries the exact operations in its `fix`. Then `sheet read` the ranges that hold totals and compare them with the source.
 5. Deliver source CSVs only when requested.

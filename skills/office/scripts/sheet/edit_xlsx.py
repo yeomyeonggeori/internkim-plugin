@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import os
+
 from sheet.excel_functions import written_value
 from core.office_operations import save_atomically
-from core.office_inputs import office_file, resolve_document_path
-from core.office_result import DOCUMENTS_FOLDER, OfficeArgumentParser, Result, read_json_file, run_command
+from core.office_inputs import office_file
+from core.office_result import OfficeArgumentParser, Result, read_json_file, run_command
 from core.office_schema import require_valid
 from sheet.sheet_definitions import ROWS
 from sheet.sheet_operations import load_editing, save_editing
@@ -15,7 +17,7 @@ def main() -> Result:
     arguments = parse_arguments()
     json_rows = load_rows(arguments.rows) if arguments.rows else []
     require_writable_rows(json_rows, "rows")
-    workbook_path = resolve_document_path(arguments.workbook_path, "xlsx")
+    workbook_path = os.path.expanduser(arguments.workbook_path)
     editing = load_editing(workbook_path, arguments.allow_loss)
     worksheet = resolve_worksheet(editing.workbook, arguments.sheet)
     for row in argument_rows(arguments.row, filled_width(worksheet)) + json_rows:
@@ -44,7 +46,7 @@ def resolve_worksheet(workbook, sheet_name: str | None):
 
 def parse_arguments():
     parser = OfficeArgumentParser()
-    parser.add_argument("workbook_path", nargs="?", type=office_file("xlsx"), help=f"Path to the .xlsx; defaults to the newest .xlsx in {DOCUMENTS_FOLDER}")
+    parser.add_argument("workbook_path", type=office_file("xlsx"), help="Path to the .xlsx to edit in place")
     parser.add_argument("--sheet", default=None, metavar="NAME", help="Sheet name (default: active sheet; created if missing)")
     parser.add_argument("--row", action="append", default=[], metavar="CELLS", help="Append one row as one CSV line: values separated by commas, a value holding a comma in double quotes (repeatable)")
     parser.add_argument("--rows", metavar="JSON_PATH", help="JSON file with an array of row arrays")

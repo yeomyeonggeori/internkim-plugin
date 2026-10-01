@@ -2,20 +2,21 @@
 from __future__ import annotations
 
 import argparse
+import os
 
 from doc.create_docx import add_block, add_list, require_rectangular_tables
 from fonts.docx_embedding import save_document
 from doc.doc_definitions import BLOCK_LIST
 from doc.docx_package import open_document
-from core.office_inputs import office_file, resolve_document_path
-from core.office_result import DOCUMENTS_FOLDER, OfficeArgumentParser, Result, read_json_file, run_command
+from core.office_inputs import office_file
+from core.office_result import OfficeArgumentParser, Result, read_json_file, run_command
 from core.office_schema import require_valid
 
 
 def main() -> Result:
     arguments = parse_arguments()
     blocks = load_blocks(arguments.blocks) if arguments.blocks else []
-    document_path = resolve_document_path(arguments.document_path, "docx")
+    document_path = os.path.expanduser(arguments.document_path)
     document = open_document(document_path)
     for heading_text in arguments.heading:
         document.add_heading(heading_text, level=1)
@@ -38,7 +39,7 @@ def load_blocks(blocks_path: str) -> list[dict]:
 
 def parse_arguments() -> argparse.Namespace:
     parser = OfficeArgumentParser()
-    parser.add_argument("document_path", nargs="?", type=office_file("docx"), help=f"Path to the .docx; defaults to the newest .docx in {DOCUMENTS_FOLDER}")
+    parser.add_argument("document_path", type=office_file("docx"), help="Path to the .docx to edit in place")
     parser.add_argument("--heading", action="append", default=[], metavar="TEXT", help="Append a level-1 heading")
     parser.add_argument("--paragraph", action="append", default=[], metavar="TEXT", help="Append a paragraph")
     parser.add_argument("--bullet", action="append", default=[], metavar="TEXT", help="Append a bullet item")

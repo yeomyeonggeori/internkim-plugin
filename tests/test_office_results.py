@@ -175,6 +175,18 @@ class OutputPathTest(unittest.TestCase):
             _, envelope = run_office(["deck", "image", " ", "images/photo.jpg"], Path(directory))
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["INVALID_ARGUMENTS"])
 
+    def test_an_edit_without_a_path_never_picks_a_file_by_itself(self):
+        with tempfile.TemporaryDirectory() as directory:
+            working_directory = Path(directory)
+            (working_directory / "documents").mkdir()
+            self.assertEqual(run_office(["sheet", "create", "documents/book.xlsx", "--row", "a,b"], working_directory)[1]["status"], "ok")
+            original = (working_directory / "documents" / "book.xlsx").read_bytes()
+            for arguments in (["sheet", "edit", "--row", "1,2"], ["doc", "edit", "--paragraph", "본문"], ["pdf", "edit", "--heading", "제목"]):
+                with self.subTest(command=arguments[:2]):
+                    _, envelope = run_office(arguments, working_directory)
+                    self.assertEqual([issue["code"] for issue in envelope["issues"]], ["INVALID_ARGUMENTS"])
+            self.assertEqual((working_directory / "documents" / "book.xlsx").read_bytes(), original)
+
     def test_a_read_only_disk_is_named_rather_than_raised(self):
         def write_on_read_only_disk():
             raise OSError(errno.EROFS, "Read-only file system", "/Volumes/archive/report.docx")

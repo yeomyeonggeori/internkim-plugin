@@ -103,7 +103,6 @@ INPUT_NOT_FOUND = IssueKind("INPUT_NOT_FOUND", ERROR, "an input file or director
 WRONG_INPUT_FORMAT = IssueKind("WRONG_INPUT_FORMAT", ERROR, "the input file is not the kind this command reads", "run the office command that reads this kind of file; office --help lists them")
 FILE_DAMAGED = IssueKind("FILE_DAMAGED", ERROR, "the file is the right kind but its structure is broken, as when a download or copy stopped early, so it cannot be read", "ask the user to send the complete file again; no office command can read this one")
 PDF_PASSWORD_REQUIRED = IssueKind("PDF_PASSWORD_REQUIRED", ERROR, "the PDF needs a password to open", "ask the user for the password and rerun with --password <password>; never guess one")
-NO_FILE_FOUND = IssueKind("NO_FILE_FOUND", ERROR, f"no path was given and {DOCUMENTS_FOLDER} holds no file of this kind", "pass the file path explicitly")
 INVALID_JSON = IssueKind("INVALID_JSON", ERROR, "an input file is not valid JSON", "fix the JSON syntax at the reported line and column")
 PERMISSION_DENIED = IssueKind("PERMISSION_DENIED", ERROR, "the command may not read or write this path", f"write the output under {DOCUMENTS_FOLDER} instead")
 PATH_UNUSABLE = IssueKind("PATH_UNUSABLE", ERROR, "a path cannot be written or read as given: it names a folder where a file belongs, runs through a file as if it were a folder, is too long, or lies on a read-only disk", f"pass a file path inside a writable folder, such as {DOCUMENTS_FOLDER}/<name>")
@@ -123,7 +122,6 @@ COMMAND_ISSUE_KINDS = (
     WRONG_INPUT_FORMAT,
     PDF_PASSWORD_REQUIRED,
     FILE_DAMAGED,
-    NO_FILE_FOUND,
     INVALID_JSON,
     PERMISSION_DENIED,
     PATH_UNUSABLE,

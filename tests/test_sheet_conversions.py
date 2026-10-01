@@ -65,6 +65,8 @@ class DelimitedRouteTest(ConversionFixture):
     def test_the_sheet_reference_sends_a_csv_through_convert_before_any_guide(self):
         reference = (SCRIPTS_PATH.parent / "references" / "sheet.md").read_text(encoding="utf-8")
         self.assertLess(reference.index("office convert <data.csv>"), reference.index("office guide sheet"))
+        self.assertNotIn("Python's `csv`", reference)
+        self.assertNotIn("newest", reference)
 
     def test_excel_unicode_text_in_utf16_converts_whatever_its_extension(self):
         exported = "\ufeff지역\t실적\n서울\t6200\n".encode("utf-16-le")
