@@ -80,7 +80,7 @@ Choose each slide's layout from its content. Three slides in a row never share a
 
 ## Charts
 
-A chart is data in attributes; the kit draws it with value labels and the theme's colors. `data-chart` is `column`, `bar`, `stacked`, `line`, `donut` or `pie`. Give `data-labels` and `data-values` with one plain number per label, or several series as `data-series="2025: 82, 96; 2026: 90, 110"`. The unit goes in `data-unit`, never in the numbers. `data-highlight="3Q26"` draws one label in the accent and mutes the rest. Put the unit, period and source in `<figcaption>`. Keep one unit and one source per chart.
+A chart is data in attributes; the kit draws it with value labels and the theme's colors. `data-chart` is `column`, `bar`, `stacked`, `line`, `donut` or `pie`. Give `data-labels` and `data-values` with one number per label, separated by a comma and a space (`1,200, 1,350`), or several series as `data-series="2025: 82, 96; 2026: 90, 110"`. The unit goes in `data-unit`, never in the numbers. `data-highlight="3Q26"` draws one label in the accent and mutes the rest. Put the unit, period and source in `<figcaption>`. Keep one unit and one source per chart.
 
 ## Build and deliver
 

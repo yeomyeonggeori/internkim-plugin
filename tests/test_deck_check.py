@@ -141,6 +141,13 @@ class DeckCheckTest(unittest.TestCase):
         self.assertIn("positive shares", " ".join(messages["slide 5"]))
         self.assertIn("data-highlight", " ".join(messages["slide 5"]))
 
+    def test_grouped_thousands_are_one_number_when_values_are_comma_space_separated(self):
+        grouped = '<section data-layout="chart"><h2>매출이 늘었습니다</h2><figure data-chart="column" data-labels="1월, 2월" data-values="1,200, 1,350" data-unit="만원"></figure></section>'
+        self.assertNotIn("CHART_DATA_INVALID", [code for code, _ in self.codes(kit_deck(COVER, grouped))])
+        packed = grouped.replace("1,200, 1,350", "1,200,1,350")
+        messages = [issue.message for issue in self.check(kit_deck(COVER, packed)).issues if issue.kind.code == "CHART_DATA_INVALID"]
+        self.assertIn("comma and a space", " ".join(messages))
+
     def test_images_must_be_local_files_that_exist(self):
         slides = (
             '<section data-layout="image"><h2>원격 이미지입니다</h2><img src="https://example.com/a.jpg"></section>',

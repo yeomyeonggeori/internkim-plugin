@@ -28,7 +28,7 @@ from deck_definitions import (
     kit_layout,
     part_label,
 )
-from deck_kit import DEFAULT_THEME, chart_types, theme_palettes, uses_deck_kit
+from deck_kit import DEFAULT_THEME, chart_number, chart_types, split_chart_list, theme_palettes, uses_deck_kit
 from deck_source import Element, find_all, normalized_text, parse_source, style_texts, visible_text
 from design_tokens import design_front_matter
 from office_inputs import PPTX, require_kind
@@ -221,8 +221,14 @@ def series_problem(name: str, values: list[str], label_count: int) -> str:
     if not_numbers:
         return f"{name} holds {', '.join(not_numbers[:3])}, which are not plain numbers; put the unit in data-unit"
     if len(values) != label_count:
-        return f"{name} has {len(values)} numbers for {label_count} labels"
+        return f"{name} has {len(values)} numbers for {label_count} labels{thousands_hint(values)}"
     return ""
+
+
+def thousands_hint(values: list[str]) -> str:
+    if not any(len(value) == 3 and value.isdigit() for value in values[1:]):
+        return ""
+    return '; if a comma groups thousands, separate the values with a comma and a space ("1,200, 1,350") or write them without the grouping comma ("1200, 1350")'
 
 
 def shape_problems(chart_type: str, labels: list[str], series: list[tuple[str, list[str]]], highlight: str | None) -> list[str]:
@@ -231,7 +237,7 @@ def shape_problems(chart_type: str, labels: list[str], series: list[tuple[str, l
         problems.append(f'data-highlight="{highlight}" is not one of the labels')
     if chart_type not in ("donut", "pie"):
         return problems
-    values = [float(value) for value in series[0][1] if is_number(value)]
+    values = [chart_number(value) for value in series[0][1] if is_number(value)]
     if len(series) > 1:
         problems.append(f"a {chart_type} chart takes one series in data-values")
     if any(value < 0 for value in values) or sum(values) <= 0:
@@ -242,15 +248,11 @@ def shape_problems(chart_type: str, labels: list[str], series: list[tuple[str, l
 
 
 def split_list(text: str) -> list[str]:
-    return [value.strip() for value in text.split(",") if value.strip()]
+    return split_chart_list(text)
 
 
 def is_number(text: str) -> bool:
-    try:
-        float(text.replace("−", "-"))
-        return True
-    except ValueError:
-        return False
+    return chart_number(text) is not None
 
 
 def image_issues(slide: Slide, base_path: pathlib.Path) -> list[Issue]:

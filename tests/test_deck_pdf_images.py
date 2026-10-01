@@ -66,5 +66,18 @@ class PdfImageTest(unittest.TestCase):
         self.assertGreater(brightest - panel, 12)
 
 
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+    def test_the_kit_draws_grouped_thousands_as_the_check_reads_them(self):
+        chart = '<section data-layout="chart"><h2>매출이 늘었습니다</h2><figure data-chart="column" data-labels="1월, 2월" data-values="1,200, 1,350" data-unit="만원"></figure></section>'
+        with tempfile.TemporaryDirectory() as directory:
+            deck_path = Path(directory)
+            (deck_path / "slides.html").write_text(DECK.replace('<section data-layout="statement">', chart + '<section data-layout="statement">'), encoding="utf-8")
+            write_photo(deck_path / "images" / "shelves.png")
+            subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path)
+            layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
+        texts = {run["text"].strip() for block in layout["slides"][1]["blocks"] for paragraph in block["paragraphs"] for run in paragraph["runs"]}
+        self.assertTrue({"1,200만원", "1,350만원"} <= texts, texts)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -8,6 +8,7 @@
   const barScaleShare = 0.84;
   const lineInsetShare = 5;
   const coverRingRadii = [442, 342, 242];
+  const groupedNumberPattern = /^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/;
 
   function slides() {
     return Array.from(document.querySelectorAll("section[data-layout]"));
@@ -145,11 +146,13 @@
   }
 
   function parseList(text) {
-    return (text || "").split(",").map((value) => value.trim()).filter((value) => value !== "");
+    const separator = /,\s/.test(text || "") ? /,\s+/ : /,/;
+    return (text || "").split(separator).map((value) => value.trim()).filter((value) => value !== "");
   }
 
   function parseNumber(text) {
-    return Number(String(text).replace(/\s/g, "").replace("−", "-"));
+    const compact = String(text).replace(/\s/g, "").replace("−", "-");
+    return Number(groupedNumberPattern.test(compact) ? compact.replace(/,/g, "") : compact);
   }
 
   function chartData(figure) {
