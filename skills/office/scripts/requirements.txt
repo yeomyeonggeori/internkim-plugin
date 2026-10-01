@@ -1,10 +1,8 @@
 docxtpl
 fpdf2
 openpyxl
-pandas<3
 Pillow
 pypdf
 pypdfium2
 python-docx
 python-pptx
-xlcalculator>=0.5

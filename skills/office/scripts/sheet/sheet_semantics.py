@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import functools
+from dataclasses import dataclass
 import math
 import re
 from typing import Callable
-
-from xlcalculator.xlfunctions import func_xltypes, xlerrors
 
 
 BLANK = "blank"
@@ -16,46 +14,44 @@ ERROR = "error"
 TYPE_RANK = {NUMBER: 0, TEXT: 1, LOGICAL: 2}
 CRITERIA_PATTERN = re.compile(r"^(>=|<=|<>|>|<|=)?(.*)$", re.DOTALL)
 
+DIVIDE_BY_ZERO = "#DIV/0!"
+INVALID_VALUE = "#VALUE!"
+UNKNOWN_NAME = "#NAME?"
+INVALID_NUMBER = "#NUM!"
+NOT_AVAILABLE = "#N/A"
 
+
+class ExcelError(Exception):
+    def __init__(self, code: str, detail: str = ""):
+        super().__init__(detail or code)
+        self.code = code
+
+
+@dataclass(frozen=True)
 class Item:
-    __slots__ = ("kind", "value")
-
-    def __init__(self, kind: str, value):
-        self.kind = kind
-        self.value = value
+    kind: str
+    value: object
 
 
-def classify(raw) -> Item:
-    if isinstance(raw, xlerrors.ExcelError):
-        return Item(ERROR, raw)
-    if isinstance(raw, func_xltypes.Blank) or raw is None:
-        return Item(BLANK, None)
-    if isinstance(raw, func_xltypes.DateTime):
-        return Item(NUMBER, float(raw))
-    if isinstance(raw, func_xltypes.ExcelType):
-        return classify(raw.value)
-    if isinstance(raw, bool):
-        return Item(LOGICAL, raw)
-    if isinstance(raw, (int, float)) or hasattr(raw, "item") and isinstance(raw.item(), (int, float)):
-        return Item(NUMBER, float(raw))
-    if isinstance(raw, str):
-        return Item(TEXT, raw)
-    raise NotImplementedError(f"cannot read a {type(raw).__name__} value")
+@dataclass(frozen=True)
+class Range:
+    rows: list
+
+
+def classify(argument) -> Item:
+    if not is_range(argument):
+        return argument
+    if len(argument.rows) == 1 and len(argument.rows[0]) == 1:
+        return argument.rows[0][0]
+    raise NotImplementedError("array arithmetic is not evaluated")
 
 
 def grid(argument) -> list[list[Item]]:
-    rows = func_xltypes.Array.cast(argument).values.tolist()
-    return [[classify(raw) for raw in row] for row in rows]
+    return argument.rows if is_range(argument) else [[argument]]
 
 
 def is_range(argument) -> bool:
-    return isinstance(argument, func_xltypes.Array)
-
-
-def require_scalar(argument):
-    if is_range(argument):
-        raise NotImplementedError("array arithmetic is not evaluated")
-    return argument
+    return isinstance(argument, Range)
 
 
 def first_error(items: list[Item]):
@@ -76,7 +72,7 @@ def parse_number_text(text: str) -> float:
     try:
         return float(text.strip())
     except ValueError as error:
-        raise xlerrors.ValueExcelError(f"{text!r} is not a number") from error
+        raise ExcelError(INVALID_VALUE, f"{text!r} is not a number") from error
 
 
 def to_logical(item: Item) -> bool:
@@ -89,7 +85,7 @@ def to_logical(item: Item) -> bool:
     if item.kind == TEXT and item.value.upper() in ("TRUE", "FALSE"):
         return item.value.upper() == "TRUE"
     if item.kind == TEXT:
-        raise xlerrors.ValueExcelError(f"{item.value!r} is not TRUE or FALSE")
+        raise ExcelError(INVALID_VALUE, f"{item.value!r} is not TRUE or FALSE")
     raise item.value
 
 
@@ -111,64 +107,35 @@ def to_text(item: Item) -> str:
     raise item.value
 
 
-def excel_function(function: Callable) -> Callable:
-    @functools.wraps(function)
-    def wrapper(*arguments):
-        try:
-            return func_xltypes.ExcelType.cast_from_native(function(*arguments))
-        except xlerrors.ExcelError as error:
-            return error
-    return wrapper
-
-
 def arithmetic(operation: Callable[[float, float], float]) -> Callable:
     def operator(left, right):
-        left_item, right_item = classify(require_scalar(left)), classify(require_scalar(right))
-        error = first_error([left_item, right_item])
-        if error is not None:
-            return error
-        try:
-            return operation(to_number(left_item), to_number(right_item))
-        except xlerrors.ExcelError as error:
-            return error
-        except (OverflowError, ZeroDivisionError):
-            return xlerrors.NumExcelError("the result is out of range")
+        return operation(to_number(classify(left)), to_number(classify(right)))
     return operator
 
 
 def divide(left: float, right: float) -> float:
     if right == 0:
-        raise xlerrors.DivZeroExcelError()
+        raise ExcelError(DIVIDE_BY_ZERO)
     return left / right
 
 
 def power(base: float, exponent: float) -> float:
     if base == 0 and exponent == 0:
-        raise xlerrors.NumExcelError("0 to the power 0")
+        raise ExcelError(INVALID_NUMBER, "0 to the power 0")
+    if base == 0 and exponent < 0:
+        raise ExcelError(DIVIDE_BY_ZERO)
     result = base ** exponent
     if isinstance(result, complex):
-        raise xlerrors.NumExcelError("a negative base with a fractional exponent")
+        raise ExcelError(INVALID_NUMBER, "a negative base with a fractional exponent")
     return result
 
 
 def negate(value):
-    item = classify(require_scalar(value))
-    if item.kind == ERROR:
-        return item.value
-    try:
-        return -to_number(item)
-    except xlerrors.ExcelError as error:
-        return error
+    return -to_number(classify(value))
 
 
 def percent(value):
-    item = classify(require_scalar(value))
-    if item.kind == ERROR:
-        return item.value
-    try:
-        return to_number(item) / 100
-    except xlerrors.ExcelError as error:
-        return error
+    return to_number(classify(value)) / 100
 
 
 def comparison_operands(left: Item, right: Item) -> tuple[Item, Item]:
@@ -198,16 +165,14 @@ def order(left: Item, right: Item) -> int:
 
 def comparison(accepts: Callable[[int], bool]) -> Callable:
     def operator(left, right):
-        left_item, right_item = classify(require_scalar(left)), classify(require_scalar(right))
+        left_item, right_item = classify(left), classify(right)
         error = first_error([left_item, right_item])
         return error if error is not None else accepts(order(left_item, right_item))
     return operator
 
 
 def concatenate_operator(left, right):
-    left_item, right_item = classify(require_scalar(left)), classify(require_scalar(right))
-    error = first_error([left_item, right_item])
-    return error if error is not None else to_text(left_item) + to_text(right_item)
+    return to_text(classify(left)) + to_text(classify(right))
 
 
 def concatenate_items(arguments) -> object:
@@ -219,13 +184,25 @@ def concatenate_items(arguments) -> object:
 def numbers_in(arguments) -> list[float]:
     numbers = []
     for argument in arguments:
-        items = [item for row in grid(argument) for item in row]
-        error = first_error(items)
-        if error is not None:
-            raise error
-        counts_logicals = not is_range(argument)
-        numbers.extend(float(item.value) for item in items if item.kind == NUMBER or (item.kind == LOGICAL and counts_logicals))
+        if is_range(argument):
+            numbers.extend(range_numbers(argument))
+        else:
+            numbers.append(typed_number(argument))
     return numbers
+
+
+def range_numbers(argument) -> list[float]:
+    items = [item for row in grid(argument) for item in row]
+    error = first_error(items)
+    if error is not None:
+        raise error
+    return [item.value for item in items if item.kind == NUMBER]
+
+
+def typed_number(item: Item) -> float:
+    if item.kind == BLANK:
+        raise NotImplementedError("an empty argument to an aggregate is not evaluated")
+    return to_number(item)
 
 
 def sum_numbers(*arguments):
@@ -235,7 +212,7 @@ def sum_numbers(*arguments):
 def average_numbers(*arguments):
     numbers = numbers_in(arguments)
     if not numbers:
-        raise xlerrors.DivZeroExcelError()
+        raise ExcelError(DIVIDE_BY_ZERO)
     return math.fsum(numbers) / len(numbers)
 
 
@@ -336,8 +313,8 @@ def matching_positions(range_argument, criteria) -> list[tuple[int, int]]:
     return [(row_index, column_index) for row_index, row in enumerate(grid(range_argument)) for column_index, item in enumerate(row) if test(item)]
 
 
-def classify_scalar(criteria):
-    return criteria.values.tolist()[0][0] if is_range(criteria) else criteria
+def classify_scalar(criteria) -> Item:
+    return criteria.rows[0][0] if is_range(criteria) else criteria
 
 
 def intersect(position_lists: list[list[tuple[int, int]]]) -> list[tuple[int, int]]:
@@ -349,10 +326,10 @@ def intersect(position_lists: list[list[tuple[int, int]]]) -> list[tuple[int, in
 
 def criteria_positions(pairs) -> list[tuple[int, int]]:
     if len(pairs) % 2 != 0 or not pairs:
-        raise xlerrors.ValueExcelError("criteria come as range and criterion pairs")
+        raise ExcelError(INVALID_VALUE, "criteria come as range and criterion pairs")
     shapes = {shape_of(range_argument) for range_argument in pairs[0::2]}
     if len(shapes) != 1:
-        raise xlerrors.ValueExcelError("criteria ranges differ in size")
+        raise ExcelError(INVALID_VALUE, "criteria ranges differ in size")
     return intersect([matching_positions(pairs[index], pairs[index + 1]) for index in range(0, len(pairs), 2)])
 
 
@@ -402,7 +379,7 @@ def average_items(items: list[Item]) -> float:
         raise error
     numbers = [item.value for item in items if item.kind == NUMBER]
     if not numbers:
-        raise xlerrors.DivZeroExcelError()
+        raise ExcelError(DIVIDE_BY_ZERO)
     return math.fsum(numbers) / len(numbers)
 
 
@@ -417,7 +394,7 @@ def averageifs(average_range, *criteria_pairs):
 def sumproduct(*arrays):
     grids = [grid(array) for array in arrays]
     if len({(len(rows), len(rows[0])) for rows in grids}) != 1:
-        raise xlerrors.ValueExcelError("the arrays differ in size")
+        raise ExcelError(INVALID_VALUE, "the arrays differ in size")
     products = []
     for position_items in zip(*[[item for row in rows for item in row] for rows in grids]):
         error = first_error(list(position_items))
