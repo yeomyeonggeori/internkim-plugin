@@ -129,6 +129,13 @@ PARAGRAPH_FORMAT = (
     Field("spaceBeforePoints", Number(minimum=0), "space above"),
     Field("spaceAfterPoints", Number(minimum=0), "space below"),
 )
+BASELINE = Field("baseline", Choice(("superscript", "subscript", "none")), "raise or lower the text; none puts it back on the line")
+PARAGRAPH_DECORATION = (
+    Field("indentRightInches", Number(minimum=0), "right indent"),
+    Field("shadingFill", HexColor(allows_none=True), "paragraph background color; none removes it"),
+    Field("borders", ListOf(Choice(("top", "bottom", "left", "right"))), "sides that get a line; an empty list removes every line"),
+    Field("borderColor", HexColor(), "color of those lines, default black"),
+)
 AFTER_TEXT = Field("afterText", Text(non_empty=True), "exact text in the block the mark follows; default the block's end")
 NOTE_FIELDS = (
     TARGET_BLOCK,
@@ -259,10 +266,11 @@ OPERATIONS = Variant(
             Field("block", BLOCK_INDEX, "only this block; give block, find, or both"),
             Field("find", Text(non_empty=True), "exact text to format; default the whole block"),
             *CHARACTER_FORMAT,
+            BASELINE,
             Field("strike", Boolean(), "strikethrough"),
             Field("highlight", Choice(HIGHLIGHT_COLORS), "highlighter color; none removes it"),
         )),
-        Record("set_paragraph_format", "set a paragraph's alignment, spacing, indents and pagination", (
+        Record("set_paragraph_format", "set a paragraph's alignment, spacing, indents, shading, borders and pagination", (
             TARGET_BLOCK,
             *PARAGRAPH_FORMAT,
             Field("lineSpacing", Number(0.5, 5), "line spacing as a multiple, such as 1.15"),
@@ -270,13 +278,16 @@ OPERATIONS = Variant(
             Field("firstLineIndentInches", Number(), "first-line indent; negative hangs"),
             Field("keepWithNext", Boolean(), "keep on the same page as the next paragraph"),
             Field("pageBreakBefore", Boolean(), "start the paragraph on a new page"),
+            *PARAGRAPH_DECORATION,
         )),
         Record("define_style", "create a paragraph or character style, or change the given fields of an existing one; later operations in the batch can use it", (
             Field("name", Text(non_empty=True), "style name", required=True),
             Field("type", Choice(("paragraph", "character")), "default paragraph"),
             Field("basedOn", Text(non_empty=True), "style it inherits from, such as Normal"),
             *CHARACTER_FORMAT,
+            BASELINE,
             *PARAGRAPH_FORMAT,
+            *PARAGRAPH_DECORATION,
         )),
         Record("insert_image", "insert a picture as its own paragraph, scaled down to the text width unless a size is given", (
             INSERT_AFTER,

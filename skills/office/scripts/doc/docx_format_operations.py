@@ -3,6 +3,7 @@ from __future__ import annotations
 from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_COLOR_INDEX
 from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
 from docx.shared import Inches, Pt, RGBColor
 from docx.text.run import Run
 
@@ -18,9 +19,17 @@ HIGHLIGHTS = {
     "yellow": WD_COLOR_INDEX.YELLOW, "green": WD_COLOR_INDEX.BRIGHT_GREEN, "cyan": WD_COLOR_INDEX.TURQUOISE,
     "pink": WD_COLOR_INDEX.PINK, "blue": WD_COLOR_INDEX.BLUE, "red": WD_COLOR_INDEX.RED, "gray": WD_COLOR_INDEX.GRAY_25, "none": None,
 }
-TEXT_PROPERTIES = ("bold", "italic", "underline", "strike", "color", "highlight", "size", "font")
-PARAGRAPH_PROPERTIES = ("align", "spaceBeforePoints", "spaceAfterPoints", "lineSpacing", "indentLeftInches", "firstLineIndentInches", "keepWithNext", "pageBreakBefore")
+TEXT_PROPERTIES = ("bold", "italic", "underline", "strike", "color", "highlight", "size", "font", "baseline")
+PARAGRAPH_PROPERTIES = ("align", "spaceBeforePoints", "spaceAfterPoints", "lineSpacing", "indentLeftInches", "indentRightInches", "firstLineIndentInches", "keepWithNext", "pageBreakBefore", "shadingFill", "borders", "borderColor")
 STYLE_TYPES = {"paragraph": WD_STYLE_TYPE.PARAGRAPH, "character": WD_STYLE_TYPE.CHARACTER}
+# Element order of CT_PPrBase after w:pBdr, ECMA-376 Part 1, 17.3.1.26
+PARAGRAPH_PROPERTIES_AFTER_BORDERS = (
+    "w:shd", "w:tabs", "w:suppressAutoHyphens", "w:kinsoku", "w:wordWrap", "w:overflowPunct", "w:topLinePunct", "w:autoSpaceDE", "w:autoSpaceDN",
+    "w:bidi", "w:adjustRightInd", "w:snapToGrid", "w:spacing", "w:ind", "w:contextualSpacing", "w:mirrorIndents", "w:suppressOverlap", "w:jc",
+    "w:textDirection", "w:textAlignment", "w:textboxTightWrap", "w:outlineLvl", "w:divId", "w:cnfStyle", "w:rPr", "w:sectPr", "w:pPrChange",
+)
+BORDER_EIGHTHS_OF_A_POINT = "4"
+DEFAULT_BORDER_COLOR = "000000"
 
 
 def require_any(operation: dict, names: tuple[str, ...], location: str) -> None:
@@ -83,8 +92,19 @@ def format_run(run_element, operation: dict, tracking) -> None:
         font.size = Pt(operation["size"])
     if operation.get("font"):
         set_run_font_name(font, operation["font"])
+    if operation.get("baseline"):
+        set_baseline(font, operation["baseline"])
     if old_properties is not None:
         record_run_property_change(run_element, old_properties, tracking)
+
+
+def set_baseline(font, baseline: str) -> None:
+    if baseline == "superscript":
+        font.superscript = True
+    elif baseline == "subscript":
+        font.subscript = True
+    else:
+        font.superscript = None
 
 
 def set_run_font_name(font, name: str) -> None:
@@ -118,12 +138,64 @@ def format_paragraph(paragraph_format, operation: dict) -> None:
         paragraph_format.line_spacing = operation["lineSpacing"]
     if operation.get("indentLeftInches") is not None:
         paragraph_format.left_indent = Inches(operation["indentLeftInches"])
+    if operation.get("indentRightInches") is not None:
+        paragraph_format.right_indent = Inches(operation["indentRightInches"])
     if operation.get("firstLineIndentInches") is not None:
         paragraph_format.first_line_indent = Inches(operation["firstLineIndentInches"])
     if operation.get("keepWithNext") is not None:
         paragraph_format.keep_with_next = operation["keepWithNext"]
     if operation.get("pageBreakBefore") is not None:
         paragraph_format.page_break_before = operation["pageBreakBefore"]
+    decorate_paragraph(paragraph_format._element.get_or_add_pPr(), operation)
+
+
+def decorate_paragraph(paragraph_properties, operation: dict) -> None:
+    if operation.get("shadingFill"):
+        replace_property(paragraph_properties, "w:shd", shading(operation["shadingFill"]), PARAGRAPH_PROPERTIES_AFTER_BORDERS[1:])
+    if operation.get("borders") is not None:
+        replace_property(paragraph_properties, "w:pBdr", paragraph_borders(operation["borders"], operation.get("borderColor")), PARAGRAPH_PROPERTIES_AFTER_BORDERS)
+    elif operation.get("borderColor"):
+        recolor_borders(paragraph_properties, operation["borderColor"])
+
+
+def replace_property(paragraph_properties, tag: str, element, successors: tuple[str, ...]) -> None:
+    existing = paragraph_properties.find(qn(tag))
+    if existing is not None:
+        paragraph_properties.remove(existing)
+    if element is not None:
+        paragraph_properties.insert_element_before(element, *successors)
+
+
+def shading(color: str):
+    if color == "none":
+        return None
+    element = OxmlElement("w:shd")
+    for name, value in (("w:val", "clear"), ("w:color", "auto"), ("w:fill", color.lstrip("#").upper())):
+        element.set(qn(name), value)
+    return element
+
+
+def paragraph_borders(sides: list[str], color: str | None):
+    if not sides:
+        return None
+    borders = OxmlElement("w:pBdr")
+    for side in ("top", "left", "bottom", "right"):
+        if side in sides:
+            borders.append(border_line(side, color or DEFAULT_BORDER_COLOR))
+    return borders
+
+
+def border_line(side: str, color: str):
+    line = OxmlElement(f"w:{side}")
+    for name, value in (("w:val", "single"), ("w:sz", BORDER_EIGHTHS_OF_A_POINT), ("w:space", "1"), ("w:color", color.lstrip("#").upper())):
+        line.set(qn(name), value)
+    return line
+
+
+def recolor_borders(paragraph_properties, color: str) -> None:
+    borders = paragraph_properties.find(qn("w:pBdr"))
+    for line in borders if borders is not None else ():
+        line.set(qn("w:color"), color.lstrip("#").upper())
 
 
 def plan_define_style(editing: DocxEditing, operation: dict, location: str) -> Change:
@@ -157,6 +229,8 @@ def apply_style_properties(style, operation: dict) -> None:
     if operation.get("font"):
         font.name = operation["font"]
         style.element.get_or_add_rPr().get_or_add_rFonts().set(qn("w:eastAsia"), operation["font"])
+    if operation.get("baseline"):
+        set_baseline(font, operation["baseline"])
     if style.type == WD_STYLE_TYPE.PARAGRAPH:
         format_paragraph(style.paragraph_format, operation)
 
