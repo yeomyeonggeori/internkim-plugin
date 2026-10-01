@@ -94,6 +94,12 @@ class ReadTest(WorkbookFixture):
         self.assertEqual(stats[0], {"column": "A", "header": "item", "types": {"text": 3, "empty": 1}})
         self.assertEqual(stats[1], {"column": "B", "header": "amount", "types": {"number": 4}, "formulas": 1, "count": 4, "min": 10, "max": 60, "sum": 120, "mean": 30})
 
+    def test_stats_skip_a_title_row_above_the_header(self):
+        self.create_workbook([{"title": "S", "heading": "2026 실적", "rows": [["담당", "1월", "2월"], ["이샘플", 10, 20], ["박예시", 30, 40]]}])
+        selected = run_office(["sheet", "read", "book.xlsx", "--stats"], self.directory)["details"]["range"]
+        self.assertEqual(selected["headerRow"], 2)
+        self.assertEqual([(column["header"], column.get("sum")) for column in selected["stats"]], [("담당", None), ("1월", 40), ("2월", 60)])
+
     def test_stats_count_a_formula_without_a_stored_value_apart(self):
         run_office_python(FIXTURE_WORKBOOK, self.directory)
         stats = self.read("--range", "B1:B5", "--stats")["range"]["stats"]
