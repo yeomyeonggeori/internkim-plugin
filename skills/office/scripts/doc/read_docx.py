@@ -15,6 +15,7 @@ from office_inputs import office_file
 from office_result import OfficeArgumentParser, Result, run_command
 
 
+MATH_TAG = "{http://schemas.openxmlformats.org/officeDocument/2006/math}oMath"
 DEFAULT_BLOCK_LIMIT = 300
 TABLE_ROW_LIMIT = 60
 TEXT_CHARACTER_LIMIT = 4000
@@ -71,6 +72,8 @@ def describe_block(element, document, index: int) -> dict:
         description["pageBreak"] = True
     if next(element.iter(qn("w:drawing")), None) is not None:
         description["chart" if chart_references(element) else "picture"] = True
+    if next(element.iter(MATH_TAG), None) is not None:
+        description["equation"] = True
     return description
 
 

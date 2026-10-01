@@ -135,6 +135,13 @@ HEADER_FOOTER_FIELDS = (
     Field("page", Choice(("default", "first", "even")), "which pages: first turns on a different first page, even a different even page; default every page"),
     Field("align", ALIGNMENT, "alignment"),
 )
+WRAPS = ("inline", "square", "topAndBottom", "behindText", "inFrontOfText")
+WRAP_FIELD = Field("wrap", Choice(WRAPS), "inline sits in the text line; square and topAndBottom float with text around or above and below; behindText and inFrontOfText float over the text")
+FIELD_KINDS = ("DATE", "TIME", "CREATEDATE", "SAVEDATE", "PAGE", "NUMPAGES", "SECTIONPAGES", "AUTHOR", "TITLE", "SUBJECT", "FILENAME", "NUMWORDS", "SEQ")
+NOTE_KIND = Field("kind", Choice(("footnote", "endnote")), "which kind of note", required=True)
+NOTE_ID = Field("note", Number(minimum=1, integer=True), "note id from doc read", required=True)
+TO_BLOCK = Field("toBlock", BLOCK_INDEX, "last block of the range, default block")
+MARKDOWN = Field("markdown", Text(non_empty=True), "Markdown: # headings, paragraphs, - or 1. lists, | tables |, > quotes, ![alt](local path) pictures and ```chart blocks", required=True)
 CHART_KINDS = ("column", "stacked_column", "bar", "stacked_bar", "line", "area", "pie", "doughnut", "combo")
 CHART_SERIES = Record("series", "one data series", (
     Field("name", Text(non_empty=True), "series name shown in the legend", required=True),
@@ -232,6 +239,11 @@ OPERATIONS = Variant(
             Field("column", ROW_INDEX, "column index", required=True),
         )),
         Record("merge_cells", "merge a rectangle of cells into one, keeping each cell's text", CELL_RANGE),
+        Record("split_table_cell", "split a merged cell back into the cells it covers; its text stays in the first", (
+            TABLE_BLOCK,
+            Field("row", ROW_INDEX, "row index of any cell in the merge", required=True),
+            Field("column", ROW_INDEX, "column index of any cell in the merge", required=True),
+        )),
         Record("format_cells", "shade, bold or align a rectangle of cells", CELL_RANGE + (
             Field("fill", HexColor(), "background color"),
             Field("bold", Boolean(), "bold text"),
@@ -270,7 +282,70 @@ OPERATIONS = Variant(
             Field("heightInches", Number(minimum=0.1), "height"),
             Field("align", ALIGNMENT, "paragraph alignment"),
             Field("description", Text(), "alt text read aloud by screen readers"),
+            WRAP_FIELD,
         )),
+        Record("set_image_properties", "resize a picture, change its alt text, or float it with text wrapping", (
+            TARGET_BLOCK,
+            Field("picture", Number(minimum=0, integer=True), "which picture in the block, default 0"),
+            Field("widthInches", Number(minimum=0.1), "width; the height keeps the aspect ratio unless also given"),
+            Field("heightInches", Number(minimum=0.1), "height"),
+            Field("description", Text(), "alt text read aloud by screen readers"),
+            WRAP_FIELD,
+            Field("align", ALIGNMENT, "horizontal position: the paragraph's alignment when inline, the margin side when floating"),
+        )),
+        Record("insert_text_box", "insert a bordered box of text that floats beside or between paragraphs", (
+            INSERT_AFTER,
+            INSERT_BEFORE,
+            INSERT_AT,
+            Field("text", Text(non_empty=True), "box text; a line break starts a new paragraph", required=True),
+            Field("widthInches", Number(minimum=0.5), "width, default half the text width"),
+            Field("heightInches", Number(minimum=0.3), "height, default enough for the lines"),
+            Field("wrap", Choice(WRAPS), "default square, text flowing around the box"),
+            Field("align", ALIGNMENT, "margin side the box sits on, default left"),
+            Field("fill", HexColor(), "background color, default none"),
+            Field("border", Boolean(), "draw a gray border, default true"),
+        )),
+        Record("insert_equation", "insert an equation written in LaTeX as a native Word equation", (
+            Field("latex", Text(non_empty=True), "LaTeX without dollar signs, such as \\frac{a+b}{2}", required=True),
+            Field("block", BLOCK_INDEX, "put the equation inside this paragraph; leave out for an equation on its own centered line"),
+            AFTER_TEXT,
+            INSERT_AFTER,
+            INSERT_BEFORE,
+            INSERT_AT,
+        )),
+        Record("insert_field", "insert a field Word keeps current, such as today's date, the page number or a figure number", (
+            TARGET_BLOCK,
+            Field("field", Choice(FIELD_KINDS), "SEQ numbers a named sequence such as figures", required=True),
+            Field("format", Text(non_empty=True), "DATE, TIME, CREATEDATE and SAVEDATE: a picture such as yyyy-MM-dd or HH:mm"),
+            Field("sequence", Text(non_empty=True), "SEQ only: the sequence name, such as 그림"),
+            AFTER_TEXT,
+        )),
+        Record("move_blocks", "move blocks, keeping their order, to another place", (
+            Field("blocks", ListOf(BLOCK_INDEX, non_empty=True), "block indexes to move", required=True),
+            INSERT_AFTER,
+            INSERT_BEFORE,
+            INSERT_AT,
+        )),
+        Record("set_list", "make a range of paragraphs one new bulleted or numbered list; headings in the range stay headings", (
+            TARGET_BLOCK,
+            TO_BLOCK,
+            Field("numbered", Boolean(), "numbered from 1 instead of bulleted"),
+            Field("level", Number(0, 2, integer=True), "nesting level, default 0"),
+        )),
+        Record("clear_list", "make the list items in a range plain body paragraphs", (TARGET_BLOCK, TO_BLOCK)),
+        Record("insert_markdown", "insert content written in Markdown, styled with the document's own styles", (
+            INSERT_AFTER,
+            INSERT_BEFORE,
+            INSERT_AT,
+            MARKDOWN,
+        )),
+        Record("replace_blocks", "replace a range of blocks with content written in Markdown", (TARGET_BLOCK, TO_BLOCK, MARKDOWN)),
+        Record("edit_note", "replace a footnote's or endnote's text", (
+            NOTE_KIND,
+            NOTE_ID,
+            Field("text", Text(non_empty=True), "new note text", required=True),
+        )),
+        Record("delete_note", "delete a footnote or endnote and its mark in the text", (NOTE_KIND, NOTE_ID)),
         Record("insert_chart", "insert a native Word chart with its own data workbook as its own paragraph, as wide as the text unless a size is given", (
             INSERT_AFTER,
             INSERT_BEFORE,

@@ -16,8 +16,12 @@ from docx_page_operations import plan_insert_image, plan_insert_section_break, p
 from docx_reference_operations import (
     plan_add_bookmark, plan_insert_cross_reference, plan_insert_endnote, plan_insert_footnote, plan_insert_link, plan_insert_table_of_contents,
 )
-from docx_table_operations import plan_delete_table_column, plan_format_cells, plan_insert_table_column, plan_merge_cells
+from docx_table_operations import plan_delete_table_column, plan_format_cells, plan_insert_table_column, plan_merge_cells, plan_split_table_cell
 from docx_chart_operations import plan_delete_chart, plan_edit_chart, plan_insert_chart
+from docx_drawing_operations import plan_insert_text_box, plan_set_image_properties
+from docx_inline_operations import plan_insert_equation, plan_insert_field
+from docx_note_operations import plan_delete_note, plan_edit_note
+from docx_structure_operations import plan_clear_list, plan_insert_markdown, plan_move_blocks, plan_replace_blocks, plan_set_list
 from docx_comments import plan_add_comment, plan_delete_comment, plan_reply_comment, plan_resolve_comment
 from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, paragraph_runs
 from docx_settings import request_field_update
@@ -355,6 +359,18 @@ DOCX_OPERATIONS = OperationSet(OPERATIONS, {
     "insert_table_column": plan_insert_table_column,
     "delete_table_column": plan_delete_table_column,
     "merge_cells": plan_merge_cells,
+    "split_table_cell": plan_split_table_cell,
+    "set_image_properties": plan_set_image_properties,
+    "insert_text_box": plan_insert_text_box,
+    "insert_equation": plan_insert_equation,
+    "insert_field": plan_insert_field,
+    "move_blocks": plan_move_blocks,
+    "set_list": plan_set_list,
+    "clear_list": plan_clear_list,
+    "insert_markdown": plan_insert_markdown,
+    "replace_blocks": plan_replace_blocks,
+    "edit_note": plan_edit_note,
+    "delete_note": plan_delete_note,
     "format_cells": plan_format_cells,
     "format_text": plan_format_text,
     "set_paragraph_format": plan_set_paragraph_format,
