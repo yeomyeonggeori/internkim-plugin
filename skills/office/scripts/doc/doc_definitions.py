@@ -458,11 +458,12 @@ CHART_EMPTY = IssueKind("CHART_EMPTY", WARNING, "a chart has no number in any se
 EMPTY_HEADING = IssueKind("EMPTY_HEADING", WARNING, "a heading has no text, so the outline and the table of contents show a blank line", "apply delete_block, or set_text with the heading")
 HEADING_SKIP = IssueKind("HEADING_SKIP", WARNING, "a heading is more than one level deeper than the heading before it", "apply set_style with the next level's heading style")
 UNRESOLVED_COMMENTS = IssueKind("UNRESOLVED_COMMENTS", WARNING, "comment threads are still open, and the reader sees them in the margin", "doc read lists them; answer or resolve_comment each, or delete_comment")
+HEADING_STRANDED = IssueKind("HEADING_STRANDED", WARNING, "a heading is the last line of a page and the text it introduces starts the next page", "apply the set_paragraph_format in fix: it keeps the heading on the page of the paragraph after it", suggestion_applies_fix=True)
 FIELD_NOT_EVALUATED = IssueKind("FIELD_NOT_EVALUATED", WARNING, "a field holds no result, so it shows blank until Word updates fields", "apply update_fields_on_open")
 
 CHECK_ISSUE_KINDS = (
     PLACEHOLDER_LEFT, BROKEN_INTERNAL_REFERENCE, STALE_TABLE_OF_CONTENTS, EAST_ASIA_FONT_MISSING, EAST_ASIA_LANGUAGE_NOT_KOREAN, TRACKED_CHANGES_PRESENT,
-    MISSING_IMAGE, CHART_EMPTY, EMPTY_HEADING, HEADING_SKIP, UNRESOLVED_COMMENTS, FIELD_NOT_EVALUATED,
+    MISSING_IMAGE, CHART_EMPTY, EMPTY_HEADING, HEADING_SKIP, HEADING_STRANDED, UNRESOLVED_COMMENTS, FIELD_NOT_EVALUATED,
 )
 
 MERGE_ISSUE_KINDS = (UNRESOLVED_PLACEHOLDER, UNUSED_VALUE, LIST_NEEDS_A_ROW, TEMPLATE_SYNTAX_ERROR)

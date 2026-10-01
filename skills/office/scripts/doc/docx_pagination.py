@@ -82,6 +82,18 @@ def shows_something(placed) -> bool:
     return any(fragment.kind in VISIBLE_FRAGMENT_KINDS or fragment.text.strip() for line in lines for fragment in line.fragments)
 
 
+def stranded_headings(pages: list[Page]) -> list[tuple[int, ParagraphLayout]]:
+    return [
+        (number, page.placed[-1].layout)
+        for number, (page, next_page) in enumerate(zip(pages, pages[1:]), start=1)
+        if page.placed and next_page.placed and ends_on_heading(page.placed[-1])
+    ]
+
+
+def ends_on_heading(placed) -> bool:
+    return isinstance(placed, ParagraphSlice) and placed.layout.block.is_heading and not placed.layout.block.keep_next and placed.with_space_after
+
+
 def displayed_page_numbers(pages: list[Page]) -> list[int]:
     numbers: list[int] = []
     for index, page in enumerate(pages):
@@ -158,7 +170,7 @@ class Paginator:
                 self.new_page(section, follows_overflow=True)
 
     def fits_whole(self, layout: ParagraphLayout) -> bool:
-        return layout.height + self.notes_cost(layout.lines) <= self.page.remaining
+        return layout.height - layout.block.space_after + self.notes_cost(layout.lines) <= self.page.remaining
 
     def next_start_fits(self, layout: ParagraphLayout, following) -> bool:
         if isinstance(following, ParagraphLayout):
@@ -177,8 +189,7 @@ class Paginator:
         for line in lines[first:]:
             notes = notes + line.notes
             cost = used + line.height + self.notes_cost_for(notes)
-            is_end = first + count + 1 == len(lines)
-            if cost + (block.space_after if is_end else 0) > available + 0.5:
+            if cost > available + 0.5:
                 break
             used += line.height
             count += 1

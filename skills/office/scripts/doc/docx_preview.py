@@ -33,6 +33,7 @@ ALIGNMENTS = {"left": "left", "start": "left", "center": "center", "right": "rig
 TRANSPARENT_CONTAINERS = frozenset(qn(tag) for tag in ("w:hyperlink", "w:smartTag", "w:customXml", "w:sdtContent", "w:fldSimple", "w:dir", "w:bdo"))
 REVISION_CONTAINERS = {qn("w:ins"): "inserted", qn("w:moveTo"): "inserted", qn("w:del"): "deleted", qn("w:moveFrom"): "deleted"}
 FIELD_KINDS = {"PAGE": "page", "NUMPAGES": "pages", "SECTIONPAGES": "pages"}
+BODY_TEXT_OUTLINE_LEVEL = 9
 
 
 @dataclass
@@ -120,6 +121,7 @@ class DocxModelBuilder:
         blocks = []
         for element in elements:
             blocks.extend(self.element_blocks(element, part, layers))
+        collapse_contextual_spacing(blocks)
         return blocks
 
     def element_blocks(self, element, part, layers: TableLayers) -> list:
@@ -165,6 +167,10 @@ class DocxModelBuilder:
             line_rule=properties.get("line_rule") or "auto",
             keep_next=bool(properties.get("keep_next")),
             page_break_before=bool(properties.get("page_break_before")) and is_first,
+            style=properties.get("style"),
+            contextual_spacing=bool(properties.get("contextual_spacing")),
+            is_heading=properties.get("outline_level") is not None and properties["outline_level"] < BODY_TEXT_OUTLINE_LEVEL,
+            source=paragraph,
             label=label.text if label is not None else "",
             label_style=self.text_style(merged(base_run, label.run)) if label is not None else None,
             background=hex_color(properties.get("shading")),
@@ -314,6 +320,16 @@ class DocxModelBuilder:
         count = len(etree.fromstring(part.blob).findall(qn("w:comment")))
         if count:
             self.preview.approximate("comments shown only as highlighted anchor text", count)
+
+
+def collapse_contextual_spacing(blocks: list) -> None:
+    for before, after in zip(blocks, blocks[1:]):
+        if not isinstance(before, ParagraphBlock) or not isinstance(after, ParagraphBlock) or before.style != after.style:
+            continue
+        if before.contextual_spacing:
+            before.space_after = 0
+        if after.contextual_spacing:
+            after.space_before = 0
 
 
 def split_at_page_breaks(items: list) -> list[list]:
