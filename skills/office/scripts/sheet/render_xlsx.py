@@ -14,9 +14,10 @@ from openpyxl import load_workbook  # noqa: E402
 from formula_cache import cache_formula_values  # noqa: E402
 from office_preview import Preview, approximation_issues, draw_pages, write_preview  # noqa: E402
 from office_inputs import office_file
-from office_result import INVALID_VALUE, OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
+from office_result import OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
 from preview_fonts import FontRegistry  # noqa: E402
 from xlsx_colors import theme_palette  # noqa: E402
+from workbook_access import missing_sheet_issue  # noqa: E402
 from xlsx_preview import SheetPreviewer  # noqa: E402
 
 
@@ -33,7 +34,7 @@ def xlsx_preview(source_path: Path, sheet_name: str | None) -> tuple[Preview, li
     values = workbook_values(source_path)
     names = [sheet_name] if sheet_name else [sheet.title for sheet in workbook.worksheets if sheet.sheet_state == "visible"]
     if sheet_name and sheet_name not in workbook.sheetnames:
-        raise OfficeFailure(INVALID_VALUE.issue(f"--sheet {sheet_name!r} is not in the workbook", "--sheet", suggestion=f"use one of: {', '.join(workbook.sheetnames)}"))
+        raise OfficeFailure(missing_sheet_issue(workbook.sheetnames, sheet_name, "--sheet"))
     fonts = FontRegistry()
     preview = Preview(title=source_path.stem)
     previewer = SheetPreviewer(workbook, values, source_path.name, theme_palette(workbook.loaded_theme), fonts, preview)

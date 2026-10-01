@@ -9,6 +9,7 @@ from formula_references import formula_references, referenced_sheet_names
 from number_display import displayed_number_width
 from office_inputs import office_file
 from office_result import Issue, OfficeArgumentParser, Result, run_command
+from office_schema import closest_name
 from sheet_chart_references import chart_reference_issues
 from stale_values import stale_cached_value_issues
 from sheet_definitions import BROKEN_DEFINED_NAME, FORMULA_ERROR, MISSING_SHEET_REFERENCE, NUMBER_TOO_WIDE
@@ -29,7 +30,7 @@ def main() -> Result:
     missing_references = missing_sheet_references(workbook)
     issues = (
         stale_cached_value_issues(arguments.workbook_path, evaluation)
-        + missing_reference_issues(missing_references)
+        + missing_reference_issues(missing_references, workbook.sheetnames)
         + formula_error_issues(evaluation, set(missing_references))
         + defined_name_issues(workbook)
         + number_width_issues(workbook, evaluation)
@@ -65,11 +66,13 @@ def missing_sheet_references(workbook) -> dict:
     return missing
 
 
-def missing_reference_issues(missing: dict) -> list[Issue]:
-    return [
-        MISSING_SHEET_REFERENCE.issue(f"{cell_label(sheet, coordinate)} reads sheet {name!r}, which the workbook does not have", cell_label(sheet, coordinate))
-        for (sheet, coordinate), name in sorted(missing.items())
-    ]
+def missing_reference_issues(missing: dict, names: list[str]) -> list[Issue]:
+    issues = []
+    for (sheet, coordinate), name in sorted(missing.items()):
+        nearest = closest_name(name, names)
+        guess = f" (did you mean {nearest!r}?)" if nearest else f"; it has {', '.join(names)}"
+        issues.append(MISSING_SHEET_REFERENCE.issue(f"{cell_label(sheet, coordinate)} reads sheet {name!r}, which the workbook does not have{guess}", cell_label(sheet, coordinate)))
+    return issues
 
 
 def formula_error_issues(evaluation, already_reported: set) -> list[Issue]:
