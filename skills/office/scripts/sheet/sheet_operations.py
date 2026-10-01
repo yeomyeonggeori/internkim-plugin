@@ -75,7 +75,7 @@ def on_workbook(planner):
 
 
 def store_value(cell, value, value_type) -> None:
-    if value_type == "text" and isinstance(value, str) and value.startswith("="):
+    if value_type == "text" and isinstance(value, str):
         cell.value = value
         cell.data_type = "s"
         cell.quotePrefix = True

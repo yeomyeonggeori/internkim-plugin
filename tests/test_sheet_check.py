@@ -1,4 +1,7 @@
+import datetime
 import unittest
+
+from openpyxl import load_workbook
 
 from sheet_fixture import WorkbookFixture, run_office, run_office_python, stored_cells, write_json
 
@@ -190,3 +193,37 @@ class FormulaVisibilityTest(WorkbookFixture):
             workbook.save("book.xlsx")
         """, self.directory)
         self.assertEqual([(code, issue["location"]) for code, issue in self.issues().items()], [("CIRCULAR_REFERENCE", "S!B1")])
+
+class TextValueTest(WorkbookFixture):
+    def check(self):
+        return run_office(["sheet", "check", "book.xlsx"], self.directory)
+
+    def text_issues(self):
+        return [issue for issue in self.check()["issues"] if issue["code"] == "VALUE_STORED_AS_TEXT"]
+
+    def test_numbers_and_a_formula_written_as_text_are_reported_with_operations_that_fix_them(self):
+        self.create_workbook([{"title": "매출", "rows": [["월", "매출", "비율"], ["1월", "1,200", "12.5%"], ["2월", "₩1,350", 0.2], ["합계", "SUM(B2:B3)", None]]}])
+        issues = self.text_issues()
+        self.assertEqual([issue["location"] for issue in issues], ["매출!B2", "매출!B3", "매출!B4", "매출!C2"])
+        self.assertEqual(issues[0]["suggestion"], [{"op": "set_cell", "sheet": "매출", "cell": "B2", "value": 1200}, {"op": "format_range", "sheet": "매출", "range": "B2", "numberFormat": "#,##0"}])
+        self.assertEqual(issues[2]["suggestion"], [{"op": "set_cell", "sheet": "매출", "cell": "B4", "value": "=SUM(B2:B3)"}])
+        self.assertIn("missing its =", issues[2]["message"])
+        self.assertEqual(issues[3]["suggestion"][0]["value"], 0.125)
+        envelope = self.apply([operation for issue in issues for operation in issue["suggestion"]])
+        self.assertEqual(envelope["status"], "ok", envelope)
+        self.assertEqual(self.text_issues(), [])
+        values = run_office(["sheet", "read", "book.xlsx", "--range", "B2:C4"], self.directory)["details"]["range"]["values"]
+        self.assertEqual(values, [[1200, 0.125], [1350, 0.2], [2550, None]])
+
+    def test_codes_with_leading_zeros_and_labels_in_a_text_column_are_left_alone(self):
+        self.create_workbook([{"title": "S", "rows": [["코드", "이름", "수량"], ["007", "이샘플", 3], ["2026", "박예시", "4"]]}])
+        self.assertEqual([issue["location"] for issue in self.text_issues()], ["S!C3"])
+
+    def test_a_spec_date_is_a_date_like_a_csv_date_unless_the_type_says_text(self):
+        self.create_workbook([{"title": "S", "rows": [["일자", "금액"], ["2026-09-01", 5]]}])
+        cell = load_workbook(self.directory / "book.xlsx")["S"]["A2"]
+        self.assertEqual((cell.value, cell.number_format), (datetime.datetime(2026, 9, 1), "yyyy-mm-dd"))
+        self.apply([{"op": "set_cell", "sheet": "S", "cell": "A3", "value": "2026-09-02", "type": "text"}, {"op": "set_cell", "sheet": "S", "cell": "A4", "value": "2026.09.03"}])
+        self.assertEqual(load_workbook(self.directory / "book.xlsx")["S"]["A3"].value, "2026-09-02")
+        issues = self.text_issues()
+        self.assertEqual([(issue["location"], issue["suggestion"][0]["value"]) for issue in issues], [("S!A4", "2026-09-03")])

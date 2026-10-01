@@ -14,7 +14,7 @@ READ_ROW_LIMIT = 500
 SHEET = Record("sheet", "one worksheet; the first row, or the row after the heading, is the header", (
     Field("title", Text(non_empty=True), "sheet name, cut to 31 characters", required=True),
     Field("heading", Text(), "bold title row above the table"),
-    Field("rows", ROWS, "rows in order; text starting with = is a formula"),
+    Field("rows", ROWS, "rows in order; text starting with = is a formula and YYYY-MM-DD is a date"),
     Field("csvPath", Text(non_empty=True), "read the rows from this CSV or TSV file instead of rows"),
     Field("delimiter", Text(non_empty=True), "csvPath delimiter, default comma; \\t for tab"),
     Field("freezePanes", Text(), "top-left unfrozen cell, default the cell under the header; empty text freezes nothing"),
@@ -26,7 +26,7 @@ SHEET = Record("sheet", "one worksheet; the first row, or the row after the head
 
 SHEET_NAME = Field("sheet", Text(non_empty=True), "sheet name from sheet read, default the first sheet")
 CELL_ADDRESS = Text(non_empty=True)
-VALUE_TYPE = Field("type", Choice(("auto", "text")), "auto (default) stores text starting with = as a formula; text keeps it as literal text")
+VALUE_TYPE = Field("type", Choice(("auto", "text")), "auto (default) stores text starting with = as a formula and YYYY-MM-DD as a date; text keeps it as literal text")
 COUNT = Field("count", Number(minimum=1, integer=True), "how many, default 1")
 RANGE = Field("range", CELL_ADDRESS, "range such as A1:D10, or one cell", required=True)
 COLOR = Text(non_empty=True)
@@ -383,6 +383,7 @@ MISSING_SHEET_REFERENCE = IssueKind("MISSING_SHEET_REFERENCE", ERROR, "a formula
 BROKEN_DEFINED_NAME = IssueKind("BROKEN_DEFINED_NAME", ERROR, "a defined name points at #REF! or a sheet the workbook does not have", "read the workbook's defined names and recreate the reference")
 CONTENT_WOULD_BE_LOST = IssueKind("CONTENT_WOULD_BE_LOST", ERROR, "the workbook holds content the editor cannot carry through a save, such as form controls, embedded objects or an unknown extension, so nothing was written", "pass --allow-loss to save without it, or leave this workbook to Excel")
 CONTENT_DROPPED = IssueKind("CONTENT_DROPPED", WARNING, "--allow-loss saved the workbook without content the editor cannot carry", "tell the user what was dropped")
+VALUE_STORED_AS_TEXT = IssueKind("VALUE_STORED_AS_TEXT", WARNING, "a cell holds text that reads as a number, a date or a formula missing its =, so sums, sorting, filters and charts treat it as words", "apply the suggested operations: they write the typed value or formula and keep how it looked")
 CHART_REFERENCE_BROKEN = IssueKind("CHART_REFERENCE_BROKEN", ERROR, "a chart series reads a sheet the workbook does not have or a range with no values, so the chart draws nothing for it", "read the sheet and point the chart at its data with edit_chart and range")
 NUMBER_TOO_WIDE = IssueKind("NUMBER_TOO_WIDE", ERROR, "a number is wider than its column and Excel shows it as ####", "apply the suggested set_column_width")
 
@@ -397,6 +398,7 @@ CHECK_ISSUE_KINDS = (
     MISSING_SHEET_REFERENCE,
     BROKEN_DEFINED_NAME,
     NUMBER_TOO_WIDE,
+    VALUE_STORED_AS_TEXT,
     CHART_REFERENCE_BROKEN,
     PLACEHOLDER_LEFT,
     CIRCULAR_REFERENCE,
@@ -414,7 +416,7 @@ def behavior_lines() -> list[str]:
         "  formulas are stored exactly as written: write each reference for the row it lands in, counting a heading row",
         "  each formula also stores the value it computes, so viewers that never recalculate show numbers; a formula that cannot be computed here keeps no value and is reported as FORMULA_NOT_EVALUATED",
         "  the spec title is document metadata; nothing is added to the sheet unless you write it, such as a heading",
-        "  CSV and --row values become numbers when they are plain integers or decimals and dates when they are YYYY-MM-DD; 007, +82, 1,500 and anything over 15 digits stay text",
+        "  CSV and --row values become numbers when they are plain integers or decimals; 007, +82, 1,500 and anything over 15 digits stay text; text that is exactly YYYY-MM-DD becomes a date wherever it is written, unless set_cell or set_range says \"type\": \"text\"",
         "  sheet apply writes the whole batch or nothing; --dry-run lists the changes and --output leaves the source alone",
         "  inserting, deleting and renaming rewrite every formula, defined name, filter, merged range, table, chart series, sparkline and shape that points at the cells; a reference into a deleted row becomes #REF!",
         "  edits keep macros, sparklines, slicers, shapes, Excel extensions and unknown parts; content no edit can carry stops the save with CONTENT_WOULD_BE_LOST",

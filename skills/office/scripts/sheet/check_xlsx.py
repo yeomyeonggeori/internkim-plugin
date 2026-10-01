@@ -14,6 +14,7 @@ from sheet_chart_references import chart_reference_issues
 from stale_values import stale_cached_value_issues
 from sheet_definitions import BROKEN_DEFINED_NAME, FORMULA_ERROR, MISSING_SHEET_REFERENCE, NUMBER_TOO_WIDE
 from text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
+from text_values import text_value_issues
 from workbook_access import formula_text, open_workbook
 from workbook_values import evaluate_workbook
 
@@ -34,6 +35,7 @@ def main() -> Result:
         + formula_error_issues(evaluation, set(missing_references))
         + defined_name_issues(workbook)
         + number_width_issues(workbook, evaluation)
+        + text_value_issues(workbook)
         + chart_reference_issues(workbook)
         + placeholder_issues(workbook)
         + evaluation_issues(evaluation)
@@ -166,7 +168,7 @@ def placeholder_issues(workbook) -> list[Issue]:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Find stored formula values that differ from the computed ones, computed formula errors, missing sheets, broken names, numbers too wide for their column, charts reading missing or empty ranges and template placeholders in an .xlsx.")
+    parser = OfficeArgumentParser(description="Find stored formula values that differ from the computed ones, computed formula errors, missing sheets, broken names, numbers too wide for their column, numbers, dates and formulas stored as text, charts reading missing or empty ranges and template placeholders in an .xlsx.")
     parser.add_argument("workbook_path", type=office_file("xlsx"))
     return parser.parse_args()
 

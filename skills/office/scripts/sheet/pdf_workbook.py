@@ -1,18 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-import datetime
 from pathlib import Path
-import re
 
 import pdfplumber
 
+from cell_values import typed_text
 from create_xlsx import create_workbook
 from pdf_to_blocks import page_tables
 
 
-NUMBER = re.compile(r"(?P<open>\()?(?P<sign>[-−])?(?P<currency>[₩$€£¥])?(?P<digits>\d{1,3}(?:,\d{3})+|\d+)(?P<fraction>\.\d+)?(?P<percent>%)?(?P<close>\))?")
-DATE = re.compile(r"(?P<year>\d{4})[-./](?P<month>\d{1,2})[-./](?P<day>\d{1,2})\.?")
 SHEET_TITLE_LIMIT = 31
 
 
@@ -32,47 +29,6 @@ class PdfTables:
     tables: list[PdfTable] = field(default_factory=list)
     pages_without_tables: list[int] = field(default_factory=list)
     pages_without_text: list[int] = field(default_factory=list)
-
-
-def typed_text(text: str) -> tuple[object, str | None]:
-    stripped = text.strip()
-    number = NUMBER.fullmatch(stripped)
-    if number and is_number_shape(number):
-        return number_value(number)
-    date = DATE.fullmatch(stripped)
-    if date:
-        return date_value(date, stripped)
-    return (text if text else None), None
-
-
-def is_number_shape(match) -> bool:
-    if bool(match["open"]) != bool(match["close"]):
-        return False
-    digits = match["digits"]
-    return "," in digits or digits == "0" or not digits.startswith("0")
-
-
-def number_value(match) -> tuple[float | int, str]:
-    digits = match["digits"].replace(",", "")
-    fraction = match["fraction"] or ""
-    value = float(digits + fraction) if fraction else int(digits)
-    if match["open"] or match["sign"]:
-        value = -value
-    decimals = "." + "0" * (len(fraction) - 1) if fraction else ""
-    if match["percent"]:
-        return value / 100, f"0{decimals}%"
-    if match["currency"] is not None:
-        return value, f'"{match["currency"]}"#,##0{decimals}'
-    if "," in match["digits"]:
-        return value, f"#,##0{decimals}"
-    return value, None
-
-
-def date_value(match, text: str) -> tuple[object, str | None]:
-    try:
-        return datetime.date(int(match["year"]), int(match["month"]), int(match["day"])), "yyyy-mm-dd"
-    except ValueError:
-        return text, None
 
 
 def is_header(row: list[str]) -> bool:

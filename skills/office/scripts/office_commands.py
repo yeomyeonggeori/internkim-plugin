@@ -55,7 +55,7 @@ COMMANDS = (
     Command("sheet", "edit", "sheet/edit_xlsx.py", "append rows to an .xlsx"),
     Command("sheet", "read", "sheet/read_xlsx.py", "list a workbook's sheets, charts and features, and a range's values, formulas, column stats or formats"),
     Command("sheet", "apply", "sheet/apply_xlsx.py", "apply a batch of edits to a workbook, all or none, with --dry-run"),
-    Command("sheet", "check", "sheet/check_xlsx.py", "find computed formula errors, missing sheets, broken names, numbers too wide for their column, charts without data and template placeholders"),
+    Command("sheet", "check", "sheet/check_xlsx.py", "find computed formula errors, missing sheets, broken names, numbers too wide for their column, numbers, dates and formulas stored as text, charts without data and template placeholders"),
     Command("sheet", "merge", "sheet/merge_xlsx.py", "fill an .xlsx template's {{ placeholders }} from a values file"),
     Command("sheet", "render", "sheet/render_xlsx.py", "lay out each sheet as printed pages and draw page images, contact sheets and a PDF to look at"),
     Command("sheet", "validate", "sheet/validate_xlsx.py", "check an .xlsx for frozen headers, filters and blank headers"),

@@ -122,7 +122,7 @@ class ValueFieldsTest(PivotFixture):
 class DateGroupingTest(PivotFixture):
     def test_dates_group_by_month_in_a_real_field_group(self):
         envelope = self.pivot(row="date", values=["amount"], groupDates={"date": "month"})
-        self.assertIn("stored 6 YYYY-MM-DD texts of 'date' as dates", envelope["details"]["changes"][0]["change"])
+        self.assertNotIn("as dates", envelope["details"]["changes"][0]["change"])
         self.assertEqual(load_workbook(self.directory / "book.xlsx")["Orders"]["A2"].value, datetime.datetime(2024, 1, 15))
         self.assertEqual(self.grid(), [["date", "Sum of amount"], ["Jan", 7000], ["Feb", 9000], ["Apr", 7000], ["May", 2000], ["Grand Total", 25000]])
         cache = self.part("xl/pivotCache/pivotCacheDefinition1.xml")
@@ -130,6 +130,13 @@ class DateGroupingTest(PivotFixture):
         self.assertIn('<groupItems count="14"><s v="&lt;2024-01-15"/><s v="Jan"/>', cache)
         self.assertIn('<d v="2024-01-15T00:00:00"/>', self.part("xl/pivotCache/pivotCacheRecords1.xml"))
         self.assertEqual(self.reloaded_pivot().cache.cacheFields[0].fieldGroup.rangePr.groupBy, "months")
+
+    def test_dates_kept_as_text_are_stored_as_dates_when_they_group(self):
+        self.apply([{"op": "set_range", "sheet": "Orders", "cell": "A2", "values": [[row[0]] for row in ORDERS[1:]], "type": "text"}])
+        self.assertEqual(load_workbook(self.directory / "book.xlsx")["Orders"]["A2"].value, "2024-01-15")
+        envelope = self.pivot(row="date", values=["amount"], groupDates={"date": "month"})
+        self.assertIn("stored 6 YYYY-MM-DD texts of 'date' as dates", envelope["details"]["changes"][0]["change"])
+        self.assertEqual(load_workbook(self.directory / "book.xlsx")["Orders"]["A2"].value, datetime.datetime(2024, 1, 15))
 
     def test_quarters_and_years_group_across_rows_and_columns(self):
         self.pivot(row="region", column="date", values=["qty"], groupDates={"date": "year"})

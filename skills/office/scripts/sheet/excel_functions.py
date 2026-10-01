@@ -5,6 +5,7 @@ import re
 from openpyxl.formula.tokenizer import Token
 from openpyxl.utils.formulas import FORMULAE
 
+from cell_values import ISO_DATE, typed_date
 from formula_tree import Call, calls_in, parse_formula, render, tokens_in
 
 
@@ -128,4 +129,6 @@ def wrap_spill_reference(output: list[str]) -> bool:
 def written_value(value: object) -> object:
     if isinstance(value, str) and value.startswith("=") and len(value) > 1:
         return stored_formula(value)
+    if isinstance(value, str) and ISO_DATE.fullmatch(value):
+        return typed_date(value)
     return value
