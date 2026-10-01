@@ -47,7 +47,7 @@ BALANCED_DECK = """<!doctype html>
   <h2>2분기 대비 매출, 수익률, 신규 고객이 모두 올랐습니다</h2>
   <table>
     <tr><th>지표</th><th>2분기</th><th>3분기</th><th>변화</th></tr>
-    <tr class="pick"><td>매출</td><td>36.2억</td><td>41.3억</td><td>+14.1%</td></tr>
+    <tr class="pick"><td>매출</td><td>36.2억 원</td><td>41.3억 원</td><td>+5.1억 원 (+14.1%)</td></tr>
     <tr><td>영업이익률</td><td>8.2%</td><td>11.5%</td><td>+3.3%p</td></tr>
     <tr><td>신규 고객사</td><td>14곳</td><td>23곳</td><td>+9곳</td></tr>
   </table>
@@ -118,6 +118,10 @@ def drawn_sizes(pdf_path: Path, text: str, page_index: int) -> list[float]:
         footer_top = slide_size()[1] - kit_length("footer-height")
         words = page.extract_words(extra_attrs=["size"])
         return [word["size"] * pixels_per_point for word in words if text in word["text"] and word["bottom"] * pixels_per_point < footer_top]
+
+
+def cell_text(block: dict) -> str:
+    return "".join(run["text"] for paragraph in block["paragraphs"] for run in paragraph["runs"]).strip()
 
 
 def inside(block: dict, box: dict) -> bool:
@@ -205,6 +209,14 @@ class BalancedKitTest(unittest.TestCase):
         for row in table["rows"][1:]:
             self.assertLessEqual(row["heightPx"] / min(cell_sizes), ROW_HEIGHT_PER_FONT_SIZE_MAXIMUM, table["rows"])
 
+
+    def test_every_number_in_a_column_lines_up_on_the_right_whatever_unit_it_carries(self):
+        slide = self.layout["slides"][2]
+        table = slide["tables"][0]
+        for column in (("36.2억 원", "8.2%", "14곳"), ("41.3억 원", "11.5%", "23곳"), ("+5.1억 원 (+14.1%)", "+3.3%p", "+9곳")):
+            alignments = [block["paragraphs"][0]["alignment"] for block in slide["blocks"] if inside(block, table["box"]) and cell_text(block) in column]
+            self.assertEqual(len(alignments), len(column), column)
+            self.assertEqual(set(alignments), {"r"}, (column, alignments))
 
 @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
 class HollowBoxTest(unittest.TestCase):

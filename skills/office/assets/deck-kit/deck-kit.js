@@ -32,7 +32,7 @@
   const keptInlineSelector = "em, strong, b, i, mark, small, span, a";
   const phrasingSelector = "em, strong, b, i, mark, a, span, code, sub, sup";
   const unkeptSelector = "aside, figure, table, svg, script, style, .kit-keep";
-  const numericCellPattern = /^[+\-−]?[₩$€£¥]?\s?[\d.,]+\s?(%|%p|[^\s\d]{0,4})?$/;
+  const numericCellPattern = /^[+\-−]?[₩$€£¥]?\s?[\d.,]+\s?(%p|%|[^\s\d()]{1,4}(\s[^\s\d()]{1,2})?)?(\s?\([^)]*\))?$/;
   const svgNamespace = "http://www.w3.org/2000/svg";
   const barScaleShare = 0.84;
   const lineInsetShare = 5;
@@ -485,17 +485,19 @@
     });
   }
 
+  function isNumericColumn(cells) {
+    const data = cells.filter((cell) => cell.tagName === "TD" && cell.textContent.trim());
+    const numeric = data.filter((cell) => numericCellPattern.test(cell.textContent.trim()));
+    return numeric.length > 0 && numeric.length * 2 >= data.length;
+  }
+
   function markNumericCells() {
     document.querySelectorAll("section[data-layout] table").forEach((table) => {
       const rows = Array.from(table.querySelectorAll("tr"));
-      rows.forEach((row) => Array.from(row.children).forEach((cell) => {
-        if (cell.tagName === "TD" && numericCellPattern.test(cell.textContent.trim())) cell.classList.add("kit-number");
-      }));
       const width = Math.max(0, ...rows.map((row) => row.children.length));
       for (let column = 0; column < width; column += 1) {
         const cells = rows.map((row) => row.children[column]).filter(Boolean);
-        const data = cells.filter((cell) => cell.tagName === "TD");
-        if (data.length && data.every((cell) => cell.classList.contains("kit-number"))) cells.forEach((cell) => cell.classList.add("kit-number"));
+        if (isNumericColumn(cells)) cells.forEach((cell) => cell.classList.add("kit-number"));
       }
     });
   }
