@@ -63,6 +63,15 @@ class WorkbookEditTest(WorkbookFixture):
         return series.tx.strRef.f, series.cat.numRef.f if series.cat.numRef else series.cat.strRef.f, series.val.numRef.f
 
 
+class MisspelledInputTest(WorkbookEditTest):
+    def test_a_misspelled_operation_field_or_sheet_names_the_closest_one(self):
+        envelope = self.apply([{"op": "set_cel", "cell": "A1"}, {"op": "format_range", "range": "A1", "fontcolor": "FF0000"}], name="fixture.xlsx")
+        self.assertEqual([issue["suggestion"] for issue in envelope["issues"]], ['use "op": "set_cell"', "rename the field to 'fontColor'"])
+        envelope = self.apply([{"op": "set_cell", "sheet": "sales", "cell": "A1"}], name="fixture.xlsx")
+        self.assertEqual(envelope["issues"][0]["suggestion"], 'use "sheet": "Sales"')
+        self.assertIn("it has Sales, Summary", envelope["issues"][0]["message"])
+
+
 class InsertAndDeleteTest(WorkbookEditTest):
     def test_inserted_rows_shift_every_reference_that_points_past_them(self):
         self.edit([{"op": "insert_rows", "sheet": "Sales", "at": 3, "count": 2}])

@@ -10,6 +10,7 @@ from openpyxl.utils.exceptions import CellCoordinatesException
 
 from office_operations import TARGET_NOT_FOUND
 from office_result import INVALID_VALUE, OfficeFailure
+from office_schema import closest_suggestion, did_you_mean
 
 
 def is_macro_workbook(path: str) -> bool:
@@ -28,7 +29,8 @@ def resolve_sheet(workbook, sheet_name: str | None, location: str):
     match = next((worksheet for worksheet in workbook.worksheets if worksheet.title == sheet_name), None)
     if match is None:
         names = ", ".join(workbook.sheetnames)
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}: the workbook has no sheet named {sheet_name!r}; it has {names}", location))
+        message = f"{location}: the workbook has no sheet named {sheet_name!r}{did_you_mean(sheet_name, workbook.sheetnames)}; it has {names}"
+        raise OfficeFailure(TARGET_NOT_FOUND.issue(message, location, closest_suggestion(sheet_name, workbook.sheetnames, 'use "sheet": "{match}"')))
     return match
 
 
