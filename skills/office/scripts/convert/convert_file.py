@@ -13,7 +13,7 @@ sys.path[1:1] = [str(SCRIPTS_PATH / "doc"), str(SCRIPTS_PATH / "sheet"), str(SCR
 
 from block_writers import data_uri, html_document, markdown_text  # noqa: E402
 from convert_definitions import (  # noqa: E402
-    CONVERSION_APPROXIMATED, PAGE_WITHOUT_TEXT, ROUTES, UNSUPPORTED_CONVERSION, Route, find_route, normalized_extension,
+    CONVERSION_APPROXIMATED, PAGE_WITHOUT_TEXT, ROUTES, TABLE_NOT_FOUND, UNSUPPORTED_CONVERSION, Route, find_route, normalized_extension,
 )
 from docx.shared import Pt  # noqa: E402
 from docx_markdown import DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, markdown_document  # noqa: E402
@@ -26,6 +26,7 @@ from markdown_charts import require_valid_charts  # noqa: E402
 from office_inputs import KINDS_BY_NAME, PDF, add_password_argument, office_file, require_unlocked_pdf
 from office_result import Issue, OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
 from pdf_to_blocks import read_pdf_blocks  # noqa: E402
+from pdf_workbook import read_pdf_tables, table_details, write_pdf_workbook  # noqa: E402
 from pptx import Presentation  # noqa: E402
 from pptx_preview import preview_document  # noqa: E402
 from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE, RenderFailed, RendererUnavailable, draw_preview  # noqa: E402
@@ -235,6 +236,19 @@ def legacy_workbook(conversion: Conversion) -> None:
     conversion.issues.extend(legacy_workbook_to_xlsx(conversion.input_path, conversion.output_path))
 
 
+def pdf_to_workbook(conversion: Conversion) -> None:
+    found = read_pdf_tables(conversion.input_path, conversion.password)
+    if not found.tables:
+        raise OfficeFailure(TABLE_NOT_FOUND.issue(f"{conversion.input_path.name} has no ruled table on any of its pages", conversion.input_path.name))
+    write_pdf_workbook(found.tables, conversion.output_path, conversion.input_path.stem)
+    conversion.details["tables"] = [table_details(table) for table in found.tables]
+    if found.pages_without_tables:
+        listed = ", ".join(str(number) for number in found.pages_without_tables)
+        conversion.issues.append(CONVERSION_APPROXIMATED.issue(f"page {listed} has no table and was left out" if len(found.pages_without_tables) == 1 else f"pages {listed} have no table and were left out", conversion.input_path.name))
+    if found.pages_without_text:
+        conversion.issues.append(PAGE_WITHOUT_TEXT.issue(f"pages {', '.join(str(number) for number in found.pages_without_text)} have no text layer, so their tables were not read", conversion.input_path.name))
+
+
 def write_docx(conversion: Conversion, blocks: list, source_directory: Path, save: bool = True):
     document, issues = markdown_document(blocks, DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, source_directory)
     conversion.issues.extend(issues)
@@ -307,6 +321,8 @@ CONVERTERS = {
     ("tsv", "xlsx"): text_to_workbook,
     ("xls", "xlsx"): legacy_workbook,
     ("ods", "xlsx"): legacy_workbook,
+    ("xlsb", "xlsx"): legacy_workbook,
+    ("pdf", "xlsx"): pdf_to_workbook,
 }
 
 
