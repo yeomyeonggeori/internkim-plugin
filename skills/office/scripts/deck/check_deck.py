@@ -69,6 +69,12 @@ class Slide:
         return self.element.attributes.get("data-layout", "").strip()
 
     @property
+    def intended_layout(self) -> str:
+        if self.layout in KIT_LAYOUT_NAMES:
+            return self.layout
+        return closest_name(self.layout, KIT_LAYOUT_NAMES) or self.layout
+
+    @property
     def location(self) -> str:
         return f"slide {self.index}"
 
@@ -85,7 +91,7 @@ class Slide:
 
     def composition(self) -> str:
         charts = [figure.attributes.get("data-chart", "") for figure in find_all(self.element, "figure") if "data-chart" in figure.attributes]
-        return f"{self.layout}:{charts[0]}" if self.layout == "chart" and charts else self.layout
+        return f"{self.intended_layout}:{charts[0]}" if self.intended_layout == "chart" and charts else self.intended_layout
 
 
 def check_deck(request: CheckRequest) -> Result:
@@ -126,9 +132,11 @@ def layout_issues(slides: list[Slide]) -> list[Issue]:
             continue
         layout = kit_layout(slide.layout)
         if layout is None:
-            issues.append(LAYOUT_UNKNOWN.issue(f'{slide.location} uses data-layout="{slide.layout}"', slide.location, suggestion=name_suggestion(slide.layout, KIT_LAYOUT_NAMES)))
-            continue
-        issues += part_issues(slide, layout)
+            suggestion = name_suggestion(slide.layout, KIT_LAYOUT_NAMES)
+            issues.append(LAYOUT_UNKNOWN.issue(f'{slide.location} uses data-layout="{slide.layout}"', slide.location, suggestion=suggestion))
+            layout = kit_layout(suggestion.get("didYouMean", ""))
+        if layout is not None:
+            issues += part_issues(slide, layout)
     return issues
 
 
@@ -152,7 +160,7 @@ def sequence_issues(slides: list[Slide]) -> list[Issue]:
         window = compositions[start:start + REPEAT_LIMIT]
         if window[0] and len(set(window)) == 1:
             issues.append(LAYOUT_REPEATED.issue(f"slides {start + 1}-{start + REPEAT_LIMIT} all use {window[0]}", f"slide {start + 2}"))
-    layouts = {slide.layout for slide in slides if slide.layout}
+    layouts = {slide.intended_layout for slide in slides if slide.layout}
     if len(slides) >= VARIETY_SLIDE_MINIMUM and len(layouts) < VARIETY_LAYOUT_MINIMUM:
         issues.append(TOO_FEW_LAYOUTS.issue(f"{len(slides)} slides use only {', '.join(sorted(layouts))}", "deck"))
     return issues + outline_issues(slides)
@@ -160,9 +168,9 @@ def sequence_issues(slides: list[Slide]) -> list[Issue]:
 
 def outline_issues(slides: list[Slide]) -> list[Issue]:
     issues = []
-    if slides[0].layout != COVER_LAYOUT:
+    if slides[0].intended_layout != COVER_LAYOUT:
         issues.append(FIRST_SLIDE_NOT_COVER.issue(f'slide 1 uses data-layout="{slides[0].layout}"', slides[0].location))
-    if len(slides) >= CLOSING_SLIDE_MINIMUM and slides[-1].layout != CLOSING_LAYOUT:
+    if len(slides) >= CLOSING_SLIDE_MINIMUM and slides[-1].intended_layout != CLOSING_LAYOUT:
         issues.append(LAST_SLIDE_NOT_CLOSING.issue(f'the last slide uses data-layout="{slides[-1].layout}"', slides[-1].location))
     return issues
 
@@ -183,14 +191,16 @@ def chart_issues(slide: Slide) -> list[Issue]:
     issues = []
     for figure in find_all(slide.element, "figure"):
         if "data-chart" in figure.attributes:
-            issues += [CHART_DATA_INVALID.issue(f"{slide.location}: {problem}", slide.location) for problem in chart_problems(figure.attributes)]
+            chart_type = figure.attributes["data-chart"].strip()
+            if chart_type not in chart_types():
+                suggestion = name_suggestion(chart_type, chart_types())
+                issues.append(CHART_DATA_INVALID.issue(f'{slide.location}: data-chart="{chart_type}" is not one of {", ".join(chart_types())}', slide.location, suggestion=suggestion))
+                chart_type = suggestion.get("didYouMean", "")
+            issues += [CHART_DATA_INVALID.issue(f"{slide.location}: {problem}", slide.location) for problem in chart_problems(chart_type, figure.attributes)]
     return issues
 
 
-def chart_problems(attributes: dict[str, str]) -> list[str]:
-    chart_type = attributes["data-chart"].strip()
-    if chart_type not in chart_types():
-        return [f'data-chart="{chart_type}" is not one of {", ".join(chart_types())}']
+def chart_problems(chart_type: str, attributes: dict[str, str]) -> list[str]:
     labels = split_list(attributes.get("data-labels", ""))
     if not labels:
         return ["data-labels is empty"]
@@ -369,7 +379,8 @@ def name_suggestion(name: str, available: tuple[str, ...]) -> dict:
 def check_summary(slides: list[Slide], issues: list[Issue]) -> str:
     errors = [issue for issue in issues if issue.kind.severity == ERROR]
     if errors:
-        return f"{len(errors)} problems to fix in slides.html before it can be built; the first: {errors[0].message}"
+        listed = "; ".join(f"{number}. {issue.message}" for number, issue in enumerate(errors, start=1))
+        return f"{len(errors)} problems to fix in slides.html before it can be built, all listed here: {listed}"
     warnings = f", {len(issues)} warnings" if issues else ""
     return f"checked {len(slides)} slides: ready to build{warnings}"
 

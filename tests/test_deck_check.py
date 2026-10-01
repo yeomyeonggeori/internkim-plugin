@@ -70,6 +70,21 @@ class DeckCheckTest(unittest.TestCase):
         self.assertEqual(issue.suggestion["didYouMean"], "kpi")
         self.assertIn("timeline", issue.suggestion["available"])
 
+    def test_every_structural_error_is_reported_in_one_pass(self):
+        typo_with_one_kpi = '<section data-layout="kpii"><h2>지표가 좋습니다</h2><div class="kpi"><p class="value">1</p><p class="label">매출</p></div></section>'
+        typo_with_short_values = '<section data-layout="chart"><h2>매출이 늘었습니다</h2><figure data-chart="colum" data-labels="1Q, 2Q, 3Q" data-values="1, 2"></figure></section>'
+        result = self.check(kit_deck(COVER, typo_with_one_kpi, typo_with_short_values, CLOSING))
+        errors = [(issue.kind.code, issue.location) for issue in result.issues if issue.kind.severity == "error"]
+        self.assertEqual(errors, [("LAYOUT_UNKNOWN", "slide 2"), ("LAYOUT_PART_MISSING", "slide 2"), ("CHART_DATA_INVALID", "slide 3"), ("CHART_DATA_INVALID", "slide 3")])
+        chart_type = next(issue for issue in result.issues if 'colum"' in issue.message)
+        self.assertEqual(chart_type.suggestion["didYouMean"], "column")
+        for issue in result.issues:
+            self.assertIn(issue.message, result.summary)
+
+    def test_a_layout_typo_counts_as_the_layout_it_names_for_repetition(self):
+        typo = STATEMENT.replace('data-layout="statement"', 'data-layout="statment"')
+        self.assertIn(("LAYOUT_REPEATED", "slide 3"), self.codes(kit_deck(COVER, STATEMENT, typo, STATEMENT)))
+
     def test_an_unknown_theme_names_the_closest_one(self):
         result = self.check(kit_deck(COVER, theme="midnite"))
         issue = next(issue for issue in result.issues if issue.kind.code == "THEME_UNKNOWN")
