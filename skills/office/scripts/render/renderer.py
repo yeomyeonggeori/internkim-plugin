@@ -8,16 +8,11 @@ import pathlib
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
 
-SCRIPTS_PATH = pathlib.Path(__file__).resolve().parents[1]
-if str(SCRIPTS_PATH) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS_PATH))
-
-from fonts.registry import renderer_fonts  # noqa: E402
-from office_result import INPUT_NOT_FOUND, IssueKind, OfficeFailure, WARNING, ERROR  # noqa: E402
-from skill_runtime import skill_cache_path  # noqa: E402
+from fonts.registry import renderer_fonts
+from core.office_result import INPUT_NOT_FOUND, IssueKind, OfficeFailure, WARNING, ERROR
+from skill_runtime import skill_cache_path
 
 
 RENDER_DIRECTORY = pathlib.Path(__file__).resolve().parent

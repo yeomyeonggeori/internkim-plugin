@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from units import MILLIMETRES_PER_INCH, TWIPS_PER_INCH, millimetres_to_pixels
+from core.units import MILLIMETRES_PER_INCH, TWIPS_PER_INCH, millimetres_to_pixels
 
 
 @dataclass(frozen=True)

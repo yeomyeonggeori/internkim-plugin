@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pdfplumber
 
-from cell_values import typed_text
-from create_xlsx import create_workbook
-from office_inputs import unlocked_pdf_bytes
-from pdf_ocr import OcrLine
-from pdf_tables import page_tables, stream_tables
-from excel_limits import fitting_sheet_name
+from sheet.cell_values import typed_text
+from sheet.create_xlsx import create_workbook
+from core.office_inputs import unlocked_pdf_bytes
+from pdf.ocr.pdf_ocr import OcrLine
+from pdf.pdf_tables import page_tables, stream_tables
+from core.excel_limits import fitting_sheet_name
 
 
 

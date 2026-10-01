@@ -8,14 +8,13 @@ OFFICE_PATH = Path(__file__).resolve().parents[1] / "skills" / "office"
 KIT_SCRIPT = (OFFICE_PATH / "assets" / "deck-kit" / "deck-kit.js").read_text(encoding="utf-8")
 KIT_STYLE = (OFFICE_PATH / "assets" / "deck-kit" / "deck-kit.css").read_text(encoding="utf-8")
 sys.path.insert(0, str(OFFICE_PATH / "scripts"))
-sys.path.insert(0, str(OFFICE_PATH / "scripts" / "deck"))
 
 from charts.kinds import DOCUMENT_CHART_KINDS, KIT_CHART_NAMES, KIT_STACKED_CHARTS  # noqa: E402
 from charts.numbers import GROUPED_NUMBER_PATTERN  # noqa: E402
-from deck_definitions import KIT_LAYOUT_NAMES, KIT_LAYOUTS, kit_layout  # noqa: E402
-from deck_kit import chart_types  # noqa: E402
-from kit_fixes import DEAD_ZONE_ADVICE, LIST_ADVICE, PART_LABELS  # noqa: E402
-from slide_render_checks import CENTERED_KIT_LAYOUTS  # noqa: E402
+from deck.deck_definitions import KIT_LAYOUT_NAMES, KIT_LAYOUTS, kit_layout  # noqa: E402
+from deck.deck_kit import chart_types  # noqa: E402
+from deck.kit_fixes import DEAD_ZONE_ADVICE, LIST_ADVICE, PART_LABELS  # noqa: E402
+from deck.slide_render_checks import CENTERED_KIT_LAYOUTS  # noqa: E402
 
 
 def constant(source: str, name: str) -> str:

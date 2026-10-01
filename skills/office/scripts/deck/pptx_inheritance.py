@@ -7,7 +7,7 @@ from lxml import etree
 from pptx.opc.constants import RELATIONSHIP_TYPE
 from pptx.oxml.ns import qn
 
-from pptx_shape_kinds import placeholder_of
+from deck.pptx_shape_kinds import placeholder_of
 
 
 MASTER_PLACEHOLDER_TYPES = {"ctrTitle": "title", "subTitle": "body", "obj": "body"}

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from openpyxl.worksheet.formula import ArrayFormula
 
-from dynamic_arrays import cell_element, dynamic_array_cell_metadata, mark_array_formula
-from excel_functions import is_dynamic_array_formula
-from office_result import Issue
-from sheet_definitions import CIRCULAR_REFERENCE, FORMULA_NOT_EVALUATED
-from workbook_package import Package, main_tag, read_package, worksheet_parts, write_package
-from workbook_values import NUMBER, CachedValue, Evaluation, clear_array_area, evaluate_workbook
+from sheet.dynamic_arrays import cell_element, dynamic_array_cell_metadata, mark_array_formula
+from sheet.excel_functions import is_dynamic_array_formula
+from core.office_result import Issue
+from sheet.sheet_definitions import CIRCULAR_REFERENCE, FORMULA_NOT_EVALUATED
+from sheet.workbook_package import Package, main_tag, read_package, worksheet_parts, write_package
+from sheet.workbook_values import NUMBER, CachedValue, Evaluation, clear_array_area, evaluate_workbook
 
 
 LISTED_CELL_LIMIT = 20

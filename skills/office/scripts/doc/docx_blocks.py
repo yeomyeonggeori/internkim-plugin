@@ -7,7 +7,7 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
 
-from docx_text import live_runs, visible_text
+from doc.docx_text import live_runs, visible_text
 
 
 PARAGRAPH_TAG = qn("w:p")

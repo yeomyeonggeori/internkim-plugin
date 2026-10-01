@@ -4,17 +4,17 @@ from __future__ import annotations
 from pathlib import Path
 
 from fonts.docx_embedding import save_document
-from docx_markdown import DEFAULT_DOCUMENT_FONT, markdown_document
-from doc_definitions import PDF_RENDERER_UNAVAILABLE
-from document_pdf import can_render, markdown_source_text, render_document_pdf
-from latex_math import math_issues
-from markdown_blocks import Heading, parse_markdown
-from markdown_charts import require_valid_charts
-from office_inputs import read_text_input
+from doc.docx_markdown import DEFAULT_DOCUMENT_FONT, markdown_document
+from doc.doc_definitions import PDF_RENDERER_UNAVAILABLE
+from doc.document_pdf import can_render, markdown_source_text, render_document_pdf
+from doc.latex_math import math_issues
+from doc.markdown_blocks import Heading, parse_markdown
+from doc.markdown_charts import require_valid_charts
+from core.office_inputs import read_text_input
 from fonts.registry import BODY_SIZE_POINTS, REGULAR_WEIGHT, SANS_BODY, default_family, resolved_face
-from office_result import INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
+from core.office_result import INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
 from fonts.pdf_registration import register_document_font
-from pdf_markdown import MarkdownPdf
+from doc.pdf_markdown import MarkdownPdf
 
 
 PDF_FONT_FAMILY = "DocumentFont"

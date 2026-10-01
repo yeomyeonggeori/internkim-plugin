@@ -4,9 +4,9 @@ from __future__ import annotations
 import pathlib
 import sys
 
-from check_deck import add_check_arguments, check_request
-from html_export import ALLOWED_FORMATS, ExportRequest, enabled_formats, export_deck
-from office_result import OfficeArgumentParser, Result, run_command
+from deck.check_deck import add_check_arguments, check_request
+from deck.html_export import ALLOWED_FORMATS, ExportRequest, enabled_formats, export_deck
+from core.office_result import OfficeArgumentParser, Result, run_command
 
 
 DEFAULT_FORMAT = "pdf"

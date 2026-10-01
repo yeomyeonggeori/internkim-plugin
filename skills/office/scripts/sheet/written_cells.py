@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from formula_grammar import formula_problem
-from office_result import INVALID_VALUE, OfficeFailure
-from sheet_definitions import FORMULA_SYNTAX
-from excel_limits import CELL_TEXT_LIMIT, FORMULA_LENGTH_LIMIT
+from sheet.formula_grammar import formula_problem
+from core.office_result import INVALID_VALUE, OfficeFailure
+from sheet.sheet_definitions import FORMULA_SYNTAX
+from core.excel_limits import CELL_TEXT_LIMIT, FORMULA_LENGTH_LIMIT
 
 
 

@@ -5,10 +5,10 @@ import datetime
 from openpyxl.styles.fonts import DEFAULT_FONT
 from openpyxl.utils import get_column_letter
 
-from office_result import INVALID_VALUE, OfficeFailure
-from sheet_styling import header_row_index
-from workbook_access import cell_rows, column_index, formula_text, json_value
-from workbook_values import EXCEL_ERROR_CODES
+from core.office_result import INVALID_VALUE, OfficeFailure
+from sheet.sheet_styling import header_row_index
+from sheet.workbook_access import cell_rows, column_index, formula_text, json_value
+from sheet.workbook_values import EXCEL_ERROR_CODES
 
 
 WHERE_KINDS = ("formula", "error", "number", "text", "empty")

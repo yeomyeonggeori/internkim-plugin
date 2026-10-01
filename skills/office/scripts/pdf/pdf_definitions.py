@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from office_result import ERROR, WARNING, IssueKind
-from office_schema import Boolean, CellValue, Choice, Field, ListOf, Number, Record, Text
+from core.office_result import ERROR, WARNING, IssueKind
+from core.office_schema import Boolean, CellValue, Choice, Field, ListOf, Number, Record, Text
 from fonts.pdf_registration import FONT_NAME_MEANING, FONT_PATH_MEANING
-from text_checks import TEXT_CHECK_ISSUE_KINDS
-from page_sizes import DEFAULT_PAPER, PAPER_NAMES
+from core.text_checks import TEXT_CHECK_ISSUE_KINDS
+from core.page_sizes import DEFAULT_PAPER, PAPER_NAMES
 
 
 TABLE = Record("table", "a bordered table with a shaded header row, wrapped to the page width", (

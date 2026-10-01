@@ -4,13 +4,13 @@ from dataclasses import dataclass
 import re
 
 from charts.kinds import OFFICE_CHART_KINDS
-from office_result import Issue
-from office_theme import THEME_SLOTS
-from office_schema import Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, wrong_type
-from pptx_connectors import ARROW_ENDS, CONNECTOR_KINDS, DEFAULT_ARROW, DEFAULT_WIDTH_POINTS, ELBOW_KIND, STRAIGHT_KIND
-from pptx_lengths import LENGTH_EXAMPLES, Length
-from units import EMU_PER_INCH, EMU_PER_POINT
-from image_formats import PICTURE_FORMATS_TEXT
+from core.office_result import Issue
+from core.office_theme import THEME_SLOTS
+from core.office_schema import Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, wrong_type
+from deck.pptx_connectors import ARROW_ENDS, CONNECTOR_KINDS, DEFAULT_ARROW, DEFAULT_WIDTH_POINTS, ELBOW_KIND, STRAIGHT_KIND
+from deck.pptx_lengths import LENGTH_EXAMPLES, Length
+from core.units import EMU_PER_INCH, EMU_PER_POINT
+from core.image_formats import PICTURE_FORMATS_TEXT
 
 
 SHAPE_PATH_PATTERN = re.compile(r"\d+(\.\d+)*")

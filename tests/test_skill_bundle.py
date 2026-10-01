@@ -2,7 +2,6 @@ import ast
 import hashlib
 import json
 import re
-import runpy
 from pathlib import Path
 import subprocess
 import sys
@@ -20,6 +19,8 @@ MARKETPLACE_PATHS = (
 
 sys.path.insert(0, str(OFFICE_SCRIPTS_PATH))
 
+from core.office_commands import COMMANDS, FORMATS  # noqa: E402
+
 
 def file_digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -30,11 +31,15 @@ def skill_files():
 
 
 def office_command_table():
-    return runpy.run_path(str(OFFICE_SCRIPTS_PATH / "office_commands.py"))["COMMANDS"]
+    return COMMANDS
 
 
 def office_format_names():
-    return {office_format.name for office_format in runpy.run_path(str(OFFICE_SCRIPTS_PATH / "office_commands.py"))["FORMATS"]}
+    return {office_format.name for office_format in FORMATS}
+
+
+def module_path(module: str) -> Path:
+    return OFFICE_SCRIPTS_PATH.joinpath(*module.split(".")).with_suffix(".py")
 
 
 class SharedSkillRuntimeTest(unittest.TestCase):
@@ -47,9 +52,9 @@ class SharedSkillRuntimeTest(unittest.TestCase):
 
 
 class OfficeEntryTest(unittest.TestCase):
-    def test_every_command_runs_a_bundled_script(self):
-        missing_scripts = [command.script for command in office_command_table() if not (OFFICE_SCRIPTS_PATH / command.script).is_file()]
-        self.assertEqual(missing_scripts, [])
+    def test_every_command_runs_a_bundled_module(self):
+        missing_modules = [command.module for command in office_command_table() if not module_path(command.module).is_file()]
+        self.assertEqual(missing_modules, [])
 
     def test_help_lists_every_command(self):
         help_text = subprocess.run([sys.executable, str(OFFICE_SCRIPTS_PATH / "office"), "--help"], capture_output=True, text=True, check=True).stdout
@@ -76,14 +81,13 @@ class OfficeEntryTest(unittest.TestCase):
 
 class PackageFreeCommandTest(unittest.TestCase):
     def test_a_command_that_needs_no_packages_imports_without_them(self):
-        loader = "import importlib.util, sys; specification = importlib.util.spec_from_file_location('command', sys.argv[1]); sys.modules['command'] = importlib.util.module_from_spec(specification); specification.loader.exec_module(sys.modules['command'])"
+        loader = "import importlib, sys; importlib.import_module(sys.argv[1])"
         for command in office_command_table():
             if command.needs_packages:
                 continue
             with self.subTest(command=command.name):
-                script = OFFICE_SCRIPTS_PATH / command.script
-                environment = {"PYTHONPATH": f"{OFFICE_SCRIPTS_PATH}:{script.parent}"}
-                completed = subprocess.run([sys.executable, "-S", "-c", loader, str(script)], capture_output=True, text=True, env=environment)
+                environment = {"PYTHONPATH": str(OFFICE_SCRIPTS_PATH)}
+                completed = subprocess.run([sys.executable, "-S", "-c", loader, command.module], capture_output=True, text=True, env=environment)
                 self.assertEqual(completed.returncode, 0, completed.stderr[-800:])
 
 

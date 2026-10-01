@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from docx_tracking import DEFAULT_TRACKING_AUTHOR
-from docx_editing import load_editing, save_editing
-from docx_operations import DOCX_OPERATIONS
-from office_operations import apply_parser, run_apply
-from office_result import Result, run_command
+from doc.docx_tracking import DEFAULT_TRACKING_AUTHOR
+from doc.docx_editing import load_editing, save_editing
+from doc.docx_operations import DOCX_OPERATIONS
+from core.office_operations import apply_parser, run_apply
+from core.office_result import Result, run_command
 
 
 def main() -> Result:

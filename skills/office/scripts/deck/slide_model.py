@@ -5,7 +5,7 @@ import html
 import pathlib
 import re
 
-from slide_source import SPEAKER_NOTES_BLOCK_PATTERN, remove_invisible_markup, slide_role, slide_title, split_slide_sources
+from deck.slide_source import SPEAKER_NOTES_BLOCK_PATTERN, remove_invisible_markup, slide_role, slide_title, split_slide_sources
 
 
 NATIVE_LAYOUT_BY_SLIDE_ROLE = {

@@ -12,9 +12,8 @@ from render_fixture import can_render
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
-sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
 
-from geometry_checks import geometry_warnings  # noqa: E402
+from deck.geometry_checks import geometry_warnings  # noqa: E402
 
 
 CARD_SENTENCE = "품절 3일 전에 알립니다. "

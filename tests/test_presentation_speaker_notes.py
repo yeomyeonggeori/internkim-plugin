@@ -5,11 +5,10 @@ import unittest
 
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"
 sys.path.insert(0, str(SCRIPTS_PATH.parent))
-sys.path.insert(0, str(SCRIPTS_PATH))
 
-from content_warnings import apply_missing_speaker_notes_warning  # noqa: E402
-from slide_model import create_slide_models, extract_notes  # noqa: E402
-from slide_structure import visible_slide_text  # noqa: E402
+from deck.content_warnings import apply_missing_speaker_notes_warning  # noqa: E402
+from deck.slide_model import create_slide_models, extract_notes  # noqa: E402
+from deck.slide_structure import visible_slide_text  # noqa: E402
 
 
 FOOTNOTE_SLIDE = '<section><h2>매출이 늘었습니다</h2><p>본문</p><div class="footnotes">출처 내부 자료</div></section>'

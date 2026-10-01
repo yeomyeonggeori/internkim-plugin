@@ -3,7 +3,7 @@ from __future__ import annotations
 from html.parser import HTMLParser
 import re
 
-from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak
+from doc.markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak
 
 
 HEADING_TAGS = {"h1": 1, "h2": 2, "h3": 3, "h4": 4, "h5": 4, "h6": 4}

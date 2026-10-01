@@ -5,10 +5,10 @@ from dataclasses import dataclass
 from pptx.oxml.ns import qn
 
 from fonts.measure import font_face, line_height_points, split_breakable, text_width_points
-from pptx_geometry import Box
-from pptx_style import DEFAULT_SIZE, PERCENT_SCALE, ParagraphLevel, paragraph_chain, run_style
-from text_script import has_east_asian, is_ideograph
-from units import DEFAULT_TEXT_INSETS, EMU_PER_POINT
+from deck.pptx_geometry import Box
+from deck.pptx_style import DEFAULT_SIZE, PERCENT_SCALE, ParagraphLevel, paragraph_chain, run_style
+from core.text_script import has_east_asian, is_ideograph
+from core.units import DEFAULT_TEXT_INSETS, EMU_PER_POINT
 
 
 @dataclass(frozen=True)

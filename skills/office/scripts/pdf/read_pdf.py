@@ -6,11 +6,11 @@ import io
 import pdfplumber
 from pypdf import PdfReader
 
-from office_inputs import add_password_argument, office_file, require_unlocked_pdf, unlocked_pdf_bytes
-from pdf_ocr import OcrUnavailable, read_pages_by_ocr
-from pdf_tables import line_texts, page_tables, stream_tables
-from pdf_definitions import OCR_DOWNLOAD_SIZE, OCR_UNAVAILABLE, PAGE_READ_BY_OCR, PAGE_WITHOUT_TEXT, page_reading_suggestion
-from office_result import Issue, OfficeArgumentParser, Result, run_command
+from core.office_inputs import add_password_argument, office_file, require_unlocked_pdf, unlocked_pdf_bytes
+from pdf.ocr.pdf_ocr import OcrUnavailable, read_pages_by_ocr
+from pdf.pdf_tables import line_texts, page_tables, stream_tables
+from pdf.pdf_definitions import OCR_DOWNLOAD_SIZE, OCR_UNAVAILABLE, PAGE_READ_BY_OCR, PAGE_WITHOUT_TEXT, page_reading_suggestion
+from core.office_result import Issue, OfficeArgumentParser, Result, run_command
 
 
 DEFAULT_PAGE_LIMIT = 50

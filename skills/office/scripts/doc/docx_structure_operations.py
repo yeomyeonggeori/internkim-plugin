@@ -7,15 +7,15 @@ from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml.ns import qn
 from docx.text.paragraph import Paragraph
 
-from docx_blocks import PARAGRAPH_TAG, heading_level, is_list_item
-from docx_editing import DocxEditing, placement, require_style, resolve_block, resolve_paragraph
-from docx_lists import LIST_LEVEL_COUNT, LIST_PARAGRAPH_STYLE, start_list
-from docx_markdown import add_block
-from docx_tracking import mark_block_deleted, mark_block_inserted, record_paragraph_property_change, snapshot_paragraph_properties
-from markdown_blocks import Heading, Image, ListItem, Table, local_image_problem, parse_markdown
-from markdown_charts import Chart
-from office_operations import OPERATION_NOT_APPLICABLE, Change
-from office_result import INPUT_NOT_FOUND, INVALID_VALUE, OfficeFailure
+from doc.docx_blocks import PARAGRAPH_TAG, heading_level, is_list_item
+from doc.docx_editing import DocxEditing, placement, require_style, resolve_block
+from doc.docx_lists import LIST_LEVEL_COUNT, LIST_PARAGRAPH_STYLE, start_list
+from doc.docx_markdown import add_block
+from doc.docx_tracking import mark_block_deleted, mark_block_inserted, record_paragraph_property_change, snapshot_paragraph_properties
+from doc.markdown_blocks import Heading, Image, ListItem, Table, local_image_problem, parse_markdown
+from doc.markdown_charts import Chart
+from core.office_operations import OPERATION_NOT_APPLICABLE, Change
+from core.office_result import INPUT_NOT_FOUND, INVALID_VALUE, OfficeFailure
 
 
 LIST_STYLE_PREFIX = "List"

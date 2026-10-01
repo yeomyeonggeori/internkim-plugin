@@ -7,18 +7,18 @@ import os
 from pathlib import Path
 from types import SimpleNamespace
 
-from cell_values import typed_cell_value
-from excel_functions import written_value
-from office_inputs import read_text_input
-from office_operations import apply_batch, save_atomically
-from office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
-from office_schema import require_valid
-from sheet_definitions import WORKBOOK_SPECIFICATION
-from sheet_operations import SHEET_OPERATIONS, SheetEditing, save_editing
-from sheet_styling import style_table
-from sheet_workbook import validate_sheet_name
-from written_cells import require_writable_rows
-from excel_limits import fitting_sheet_name
+from sheet.cell_values import typed_cell_value
+from sheet.excel_functions import written_value
+from core.office_inputs import read_text_input
+from core.office_operations import apply_batch, save_atomically
+from core.office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
+from core.office_schema import require_valid
+from sheet.sheet_definitions import WORKBOOK_SPECIFICATION
+from sheet.sheet_operations import SHEET_OPERATIONS, SheetEditing, save_editing
+from sheet.sheet_styling import style_table
+from sheet.sheet_workbook import validate_sheet_name
+from sheet.written_cells import require_writable_rows
+from core.excel_limits import fitting_sheet_name
 
 
 def optional_text(value):

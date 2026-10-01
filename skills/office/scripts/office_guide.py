@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-import importlib.util
-import pathlib
-import sys
+import importlib
 from types import ModuleType
 
 from fonts.registry import FAMILIES, face_facts
-from office_commands import COMMANDS, FORMATS, Format
-from office_result import COMMAND_ISSUE_KINDS, UNKNOWN_COMMAND, IssueKind, OfficeFailure
-from office_schema import Field, Record, Shape, Variant, closest_name
+from core.office_commands import COMMANDS, FORMATS, Format
+from core.office_result import COMMAND_ISSUE_KINDS, UNKNOWN_COMMAND, IssueKind, OfficeFailure
+from core.office_schema import Field, Record, Shape, Variant, closest_name
 
 
-SCRIPTS_PATH = pathlib.Path(__file__).resolve().parent
 USAGE = "usage: office guide <format> [verb [operation]]"
 ENVELOPE_LINE = (
     "Every command prints one JSON result: {status: ok|warning|error, summary, outputPath, "
@@ -125,14 +122,7 @@ def family_label(family) -> str:
 
 
 def load_definitions(office_format: Format) -> ModuleType:
-    script_path = SCRIPTS_PATH / office_format.definitions_script
-    sys.path.insert(0, str(script_path.parent))
-    module_name = f"{office_format.name}_guide_definitions"
-    specification = importlib.util.spec_from_file_location(module_name, script_path)
-    module = importlib.util.module_from_spec(specification)
-    sys.modules[module_name] = module
-    specification.loader.exec_module(module)
-    return module
+    return importlib.import_module(office_format.definitions_module)
 
 
 def command_lines(format_name: str, command_name: str | None = None) -> list[str]:

@@ -4,11 +4,11 @@ import json
 import pathlib
 import shutil
 
-from deck_definitions import LAYOUT_RENDER_SOURCE
-from editable_pptx import text_layers_path
-from geometry_checks import GEOMETRY_FILE_NAME
+from deck.deck_definitions import LAYOUT_RENDER_SOURCE
+from deck.editable_pptx import text_layers_path
+from deck.geometry_checks import GEOMETRY_FILE_NAME
 from render.renderer import CONTACT_SHEETS_FILE_NAME, PIXELS_FILE_NAME
-from slide_images import rendered_slide_image_paths
+from deck.slide_images import rendered_slide_image_paths
 
 
 RENDER_SOURCE_FILE_NAME = "render-source.txt"

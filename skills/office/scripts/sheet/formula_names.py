@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from excel_functions import EXCEL_FUNCTIONS, PARAMETER_FUNCTIONS, parameter_names
-from formula_references import formula_references, referenced_sheet_names
-from formula_tree import Call, calls_in, parse_formula
-from office_result import Issue
-from office_schema import closest_name, guess_text
-from sheet_definitions import MISSING_SHEET_REFERENCE, UNKNOWN_FUNCTION
-from workbook_access import formula_text
+from sheet.excel_functions import EXCEL_FUNCTIONS, PARAMETER_FUNCTIONS, parameter_names
+from sheet.formula_references import formula_references, referenced_sheet_names
+from sheet.formula_tree import Call, calls_in, parse_formula
+from core.office_result import Issue
+from core.office_schema import closest_name, guess_text
+from sheet.sheet_definitions import MISSING_SHEET_REFERENCE, UNKNOWN_FUNCTION
+from sheet.workbook_access import formula_text
 
 
 USER_FUNCTION_PREFIXES = ("_XLUDF.", "_XLL.")

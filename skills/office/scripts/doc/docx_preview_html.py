@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from charts.svg import chart_svg
-from docx_layout import BreakLayout, Fragment, Line, ParagraphLayout, TableLayout, trimmed
-from docx_pagination import NOTE_SEPARATOR_PIXELS, Page, ParagraphSlice, TableSlice
-from docx_preview_css import border_value
-from docx_preview_model import FieldItem, TableBlock
-from office_preview import escaped, page_section, pixels, positioned, style_attribute
+from doc.docx_layout import BreakLayout, Fragment, Line, ParagraphLayout, TableLayout, trimmed
+from doc.docx_pagination import NOTE_SEPARATOR_PIXELS, Page, ParagraphSlice, TableSlice
+from doc.docx_preview_css import border_value
+from doc.docx_preview_model import FieldItem, TableBlock
+from render.office_preview import escaped, page_section, pixels, positioned, style_attribute
 from fonts.preview import draws_scripts_apart, script_font_family, script_runs
 
 

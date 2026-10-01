@@ -3,11 +3,11 @@ from __future__ import annotations
 import pathlib
 import typing
 
-from deck_definitions import SLIDE_BLANK, VERTICAL_DEAD_ZONE
-from design_warnings import LABEL_ONLY_SLIDE_ROLES, slide_design_warnings
-from geometry_checks import content_extent, geometry_warnings, slide_geometry
-from kit_fixes import dead_zone_fix
-from office_result import Issue
+from deck.deck_definitions import SLIDE_BLANK, VERTICAL_DEAD_ZONE
+from deck.design_warnings import LABEL_ONLY_SLIDE_ROLES, slide_design_warnings
+from deck.geometry_checks import content_extent, geometry_warnings, slide_geometry
+from deck.kit_fixes import dead_zone_fix
+from core.office_result import Issue
 
 
 VERTICAL_DEAD_ZONE_HEIGHT_RATIO = 0.27

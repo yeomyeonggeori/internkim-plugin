@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import os
 
-from office_operations import apply_batch, apply_parser, read_batch, save_atomically
-from office_result import Result, run_command
-from pptx_layout_audit import audit_presentation, substitutions
-from pptx_lengths import normalize_lengths
-from pptx_operations import PPTX_OPERATIONS, save_editing
-from pptx_targets import PptxEditing, load_editing
+from core.office_operations import apply_batch, apply_parser, read_batch, save_atomically
+from core.office_result import Result, run_command
+from deck.pptx_layout_audit import audit_presentation, substitutions
+from deck.pptx_lengths import normalize_lengths
+from deck.pptx_operations import PPTX_OPERATIONS, save_editing
+from deck.pptx_targets import PptxEditing, load_editing
 
 
 def main() -> Result:

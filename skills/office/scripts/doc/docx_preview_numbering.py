@@ -5,7 +5,7 @@ import re
 
 from docx.oxml.ns import qn
 
-from docx_preview_styles import attribute, paragraph_properties, run_properties
+from doc.docx_preview_styles import attribute, paragraph_properties, run_properties
 
 
 LEVEL_REFERENCE = re.compile(r"%(\d)")

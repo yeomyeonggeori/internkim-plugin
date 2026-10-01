@@ -5,7 +5,7 @@ import colorsys
 from lxml import etree
 from openpyxl.styles.colors import COLOR_INDEX
 
-from office_theme import OFFICE_THEME, THEME_SLOTS
+from core.office_theme import OFFICE_THEME, THEME_SLOTS
 
 
 DRAWING_NAMESPACE = "{http://schemas.openxmlformats.org/drawingml/2006/main}"

@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 import html
 from pathlib import Path
 
-from office_result import WARNING, Issue, IssueKind
+from core.office_result import WARNING, Issue, IssueKind
 from render.renderer import RenderFailed, RendererUnavailable, RenderedPages, draw_preview
 
 

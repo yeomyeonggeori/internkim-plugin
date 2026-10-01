@@ -3,12 +3,12 @@ from __future__ import annotations
 from lxml import etree
 from pptx.oxml.ns import qn
 
-from office_operations import OPERATION_NOT_APPLICABLE, Change
-from office_result import INVALID_VALUE, OfficeFailure
-from pptx_element_operations import SHAPE_TAGS, current_box, next_shape_identifier, write_local_box
-from pptx_geometry import Box, child_frame, own_box, transform_of
-from pptx_shape_kinds import placeholder_of
-from pptx_targets import PptxEditing, ShapeTarget, require_kind, resolve_shape
+from core.office_operations import OPERATION_NOT_APPLICABLE, Change
+from core.office_result import INVALID_VALUE, OfficeFailure
+from deck.pptx_element_operations import SHAPE_TAGS, current_box, next_shape_identifier, write_local_box
+from deck.pptx_geometry import Box, child_frame, own_box, transform_of
+from deck.pptx_shape_kinds import placeholder_of
+from deck.pptx_targets import PptxEditing, ShapeTarget, require_kind, resolve_shape
 
 
 SLIDE_REFERENCE = "slide"

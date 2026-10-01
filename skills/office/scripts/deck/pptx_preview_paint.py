@@ -5,9 +5,9 @@ import html
 
 from pptx.oxml.ns import qn
 
-from office_preview import data_uri
-from pptx_style import PERCENT_SCALE, resolve_color
-from units import EMU_PER_PIXEL, PIXELS_PER_EMU, PIXELS_PER_POINT
+from render.office_preview import data_uri
+from deck.pptx_style import PERCENT_SCALE, resolve_color
+from core.units import EMU_PER_PIXEL, PIXELS_PER_EMU, PIXELS_PER_POINT
 
 
 DEFAULT_LINE_WIDTH_EMU = EMU_PER_PIXEL

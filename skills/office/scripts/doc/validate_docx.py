@@ -5,7 +5,7 @@ import argparse
 
 from docx.oxml.ns import qn
 
-from doc_definitions import (
+from doc.doc_definitions import (
     BODY_SIZE_UNUSUAL,
     DOCUMENT_EMPTY,
     DOCUMENT_SPARSE,
@@ -17,13 +17,13 @@ from doc_definitions import (
     TABLE_EMPTY_CELLS,
     TABLE_TOO_WIDE,
 )
-from docx_language import east_asia_font_issues
-from docx_package import open_document
-from docx_text import paragraph_text, visible_text
-from office_inputs import office_file
-from office_result import Issue, OfficeArgumentParser, Result, run_command
-from text_checks import text_presence_issues
-from text_script import has_hangul
+from doc.docx_language import east_asia_font_issues
+from doc.docx_package import open_document
+from doc.docx_text import paragraph_text, visible_text
+from core.office_inputs import office_file
+from core.office_result import Issue, OfficeArgumentParser, Result, run_command
+from core.text_checks import text_presence_issues
+from core.text_script import has_hangul
 
 
 DENSE_CELL_CHARACTERS = 90

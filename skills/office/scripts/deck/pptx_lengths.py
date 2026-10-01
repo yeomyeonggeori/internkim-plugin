@@ -3,9 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
-from office_result import INVALID_VALUE, Issue, OfficeFailure
-from office_schema import Shape, Variant, wrong_type
-from units import EMU_PER_CENTIMETRE, EMU_PER_INCH, EMU_PER_MILLIMETRE, EMU_PER_PIXEL, EMU_PER_POINT
+from core.office_result import INVALID_VALUE, Issue, OfficeFailure
+from core.office_schema import Shape, Variant, wrong_type
+from core.units import EMU_PER_CENTIMETRE, EMU_PER_INCH, EMU_PER_MILLIMETRE, EMU_PER_PIXEL, EMU_PER_POINT
 
 
 LENGTH_PATTERN = re.compile(r"\s*(-?\d+(?:\.\d+)?)\s*(emu|in|cm|mm|pt|px|%)\s*", re.IGNORECASE)

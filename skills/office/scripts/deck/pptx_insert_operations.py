@@ -6,14 +6,14 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.util import Emu
 
 from charts.kinds import ROUND_CHART_KINDS, office_chart_type
-from office_operations import Change
-from office_result import INVALID_VALUE, OfficeFailure
-from pptx_backdrop import readable_text_color
-from pptx_connector_operations import plan_add_connector
-from pptx_element_operations import readable_image_size, rgb
-from pptx_geometry import Box
-from pptx_targets import PptxEditing, resolve_slide
-from pptx_text_operations import ALIGNMENTS, apply_run_style, character_properties, replace_text
+from core.office_operations import Change
+from core.office_result import INVALID_VALUE, OfficeFailure
+from deck.pptx_backdrop import readable_text_color
+from deck.pptx_connector_operations import plan_add_connector
+from deck.pptx_element_operations import readable_image_size, rgb
+from deck.pptx_geometry import Box
+from deck.pptx_targets import PptxEditing, resolve_slide
+from deck.pptx_text_operations import ALIGNMENTS, apply_run_style, character_properties, replace_text
 
 
 SHAPE_GEOMETRIES = {

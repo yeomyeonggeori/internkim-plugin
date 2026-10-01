@@ -9,17 +9,17 @@ from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
-from doc_definitions import IMAGE_UNAVAILABLE
-from docx_defaults import CODE_FONT, DOCUMENT_FONT, apply_korean_defaults, set_page
-from docx_format_operations import ALIGNMENTS
-from docx_tables import add_space_after_table, format_table
-from docx_lists import add_list_paragraph, start_list
-from docx_charts import add_chart_part, drawing_run, next_drawing_id, specification
-from markdown_charts import Chart
-from latex_math import OMML_NAMESPACE, LatexNotReadable, latex_omml
-from markdown_blocks import Equation, Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, inline_segments, link_parts, local_image_problem, math_latex
-from office_result import Issue
-from office_theme import HYPERLINK_COLOR
+from doc.doc_definitions import IMAGE_UNAVAILABLE
+from doc.docx_defaults import CODE_FONT, DOCUMENT_FONT, apply_korean_defaults, set_page
+from doc.docx_format_operations import ALIGNMENTS
+from doc.docx_tables import add_space_after_table, format_table
+from doc.docx_lists import add_list_paragraph, start_list
+from doc.docx_charts import add_chart_part, drawing_run, next_drawing_id, specification
+from doc.markdown_charts import Chart
+from doc.latex_math import OMML_NAMESPACE, LatexNotReadable, latex_omml
+from doc.markdown_blocks import Equation, Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, inline_segments, link_parts, local_image_problem, math_latex
+from core.office_result import Issue
+from core.office_theme import HYPERLINK_COLOR
 
 
 DEFAULT_DOCUMENT_FONT = DOCUMENT_FONT

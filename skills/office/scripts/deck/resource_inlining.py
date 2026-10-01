@@ -6,8 +6,8 @@ import pathlib
 import re
 
 from fonts.registry import DECK, BundledFace, default_family
-from office_preview import data_uri
-from image_formats import WEB_IMAGE_TYPES
+from render.office_preview import data_uri
+from core.image_formats import WEB_IMAGE_TYPES
 
 
 SKILL_ASSET_PATH = pathlib.Path(__file__).resolve().parents[2] / "assets"

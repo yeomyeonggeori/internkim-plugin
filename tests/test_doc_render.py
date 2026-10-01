@@ -110,11 +110,10 @@ class DocumentPreviewTest(unittest.TestCase):
     def test_every_page_holds_no_more_than_its_body_area(self):
         code = (
             "import json, sys\n"
-            f"sys.path[0:0] = [{str(SCRIPTS_PATH / 'doc')!r}, {str(SCRIPTS_PATH / 'deck')!r}, {str(SCRIPTS_PATH)!r}]\n"
             "from pathlib import Path\n"
-            "from docx_layout import Layout\n"
-            "from docx_pagination import Paginator\n"
-            "from docx_preview import DocxModelBuilder\n"
+            "from doc.docx_layout import Layout\n"
+            "from doc.docx_pagination import Paginator\n"
+            "from doc.docx_preview import DocxModelBuilder\n"
             "from fonts.preview import FontRegistry\n"
             "pages = Paginator(Layout(FontRegistry())).paginate(DocxModelBuilder(Path('보고서.docx')).sections())\n"
             "print(json.dumps([(sum(item.height for item in page.placed), page.body_bottom - page.body_top) for page in pages]))\n"

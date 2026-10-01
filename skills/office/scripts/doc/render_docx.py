@@ -2,19 +2,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-import sys
 
-SCRIPTS_PATH = Path(__file__).resolve().parents[1]
-sys.path[1:1] = [str(SCRIPTS_PATH / "deck")]
-
-from docx_layout import Layout  # noqa: E402
-from docx_pagination import Paginator, displayed_page_numbers  # noqa: E402
-from docx_preview import DocxModelBuilder  # noqa: E402
-from docx_preview_html import PageWriter  # noqa: E402
-from office_preview import Preview, approximation_issues, blank_page_issues, draw_pages, write_preview  # noqa: E402
-from office_inputs import office_file
-from office_result import OfficeArgumentParser, Result, run_command  # noqa: E402
-from fonts.preview import FontRegistry  # noqa: E402
+from doc.docx_layout import Layout
+from doc.docx_pagination import Paginator, displayed_page_numbers
+from doc.docx_preview import DocxModelBuilder
+from doc.docx_preview_html import PageWriter
+from render.office_preview import Preview, approximation_issues, blank_page_issues, draw_pages, write_preview
+from core.office_inputs import office_file
+from core.office_result import OfficeArgumentParser, Result, run_command
+from fonts.preview import FontRegistry
 
 
 def docx_preview(source_path: Path) -> tuple[Preview, list[dict]]:

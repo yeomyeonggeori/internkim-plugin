@@ -5,14 +5,14 @@ from pptx.opc.constants import RELATIONSHIP_TYPE
 from pptx.oxml.ns import qn
 from pptx.util import Emu
 
-from office_operations import Change
-from office_result import INVALID_VALUE, OfficeFailure
-from office_schema import closest_suggestion
-from office_theme import THEME_SLOTS
-from pptx_element_operations import SHAPE_TAGS, write_local_box
-from pptx_geometry import Box, own_box
-from pptx_style import HANGUL_SCRIPT
-from pptx_targets import PptxEditing, live_slides
+from core.office_operations import Change
+from core.office_result import INVALID_VALUE, OfficeFailure
+from core.office_schema import closest_suggestion
+from core.office_theme import THEME_SLOTS
+from deck.pptx_element_operations import SHAPE_TAGS, write_local_box
+from deck.pptx_geometry import Box, own_box
+from deck.pptx_style import HANGUL_SCRIPT
+from deck.pptx_targets import PptxEditing, live_slides
 
 
 def theme_parts(presentation) -> list:

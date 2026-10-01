@@ -7,12 +7,12 @@ from PIL import Image, UnidentifiedImageError
 
 from docx.oxml.ns import qn
 
-from docx_charts import read_specification
-from docx_page_operations import PICTURE_WATERMARK_PREFIX
-from docx_preview_model import BoxItem, ChartItem, ImageItem
-from docx_preview_tables import TableLayers
-from office_preview import data_uri
-from units import emu_to_pixels, inches_to_pixels, points_to_pixels
+from doc.docx_charts import read_specification
+from doc.docx_page_operations import PICTURE_WATERMARK_PREFIX
+from doc.docx_preview_model import BoxItem, ChartItem, ImageItem
+from doc.docx_preview_tables import TableLayers
+from render.office_preview import data_uri
+from core.units import emu_to_pixels, inches_to_pixels, points_to_pixels
 
 
 NAMESPACES = {

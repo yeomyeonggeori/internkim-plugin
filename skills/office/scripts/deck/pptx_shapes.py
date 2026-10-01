@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from css_color import parse_css_color
-from pptx_connectors import Attachment, Point, Route, connection_site, connector_xml, line_xml
-from pptx_text import SlideScale, color_xml
+from core.css_color import parse_css_color
+from deck.pptx_connectors import Attachment, Point, Route, connection_site, connector_xml, line_xml
+from deck.pptx_text import SlideScale, color_xml
 
 
 MAXIMUM_CORNER_ADJUSTMENT = 50000

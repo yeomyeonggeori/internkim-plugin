@@ -8,6 +8,8 @@ import unittest
 
 
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
+if str(SCRIPTS_PATH) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_PATH))
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
 
 FIXTURE_DOCUMENT = """

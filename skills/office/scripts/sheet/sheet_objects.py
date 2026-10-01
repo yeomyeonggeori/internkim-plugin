@@ -11,11 +11,11 @@ from openpyxl.worksheet.pagebreak import Break, ColBreak, RowBreak
 from openpyxl.worksheet.properties import PageSetupProperties
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
-from office_operations import OPERATION_NOT_APPLICABLE, Change
-from office_result import INVALID_VALUE, OfficeFailure
-from office_theme import HYPERLINK_COLOR
-from page_sizes import PAPER_BY_NAME
-from workbook_access import column_index, parse_cell, parse_range, sheet_of
+from core.office_operations import OPERATION_NOT_APPLICABLE, Change
+from core.office_result import INVALID_VALUE, OfficeFailure
+from core.office_theme import HYPERLINK_COLOR
+from core.page_sizes import PAPER_BY_NAME
+from sheet.workbook_access import column_index, parse_cell, parse_range, sheet_of
 
 
 TABLE_NAME = re.compile(r"^[A-Za-z_\u0080-￿][A-Za-z0-9_.\u0080-￿]*$")

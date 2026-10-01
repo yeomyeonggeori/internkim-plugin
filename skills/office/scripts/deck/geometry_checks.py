@@ -4,12 +4,12 @@ from dataclasses import dataclass
 import json
 import pathlib
 
-from deck_definitions import CONTENT_OVERFLOW, FOOTER_CROSSED, GEOMETRY_NOT_MEASURED, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_COVERED, TEXT_OVERLAP, TINY_TEXT, TITLE_TOO_LONG
-from deck_kit import kit_length, slide_size
-from design_warnings import append_deck_warning
-from kit_fixes import capacity_fix, photo_fix, placement_fix, size_fix, text_fix
-from layout_thresholds import SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
-from office_result import Issue
+from deck.deck_definitions import CONTENT_OVERFLOW, FOOTER_CROSSED, GEOMETRY_NOT_MEASURED, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_COVERED, TEXT_OVERLAP, TINY_TEXT, TITLE_TOO_LONG
+from deck.deck_kit import kit_length, slide_size
+from deck.design_warnings import append_deck_warning
+from deck.kit_fixes import capacity_fix, photo_fix, placement_fix, size_fix, text_fix
+from deck.layout_thresholds import SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
+from core.office_result import Issue
 
 
 GEOMETRY_FILE_NAME = "geometry.json"

@@ -8,13 +8,13 @@ from docx.oxml.ns import nsdecls, qn
 from docx.shared import Inches
 from docx.text.paragraph import Paragraph
 
-from docx_charts import next_drawing_id
-from docx_editing import DocxEditing, placement, resolve_paragraph
-from docx_format_operations import ALIGNMENTS, require_any
-from docx_tracking import mark_block_inserted
-from office_operations import TARGET_NOT_FOUND, Change
-from office_result import OfficeFailure
-from units import END_TEXT_INSET_EMU, SIDE_TEXT_INSET_EMU
+from doc.docx_charts import next_drawing_id
+from doc.docx_editing import DocxEditing, placement, resolve_paragraph
+from doc.docx_format_operations import ALIGNMENTS, require_any
+from doc.docx_tracking import mark_block_inserted
+from core.office_operations import TARGET_NOT_FOUND, Change
+from core.office_result import OfficeFailure
+from core.units import END_TEXT_INSET_EMU, SIDE_TEXT_INSET_EMU
 
 
 WRAP_ELEMENTS = {"square": '<wp:wrapSquare {namespaces} wrapText="bothSides"/>', "topAndBottom": "<wp:wrapTopAndBottom {namespaces}/>", "behindText": "<wp:wrapNone {namespaces}/>", "inFrontOfText": "<wp:wrapNone {namespaces}/>"}

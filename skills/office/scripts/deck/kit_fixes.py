@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 
-from deck_definitions import KIT_LAYOUTS
+from deck.deck_definitions import KIT_LAYOUTS
 
 
 PHOTO_LAYOUTS = tuple(layout.name for layout in KIT_LAYOUTS if any(part.selector == "img" for part in layout.parts))

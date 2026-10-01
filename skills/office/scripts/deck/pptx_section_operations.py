@@ -5,11 +5,11 @@ import uuid
 from lxml import etree
 from pptx.oxml.ns import qn
 
-from office_operations import TARGET_NOT_FOUND, Change
-from office_result import INVALID_VALUE, OfficeFailure
-from office_schema import closest_suggestion
-from pptx_sections import POWERPOINT_2010_NAMESPACE, SECTION_LIST_TAG, SECTION_SLIDE_TAG, SECTION_SLIDES_TAG, SECTION_TAG
-from pptx_targets import PptxEditing, resolve_slide
+from core.office_operations import TARGET_NOT_FOUND, Change
+from core.office_result import INVALID_VALUE, OfficeFailure
+from core.office_schema import closest_suggestion
+from deck.pptx_sections import POWERPOINT_2010_NAMESPACE, SECTION_LIST_TAG, SECTION_SLIDE_TAG, SECTION_SLIDES_TAG, SECTION_TAG
+from deck.pptx_targets import PptxEditing, resolve_slide
 
 
 SECTION_EXTENSION_URI = "{521415D9-36F7-43E2-AB2F-B90AF26B5E84}"

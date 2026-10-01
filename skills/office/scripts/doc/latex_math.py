@@ -10,9 +10,9 @@ import mathml2omml
 from docx.oxml import parse_xml
 from lxml import etree
 
-from doc_definitions import MATH_NOT_CONVERTED
-from markdown_blocks import Equation, Table, inline_segments, math_latex
-from office_result import Issue
+from doc.doc_definitions import MATH_NOT_CONVERTED
+from doc.markdown_blocks import Equation, Table, inline_segments, math_latex
+from core.office_result import Issue
 
 
 OMML_NAMESPACE = "http://schemas.openxmlformats.org/officeDocument/2006/math"

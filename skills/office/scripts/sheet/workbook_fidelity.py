@@ -6,8 +6,8 @@ import posixpath
 
 from lxml import etree
 
-from formula_references import REFERENCE_ERROR, ROW_AXIS, Shift, deleted_sheet_reference, rename_sheet_reference, rewrite_formula, shift_reference, shift_single
-from workbook_package import (
+from sheet.formula_references import REFERENCE_ERROR, ROW_AXIS, Shift, deleted_sheet_reference, rename_sheet_reference, rewrite_formula, shift_reference, shift_single
+from sheet.workbook_package import (
     CONTENT_TYPES_NAMESPACE,
     CONTENT_TYPES_PART,
     RELATIONSHIP_NAMESPACE,

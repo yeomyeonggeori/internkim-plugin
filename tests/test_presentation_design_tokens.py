@@ -5,10 +5,8 @@ import unittest
 
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"
 sys.path.insert(0, str(SCRIPTS_PATH.parent))
-sys.path.insert(0, str(SCRIPTS_PATH))
 
-import html_export  # noqa: E402
-import render_review  # noqa: E402
+from deck import html_export, render_review  # noqa: E402
 
 
 DESIGN_DOCUMENT = """---

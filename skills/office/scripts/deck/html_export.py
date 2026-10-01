@@ -3,25 +3,25 @@ from __future__ import annotations
 from dataclasses import dataclass
 import pathlib
 
-from acceptance import judge_build
-from check_deck import CheckRequest, check_deck
-from deck_definitions import FONT_NOT_EMBEDDED, LAYOUT_RENDER_SOURCE, NATIVE_RENDER_SOURCE, PPTX_WITHOUT_DESIGN, TEXT_KEPT_AS_PICTURE, UNKNOWN_FORMAT
-from deck_kit import KIT_MARKER, inject_deck_kit, slide_size
-from design_tokens import read_design_tokens
-from editable_pptx import EditablePptx, read_text_layers, text_layers_path, write_editable_pptx
-from geometry_checks import GEOMETRY_FILE_NAME
-from layout_thresholds import renderer_thresholds
-from native_pptx import write_native_text_pptx
-from native_preview import write_native_review_images
-from office_result import Issue, OfficeFailure, Result
+from deck.acceptance import judge_build
+from deck.check_deck import CheckRequest, check_deck
+from deck.deck_definitions import FONT_NOT_EMBEDDED, LAYOUT_RENDER_SOURCE, NATIVE_RENDER_SOURCE, PPTX_WITHOUT_DESIGN, TEXT_KEPT_AS_PICTURE, UNKNOWN_FORMAT
+from deck.deck_kit import KIT_MARKER, inject_deck_kit, slide_size
+from deck.design_tokens import read_design_tokens
+from deck.editable_pptx import EditablePptx, read_text_layers, text_layers_path, write_editable_pptx
+from deck.geometry_checks import GEOMETRY_FILE_NAME
+from deck.layout_thresholds import renderer_thresholds
+from deck.native_pptx import write_native_text_pptx
+from deck.native_preview import write_native_review_images
+from core.office_result import Issue, OfficeFailure, Result
 from render.renderer import PIXELS_FILE_NAME, RENDER_FAILED, RENDERER_UNAVAILABLE, RenderFailed, RendererUnavailable, RenderRequest, render_html, render_issues
-from render_evidence import clear_stale_render_evidence, write_render_source
-from render_review import review_deck
-from resource_inlining import VENDORED_FONTS_MARKER, inject_vendored_paperlogy_fallback, inline_local_fonts, inline_local_images
-from slide_model import SlideModel, create_slide_models, extract_notes
-from slide_source import SPEAKER_NOTES_CLASS, read_optional_text
-from slide_viewer import SLIDE_VIEWER_MARKER, inject_screen_slide_viewer
-from source_preflight import read_checked_source
+from deck.render_evidence import clear_stale_render_evidence, write_render_source
+from deck.render_review import review_deck
+from deck.resource_inlining import VENDORED_FONTS_MARKER, inject_vendored_paperlogy_fallback, inline_local_fonts, inline_local_images
+from deck.slide_model import SlideModel, create_slide_models, extract_notes
+from deck.slide_source import SPEAKER_NOTES_CLASS, read_optional_text
+from deck.slide_viewer import SLIDE_VIEWER_MARKER, inject_screen_slide_viewer
+from deck.source_preflight import read_checked_source
 
 
 ALLOWED_FORMATS = {"html", "pdf", "pptx", "notes", "review"}

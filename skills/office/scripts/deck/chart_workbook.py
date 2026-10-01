@@ -3,9 +3,9 @@ from __future__ import annotations
 import io
 import zipfile
 
-from pptx_package import xml_document
-from pptx_text import text_content
-from excel_limits import DEFAULT_SHEET_NAME, column_letter
+from deck.pptx_package import xml_document
+from deck.pptx_text import text_content
+from core.excel_limits import DEFAULT_SHEET_NAME, column_letter
 
 
 

@@ -12,9 +12,8 @@ from render_fixture import can_render
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"))
 
-from deck_definitions import KIT_LAYOUT_NAMES  # noqa: E402
+from deck.deck_definitions import KIT_LAYOUT_NAMES  # noqa: E402
 
 
 TESTS_PATH = Path(__file__).resolve().parent

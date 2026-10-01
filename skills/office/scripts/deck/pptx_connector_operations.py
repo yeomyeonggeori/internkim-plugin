@@ -4,13 +4,13 @@ from pptx.oxml import parse_xml
 from pptx.oxml.ns import nsdecls, qn
 from pptx.util import Pt
 
-from office_operations import Change
-from office_result import INVALID_VALUE, OfficeFailure
-from pptx_backdrop import readable_text_color
-from pptx_connectors import DEFAULT_ARROW, DEFAULT_WIDTH_POINTS, ELBOW_KIND, Attachment, Route, connection_site, connector_xml, facing_route, line_xml
-from pptx_element_operations import current_box, next_shape_identifier
-from pptx_geometry import Box
-from pptx_targets import PptxEditing, ShapeTarget, resolve_shape
+from core.office_operations import Change
+from core.office_result import INVALID_VALUE, OfficeFailure
+from deck.pptx_backdrop import readable_text_color
+from deck.pptx_connectors import DEFAULT_ARROW, DEFAULT_WIDTH_POINTS, ELBOW_KIND, Attachment, Route, connection_site, connector_xml, facing_route, line_xml
+from deck.pptx_element_operations import current_box, next_shape_identifier
+from deck.pptx_geometry import Box
+from deck.pptx_targets import PptxEditing, ShapeTarget, resolve_shape
 
 
 def plan_add_connector(editing: PptxEditing, operation: dict, location: str) -> Change:

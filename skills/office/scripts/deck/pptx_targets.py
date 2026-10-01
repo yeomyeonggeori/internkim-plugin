@@ -5,10 +5,10 @@ from dataclasses import dataclass, field
 from pptx import Presentation
 from pptx.oxml.ns import qn
 
-from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND
-from office_result import OfficeFailure
-from pptx_geometry import Frame, SLIDE_FRAME, child_frame
-from pptx_shape_kinds import shape_address, shape_kind
+from core.office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND
+from core.office_result import OfficeFailure
+from deck.pptx_geometry import Frame, SLIDE_FRAME, child_frame
+from deck.pptx_shape_kinds import shape_address, shape_kind
 
 
 AVAILABLE_SHAPES_LISTED = 24

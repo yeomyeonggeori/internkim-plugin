@@ -9,14 +9,14 @@ from openpyxl.utils import get_column_letter
 from openpyxl.utils.cell import range_boundaries
 from openpyxl.worksheet.formula import ArrayFormula
 
-from dynamic_arrays import dynamic_array_cell_metadata, mark_array_formula
-from excel_functions import is_dynamic_array_formula
-from formula_dependencies import DependencyReader, cell_position, propagate
-from formula_references import is_bare_name, join_parts, quote_sheet_name, reference_parts, rewrite_formula
-from ironcalc_compatibility import constant_names, is_divergent_criteria, needs_criteria_probe, prepare, with_constant_names
-from office_inputs import holds_macros
-from workbook_access import open_workbook
-from workbook_package import main_tag, read_package, relationships_part, worksheet_parts, write_package
+from sheet.dynamic_arrays import dynamic_array_cell_metadata, mark_array_formula
+from sheet.excel_functions import is_dynamic_array_formula
+from sheet.formula_dependencies import DependencyReader, cell_position, propagate
+from sheet.formula_references import is_bare_name, join_parts, quote_sheet_name, reference_parts, rewrite_formula
+from sheet.ironcalc_compatibility import constant_names, is_divergent_criteria, needs_criteria_probe, prepare, with_constant_names
+from core.office_inputs import holds_macros
+from sheet.workbook_access import open_workbook
+from sheet.workbook_package import main_tag, read_package, relationships_part, worksheet_parts, write_package
 
 
 NUMBER = "n"

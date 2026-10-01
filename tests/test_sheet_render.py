@@ -9,12 +9,12 @@ import unittest
 from render_fixture import can_render, pdf_page_count, png_size
 from sheet_fixture import SCRIPTS_PATH, run_office, run_office_python
 
-sys.path[0:0] = [str(SCRIPTS_PATH), str(SCRIPTS_PATH / "sheet")]
+sys.path.insert(0, str(SCRIPTS_PATH))
 
-from number_format import displayed  # noqa: E402
-from office_preview import pixels  # noqa: E402
-from page_sizes import DEFAULT_PAPER  # noqa: E402
-from units import inches_to_pixels  # noqa: E402
+from core.number_format import displayed  # noqa: E402
+from render.office_preview import pixels  # noqa: E402
+from core.page_sizes import DEFAULT_PAPER  # noqa: E402
+from core.units import inches_to_pixels  # noqa: E402
 
 
 WORKBOOK = """

@@ -9,9 +9,9 @@ from openpyxl.utils.cell import column_index_from_string, coordinate_from_string
 from openpyxl.worksheet.cell_range import CellRange, MultiCellRange
 from openpyxl.worksheet.dimensions import ColumnDimension
 
-from formula_references import COLUMN_AXIS, REFERENCE_ERROR, ROW_AXIS, Shift, rename_sheet_reference, rewrite_formula, shift_reference, shift_single, shift_span
-from office_operations import OPERATION_NOT_APPLICABLE
-from office_result import OfficeFailure
+from sheet.formula_references import COLUMN_AXIS, REFERENCE_ERROR, ROW_AXIS, Shift, rename_sheet_reference, rewrite_formula, shift_reference, shift_single, shift_span
+from core.office_operations import OPERATION_NOT_APPLICABLE
+from core.office_result import OfficeFailure
 
 
 Rewrite = Callable[[str, str], str]

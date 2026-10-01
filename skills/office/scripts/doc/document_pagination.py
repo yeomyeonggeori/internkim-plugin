@@ -6,8 +6,8 @@ import re
 
 import pypdfium2
 
-from block_writers import inline_html
-from markdown_blocks import Heading
+from doc.block_writers import inline_html
+from doc.markdown_blocks import Heading
 
 
 MAXIMUM_PAGINATION_PASSES = 12

@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import argparse
 
-from create_docx import add_block, add_list, require_rectangular_tables
+from doc.create_docx import add_block, add_list, require_rectangular_tables
 from fonts.docx_embedding import save_document
-from doc_definitions import BLOCK_LIST
-from docx_package import open_document
-from office_inputs import office_file, resolve_document_path
-from office_result import DOCUMENTS_FOLDER, OfficeArgumentParser, Result, read_json_file, run_command
-from office_schema import require_valid
+from doc.doc_definitions import BLOCK_LIST
+from doc.docx_package import open_document
+from core.office_inputs import office_file, resolve_document_path
+from core.office_result import DOCUMENTS_FOLDER, OfficeArgumentParser, Result, read_json_file, run_command
+from core.office_schema import require_valid
 
 
 def main() -> Result:

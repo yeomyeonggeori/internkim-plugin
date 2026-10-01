@@ -5,7 +5,7 @@ import hashlib
 import json
 import pathlib
 
-from deck_definitions import (
+from deck.deck_definitions import (
     CONTENT_OVERFLOW,
     FOOTER_CROSSED,
     IMAGE_DISTORTED,
@@ -18,8 +18,8 @@ from deck_definitions import (
     TITLE_TOO_LONG,
     VERTICAL_DEAD_ZONE,
 )
-from office_result import Issue
-from text_checks import REQUIRED_TEXT_MISSING
+from core.office_result import Issue
+from core.text_checks import REQUIRED_TEXT_MISSING
 
 
 FIX_ROUNDS_ALLOWED = 2

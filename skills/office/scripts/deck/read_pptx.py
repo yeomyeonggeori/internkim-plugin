@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from pptx import Presentation
 
-from office_inputs import office_file
-from office_result import OfficeArgumentParser, Result, run_command
-from pptx_description import describe_presentation
-from pptx_slide_selection import select_slides
+from core.office_inputs import office_file
+from core.office_result import OfficeArgumentParser, Result, run_command
+from deck.pptx_description import describe_presentation
+from deck.pptx_slide_selection import select_slides
 
 
 def main() -> Result:

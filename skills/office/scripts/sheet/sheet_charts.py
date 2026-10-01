@@ -10,11 +10,11 @@ from openpyxl.utils.cell import range_boundaries
 
 from charts.kinds import ROUND_CHART_KINDS, plot_kind
 from charts.look import LABEL_FLAGS
-from office_operations import OPERATION_NOT_APPLICABLE, Change, chart_indexes_suggestion
-from office_result import MISSING_FIELD, OfficeFailure
-from sheet_definitions import CHART_COLUMN_LEFT_OUT
-from text_values import conversion_operations, holds_number, holds_or_reads_as_number
-from workbook_access import parse_cell, parse_range, sheet_of
+from core.office_operations import OPERATION_NOT_APPLICABLE, Change, chart_indexes_suggestion
+from core.office_result import MISSING_FIELD, OfficeFailure
+from sheet.sheet_definitions import CHART_COLUMN_LEFT_OUT
+from sheet.text_values import conversion_operations, holds_number, holds_or_reads_as_number
+from sheet.workbook_access import parse_cell, parse_range, sheet_of
 
 
 DEFAULT_ANCHOR_GAP = 2

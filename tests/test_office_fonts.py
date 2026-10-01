@@ -6,10 +6,9 @@ import unittest
 
 OFFICE_SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 sys.path.insert(0, str(OFFICE_SCRIPTS_PATH))
-sys.path.insert(0, str(OFFICE_SCRIPTS_PATH / "deck"))
 
 from fonts.registry import CSS_GENERIC_FAMILIES, DECK, FAMILIES, FONT_DIRECTORY, ROLE_GENERIC_FAMILIES, default_family, renderer_fonts, resolved_face  # noqa: E402
-from native_preview import preview_font_path  # noqa: E402
+from deck.native_preview import preview_font_path  # noqa: E402
 
 HANGUL_SYLLABLES = range(0xAC00, 0xD7A4)
 DECK_KIT_STYLE = OFFICE_SCRIPTS_PATH.parent / "assets" / "deck-kit" / "deck-kit.css"

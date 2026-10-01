@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 import re
 
-from slide_source import normalize_structure_text, remove_invisible_markup, slide_layout, slide_role, slide_title, split_slide_sources
+from deck.slide_source import normalize_structure_text, remove_invisible_markup, slide_layout, slide_role, slide_title, split_slide_sources
 
 
 PREVIEW_CHARACTER_LIMIT = 180

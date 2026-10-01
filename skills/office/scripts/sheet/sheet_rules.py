@@ -9,13 +9,13 @@ from openpyxl.styles.differential import DifferentialStyle
 from openpyxl.worksheet.cell_range import CellRange
 from openpyxl.worksheet.datavalidation import DataValidation
 
-from excel_functions import stored_formula
-from office_operations import OPERATION_NOT_APPLICABLE, Change
-from office_result import MISSING_FIELD, OfficeFailure
-from sheet_formatting import style_color
-from workbook_access import parse_range, sheet_of
-from written_cells import require_writable
-from excel_limits import LIST_LENGTH_LIMIT
+from sheet.excel_functions import stored_formula
+from core.office_operations import OPERATION_NOT_APPLICABLE, Change
+from core.office_result import MISSING_FIELD, OfficeFailure
+from sheet.sheet_formatting import style_color
+from sheet.workbook_access import parse_range, sheet_of
+from sheet.written_cells import require_writable
+from core.excel_limits import LIST_LENGTH_LIMIT
 
 
 HIGHLIGHT_FILL = "FFC7CE"

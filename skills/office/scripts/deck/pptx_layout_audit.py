@@ -6,16 +6,16 @@ import math
 
 from pptx.oxml.ns import qn
 
-from deck_definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_OVERLAP, ReviewCheck
-from layout_thresholds import BACKGROUND_SHARE_OF_SLIDE, DISTORTION_TOLERANCE, OVERLAP_RATIO
-from office_result import Issue
-from pptx_geometry import SLIDE_FRAME, Box, Frame, child_frame, local_box
-from pptx_inheritance import slide_context
-from pptx_shape_kinds import shape_address, shape_kind, shape_reference
-from pptx_text_measure import TextFit, grown_box, grows_with_text, largest_text_size, measure_text, wraps
-from pptx_text_operations import apply_run_style, character_properties
-from units import EMU_PER_POINT
-from image_formats import OFFICE_PICTURE_CONTENT_TYPES
+from deck.deck_definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_OVERLAP, ReviewCheck
+from deck.layout_thresholds import BACKGROUND_SHARE_OF_SLIDE, DISTORTION_TOLERANCE, OVERLAP_RATIO
+from core.office_result import Issue
+from deck.pptx_geometry import SLIDE_FRAME, Box, Frame, child_frame, local_box
+from deck.pptx_inheritance import slide_context
+from deck.pptx_shape_kinds import shape_address, shape_kind, shape_reference
+from deck.pptx_text_measure import TextFit, grown_box, grows_with_text, largest_text_size, measure_text, wraps
+from deck.pptx_text_operations import apply_run_style, character_properties
+from core.units import EMU_PER_POINT
+from core.image_formats import OFFICE_PICTURE_CONTENT_TYPES
 
 
 EDGE_TOLERANCE = EMU_PER_POINT

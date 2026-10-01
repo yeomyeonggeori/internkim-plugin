@@ -4,9 +4,9 @@ from dataclasses import dataclass, field
 import re
 import zipfile
 
-from office_result import ERROR, WARNING, Issue, IssueKind, OfficeFailure
-from office_schema import AnyOf, CellValue, ListOf, MapOf
-from run_replacement import replace_span
+from core.office_result import ERROR, WARNING, Issue, IssueKind, OfficeFailure
+from core.office_schema import AnyOf, CellValue, ListOf, MapOf
+from core.run_replacement import replace_span
 
 
 PLACEHOLDER = re.compile(r"\{\{\s*([\w.]+)\s*\}\}")

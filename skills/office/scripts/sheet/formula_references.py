@@ -6,7 +6,7 @@ from typing import Callable
 
 from openpyxl.formula.tokenizer import Token, Tokenizer
 from openpyxl.utils import column_index_from_string, get_column_letter
-from excel_limits import MAXIMUM_COLUMN, MAXIMUM_ROW
+from core.excel_limits import MAXIMUM_COLUMN, MAXIMUM_ROW
 
 
 ROW_AXIS = "row"

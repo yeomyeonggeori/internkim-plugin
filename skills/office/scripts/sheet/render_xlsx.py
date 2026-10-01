@@ -3,20 +3,16 @@ from __future__ import annotations
 
 from pathlib import Path
 import shutil
-import sys
 import tempfile
 
-SCRIPTS_PATH = Path(__file__).resolve().parents[1]
-sys.path[1:1] = [str(SCRIPTS_PATH / "deck")]
-
-from formula_cache import cache_formula_values  # noqa: E402
-from office_preview import Preview, approximation_issues, blank_page_issues, draw_pages, write_preview  # noqa: E402
-from office_inputs import office_file
-from office_result import OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
-from fonts.preview import FontRegistry  # noqa: E402
-from xlsx_colors import theme_palette  # noqa: E402
-from workbook_access import missing_sheet_issue, open_workbook  # noqa: E402
-from xlsx_preview import SheetPreviewer  # noqa: E402
+from sheet.formula_cache import cache_formula_values
+from render.office_preview import Preview, approximation_issues, blank_page_issues, draw_pages, write_preview
+from core.office_inputs import office_file
+from core.office_result import OfficeArgumentParser, OfficeFailure, Result, run_command
+from fonts.preview import FontRegistry
+from sheet.xlsx_colors import theme_palette
+from sheet.workbook_access import missing_sheet_issue, open_workbook
+from sheet.xlsx_preview import SheetPreviewer
 
 
 BLANK_PAGE_SUGGESTION = "set the print area to the cells that hold content, or clear the far-off cell, empty formatted columns or page break that adds the page"

@@ -126,7 +126,7 @@ COMMAND_ISSUE_KINDS = (
 
 class OfficeArgumentParser(argparse.ArgumentParser):
     def __init__(self, **options):
-        from office_commands import find_command
+        from core.office_commands import find_command
 
         command_name = os.environ.get("OFFICE_COMMAND") or None
         command = find_command(command_name.split()[1:]) if command_name else None
@@ -149,7 +149,7 @@ class OfficeArgumentParser(argparse.ArgumentParser):
         raise OfficeFailure(INVALID_ARGUMENTS.issue(f"{self.prog}: unrecognized arguments: {' '.join(unrecognized)}", flag, suggestion))
 
     def closest_flag(self, unrecognized: list[str]) -> tuple[str | None, str | None]:
-        from office_schema import closest_name
+        from core.office_schema import closest_name
 
         flags = [option for option in self._option_string_actions if option.startswith("--")]
         for written in unrecognized:

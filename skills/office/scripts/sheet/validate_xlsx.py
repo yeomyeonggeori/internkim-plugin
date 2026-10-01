@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from openpyxl.utils.cell import range_boundaries
 
-from office_inputs import office_file
-from office_result import Issue, OfficeArgumentParser, Result, run_command
-from sheet_definitions import AUTO_FILTER_MISSING, BLANK_HEADER_CELLS, HEADER_NOT_FROZEN
-from sheet_styling import MINIMUM_DATA_ROWS, MINIMUM_TABLE_COLUMNS, header_row_index, is_filled, non_blank_count
-from workbook_access import open_workbook
+from core.office_inputs import office_file
+from core.office_result import Issue, OfficeArgumentParser, Result, run_command
+from sheet.sheet_definitions import AUTO_FILTER_MISSING, BLANK_HEADER_CELLS, HEADER_NOT_FROZEN
+from sheet.sheet_styling import MINIMUM_DATA_ROWS, MINIMUM_TABLE_COLUMNS, header_row_index, is_filled, non_blank_count
+from sheet.workbook_access import open_workbook
 
 
 FORMULA_CELL_LIMIT = 50

@@ -6,11 +6,11 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 from docx.text.run import Run
 
-from docx_editing import DocxEditing, require_style, resolve_block, resolve_paragraph
-from docx_text import PARAGRAPH_TAG, live_runs, run_text
-from docx_tracking import record_paragraph_property_change, record_run_property_change, runs_between, snapshot_paragraph_properties, snapshot_run_properties, split_runs_at
-from office_operations import TARGET_NOT_FOUND, Change
-from office_result import INVALID_VALUE, MISSING_FIELD, OfficeFailure
+from doc.docx_editing import DocxEditing, require_style, resolve_block, resolve_paragraph
+from doc.docx_text import PARAGRAPH_TAG, live_runs, run_text
+from doc.docx_tracking import record_paragraph_property_change, record_run_property_change, runs_between, snapshot_paragraph_properties, snapshot_run_properties, split_runs_at
+from core.office_operations import TARGET_NOT_FOUND, Change
+from core.office_result import INVALID_VALUE, MISSING_FIELD, OfficeFailure
 
 
 ALIGNMENTS = {"left": WD_ALIGN_PARAGRAPH.LEFT, "center": WD_ALIGN_PARAGRAPH.CENTER, "right": WD_ALIGN_PARAGRAPH.RIGHT, "justify": WD_ALIGN_PARAGRAPH.JUSTIFY}

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from office_result import ERROR, WARNING, IssueKind
+from core.office_result import ERROR, WARNING, IssueKind
 from pdf.pdf_definitions import OCR_UNAVAILABLE, PAGE_READ_BY_OCR, PAGE_WITHOUT_TEXT
 from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE
 

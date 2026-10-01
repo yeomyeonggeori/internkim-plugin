@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from css_color import parse_css_color
-from pptx_text import TextContext, color_xml, paragraph_xml
+from core.css_color import parse_css_color
+from deck.pptx_text import TextContext, color_xml, paragraph_xml
 
 
 TABLE_URI = "http://schemas.openxmlformats.org/drawingml/2006/table"

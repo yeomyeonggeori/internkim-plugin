@@ -3,7 +3,7 @@ from __future__ import annotations
 from lxml import etree
 from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
 
-from workbook_package import MAIN_NAMESPACE, WORKBOOK_PART, Package, add_content_type_override, add_relationship, main_tag, relationships
+from sheet.workbook_package import MAIN_NAMESPACE, WORKBOOK_PART, Package, add_content_type_override, add_relationship, main_tag, relationships
 
 
 METADATA_PART = "xl/metadata.xml"

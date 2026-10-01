@@ -4,12 +4,12 @@ from docx.opc.constants import RELATIONSHIP_TYPE
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
-from docx_editing import DocxEditing
-from docx_parts import read_root, related_part, write_root
-from docx_reference_operations import NOTE_KINDS
-from docx_text import RUN_TAG
-from office_operations import TARGET_NOT_FOUND, Change
-from office_result import OfficeFailure
+from doc.docx_editing import DocxEditing
+from doc.docx_parts import read_root, related_part, write_root
+from doc.docx_reference_operations import NOTE_KINDS
+from doc.docx_text import RUN_TAG
+from core.office_operations import TARGET_NOT_FOUND, Change
+from core.office_result import OfficeFailure
 
 
 def note_part_and_element(editing: DocxEditing, operation: dict, location: str):

@@ -5,12 +5,12 @@ import re
 from openpyxl.styles import Alignment, Border, Color, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
-from office_operations import OPERATION_NOT_APPLICABLE, Change
-from office_result import OfficeFailure
-from office_schema import color_problem
-from workbook_access import cell_rows, column_index, parse_range, resolve_sheet, sheet_of
-from workbook_structure import isolate_column
-from theme_colors import theme_reference
+from core.office_operations import OPERATION_NOT_APPLICABLE, Change
+from core.office_result import OfficeFailure
+from core.office_schema import color_problem
+from sheet.workbook_access import cell_rows, column_index, parse_range, resolve_sheet, sheet_of
+from sheet.workbook_structure import isolate_column
+from sheet.theme_colors import theme_reference
 
 
 COLOR_PATTERN = re.compile(r"^[0-9A-Fa-f]{6}$")

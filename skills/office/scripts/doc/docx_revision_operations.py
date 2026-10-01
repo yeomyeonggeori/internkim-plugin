@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from docx_editing import DocxEditing
-from docx_revisions import Revision, collect_revisions, describe_pending, settle
-from office_operations import TARGET_NOT_FOUND, Change
-from office_result import MISSING_FIELD, OfficeFailure
+from doc.docx_editing import DocxEditing
+from doc.docx_revisions import Revision, collect_revisions, describe_pending, settle
+from core.office_operations import TARGET_NOT_FOUND, Change
+from core.office_result import MISSING_FIELD, OfficeFailure
 
 
 SELECTOR_FIELDS = ("all", "ids", "author", "type", "block")

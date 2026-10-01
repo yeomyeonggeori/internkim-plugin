@@ -12,15 +12,15 @@ from docx.shared import Emu, Inches, Twips
 from docx.text.paragraph import Paragraph
 
 from fonts.registry import OFFICE_KOREAN_FAMILY
-from docx_drawing_operations import align_drawing, set_wrap
-from docx_editing import DocxEditing, placement, resolve_block
-from docx_format_operations import ALIGNMENTS
-from docx_text import PARAGRAPH_TAG
-from docx_tracking import mark_block_inserted
-from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
-from office_result import INPUT_NOT_FOUND, INVALID_VALUE, MISSING_FIELD, OfficeFailure
-from page_sizes import PAPER_BY_NAME
-from image_formats import PICTURE_FORMATS_TEXT
+from doc.docx_drawing_operations import align_drawing, set_wrap
+from doc.docx_editing import DocxEditing, placement, resolve_block
+from doc.docx_format_operations import ALIGNMENTS
+from doc.docx_text import PARAGRAPH_TAG
+from doc.docx_tracking import mark_block_inserted
+from core.office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
+from core.office_result import INPUT_NOT_FOUND, INVALID_VALUE, MISSING_FIELD, OfficeFailure
+from core.page_sizes import PAPER_BY_NAME
+from core.image_formats import PICTURE_FORMATS_TEXT
 
 
 ORIENTATIONS = {"portrait": WD_ORIENT.PORTRAIT, "landscape": WD_ORIENT.LANDSCAPE}

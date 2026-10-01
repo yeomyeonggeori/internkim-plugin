@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from cell_values import typed_cell_value
-from excel_functions import written_value
-from office_operations import save_atomically
-from office_inputs import office_file, resolve_document_path
-from office_result import DOCUMENTS_FOLDER, OfficeArgumentParser, Result, read_json_file, run_command
-from office_schema import require_valid
-from sheet_definitions import ROWS
-from sheet_operations import load_editing, save_editing
-from written_cells import require_writable_rows
+from sheet.cell_values import typed_cell_value
+from sheet.excel_functions import written_value
+from core.office_operations import save_atomically
+from core.office_inputs import office_file, resolve_document_path
+from core.office_result import DOCUMENTS_FOLDER, OfficeArgumentParser, Result, read_json_file, run_command
+from core.office_schema import require_valid
+from sheet.sheet_definitions import ROWS
+from sheet.sheet_operations import load_editing, save_editing
+from sheet.written_cells import require_writable_rows
 
 
 def main() -> Result:

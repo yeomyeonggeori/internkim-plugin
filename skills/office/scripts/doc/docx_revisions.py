@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 from docx.oxml.ns import qn
 
-from doc_definitions import REVISION_TYPES
-from docx_text import PARAGRAPH_TAG, RUN_TAG, run_text, visible_text
+from doc.doc_definitions import REVISION_TYPES
+from doc.docx_text import PARAGRAPH_TAG, RUN_TAG, run_text, visible_text
 
 
 INSERTION, DELETION, MOVE, FORMATTING = REVISION_TYPES

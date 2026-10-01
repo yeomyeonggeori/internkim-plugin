@@ -11,10 +11,10 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import FilterColumn, Filters
 from openpyxl.worksheet.formula import ArrayFormula
 
-from office_operations import OPERATION_NOT_APPLICABLE, Change
-from office_result import OfficeFailure
-from workbook_access import column_index, parse_cell, parse_range, resolve_sheet, sheet_of
-from workbook_snapshot import computed_values
+from core.office_operations import OPERATION_NOT_APPLICABLE, Change
+from core.office_result import OfficeFailure
+from sheet.workbook_access import column_index, parse_cell, parse_range, resolve_sheet, sheet_of
+from sheet.workbook_snapshot import computed_values
 
 
 TRAILING_NUMBER = re.compile(r"^(.*?)(\d+)$")

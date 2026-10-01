@@ -7,8 +7,8 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Twips
 
 from fonts.registry import MONOSPACE, SANS_BODY, default_family
-from docx_settings import insert_setting
-from page_sizes import DEFAULT_PAPER
+from doc.docx_settings import insert_setting
+from core.page_sizes import DEFAULT_PAPER
 
 
 KOREAN_LANGUAGE = "ko-KR"

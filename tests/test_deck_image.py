@@ -4,9 +4,8 @@ import unittest
 
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 sys.path.insert(0, str(SCRIPTS_PATH))
-sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
 
-from fetch_image import candidate_path, no_image_issue, save_candidates  # noqa: E402
+from deck.fetch_image import candidate_path, no_image_issue, save_candidates  # noqa: E402
 
 
 class ImageCandidateTest(unittest.TestCase):

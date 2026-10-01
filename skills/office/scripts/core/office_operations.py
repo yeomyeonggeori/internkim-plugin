@@ -6,9 +6,9 @@ from pathlib import Path
 import tempfile
 from typing import Callable, Sequence
 
-from office_inputs import office_file
-from office_result import ERROR, Issue, IssueKind, OfficeArgumentParser, Result, read_json_file
-from office_schema import ListOf, Variant, require_valid
+from core.office_inputs import office_file
+from core.office_result import ERROR, Issue, IssueKind, OfficeArgumentParser, Result, read_json_file
+from core.office_schema import ListOf, Variant, require_valid
 
 
 TARGET_NOT_FOUND = IssueKind("TARGET_NOT_FOUND", ERROR, "an operation names a block, cell, sheet, or slide the file does not have", "read the file again and use an index or name it reports")

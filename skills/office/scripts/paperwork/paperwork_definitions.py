@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from amounts import ROUNDING_RULE, VAT_RATE_PERCENT
-from office_result import ERROR, WARNING, IssueKind
-from office_schema import AnyOf, Boolean, CellValue, Field, ListOf, Number, Record, Text, Variant
-from paperwork_design import FONT_KOREAN_DOCX
+from paperwork.amounts import ROUNDING_RULE, VAT_RATE_PERCENT
+from core.office_result import ERROR, WARNING, IssueKind
+from core.office_schema import AnyOf, Boolean, CellValue, Field, ListOf, Number, Record, Text, Variant
+from paperwork.paperwork_design import FONT_KOREAN_DOCX
 from fonts.pdf_registration import FONT_PATH_MEANING
-from template_context import caller_fields, default_values, derived_values
-from template_fields import template_list_fields, template_names
+from paperwork.template_context import caller_fields, default_values, derived_values
+from paperwork.template_fields import template_list_fields, template_names
 
 
 LABELED_VALUE = Record("labeled value", "one label and its value", (

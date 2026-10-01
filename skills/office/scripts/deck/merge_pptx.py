@@ -8,11 +8,11 @@ import zipfile
 
 from lxml import etree
 
-from office_operations import save_atomically
-from office_inputs import office_file
-from office_result import OfficeArgumentParser, Result, read_json_file, run_command
-from office_schema import require_valid
-from template_merge import MERGE_VALUES, MergeReport, fill_text_nodes, repeated_list_name, write_package
+from core.office_operations import save_atomically
+from core.office_inputs import office_file
+from core.office_result import OfficeArgumentParser, Result, read_json_file, run_command
+from core.office_schema import require_valid
+from core.template_merge import MERGE_VALUES, MergeReport, fill_text_nodes, repeated_list_name, write_package
 
 
 DRAWING_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/main"

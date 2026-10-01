@@ -10,15 +10,15 @@ from docx.shared import Inches, Pt, RGBColor
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
 
-from docx_blocks import heading_level
-from docx_editing import DocxEditing, placement, resolve_paragraph
-from docx_settings import insert_setting, request_field_update
-from docx_parts import create_part, read_root, related_part, write_root
-from docx_text import PARAGRAPH_TAG, live_runs, run_text, visible_text
-from docx_tracking import mark_block_inserted, runs_between, split_runs_at
-from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
-from office_result import INVALID_VALUE, MISSING_FIELD, OfficeFailure
-from office_theme import HYPERLINK_COLOR
+from doc.docx_blocks import heading_level
+from doc.docx_editing import DocxEditing, placement, resolve_paragraph
+from doc.docx_settings import insert_setting, request_field_update
+from doc.docx_parts import create_part, read_root, related_part, write_root
+from doc.docx_text import PARAGRAPH_TAG, live_runs, run_text, visible_text
+from doc.docx_tracking import mark_block_inserted, runs_between, split_runs_at
+from core.office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
+from core.office_result import INVALID_VALUE, MISSING_FIELD, OfficeFailure
+from core.office_theme import HYPERLINK_COLOR
 
 
 BOOKMARK_NAME_PATTERN = re.compile(r"^[^\W\d_]\w{0,39}$")

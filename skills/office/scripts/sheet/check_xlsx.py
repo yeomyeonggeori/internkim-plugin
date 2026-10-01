@@ -6,19 +6,19 @@ from collections import defaultdict
 
 from openpyxl.utils import range_boundaries
 
-from formula_cache import evaluation_issues
-from formula_names import name_issues, sheet_is_missing
-from formula_references import formula_references, referenced_sheet_names
-from number_display import displayed_number_width
-from office_inputs import office_file
-from office_result import Issue, OfficeArgumentParser, Result, run_command
-from sheet_chart_references import chart_reference_issues
-from stale_values import stale_cached_value_issues
-from sheet_definitions import BROKEN_DEFINED_NAME, FORMULA_ERROR, NUMBER_TOO_WIDE, PIVOT_VALUES_EMPTY
-from text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
-from text_values import text_value_issues
-from workbook_access import open_workbook
-from workbook_values import evaluate_workbook
+from sheet.formula_cache import evaluation_issues
+from sheet.formula_names import name_issues, sheet_is_missing
+from sheet.formula_references import formula_references, referenced_sheet_names
+from sheet.number_display import displayed_number_width
+from core.office_inputs import office_file
+from core.office_result import Issue, OfficeArgumentParser, Result, run_command
+from sheet.sheet_chart_references import chart_reference_issues
+from sheet.stale_values import stale_cached_value_issues
+from sheet.sheet_definitions import BROKEN_DEFINED_NAME, FORMULA_ERROR, NUMBER_TOO_WIDE, PIVOT_VALUES_EMPTY
+from core.text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
+from sheet.text_values import text_value_issues
+from sheet.workbook_access import open_workbook
+from sheet.workbook_values import evaluate_workbook
 
 
 DEFAULT_COLUMN_WIDTH = 8.43

@@ -8,9 +8,9 @@ from pptx.opc.package import Part
 from pptx.opc.packuri import PackURI
 from pptx.oxml.ns import qn
 
-from office_operations import Change
-from pptx_targets import PptxEditing, resolve_slide
-from units import EMU_PER_INCH
+from core.office_operations import Change
+from deck.pptx_targets import PptxEditing, resolve_slide
+from core.units import EMU_PER_INCH
 
 
 DEFAULT_AUTHOR = "InternKim"

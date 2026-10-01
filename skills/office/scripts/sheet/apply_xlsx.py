@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from office_operations import apply_parser, run_apply
-from office_result import Result, run_command
-from sheet_operations import SHEET_OPERATIONS, load_editing, save_editing
+from core.office_operations import apply_parser, run_apply
+from core.office_result import Result, run_command
+from sheet.sheet_operations import SHEET_OPERATIONS, load_editing, save_editing
 
 
 def main() -> Result:

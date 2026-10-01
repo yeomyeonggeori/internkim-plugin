@@ -9,10 +9,9 @@ import unittest
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
-sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
 
-from acceptance import FIX_ROUNDS_ALLOWED, judge_build  # noqa: E402
-from deck_definitions import MISSING_SPEAKER_NOTES, TEXT_OVERLAP  # noqa: E402
+from deck.acceptance import FIX_ROUNDS_ALLOWED, judge_build  # noqa: E402
+from deck.deck_definitions import MISSING_SPEAKER_NOTES, TEXT_OVERLAP  # noqa: E402
 from render_fixture import can_render  # noqa: E402
 
 

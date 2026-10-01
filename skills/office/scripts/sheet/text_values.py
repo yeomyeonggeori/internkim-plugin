@@ -6,13 +6,13 @@ import datetime
 from openpyxl.formula.tokenizer import Token, Tokenizer, TokenizerError
 from openpyxl.utils import get_column_letter
 
-from cell_values import typed_text
-from excel_functions import EXCEL_FUNCTIONS
-from formula_grammar import formula_problem
-from formula_tree import function_name
-from office_result import Issue
-from sheet_definitions import VALUE_STORED_AS_TEXT
-from sheet_styling import header_row_index
+from sheet.cell_values import typed_text
+from sheet.excel_functions import EXCEL_FUNCTIONS
+from sheet.formula_grammar import formula_problem
+from sheet.formula_tree import function_name
+from core.office_result import Issue
+from sheet.sheet_definitions import VALUE_STORED_AS_TEXT
+from sheet.sheet_styling import header_row_index
 
 SHOWN_TEXT_LIMIT = 3
 

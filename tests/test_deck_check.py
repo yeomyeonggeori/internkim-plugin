@@ -9,9 +9,8 @@ import unittest
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
-sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
 
-from check_deck import CheckRequest, check_deck  # noqa: E402
+from deck.check_deck import CheckRequest, check_deck  # noqa: E402
 
 
 def kit_deck(*slides: str, theme: str = "corporate", head: str = "") -> str:

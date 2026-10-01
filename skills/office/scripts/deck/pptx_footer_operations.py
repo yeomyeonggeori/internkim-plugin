@@ -5,13 +5,13 @@ import uuid
 from pptx.oxml import parse_xml
 from pptx.oxml.ns import nsdecls, qn
 
-from office_operations import Change
-from office_result import INVALID_VALUE, OfficeFailure
-from pptx_animation import remove_animations_of
-from pptx_element_operations import next_shape_identifier
-from pptx_shape_kinds import placeholder_of, placeholder_type
-from pptx_targets import PptxEditing, live_slides, resolve_slide
-from pptx_text import text_content
+from core.office_operations import Change
+from core.office_result import INVALID_VALUE, OfficeFailure
+from deck.pptx_animation import remove_animations_of
+from deck.pptx_element_operations import next_shape_identifier
+from deck.pptx_shape_kinds import placeholder_of, placeholder_type
+from deck.pptx_targets import PptxEditing, live_slides, resolve_slide
+from deck.pptx_text import text_content
 
 
 FOOTER_FIELDS = {"footer": "ftr", "slideNumber": "sldNum", "date": "dt"}

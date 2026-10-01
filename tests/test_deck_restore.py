@@ -11,10 +11,9 @@ TESTS_PATH = Path(__file__).resolve().parent
 SCRIPTS_PATH = TESTS_PATH.parent / "skills" / "office" / "scripts"
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
-sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
 sys.path.insert(0, str(TESTS_PATH))
 
-from html_export import deck_html_text  # noqa: E402
+from deck.html_export import deck_html_text  # noqa: E402
 from png_fixture import write_png  # noqa: E402
 
 

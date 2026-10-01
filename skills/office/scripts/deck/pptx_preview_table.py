@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from pptx.oxml.ns import qn
 
-from office_theme import OFFICE_THEME
-from pptx_preview_paint import FILL_TAGS, element, paint_color
-from pptx_preview_text import TextPaint, body_html, body_layout
-from pptx_style import theme_slot_color
+from core.office_theme import OFFICE_THEME
+from deck.pptx_preview_paint import FILL_TAGS, element, paint_color
+from deck.pptx_preview_text import TextPaint, body_html, body_layout
+from deck.pptx_style import theme_slot_color
 
 
 TRUE_VALUES = ("1", "true")

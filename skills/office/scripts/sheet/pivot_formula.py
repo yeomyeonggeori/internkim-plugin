@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from office_result import INVALID_VALUE, OfficeFailure
-from office_schema import closest_suggestion, did_you_mean
+from core.office_result import INVALID_VALUE, OfficeFailure
+from core.office_schema import closest_suggestion, did_you_mean
 
 
 OPERATORS = "+-*/^()"

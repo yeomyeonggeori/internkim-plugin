@@ -9,7 +9,7 @@ import re
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
-from docx_text import PARAGRAPH_TAG, live_runs, run_text
+from doc.docx_text import PARAGRAPH_TAG, live_runs, run_text
 
 
 DEFAULT_TRACKING_AUTHOR = "AI Assistant"

@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 
 from charts.kinds import DOCUMENT_CHART_KINDS, ROUND_CHART_KINDS, kit_document_kind
 from charts.numbers import chart_number, split_chart_list
-from doc_definitions import CHART_BLOCK_INVALID, CHART_KEYS
-from office_result import OfficeFailure
+from doc.doc_definitions import CHART_BLOCK_INVALID, CHART_KEYS
+from core.office_result import OfficeFailure
 
 
 TRUE_WORDS = ("yes", "true", "on")

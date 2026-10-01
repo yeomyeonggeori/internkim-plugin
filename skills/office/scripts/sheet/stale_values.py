@@ -6,10 +6,10 @@ from collections import defaultdict
 
 from openpyxl.utils.datetime import to_excel
 
-from office_result import Issue
-from sheet_definitions import STALE_CACHED_VALUE
-from workbook_access import open_workbook
-from workbook_values import BOOLEAN, NUMBER, ERROR, TEXT, CachedValue, Evaluation
+from core.office_result import Issue
+from sheet.sheet_definitions import STALE_CACHED_VALUE
+from sheet.workbook_access import open_workbook
+from sheet.workbook_values import BOOLEAN, NUMBER, ERROR, TEXT, CachedValue, Evaluation
 
 
 LISTED_CELL_LIMIT = 20

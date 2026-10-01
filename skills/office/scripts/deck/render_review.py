@@ -3,24 +3,24 @@ from __future__ import annotations
 import dataclasses
 import pathlib
 
-from content_warnings import (
+from deck.content_warnings import (
     apply_emoji_icon_warning,
     apply_language_mismatch_warning,
     apply_missing_speaker_notes_warning,
     apply_unsourced_current_date_warning,
 )
-from deck_definitions import LAYOUT_RENDER_SOURCE
-from design_tokens import read_design_tokens
-from design_warnings import apply_render_source_warning
-from office_result import Issue, Result
-from fit_review import attach_fit_review_metadata, create_fit_reviews
-from geometry_checks import apply_geometry_not_measured_warning, read_geometry
-from render_evidence import read_contact_sheets, read_page_pixels, read_render_source
-from review_report import write_review_outputs
-from slide_images import rendered_slide_image_paths
-from slide_render_checks import review_slides
-from slide_source import read_optional_text, split_slide_sources
-from slide_structure import read_slide_texts
+from deck.deck_definitions import LAYOUT_RENDER_SOURCE
+from deck.design_tokens import read_design_tokens
+from deck.design_warnings import apply_render_source_warning
+from core.office_result import Issue, Result
+from deck.fit_review import attach_fit_review_metadata, create_fit_reviews
+from deck.geometry_checks import apply_geometry_not_measured_warning, read_geometry
+from deck.render_evidence import read_contact_sheets, read_page_pixels, read_render_source
+from deck.review_report import write_review_outputs
+from deck.slide_images import rendered_slide_image_paths
+from deck.slide_render_checks import review_slides
+from deck.slide_source import read_optional_text, split_slide_sources
+from deck.slide_structure import read_slide_texts
 
 
 REVIEW_DETAIL_FIELDS = ("visualEvidenceReliable", "renderSource", "slideCount", "renderedSlideCount", "geometryMeasured")

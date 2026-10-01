@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import pathlib
 
-from deck_definitions import NO_SLIDE_SECTIONS
-from deck_kit import strip_deck_kit
-from office_result import OfficeArgumentParser, OfficeFailure, Result, run_command
-from resource_inlining import restore_authored_source
-from slide_viewer import strip_screen_slide_viewer
+from deck.deck_definitions import NO_SLIDE_SECTIONS
+from deck.deck_kit import strip_deck_kit
+from core.office_result import OfficeArgumentParser, OfficeFailure, Result, run_command
+from deck.resource_inlining import restore_authored_source
+from deck.slide_viewer import strip_screen_slide_viewer
 
 
 def main() -> Result:

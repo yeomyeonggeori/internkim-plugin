@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from office_theme import THEME_SLOTS
+from core.office_theme import THEME_SLOTS
 
 
 THEME_COLOR = re.compile(r"(?P<slot>[A-Za-z]+[0-9]?)(?:\s*(?P<sign>[+-])\s*(?P<percent>[0-9]{1,3})%)?")

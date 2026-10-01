@@ -7,16 +7,16 @@ from pptx.dml.color import RGBColor
 from pptx.oxml.ns import qn
 from pptx.util import Pt
 
-from office_operations import OPERATION_NOT_APPLICABLE, Change
-from office_result import INPUT_NOT_FOUND, INVALID_VALUE, OfficeFailure
-from pptx_animation import remove_animations_of
-from deck_definitions import PICTURE_UNREADABLE
-from pptx_geometry import ROTATION_UNITS_PER_DEGREE, Box, local_box, transform_of
-from pptx_inheritance import slide_context
-from pptx_relationships import carry_relationships, drop_unreferenced, relationship_ids
-from pptx_shape_kinds import NON_VISUAL_TAGS, shape_kind
-from pptx_targets import PptxEditing, ShapeTarget, require_kind, resolve_shape
-from image_formats import OFFICE_PICTURE_FORMATS
+from core.office_operations import OPERATION_NOT_APPLICABLE, Change
+from core.office_result import INPUT_NOT_FOUND, INVALID_VALUE, OfficeFailure
+from deck.pptx_animation import remove_animations_of
+from deck.deck_definitions import PICTURE_UNREADABLE
+from deck.pptx_geometry import ROTATION_UNITS_PER_DEGREE, Box, local_box, transform_of
+from deck.pptx_inheritance import slide_context
+from deck.pptx_relationships import carry_relationships, drop_unreferenced, relationship_ids
+from deck.pptx_shape_kinds import NON_VISUAL_TAGS, shape_kind
+from deck.pptx_targets import PptxEditing, ShapeTarget, require_kind, resolve_shape
+from core.image_formats import OFFICE_PICTURE_FORMATS
 
 
 SHAPE_TAGS = {qn("p:sp"), qn("p:grpSp"), qn("p:graphicFrame"), qn("p:cxnSp"), qn("p:pic"), qn("p:contentPart")}

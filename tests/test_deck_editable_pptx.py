@@ -17,11 +17,10 @@ from render_fixture import can_render
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"
 OFFICE_ENTRY = SCRIPTS_PATH.parent / "office"
 sys.path.insert(0, str(SCRIPTS_PATH.parent))
-sys.path.insert(0, str(SCRIPTS_PATH))
 
-from editable_pptx import read_text_layers, write_editable_pptx  # noqa: E402
+from deck.editable_pptx import read_text_layers, write_editable_pptx  # noqa: E402
 from png_fixture import read_png, write_png  # noqa: E402
-from resource_inlining import PAPERLOGY  # noqa: E402
+from deck.resource_inlining import PAPERLOGY  # noqa: E402
 from fonts.truetype import read_truetype_face  # noqa: E402
 
 

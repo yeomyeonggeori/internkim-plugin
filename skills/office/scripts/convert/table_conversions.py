@@ -9,11 +9,11 @@ import tempfile
 
 from openpyxl import load_workbook
 
-from convert_definitions import FORMULA_VALUE_MISSING
-from create_xlsx import create_workbook
-from formula_cache import cache_formula_values
-from office_result import INVALID_VALUE, Issue, OfficeFailure
-from excel_limits import fitting_sheet_name
+from convert.convert_definitions import FORMULA_VALUE_MISSING
+from sheet.create_xlsx import create_workbook
+from sheet.formula_cache import cache_formula_values
+from core.office_result import INVALID_VALUE, Issue, OfficeFailure
+from core.excel_limits import fitting_sheet_name
 
 
 DELIMITERS = {"csv": ",", "tsv": "\t"}

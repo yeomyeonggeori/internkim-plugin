@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from charts.kinds import DOCUMENT_CHART_KINDS
 from fonts.registry import BODY_SIZE_POINTS, MONOSPACE, SANS_BODY, default_family
-from office_preview import PREVIEW_ISSUE_KINDS
-from office_operations import OPERATION_ISSUE_KINDS
-from office_result import ERROR, WARNING, IssueKind
-from page_sizes import PAPER_NAMES
-from office_schema import AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Text, Variant
-from template_merge import LIST_NEEDS_A_ROW, MERGE_VALUES, TEMPLATE_SYNTAX_ERROR, UNRESOLVED_PLACEHOLDER, UNUSED_VALUE
-from text_checks import FORBIDDEN_TEXT_PRESENT, PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
-from image_formats import PICTURE_FORMATS_TEXT
+from render.office_preview import PREVIEW_ISSUE_KINDS
+from core.office_operations import OPERATION_ISSUE_KINDS
+from core.office_result import ERROR, WARNING, IssueKind
+from core.page_sizes import PAPER_NAMES
+from core.office_schema import AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Text, Variant
+from core.template_merge import LIST_NEEDS_A_ROW, MERGE_VALUES, TEMPLATE_SYNTAX_ERROR, UNRESOLVED_PLACEHOLDER, UNUSED_VALUE
+from core.text_checks import FORBIDDEN_TEXT_PRESENT, PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
+from core.image_formats import PICTURE_FORMATS_TEXT
 
 
 DOCUMENT_FONT = default_family(SANS_BODY).name

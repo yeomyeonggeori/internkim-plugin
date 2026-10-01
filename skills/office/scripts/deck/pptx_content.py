@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pptx.oxml.ns import qn
 
-from pptx_shape_kinds import shape_kind
+from deck.pptx_shape_kinds import shape_kind
 
 
 def text_frames_in(shapes) -> list:

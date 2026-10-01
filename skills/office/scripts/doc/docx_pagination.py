@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from docx_layout import BreakLayout, Layout, ParagraphLayout, TableLayout
-from docx_preview_model import NoteReferenceItem, SectionModel
-from office_preview import PageGeometry
+from doc.docx_layout import BreakLayout, Layout, ParagraphLayout, TableLayout
+from doc.docx_preview_model import NoteReferenceItem, SectionModel
+from render.office_preview import PageGeometry
 
 
 NOTE_SEPARATOR_PIXELS = 14

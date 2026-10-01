@@ -5,8 +5,8 @@ import difflib
 import re
 from typing import Iterator
 
-from css_color import named_color_hex
-from office_result import INVALID_VALUE, MISSING_FIELD, UNKNOWN_FIELD, WRONG_TYPE, Issue, OfficeFailure
+from core.css_color import named_color_hex
+from core.office_result import INVALID_VALUE, MISSING_FIELD, UNKNOWN_FIELD, WRONG_TYPE, Issue, OfficeFailure
 
 
 HEX_COLOR_PATTERN = re.compile(r"#?[0-9A-Fa-f]{6}")

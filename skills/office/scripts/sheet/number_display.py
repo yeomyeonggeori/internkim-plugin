@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from display_width import display_width
+from sheet.display_width import display_width
 
 
 QUOTED_TEXT = re.compile(r'"([^"]*)"')

@@ -7,11 +7,11 @@ from docx.oxml.ns import qn
 from docx.shared import Inches
 
 from charts.kinds import ROUND_CHART_KINDS
-from docx_charts import ChartSpecification, add_chart_part, document_charts, drawing_run, next_drawing_id, read_specification, rewrite_chart_part, specification
-from docx_editing import DocxEditing, placement
-from docx_tracking import mark_block_inserted
-from office_operations import TARGET_NOT_FOUND, Change, chart_indexes_suggestion
-from office_result import INVALID_VALUE, OfficeFailure
+from doc.docx_charts import ChartSpecification, add_chart_part, document_charts, drawing_run, next_drawing_id, read_specification, rewrite_chart_part, specification
+from doc.docx_editing import DocxEditing, placement
+from doc.docx_tracking import mark_block_inserted
+from core.office_operations import TARGET_NOT_FOUND, Change, chart_indexes_suggestion
+from core.office_result import INVALID_VALUE, OfficeFailure
 
 
 DEFAULT_HEIGHT_RATIO = 0.56

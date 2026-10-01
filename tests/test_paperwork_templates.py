@@ -9,11 +9,10 @@ import zipfile
 
 from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, run_office
 
-sys.path.insert(0, str(SCRIPTS_PATH / "paperwork"))
 
-from amounts import VAT_RATE_PERCENT
-from template_context import DEFAULT_VALUES, DERIVED_VALUES, caller_fields, complete_context, scalar_fields
-from template_fields import template_fields, template_list_fields, template_names
+from paperwork.amounts import VAT_RATE_PERCENT
+from paperwork.template_context import DEFAULT_VALUES, DERIVED_VALUES, caller_fields, complete_context, scalar_fields
+from paperwork.template_fields import template_fields, template_list_fields, template_names
 
 
 SPECIFICATIONS_PATH = SCRIPTS_PATH.parent / "references" / "paperwork" / "ko"
@@ -25,8 +24,8 @@ PROFILE_PLACEHOLDER = re.compile(r"\{ \.\.\.[^}]*\.\.\. \}")
 TEMPLATE_BUILDER = """
 import json, sys, zipfile
 from pathlib import Path
-import build_templates
-from template_fields import TEMPLATES_PATH
+from paperwork import build_templates
+from paperwork.template_fields import TEMPLATES_PATH
 differences = {}
 for name, builder in build_templates.BUILDERS.items():
     built_path = Path(sys.argv[1]) / f"{name}.docx"
@@ -39,7 +38,7 @@ print(json.dumps(differences))
 DOCXTPL_READER = """
 import json, sys
 from docxtpl import DocxTemplate
-from template_fields import TEMPLATES_PATH, template_names
+from paperwork.template_fields import TEMPLATES_PATH, template_names
 print(json.dumps({name: sorted(DocxTemplate(str(TEMPLATES_PATH / f"{name}.docx")).get_undeclared_template_variables()) for name in template_names()}))
 """
 
@@ -68,7 +67,6 @@ class TemplateFieldsTest(unittest.TestCase):
         completed = subprocess.run(
             [sys.executable, str(OFFICE_ENTRY), "python", "-c", DOCXTPL_READER],
             capture_output=True, text=True, check=True,
-            env={**__import__("os").environ, "PYTHONPATH": str(SCRIPTS_PATH / "paperwork")},
         )
         for name, expected in json.loads(completed.stdout).items():
             self.assertEqual(template_fields(name), expected, name)
@@ -114,7 +112,6 @@ class TemplateSourceTest(unittest.TestCase):
             completed = subprocess.run(
                 [sys.executable, str(OFFICE_ENTRY), "python", "-c", TEMPLATE_BUILDER, directory],
                 capture_output=True, text=True, check=True,
-                env={**__import__("os").environ, "PYTHONPATH": f"{SCRIPTS_PATH / 'paperwork'}:{SCRIPTS_PATH}"},
             )
         for name, differing_parts in json.loads(completed.stdout).items():
             self.assertEqual(differing_parts, [], f"{name}.docx differs from build_templates; rerun it")

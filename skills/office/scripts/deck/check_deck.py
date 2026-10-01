@@ -5,8 +5,8 @@ from dataclasses import dataclass
 import pathlib
 import re
 
-from css_color import parse_css_color
-from deck_definitions import (
+from core.css_color import parse_css_color
+from deck.deck_definitions import (
     CLOSING_LAYOUT,
     CLOSING_SLIDE_MINIMUM,
     COVER_LAYOUT,
@@ -37,14 +37,14 @@ from deck_definitions import (
 )
 from charts.kinds import KIT_STACKED_CHARTS, is_round_kind
 from charts.numbers import chart_number, split_chart_list
-from deck_kit import DEFAULT_THEME, chart_types, theme_palettes, uses_deck_kit
-from deck_source import Element, find_all, normalized_text, parse_source, style_texts, visible_text
-from design_tokens import design_front_matter
-from office_inputs import PPTX, require_kind
-from office_result import ERROR, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
-from office_schema import closest_name, listed_names, names_suggestion
-from resource_inlining import resolve_resource_path
-from text_checks import DRAFT_PLACEHOLDER_PATTERN, PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
+from deck.deck_kit import DEFAULT_THEME, chart_types, theme_palettes, uses_deck_kit
+from deck.deck_source import Element, find_all, normalized_text, parse_source, style_texts, visible_text
+from deck.design_tokens import design_front_matter
+from core.office_inputs import PPTX, require_kind
+from core.office_result import ERROR, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
+from core.office_schema import closest_name, listed_names, names_suggestion
+from deck.resource_inlining import resolve_resource_path
+from core.text_checks import DRAFT_PLACEHOLDER_PATTERN, PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
 
 
 DONUT_SLICE_MAXIMUM = 8
@@ -452,7 +452,7 @@ def deck_source_path(target: str) -> pathlib.Path:
 def main() -> Result:
     parsed = parse_arguments()
     if pathlib.Path(parsed.target).suffix.casefold() not in ("", ".html"):
-        from check_pptx import check_presentation
+        from deck.check_pptx import check_presentation
         require_kind(parsed.target, PPTX)
         return check_presentation(pathlib.Path(parsed.target).expanduser(), parsed.slides, parsed.output_directory, not parsed.no_preview)
     return check_deck(check_request(deck_source_path(parsed.target), parsed))

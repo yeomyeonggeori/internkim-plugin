@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
-from deck_kit import DEFAULT_THEME, slide_size, theme_palettes
-from slide_model import SlideModel
+from deck.deck_kit import DEFAULT_THEME, slide_size, theme_palettes
+from deck.slide_model import SlideModel
 
 
 SLIDE_WIDTH, SLIDE_HEIGHT = slide_size()

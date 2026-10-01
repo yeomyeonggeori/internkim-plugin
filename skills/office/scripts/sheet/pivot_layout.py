@@ -6,7 +6,7 @@ import datetime
 import math
 import re
 
-from pivot_formula import PivotFormula, evaluate
+from sheet.pivot_formula import PivotFormula, evaluate
 
 
 MONTH_LABELS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")

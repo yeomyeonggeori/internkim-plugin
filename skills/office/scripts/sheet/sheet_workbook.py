@@ -6,13 +6,13 @@ import re
 from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.protection import SheetProtection
 
-from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
-from office_result import INVALID_VALUE, MISSING_FIELD, OfficeFailure
-from office_schema import closest_name, guess_text
-from formula_references import deleted_sheet_reference, quote_sheet_name
-from workbook_access import parse_range, resolve_sheet, sheet_of
-from workbook_structure import rewrite_chart_references, rewrite_defined_names, rewrite_formulas
-from excel_limits import FORBIDDEN_SHEET_NAME_CHARACTERS, FORBIDDEN_SHEET_NAME_TEXT, MAXIMUM_SHEET_NAME_LENGTH
+from core.office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
+from core.office_result import INVALID_VALUE, MISSING_FIELD, OfficeFailure
+from core.office_schema import closest_name, guess_text
+from sheet.formula_references import deleted_sheet_reference, quote_sheet_name
+from sheet.workbook_access import parse_range, resolve_sheet, sheet_of
+from sheet.workbook_structure import rewrite_chart_references, rewrite_defined_names, rewrite_formulas
+from core.excel_limits import FORBIDDEN_SHEET_NAME_CHARACTERS, FORBIDDEN_SHEET_NAME_TEXT, MAXIMUM_SHEET_NAME_LENGTH
 
 
 DEFINED_NAME_PATTERN = re.compile(r"^[^\W\d][\w.]{0,254}$")

@@ -9,13 +9,13 @@ import warnings
 from openpyxl import load_workbook
 from openpyxl.worksheet.formula import ArrayFormula
 
-from office_inputs import holds_macros, package_stream
-from office_operations import TARGET_NOT_FOUND
-from office_result import INVALID_VALUE, OfficeFailure
-from office_schema import closest_name, guess_text
-from excel_functions import PARAMETER_PREFIX
-from formula_tree import FUNCTION_PREFIXES, Call, parse_formula, render, tokens_in
-from excel_limits import LAST_COLUMN, MAXIMUM_COLUMN, MAXIMUM_ROW, SHEET_LIMITS, column_number
+from core.office_inputs import holds_macros, package_stream
+from core.office_operations import TARGET_NOT_FOUND
+from core.office_result import INVALID_VALUE, OfficeFailure
+from core.office_schema import closest_name, guess_text
+from sheet.excel_functions import PARAMETER_PREFIX
+from sheet.formula_tree import FUNCTION_PREFIXES, Call, parse_formula, render, tokens_in
+from core.excel_limits import LAST_COLUMN, MAXIMUM_COLUMN, MAXIMUM_ROW, SHEET_LIMITS, column_number
 
 warnings.filterwarnings("ignore", category=UserWarning, module=r"openpyxl\.")
 

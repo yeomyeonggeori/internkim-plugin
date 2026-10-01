@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import re
 
-from deck_definitions import LAYOUT_RENDER_SOURCE, TOPIC_TITLE, UNRELIABLE_VISUAL_EVIDENCE
-from office_result import Issue
+from deck.deck_definitions import LAYOUT_RENDER_SOURCE, TOPIC_TITLE, UNRELIABLE_VISUAL_EVIDENCE
+from core.office_result import Issue
 
 
 CLAIM_TITLE_WORD_MINIMUM = 5

@@ -7,13 +7,13 @@ import json
 import pathlib
 import zipfile
 
-from native_charts import ChartPart, chart_count, chart_frames_xml, chart_relationships_xml, chart_text_styles, slide_chart_parts, write_chart_parts
-from native_tables import cell_blocks, table_count, table_frames_xml
+from deck.native_charts import ChartPart, chart_count, chart_frames_xml, chart_relationships_xml, chart_text_styles, slide_chart_parts, write_chart_parts
+from deck.native_tables import cell_blocks, table_count, table_frames_xml
 from fonts.pptx_embedding import run_font
-from pptx_notes import noted_slide_numbers, notes_relationship_xml, write_notes_parts
-from pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU, DeckFonts, default_theme_fonts, slide_document, write_pptx_static_files, xml_document
-from pptx_shapes import connectors_xml as slide_connectors_xml, shape_xml
-from pptx_text import SlideScale, TextContext, language_tag, text_box_xml
+from deck.pptx_notes import noted_slide_numbers, notes_relationship_xml, write_notes_parts
+from deck.pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU, DeckFonts, default_theme_fonts, slide_document, write_pptx_static_files, xml_document
+from deck.pptx_shapes import connectors_xml as slide_connectors_xml, shape_xml
+from deck.pptx_text import SlideScale, TextContext, language_tag, text_box_xml
 from fonts.truetype import TrueTypeFace
 
 

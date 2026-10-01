@@ -7,20 +7,20 @@ from docx.oxml.ns import qn
 from lxml import etree
 
 from charts.look import OFFICE_SERIES_COLORS
-from docx_package import open_document
-from docx_preview_css import DEFAULT_FONT_SIZE_POINTS, HIGHLIGHT_COLORS, hex_color, text_decoration
-from docx_preview_graphics import GRAPHIC_TAGS, graphic_items
-from docx_preview_math import MATH_TAGS, linear_math
-from docx_preview_model import (
+from doc.docx_package import open_document
+from doc.docx_preview_css import DEFAULT_FONT_SIZE_POINTS, HIGHLIGHT_COLORS, hex_color, text_decoration
+from doc.docx_preview_graphics import GRAPHIC_TAGS, graphic_items
+from doc.docx_preview_math import MATH_TAGS, linear_math
+from doc.docx_preview_model import (
     FieldItem, LineBreakItem, NoteReferenceItem, PageBreakBlock, PageBreakItem, ParagraphBlock, SectionModel, TabItem, TextItem, TextStyle,
 )
-from docx_preview_numbering import Numbering, readable_symbol
-from docx_preview_sections import document_sections, page_number_start, section_geometry
-from docx_preview_styles import StyleSheet, merged, paragraph_properties, run_properties
-from docx_preview_tables import TableLayers, table_block
-from office_preview import Preview
-from units import points_to_pixels, twips_to_pixels
-from office_theme import ACCENT_SLOTS
+from doc.docx_preview_numbering import Numbering, readable_symbol
+from doc.docx_preview_sections import document_sections, page_number_start, section_geometry
+from doc.docx_preview_styles import StyleSheet, merged, paragraph_properties, run_properties
+from doc.docx_preview_tables import TableLayers, table_block
+from render.office_preview import Preview
+from core.units import points_to_pixels, twips_to_pixels
+from core.office_theme import ACCENT_SLOTS
 from fonts.preview import DEFAULT_FAMILY, FontRequest, css_font_family
 
 

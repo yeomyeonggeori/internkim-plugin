@@ -22,14 +22,13 @@ from test_deck_kit_samples import SAMPLE_DECKS_PATH, copy_sample_deck
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
-sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
 
-from deck_kit import chart_types  # noqa: E402
-from editable_pptx import read_text_layers, write_editable_pptx  # noqa: E402
-from native_charts import NATIVE_CHART_TYPES  # noqa: E402
-from pptx_chart_look import chart_look, chart_model  # noqa: E402
-from pptx_description import chart_details  # noqa: E402
-from pptx_inheritance import slide_context  # noqa: E402
+from deck.deck_kit import chart_types  # noqa: E402
+from deck.editable_pptx import read_text_layers, write_editable_pptx  # noqa: E402
+from deck.native_charts import NATIVE_CHART_TYPES  # noqa: E402
+from deck.pptx_chart_look import chart_look, chart_model  # noqa: E402
+from deck.pptx_description import chart_details  # noqa: E402
+from deck.pptx_inheritance import slide_context  # noqa: E402
 from charts.svg import chart_svg  # noqa: E402
 
 

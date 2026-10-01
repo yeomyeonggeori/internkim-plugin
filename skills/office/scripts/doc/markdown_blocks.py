@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import re
 
-from markdown_charts import FENCE, parse_chart_fence
+from doc.markdown_charts import FENCE, parse_chart_fence
 
 
 HEADING_PATTERN = re.compile(r"^(#{1,4})\s+(.*)$")

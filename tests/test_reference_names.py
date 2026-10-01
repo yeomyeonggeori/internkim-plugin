@@ -6,14 +6,13 @@ import unittest
 
 from test_office_results import OFFICE_ENTRY, OFFICE_PATH, all_known_codes, load_definitions
 
-from office_commands import COMMANDS, FORMATS, find_format  # noqa: E402
+from core.office_commands import COMMANDS, FORMATS, find_format  # noqa: E402
 from office_guide import guide_text  # noqa: E402
 
-sys.path.insert(0, str(OFFICE_PATH / "scripts" / "paperwork"))
 
-from deck_definitions import KIT_LAYOUT_NAMES  # noqa: E402
-from deck_kit import theme_names  # noqa: E402
-from paperwork_definitions import form_slugs  # noqa: E402
+from deck.deck_definitions import KIT_LAYOUT_NAMES  # noqa: E402
+from deck.deck_kit import theme_names  # noqa: E402
+from paperwork.paperwork_definitions import form_slugs  # noqa: E402
 
 
 DOCUMENTS = (OFFICE_PATH / "SKILL.md", *sorted((OFFICE_PATH / "references").rglob("*.md")))

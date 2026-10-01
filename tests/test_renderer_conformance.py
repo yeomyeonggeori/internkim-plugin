@@ -8,9 +8,9 @@ from render_fixture import SCRIPTS_PATH, can_render
 
 sys.path.insert(0, str(SCRIPTS_PATH))
 
-from css_color import named_color_hex, parse_css_color  # noqa: E402
+from core.css_color import named_color_hex, parse_css_color  # noqa: E402
 from render.renderer import javascript_runtime  # noqa: E402
-from units import inches_to_pixels, millimetres_to_pixels, points_to_pixels  # noqa: E402
+from core.units import inches_to_pixels, millimetres_to_pixels, points_to_pixels  # noqa: E402
 
 CSS_VALUES = (SCRIPTS_PATH / "render" / "css_values.mjs").as_uri()
 LENGTHS = {"1in": inches_to_pixels(1), "2.54cm": inches_to_pixels(1), "10mm": millimetres_to_pixels(10), "12pt": points_to_pixels(12)}

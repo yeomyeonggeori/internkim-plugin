@@ -7,18 +7,18 @@ from pptx.oxml.ns import qn
 
 from charts.svg import chart_svg
 from fonts.registry import resolved_face
-from pptx_chart_look import chart_look, chart_model
-from pptx_description import chart_details
-from pptx_geometry import SLIDE_FRAME, Box, Frame, child_frame, local_box, rotation_degrees
-from pptx_inheritance import SlideContext, slide_context
-from pptx_preview_paint import PIXELS_PER_EMU, background_color, css, data_uri, element, fill_color, outline, pixels, svg_uri
-from pptx_preview_shapes import geometry_html
-from pptx_preview_table import table_html
-from pptx_preview_text import TextPaint, body_html, body_layout
-from pptx_shape_kinds import placeholder_of, shape_kind
-from pptx_text_measure import grown_box, measure_text
-from text_script import has_east_asian
-from image_formats import WEB_IMAGE_CONTENT_TYPES
+from deck.pptx_chart_look import chart_look, chart_model
+from deck.pptx_description import chart_details
+from deck.pptx_geometry import SLIDE_FRAME, Box, Frame, child_frame, local_box, rotation_degrees
+from deck.pptx_inheritance import SlideContext, slide_context
+from deck.pptx_preview_paint import PIXELS_PER_EMU, background_color, css, data_uri, element, fill_color, outline, pixels, svg_uri
+from deck.pptx_preview_shapes import geometry_html
+from deck.pptx_preview_table import table_html
+from deck.pptx_preview_text import TextPaint, body_html, body_layout
+from deck.pptx_shape_kinds import placeholder_of, shape_kind
+from deck.pptx_text_measure import grown_box, measure_text
+from core.text_script import has_east_asian
+from core.image_formats import WEB_IMAGE_CONTENT_TYPES
 from fonts.measure import font_face
 
 

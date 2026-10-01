@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from native_rendering import (
+from deck.native_rendering import (
     DATE_PATTERN,
     MISSING_SOURCE_TEXT,
     SLIDE_HEIGHT,
@@ -18,7 +18,7 @@ from native_rendering import (
     timeline_entries,
     visible_card_count,
 )
-from slide_model import SlideModel
+from deck.slide_model import SlideModel
 
 
 RISK_SECTION_LABELS = {"증거:", "대응:", "evidence:", "response:"}

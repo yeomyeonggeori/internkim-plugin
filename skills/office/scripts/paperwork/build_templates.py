@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from skill_runtime import ensure_requirements
-from paperwork_design import (
+from paperwork.paperwork_design import (
     COLOR_INK,
     DOCX_PAGE_MARGIN_INCHES,
     FONT_KOREAN_DOCX,

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from docx_preview_model import (
+from doc.docx_preview_model import (
     BoxItem, CellBlock, ChartItem, FieldItem, ImageItem, LineBreakItem, NoteReferenceItem, PageBreakBlock, ParagraphBlock, TabItem, TableBlock, TextItem, TextStyle,
 )
-from units import twips_to_pixels
+from core.units import twips_to_pixels
 from fonts.preview import FontRegistry, breakable_pieces, is_ideograph_piece
 
 

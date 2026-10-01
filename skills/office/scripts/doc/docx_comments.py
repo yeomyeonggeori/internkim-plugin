@@ -9,12 +9,12 @@ from docx.oxml.ns import qn
 from docx.text.run import Run
 from lxml import etree
 
-from docx_parts import create_part, read_root, related_part, write_root
-from docx_editing import DocxEditing, resolve_paragraph
-from docx_text import REMOVED_RUN_CONTAINER_TAGS, RUN_TAG, live_runs, run_text, visible_text
-from docx_tracking import runs_between, split_runs_at
-from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
-from office_result import MISSING_FIELD, OfficeFailure
+from doc.docx_parts import create_part, read_root, related_part, write_root
+from doc.docx_editing import DocxEditing, resolve_paragraph
+from doc.docx_text import REMOVED_RUN_CONTAINER_TAGS, RUN_TAG, live_runs, run_text, visible_text
+from doc.docx_tracking import runs_between, split_runs_at
+from core.office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
+from core.office_result import MISSING_FIELD, OfficeFailure
 
 
 WORD_2010_NAMESPACE = "http://schemas.microsoft.com/office/word/2010/wordml"

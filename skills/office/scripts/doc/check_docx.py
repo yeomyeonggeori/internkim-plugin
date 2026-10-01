@@ -6,19 +6,18 @@ import re
 from docx.oxml.ns import qn
 from docx.text.paragraph import Paragraph
 
-from doc_definitions import BROKEN_INTERNAL_REFERENCE, EAST_ASIA_FONT_MISSING, EAST_ASIA_LANGUAGE_NOT_KOREAN, STALE_TABLE_OF_CONTENTS, TRACKED_CHANGES_PRESENT
-from docx_content_checks import chart_empty_issues, field_result_issues, heading_issues, missing_image_issues, unresolved_comment_issues
-from docx_defaults import KOREAN_LANGUAGE
-from docx_language import east_asia_font_issues, effective_east_asia_language
-from docx_package import open_document
-from docx_reference_operations import bookmark_names
-from docx_revisions import collect_revisions, describe_pending
-from docx_styles import run_styles
-from docx_blocks import PARAGRAPH_TAG, body_block_elements, element_text, heading_level
-from office_inputs import office_file
-from office_result import Issue, OfficeArgumentParser, Result, run_command
-from text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
-from text_script import has_hangul
+from doc.doc_definitions import BROKEN_INTERNAL_REFERENCE, EAST_ASIA_LANGUAGE_NOT_KOREAN, STALE_TABLE_OF_CONTENTS, TRACKED_CHANGES_PRESENT
+from doc.docx_content_checks import chart_empty_issues, field_result_issues, heading_issues, missing_image_issues, unresolved_comment_issues
+from doc.docx_defaults import KOREAN_LANGUAGE
+from doc.docx_language import east_asia_font_issues, effective_east_asia_language
+from doc.docx_package import open_document
+from doc.docx_reference_operations import bookmark_names
+from doc.docx_revisions import collect_revisions, describe_pending
+from doc.docx_blocks import PARAGRAPH_TAG, body_block_elements, element_text, heading_level
+from core.office_inputs import office_file
+from core.office_result import Issue, OfficeArgumentParser, Result, run_command
+from core.text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
+from core.text_script import has_hangul
 
 
 FIELD_REFERENCE_PATTERN = re.compile(r"^\s*(?:REF|PAGEREF|NOTEREF)\s+(\S+)", re.IGNORECASE)

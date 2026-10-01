@@ -7,13 +7,13 @@ import json
 from fpdf import FPDF
 from pypdf import PdfReader, PdfWriter
 
-import create_pdf as pdf_helper
-from office_inputs import add_password_argument, office_file, require_unlocked_pdf, resolve_document_path
-from office_result import DOCUMENTS_FOLDER, OfficeArgumentParser, Result, read_json_file, run_command
-from office_schema import require_valid
-from pdf_definitions import SECTION
+from pdf import create_pdf as pdf_helper
+from core.office_inputs import add_password_argument, office_file, require_unlocked_pdf, resolve_document_path
+from core.office_result import DOCUMENTS_FOLDER, OfficeArgumentParser, Result, read_json_file, run_command
+from core.office_schema import require_valid
+from pdf.pdf_definitions import SECTION
 from fonts.pdf_registration import register_document_font
-from page_sizes import DEFAULT_PAPER
+from core.page_sizes import DEFAULT_PAPER
 
 
 def main() -> Result:

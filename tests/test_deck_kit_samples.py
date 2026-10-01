@@ -13,10 +13,9 @@ SCRIPTS_PATH = TESTS_PATH.parent / "skills" / "office" / "scripts"
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
 SAMPLE_DECKS_PATH = TESTS_PATH / "fixtures" / "deck-kit"
 sys.path.insert(0, str(SCRIPTS_PATH))
-sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
 sys.path.insert(0, str(TESTS_PATH))
 
-from check_deck import CheckRequest, check_deck  # noqa: E402
+from deck.check_deck import CheckRequest, check_deck  # noqa: E402
 from png_fixture import write_png  # noqa: E402
 from render_fixture import can_render, pdf_page_count  # noqa: E402
 

@@ -6,8 +6,8 @@ from xml.sax.saxutils import escape
 
 from charts.kinds import ROUND_CHART_KINDS
 from charts.look import BELOW_POSITION, LEFT_POSITION, OUTSIDE_POSITION, PERCENT_FORMAT, ChartLook, PointLabel, TextLook
-from number_format import displayed
-from text_script import is_east_asian
+from core.number_format import displayed
+from core.text_script import is_east_asian
 
 
 EDGE = 8

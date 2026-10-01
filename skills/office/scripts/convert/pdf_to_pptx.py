@@ -12,13 +12,13 @@ from pptx.oxml.ns import qn
 from pptx.util import Emu, Pt
 import pypdfium2
 
-from css_color import hex_of
+from core.css_color import hex_of
 from fonts.registry import OFFICE_KOREAN_FAMILY
-from markdown_blocks import inline_segments, link_parts, strip_inline_markers
-from office_inputs import unlocked_pdf_bytes
-from pdf_to_blocks import MINIMUM_IMAGE_POINTS, Segment, crop, inside_any, page_image_bitmap, page_segments
-from pdf_tables import page_tables
-from units import EMU_PER_POINT
+from doc.markdown_blocks import inline_segments, link_parts, strip_inline_markers
+from core.office_inputs import unlocked_pdf_bytes
+from convert.pdf_to_blocks import MINIMUM_IMAGE_POINTS, Segment, crop, inside_any, page_image_bitmap, page_segments
+from pdf.pdf_tables import page_tables
+from core.units import EMU_PER_POINT
 
 
 SMALLEST_SLIDE_POINTS = 72

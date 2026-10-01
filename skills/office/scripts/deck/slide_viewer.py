@@ -3,7 +3,7 @@ from __future__ import annotations
 import pathlib
 import re
 
-from deck_kit import slide_size
+from deck.deck_kit import slide_size
 
 
 SCRIPT_PATH = pathlib.Path(__file__).resolve().parent

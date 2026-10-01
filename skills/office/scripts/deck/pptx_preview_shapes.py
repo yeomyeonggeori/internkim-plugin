@@ -4,7 +4,7 @@ import math
 
 from pptx.oxml.ns import qn
 
-from pptx_preview_paint import Outline, element, svg_uri
+from deck.pptx_preview_paint import Outline, element, svg_uri
 
 
 DEFAULT_CORNER = 16667

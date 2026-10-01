@@ -7,13 +7,13 @@ from docx.table import Table
 from docx.oxml.ns import qn
 from docx.text.paragraph import Paragraph
 
-from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, body_block_elements
+from doc.docx_blocks import PARAGRAPH_TAG, TABLE_TAG, body_block_elements
 from fonts.docx_embedding import save_document
-from docx_package import open_document
-from docx_tracking import Tracking, start_tracking
-from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND
-from office_result import INVALID_VALUE, OfficeFailure
-from office_schema import names_suggestion
+from doc.docx_package import open_document
+from doc.docx_tracking import Tracking, start_tracking
+from core.office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND
+from core.office_result import INVALID_VALUE, OfficeFailure
+from core.office_schema import names_suggestion
 
 
 

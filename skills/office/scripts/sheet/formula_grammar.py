@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from openpyxl.formula.tokenizer import Token, Tokenizer, TokenizerError
 
-from excel_functions import with_anchor_arrays
+from sheet.excel_functions import with_anchor_arrays
 
 
 def formula_problem(formula: str) -> str | None:

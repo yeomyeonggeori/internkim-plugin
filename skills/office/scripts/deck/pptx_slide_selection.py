@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from office_operations import TARGET_NOT_FOUND
-from office_result import INVALID_ARGUMENTS, OfficeFailure
+from core.office_operations import TARGET_NOT_FOUND
+from core.office_result import INVALID_ARGUMENTS, OfficeFailure
 
 
 def select_slides(selection: str, slide_count: int) -> list[int]:

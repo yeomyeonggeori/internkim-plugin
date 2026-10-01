@@ -6,11 +6,11 @@ from pptx.enum.chart import XL_CHART_TYPE
 from pptx.oxml.ns import qn
 from pptx.table import _Cell
 
-from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
-from office_result import INVALID_VALUE, OfficeFailure
-from pptx_insert_operations import cell_text, chart_data, set_chart_title
-from pptx_targets import PptxEditing, ShapeTarget, require_kind, resolve_shape
-from pptx_text_operations import replace_text
+from core.office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
+from core.office_result import INVALID_VALUE, OfficeFailure
+from deck.pptx_insert_operations import cell_text, chart_data, set_chart_title
+from deck.pptx_targets import PptxEditing, ShapeTarget, require_kind, resolve_shape
+from deck.pptx_text_operations import replace_text
 
 
 MERGE_ATTRIBUTES = ("gridSpan", "rowSpan", "hMerge", "vMerge")

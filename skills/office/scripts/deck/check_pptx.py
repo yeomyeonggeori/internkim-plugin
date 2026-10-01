@@ -4,12 +4,12 @@ from pathlib import Path
 
 from pptx import Presentation
 
-from deck_definitions import PPTX_NOT_RENDERED
-from office_preview import drawn_page_details
-from office_result import Result
-from pptx_layout_audit import audit_presentation, substitutions
-from pptx_preview import preview_document
-from pptx_slide_selection import select_slides
+from deck.deck_definitions import PPTX_NOT_RENDERED
+from render.office_preview import drawn_page_details
+from core.office_result import Result
+from deck.pptx_layout_audit import audit_presentation, substitutions
+from deck.pptx_preview import preview_document
+from deck.pptx_slide_selection import select_slides
 from render.renderer import RenderFailed, RendererUnavailable, draw_preview
 
 

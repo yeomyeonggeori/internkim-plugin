@@ -14,11 +14,11 @@ from pdf.pdf_definitions import OCR_DOWNLOAD_SIZE
 from skill_runtime import create_dependency_environment, dependency_environment_path, install_requirements_if_needed
 
 
-SCRIPTS_PATH = Path(__file__).resolve().parent
+OCR_PATH = Path(__file__).resolve().parent
 ENVIRONMENT_NAME = "office-ocr"
-REQUIREMENTS_PATH = SCRIPTS_PATH / "ocr-requirements.txt"
-OVERRIDES_PATH = SCRIPTS_PATH / "ocr-overrides.txt"
-HELPER_PATH = SCRIPTS_PATH / "ocr_lines.py"
+REQUIREMENTS_PATH = OCR_PATH / "ocr-requirements.txt"
+OVERRIDES_PATH = OCR_PATH / "ocr-overrides.txt"
+HELPER_PATH = OCR_PATH / "ocr_lines.py"
 RENDER_SCALE = 3
 FONT_SHARE_OF_LINE_BOX = 0.7
 

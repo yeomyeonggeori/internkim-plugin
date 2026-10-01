@@ -10,7 +10,7 @@ from xml.etree import ElementTree
 import zipfile
 import zlib
 
-from office_result import DOCUMENTS_FOLDER, FILE_DAMAGED, INPUT_NOT_FOUND, NO_FILE_FOUND, PDF_PASSWORD_REQUIRED, WRONG_INPUT_FORMAT, OfficeFailure
+from core.office_result import DOCUMENTS_FOLDER, FILE_DAMAGED, INPUT_NOT_FOUND, NO_FILE_FOUND, PDF_PASSWORD_REQUIRED, WRONG_INPUT_FORMAT, OfficeFailure
 
 
 

@@ -5,10 +5,10 @@ import copy
 from pptx.opc.constants import RELATIONSHIP_TYPE
 from pptx.oxml.ns import qn
 
-from office_operations import TARGET_NOT_FOUND, Change
-from office_result import INVALID_VALUE, OfficeFailure
-from pptx_relationships import drop_unreferenced
-from pptx_targets import PptxEditing, ShapeTarget, require_text, resolve_shape, resolve_slide
+from core.office_operations import TARGET_NOT_FOUND, Change
+from core.office_result import INVALID_VALUE, OfficeFailure
+from deck.pptx_relationships import drop_unreferenced
+from deck.pptx_targets import PptxEditing, ShapeTarget, require_text, resolve_shape, resolve_slide
 
 
 SLIDE_JUMP_ACTION = "ppaction://hlinksldjump"

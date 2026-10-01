@@ -158,10 +158,9 @@ class GuideTest(unittest.TestCase):
 
     def test_every_declared_operation_has_a_planner(self):
         code = """
-        import json, sys
-        sys.path.insert(0, sys.argv[1])
-        from pptx_operations import PPTX_OPERATIONS as operations
+        import json
+        from deck.pptx_operations import PPTX_OPERATIONS as operations
         print(json.dumps(sorted(operations.planners) == sorted(record.name for record in operations.shape.records)))
         """
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", textwrap.dedent(code), str(SCRIPTS_PATH / "deck")], capture_output=True, text=True, check=True)
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", textwrap.dedent(code)], capture_output=True, text=True, check=True)
         self.assertEqual(completed.stdout.strip(), "true")

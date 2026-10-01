@@ -9,11 +9,11 @@ from pptx.oxml.xmlchemy import OxmlElement
 from pptx.text.text import Font, _Paragraph
 from pptx.util import Pt
 
-from office_operations import TARGET_NOT_FOUND, Change
-from office_result import INVALID_VALUE, OfficeFailure
-from pptx_content import text_frames_in
-from pptx_targets import PptxEditing, live_slides, require_text, resolve_paragraphs, resolve_shape, resolve_slide
-from run_replacement import joined_text, replace_in_runs
+from core.office_operations import TARGET_NOT_FOUND, Change
+from core.office_result import INVALID_VALUE, OfficeFailure
+from deck.pptx_content import text_frames_in
+from deck.pptx_targets import PptxEditing, live_slides, require_text, resolve_paragraphs, resolve_shape, resolve_slide
+from core.run_replacement import joined_text, replace_in_runs
 
 
 PARAGRAPH_KEPT_TAGS = {qn("a:pPr"), qn("a:endParaRPr")}

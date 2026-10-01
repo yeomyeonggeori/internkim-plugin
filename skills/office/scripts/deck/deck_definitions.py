@@ -3,16 +3,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from fonts.registry import DECK, default_family
-from deck_kit import DEFAULT_THEME, chart_types, slide_size, theme_palettes
-from layout_thresholds import SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
-from office_operations import OPERATION_ISSUE_KINDS
-from template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
-from office_result import ERROR, WARNING, Issue, IssueKind
-from office_schema import ListOf
-from pptx_edit_definitions import OPERATIONS
+from deck.deck_kit import DEFAULT_THEME, chart_types, slide_size, theme_palettes
+from deck.layout_thresholds import SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
+from core.office_operations import OPERATION_ISSUE_KINDS
+from core.template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
+from core.office_result import ERROR, WARNING, Issue, IssueKind
+from core.office_schema import ListOf
+from deck.pptx_edit_definitions import OPERATIONS
 from render.renderer import RENDER_ISSUE_KINDS
-from text_checks import PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
-from image_formats import PICTURE_FORMATS_TEXT
+from core.text_checks import PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
+from core.image_formats import PICTURE_FORMATS_TEXT
 
 
 DECK_LOCATION = "deck"

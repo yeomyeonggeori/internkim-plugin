@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from office_result import ERROR, Issue, IssueKind
+from core.office_result import ERROR, Issue, IssueKind
 
 
 PLACEHOLDER_PATTERN = re.compile(r"\{\{.*?\}\}|\{%.*?%\}")

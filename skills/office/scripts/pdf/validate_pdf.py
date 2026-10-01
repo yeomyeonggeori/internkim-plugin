@@ -5,9 +5,9 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
-from office_inputs import add_password_argument, office_file, require_unlocked_pdf
-from office_result import Issue, OfficeArgumentParser, Result, run_command
-from pdf_definitions import (
+from core.office_inputs import add_password_argument, office_file, require_unlocked_pdf
+from core.office_result import Issue, OfficeArgumentParser, Result, run_command
+from pdf.pdf_definitions import (
     KOREAN_FONT_MISSING,
     KOREAN_FONT_NOT_EMBEDDED,
     NO_FONT_RESOURCES,
@@ -18,8 +18,8 @@ from pdf_definitions import (
     TOO_FEW_PAGES,
     TOO_MANY_PAGES,
 )
-from text_checks import text_presence_issues
-from text_script import has_hangul
+from core.text_checks import text_presence_issues
+from core.text_script import has_hangul
 
 
 KOREAN_CHARACTER_COLLECTION = "Korea1"

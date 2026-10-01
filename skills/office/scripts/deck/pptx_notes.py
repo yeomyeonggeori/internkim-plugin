@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 import zipfile
 
-from pptx_package import theme_xml, xml_document
+from deck.pptx_package import theme_xml, xml_document
 
 
 NOTES_SLIDE_RELATIONSHIP_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide"

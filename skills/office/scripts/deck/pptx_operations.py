@@ -2,23 +2,23 @@ from __future__ import annotations
 
 import io
 
-from office_operations import OperationSet
-from pptx_arrangement_operations import ARRANGEMENT_PLANNERS
-from pptx_comments import COMMENT_PLANNERS
-from pptx_deck_operations import DECK_PLANNERS
-from pptx_edit_definitions import OPERATIONS
-from pptx_element_operations import ELEMENT_PLANNERS
-from pptx_footer_operations import FOOTER_PLANNERS
-from pptx_insert_operations import INSERT_PLANNERS
-from pptx_link_operations import LINK_PLANNERS
-from pptx_package_fidelity import preserve_unchanged_parts
-from pptx_section_operations import SECTION_PLANNERS
-from pptx_sections import normalize_sections
-from pptx_show_operations import SHOW_PLANNERS
-from pptx_slide_operations import SLIDE_PLANNERS
-from pptx_table_operations import TABLE_AND_CHART_PLANNERS
-from pptx_targets import PptxEditing
-from pptx_text_operations import TEXT_PLANNERS
+from core.office_operations import OperationSet
+from deck.pptx_arrangement_operations import ARRANGEMENT_PLANNERS
+from deck.pptx_comments import COMMENT_PLANNERS
+from deck.pptx_deck_operations import DECK_PLANNERS
+from deck.pptx_edit_definitions import OPERATIONS
+from deck.pptx_element_operations import ELEMENT_PLANNERS
+from deck.pptx_footer_operations import FOOTER_PLANNERS
+from deck.pptx_insert_operations import INSERT_PLANNERS
+from deck.pptx_link_operations import LINK_PLANNERS
+from deck.pptx_package_fidelity import preserve_unchanged_parts
+from deck.pptx_section_operations import SECTION_PLANNERS
+from deck.pptx_sections import normalize_sections
+from deck.pptx_show_operations import SHOW_PLANNERS
+from deck.pptx_slide_operations import SLIDE_PLANNERS
+from deck.pptx_table_operations import TABLE_AND_CHART_PLANNERS
+from deck.pptx_targets import PptxEditing
+from deck.pptx_text_operations import TEXT_PLANNERS
 
 
 def save_editing(editing: PptxEditing, path: str) -> None:

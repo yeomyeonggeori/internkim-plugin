@@ -3,7 +3,7 @@ from __future__ import annotations
 import pathlib
 import sys
 
-from native_rendering import (
+from deck.native_rendering import (
     SLIDE_HEIGHT,
     SLIDE_WIDTH,
     card_grid_cells,
@@ -19,8 +19,8 @@ from native_rendering import (
     visible_card_count,
 )
 from fonts.registry import BOLD_WEIGHT, DECK, REGULAR_WEIGHT, default_family
-from slide_images import slide_image_filename
-from slide_model import SlideModel
+from deck.slide_images import slide_image_filename
+from deck.slide_model import SlideModel
 
 
 

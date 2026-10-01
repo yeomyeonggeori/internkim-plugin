@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import pathlib
 
-from fit_review import FIT_REVIEW_PROMPT, fit_review_index, fit_review_markdown
+from deck.fit_review import FIT_REVIEW_PROMPT, fit_review_index, fit_review_markdown
 
 
 def write_review_outputs(review_directory_path: pathlib.Path, report: dict[str, object]) -> None:

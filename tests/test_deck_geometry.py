@@ -9,11 +9,10 @@ import unittest
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"
 OFFICE_ENTRY = SCRIPTS_PATH.parent / "office"
 sys.path.insert(0, str(SCRIPTS_PATH.parent))
-sys.path.insert(0, str(SCRIPTS_PATH))
 
 from png_fixture import write_png  # noqa: E402
 from render_fixture import can_render  # noqa: E402
-from render_review import build_review_report  # noqa: E402
+from deck.render_review import build_review_report  # noqa: E402
 
 
 LONG_SLIDE_TEXT = "아주 긴 문장이 이어집니다. " * 120

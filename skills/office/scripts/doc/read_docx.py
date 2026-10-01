@@ -4,15 +4,15 @@ from __future__ import annotations
 from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml.ns import qn
 
-from docx_blocks import block_kind, body_block_elements, element_text, has_page_break, heading_level, table_cell_texts, wrap_block
-from docx_charts import chart_references, describe as describe_chart, document_charts
-from docx_comments import describe_comment_threads
-from docx_package import open_document
-from docx_reference_operations import bookmark_names, describe_notes
-from docx_revisions import collect_revisions
-from docx_text import visible_text
-from office_inputs import office_file
-from office_result import OfficeArgumentParser, Result, run_command
+from doc.docx_blocks import block_kind, body_block_elements, element_text, has_page_break, heading_level, table_cell_texts, wrap_block
+from doc.docx_charts import chart_references, describe as describe_chart, document_charts
+from doc.docx_comments import describe_comment_threads
+from doc.docx_package import open_document
+from doc.docx_reference_operations import bookmark_names, describe_notes
+from doc.docx_revisions import collect_revisions
+from doc.docx_text import visible_text
+from core.office_inputs import office_file
+from core.office_result import OfficeArgumentParser, Result, run_command
 
 
 MATH_TAG = "{http://schemas.openxmlformats.org/officeDocument/2006/math}oMath"

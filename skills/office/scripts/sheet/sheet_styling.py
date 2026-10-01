@@ -3,7 +3,7 @@ from __future__ import annotations
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
-from display_width import display_width
+from sheet.display_width import display_width
 
 
 HEADER_FILL_COLOR = "DCEAF7"

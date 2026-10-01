@@ -5,11 +5,11 @@ import zipfile
 
 from charts.kinds import is_round_kind
 from charts.look import PERCENT_FORMAT
-from excel_limits import DEFAULT_SHEET_NAME
-from chart_workbook import cell_reference, chart_workbook_bytes, number_text
-from css_color import most_contrasting, parse_css_color
-from pptx_package import xml_document
-from pptx_text import SlideScale, TextContext, attribute, color_xml, run_properties_xml, text_content
+from core.excel_limits import DEFAULT_SHEET_NAME
+from deck.chart_workbook import cell_reference, chart_workbook_bytes, number_text
+from core.css_color import most_contrasting, parse_css_color
+from deck.pptx_package import xml_document
+from deck.pptx_text import SlideScale, TextContext, attribute, color_xml, run_properties_xml, text_content
 
 
 CHART_NAMESPACES = (

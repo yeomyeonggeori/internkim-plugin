@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pathlib
 
-from deck_definitions import NO_SLIDE_SECTIONS, SOURCE_NOT_HTML
-from office_result import OfficeFailure
-from slide_source import split_slide_sources
+from deck.deck_definitions import NO_SLIDE_SECTIONS, SOURCE_NOT_HTML
+from core.office_result import OfficeFailure
+from deck.slide_source import split_slide_sources
 
 
 def read_checked_source(source_path: pathlib.Path) -> tuple[str, list[str]]:

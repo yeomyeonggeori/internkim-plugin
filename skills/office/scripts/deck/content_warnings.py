@@ -3,10 +3,10 @@ from __future__ import annotations
 import datetime
 import re
 
-from deck_definitions import EMOJI_ICON, LANGUAGE_MISMATCH, MISSING_SPEAKER_NOTES, UNSOURCED_CURRENT_DATE
-from design_warnings import LABEL_ONLY_SLIDE_ROLES, append_deck_warning
-from slide_source import SPEAKER_NOTES_CLASS_ATTRIBUTE_PATTERN, split_slide_sources
-from text_script import hangul_count, has_hangul
+from deck.deck_definitions import EMOJI_ICON, LANGUAGE_MISMATCH, MISSING_SPEAKER_NOTES, UNSOURCED_CURRENT_DATE
+from deck.design_warnings import LABEL_ONLY_SLIDE_ROLES, append_deck_warning
+from deck.slide_source import SPEAKER_NOTES_CLASS_ATTRIBUTE_PATTERN, split_slide_sources
+from core.text_script import hangul_count, has_hangul
 
 
 LATIN_LETTER_PATTERN = re.compile(r"[A-Za-z]")

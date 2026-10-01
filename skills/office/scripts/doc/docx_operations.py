@@ -9,32 +9,32 @@ from docx.oxml.ns import qn
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
-from doc_definitions import OPERATIONS
-from docx_language import make_east_asia_language_korean
-from docx_format_operations import plan_define_style, plan_format_text, plan_set_paragraph_format
-from docx_page_operations import plan_insert_image, plan_insert_section_break, plan_set_footer, plan_set_header, plan_set_page_setup, plan_set_watermark
-from docx_reference_operations import (
+from doc.doc_definitions import OPERATIONS
+from doc.docx_language import make_east_asia_language_korean
+from doc.docx_format_operations import plan_define_style, plan_format_text, plan_set_paragraph_format
+from doc.docx_page_operations import plan_insert_image, plan_insert_section_break, plan_set_footer, plan_set_header, plan_set_page_setup, plan_set_watermark
+from doc.docx_reference_operations import (
     plan_add_bookmark, plan_insert_cross_reference, plan_insert_endnote, plan_insert_footnote, plan_insert_link, plan_insert_table_of_contents,
 )
-from docx_table_operations import plan_delete_table_column, plan_format_cells, plan_insert_table_column, plan_merge_cells, plan_split_table_cell
-from docx_chart_operations import plan_delete_chart, plan_edit_chart, plan_insert_chart
-from docx_drawing_operations import plan_insert_text_box, plan_set_image_properties
-from docx_inline_operations import plan_insert_equation, plan_insert_field
-from docx_note_operations import plan_delete_note, plan_edit_note
-from docx_structure_operations import plan_clear_list, plan_insert_markdown, plan_move_blocks, plan_replace_blocks, plan_set_list
-from docx_comments import plan_add_comment, plan_delete_comment, plan_reply_comment, plan_resolve_comment
-from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, paragraph_runs
-from docx_settings import request_field_update
-from docx_editing import DocxEditing, placement, require_style, resolve_block, resolve_paragraph, resolve_table
-from docx_revision_operations import plan_accept_revisions, plan_reject_revisions
-from docx_text import REMOVED_RUN_CONTAINER_TAGS
-from docx_tracking import (
+from doc.docx_table_operations import plan_delete_table_column, plan_format_cells, plan_insert_table_column, plan_merge_cells, plan_split_table_cell
+from doc.docx_chart_operations import plan_delete_chart, plan_edit_chart, plan_insert_chart
+from doc.docx_drawing_operations import plan_insert_text_box, plan_set_image_properties
+from doc.docx_inline_operations import plan_insert_equation, plan_insert_field
+from doc.docx_note_operations import plan_delete_note, plan_edit_note
+from doc.docx_structure_operations import plan_clear_list, plan_insert_markdown, plan_move_blocks, plan_replace_blocks, plan_set_list
+from doc.docx_comments import plan_add_comment, plan_delete_comment, plan_reply_comment, plan_resolve_comment
+from doc.docx_blocks import PARAGRAPH_TAG, TABLE_TAG, paragraph_runs
+from doc.docx_settings import request_field_update
+from doc.docx_editing import DocxEditing, placement, require_style, resolve_block, resolve_paragraph, resolve_table
+from doc.docx_revision_operations import plan_accept_revisions, plan_reject_revisions
+from doc.docx_text import REMOVED_RUN_CONTAINER_TAGS
+from doc.docx_tracking import (
     mark_block_deleted, mark_block_inserted, mark_paragraph_deleted, mark_row, record_paragraph_property_change,
     snapshot_paragraph_properties, tracked_replace, tracked_set_text,
 )
-from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change, OperationSet
-from office_result import INVALID_VALUE, OfficeFailure
-from run_replacement import joined_text, replace_in_runs
+from core.office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change, OperationSet
+from core.office_result import INVALID_VALUE, OfficeFailure
+from core.run_replacement import joined_text, replace_in_runs
 
 
 RUN_WRAPPER_TAGS = tuple(qn(f"w:{name}") for name in ("hyperlink", "ins", "moveTo", "smartTag", "customXml"))

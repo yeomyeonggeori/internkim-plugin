@@ -6,11 +6,11 @@ from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
-from docx_editing import DocxEditing, resolve_table
-from docx_format_operations import ALIGNMENTS, require_any
-from docx_text import PARAGRAPH_TAG, live_runs
-from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
-from office_result import INVALID_VALUE, OfficeFailure
+from doc.docx_editing import DocxEditing, resolve_table
+from doc.docx_format_operations import ALIGNMENTS, require_any
+from doc.docx_text import PARAGRAPH_TAG, live_runs
+from core.office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
+from core.office_result import INVALID_VALUE, OfficeFailure
 
 
 VERTICAL_ALIGNMENTS = {"top": WD_CELL_VERTICAL_ALIGNMENT.TOP, "center": WD_CELL_VERTICAL_ALIGNMENT.CENTER, "bottom": WD_CELL_VERTICAL_ALIGNMENT.BOTTOM}

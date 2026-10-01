@@ -8,9 +8,9 @@ from charts.kinds import PERCENT_GROUPING, STACKED_GROUPINGS, plot_kind
 from charts.look import LABEL_FLAGS, ChartLook, document_look
 from charts.svg import ChartModel, ChartSeries, chart_svg
 from fonts.preview import DEFAULT_FAMILY
-from office_preview import data_uri, pixels, style_attribute
-from units import emu_to_pixels
-from office_theme import ACCENT_SLOTS, THEME_SLOTS
+from render.office_preview import data_uri, pixels, style_attribute
+from core.units import emu_to_pixels
+from core.office_theme import ACCENT_SLOTS, THEME_SLOTS
 
 
 ACCENT_POSITIONS = tuple(THEME_SLOTS.index(slot) for slot in ACCENT_SLOTS)

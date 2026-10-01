@@ -5,9 +5,9 @@ from dataclasses import dataclass
 
 from pptx.oxml.ns import qn
 
-from pptx_inheritance import SlideContext, master_text_style
-from pptx_shape_kinds import placeholder_of
-from text_script import has_east_asian
+from deck.pptx_inheritance import SlideContext, master_text_style
+from deck.pptx_shape_kinds import placeholder_of
+from core.text_script import has_east_asian
 
 
 DEFAULT_SIZE = 18.0

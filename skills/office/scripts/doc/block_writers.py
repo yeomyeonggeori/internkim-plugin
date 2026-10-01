@@ -7,11 +7,11 @@ import mimetypes
 from fonts.registry import MONOSPACE, SANS_BODY, default_family
 from charts.look import OFFICE_SERIES_COLORS
 from charts.svg import chart_svg
-from docx_charts import specification
-from markdown_charts import Chart
-from latex_math import LatexNotReadable, latex_html
-from office_preview import data_uri
-from markdown_blocks import Equation, Heading, Image, ListItem, Quote, Table, ThematicBreak, inline_segments, link_parts, math_latex
+from doc.docx_charts import specification
+from doc.markdown_charts import Chart
+from doc.latex_math import LatexNotReadable, latex_html
+from render.office_preview import data_uri
+from doc.markdown_blocks import Equation, Heading, Image, ListItem, Quote, Table, ThematicBreak, inline_segments, link_parts, math_latex
 
 
 LIST_INDENT = "   "

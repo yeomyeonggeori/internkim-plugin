@@ -10,10 +10,10 @@ import statistics
 import pdfplumber
 import pypdfium2
 
-from markdown_blocks import Heading, Image, ListItem, Paragraph, Table
-from office_inputs import unlocked_pdf_bytes
-from pdf_ocr import OcrLine
-from pdf_tables import FoundTable, page_tables, stream_tables
+from doc.markdown_blocks import Heading, Image, ListItem, Paragraph, Table
+from core.office_inputs import unlocked_pdf_bytes
+from pdf.ocr.pdf_ocr import OcrLine
+from pdf.pdf_tables import FoundTable, page_tables, stream_tables
 
 
 RENDER_SCALE = 2.0

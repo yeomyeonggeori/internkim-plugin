@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from office_preview import PageGeometry
+from render.office_preview import PageGeometry
 from fonts.preview import FontRequest
 
 

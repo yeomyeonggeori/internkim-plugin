@@ -6,17 +6,17 @@ import json
 from charts.kinds import SHEET_CHART_TYPES
 from charts.look import LABEL_FLAGS
 from fonts.registry import OFFICE_KOREAN_FAMILY
-from office_preview import PREVIEW_ISSUE_KINDS
-from office_operations import OPERATION_ISSUE_KINDS
-from template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
-from office_result import ERROR, INVALID_VALUE, WARNING, WRONG_TYPE, Issue, IssueKind
-from excel_limits import CHART_TITLE_LIMIT, FORBIDDEN_SHEET_NAME_TEXT, HEADER_FOOTER_LIMIT, MAXIMUM_SHEET_NAME_LENGTH
-from page_sizes import PAPER_NAMES
-from office_schema import HEX_COLOR_PATTERN, AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, closest_name, color_problem, guess_text, wrong_type
-from text_checks import PLACEHOLDER_LEFT
-from office_theme import THEME_SLOTS
-from theme_colors import THEME_COLOR, theme_reference
-from image_formats import PICTURE_FORMATS_TEXT
+from render.office_preview import PREVIEW_ISSUE_KINDS
+from core.office_operations import OPERATION_ISSUE_KINDS
+from core.template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
+from core.office_result import ERROR, INVALID_VALUE, WARNING, WRONG_TYPE, Issue, IssueKind
+from core.excel_limits import CHART_TITLE_LIMIT, FORBIDDEN_SHEET_NAME_TEXT, HEADER_FOOTER_LIMIT, MAXIMUM_SHEET_NAME_LENGTH
+from core.page_sizes import PAPER_NAMES
+from core.office_schema import HEX_COLOR_PATTERN, AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, closest_name, color_problem, guess_text, wrong_type
+from core.text_checks import PLACEHOLDER_LEFT
+from core.office_theme import THEME_SLOTS
+from sheet.theme_colors import THEME_COLOR, theme_reference
+from core.image_formats import PICTURE_FORMATS_TEXT
 
 
 SHOWN_ROW_LIMIT = 4

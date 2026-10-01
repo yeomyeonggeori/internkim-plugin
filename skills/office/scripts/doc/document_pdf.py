@@ -4,19 +4,19 @@ from pathlib import Path
 
 from PIL import Image as PillowImage, UnidentifiedImageError
 
-from block_writers import SizedImage, html_blocks
-from doc_definitions import GLYPH_NOT_COVERED, IMAGE_UNAVAILABLE, PDF_RENDERER_FAILED
-from document_pagination import MAXIMUM_PAGINATION_PASSES, stranded_heading
+from doc.block_writers import SizedImage, html_blocks
+from doc.doc_definitions import GLYPH_NOT_COVERED, IMAGE_UNAVAILABLE, PDF_RENDERER_FAILED
+from doc.document_pagination import MAXIMUM_PAGINATION_PASSES, stranded_heading
 from fontTools.ttLib import TTFont
 
-from latex_math import math_text, text_with_math_drawn
-from markdown_blocks import Equation, Image, Paragraph, Table, local_image_problem
+from doc.latex_math import math_text, text_with_math_drawn
+from doc.markdown_blocks import Equation, Image, Paragraph, Table, local_image_problem
 from fonts.registry import MONOSPACE, SANS_BODY, BundledFamily, default_family
-from office_result import BOLD_FONT_UNAVAILABLE, Issue, OfficeFailure
+from core.office_result import BOLD_FONT_UNAVAILABLE, Issue, OfficeFailure
 from fonts.pdf_registration import bold_sibling
 from render.renderer import DocumentPdfRequest, FontFile, RenderFailed, RendererUnavailable, javascript_runtime, render_document_pdf as render_pdf
-from page_sizes import DEFAULT_PAPER
-from units import CSS_PIXELS_PER_INCH
+from core.page_sizes import DEFAULT_PAPER
+from core.units import CSS_PIXELS_PER_INCH
 
 
 SCRIPTS_PATH = Path(__file__).resolve().parent

@@ -7,9 +7,8 @@ import unittest
 
 from doc_fixture import SCRIPTS_PATH, run_office, write_json
 
-sys.path.insert(0, str(SCRIPTS_PATH / "paperwork"))
 
-from amounts import grand_total, korean_amount_in_words, korean_number_words, truncate_to_won, row_amount, supply_total, value_added_tax
+from paperwork.amounts import grand_total, korean_amount_in_words, korean_number_words, truncate_to_won, row_amount, supply_total, value_added_tax
 
 
 def quote(supply_total_text="1,000,000원", vat_text="100,000원", grand_total_text="1,100,000원", words="일금 일백일십만원정 (₩1,100,000) (부가세 포함)"):

@@ -6,9 +6,9 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 import pypdfium2
 
-from office_inputs import add_password_argument, office_file, require_unlocked_pdf
-from office_result import INVALID_VALUE, OfficeArgumentParser, OfficeFailure, Result, run_command
-from pdf_pages import select_pages
+from core.office_inputs import add_password_argument, office_file, require_unlocked_pdf
+from core.office_result import INVALID_VALUE, OfficeArgumentParser, OfficeFailure, Result, run_command
+from pdf.pdf_pages import select_pages
 
 
 DEFAULT_PAGE_LIMIT = 12

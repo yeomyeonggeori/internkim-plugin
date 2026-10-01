@@ -11,9 +11,9 @@ import urllib.request
 
 from PIL import Image, UnidentifiedImageError
 
-from deck_definitions import IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND
-from office_result import OfficeArgumentParser, OfficeFailure, Result, run_command
-from text_script import has_hangul
+from deck.deck_definitions import IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND
+from core.office_result import OfficeArgumentParser, OfficeFailure, Result, run_command
+from core.text_script import has_hangul
 
 OPENVERSE_ENDPOINT = "https://api.openverse.org/v1/images/"
 SAFE_LICENSES = "cc0,pdm"

@@ -41,9 +41,8 @@ class ConversionFixture(unittest.TestCase):
 
 class RouteTableTest(unittest.TestCase):
     def test_every_declared_route_has_a_converter(self):
-        script = SCRIPTS_PATH / "convert" / "convert_file.py"
-        check = "import runpy, sys; sys.path.insert(0, sys.argv[2]); namespace = runpy.run_path(sys.argv[1], run_name='routes'); print(sorted(namespace['CONVERTERS']) == sorted((route.source, route.target) for route in namespace['ROUTES']))"
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", check, str(script), str(script.parent)], capture_output=True, text=True, check=True)
+        check = "from convert.convert_file import CONVERTERS, ROUTES; print(sorted(CONVERTERS) == sorted((route.source, route.target) for route in ROUTES))"
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", check], capture_output=True, text=True, check=True)
         self.assertEqual(completed.stdout.strip(), "True")
 
     def test_an_unsupported_pair_names_the_outputs_the_input_has(self):
@@ -247,9 +246,9 @@ class PdfRouteTest(unittest.TestCase):
 
 class LegacyWorkbookTest(unittest.TestCase):
     def test_xls_cells_keep_their_types(self):
-        sys.path[0:0] = [str(SCRIPTS_PATH), str(SCRIPTS_PATH / "convert"), str(SCRIPTS_PATH / "sheet")]
+        sys.path.insert(0, str(SCRIPTS_PATH))
         import xlrd
-        from spreadsheet_import import xls_value
+        from convert.spreadsheet_import import xls_value
 
         class Cell:
             def __init__(self, ctype, value):

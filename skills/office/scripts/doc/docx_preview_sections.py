@@ -4,9 +4,9 @@ from dataclasses import dataclass, field
 
 from docx.oxml.ns import qn
 
-from office_preview import PageGeometry, Preview
-from page_sizes import DEFAULT_PAPER
-from units import twips_to_pixels
+from render.office_preview import PageGeometry, Preview
+from core.page_sizes import DEFAULT_PAPER
+from core.units import twips_to_pixels
 
 
 DEFAULT_MARGIN_TWIPS = 1440

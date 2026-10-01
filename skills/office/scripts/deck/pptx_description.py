@@ -3,14 +3,14 @@ from __future__ import annotations
 from pptx.chart.plot import PlotTypeInspector
 from pptx.oxml.ns import qn
 
-from pptx_comments import slide_comments
-from pptx_content import frame_text, notes_text
-from pptx_geometry import SLIDE_FRAME, Frame, child_frame, local_box, percent_of_slide, points, rotation_degrees
-from pptx_inheritance import SlideContext, slide_context
-from pptx_section_operations import describe_sections
-from pptx_shape_kinds import non_visual_properties, placeholder_type, shape_address, shape_identifier, shape_kind, shape_reference
-from pptx_style import resolve_color, run_style
-from units import EMU_PER_POINT
+from deck.pptx_comments import slide_comments
+from deck.pptx_content import frame_text, notes_text
+from deck.pptx_geometry import SLIDE_FRAME, Frame, child_frame, local_box, percent_of_slide, points, rotation_degrees
+from deck.pptx_inheritance import SlideContext, slide_context
+from deck.pptx_section_operations import describe_sections
+from deck.pptx_shape_kinds import non_visual_properties, placeholder_type, shape_address, shape_identifier, shape_kind, shape_reference
+from deck.pptx_style import resolve_color, run_style
+from core.units import EMU_PER_POINT
 
 
 ALIGNMENT_NAMES = {"l": "left", "ctr": "center", "r": "right", "just": "justify", "dist": "distributed"}

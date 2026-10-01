@@ -5,30 +5,30 @@ from dataclasses import dataclass, field
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
 
-from excel_functions import written_value
-from formula_cache import cell_labels, evaluation_issues, listed, save_workbook_with_values
-from formula_names import name_issues, names_already_broken
-from formula_references import COLUMN_AXIS, ROW_AXIS, Shift
-from office_operations import Change, OperationSet
-from office_result import INVALID_VALUE, OfficeFailure
-from sheet_charts import plan_add_chart, plan_delete_chart, plan_edit_chart
-from sheet_data import plan_find_replace, plan_sort_range
-from sheet_definitions import CIRCULAR_REFERENCE, CONTENT_DROPPED, CONTENT_WOULD_BE_LOST, OPERATIONS
-from sheet_formatting import plan_format_range, plan_hide_columns, plan_hide_rows, plan_hide_sheet, plan_merge_cells, plan_set_row_height, plan_unmerge_cells
-from sheet_objects import plan_add_table, plan_set_comment, plan_set_hyperlink, plan_set_page_setup
-from sheet_pivots import plan_add_pivot_table
-from sheet_rules import plan_add_conditional_format, plan_add_data_validation, plan_clear_conditional_formats, plan_clear_data_validations
-from sheet_drawings import plan_add_image, plan_add_shape
-from sheet_ranges import plan_clear_range, plan_convert_to_values, plan_copy_range, plan_fill_range, plan_set_filter_criteria
-from sheet_sparklines import plan_add_sparklines
-from sheet_workbook import plan_add_defined_name, plan_delete_defined_name, plan_delete_sheet, plan_duplicate_sheet, plan_move_sheet, plan_protect_sheet, validate_sheet_name
-from sheet_styling import data_bounds, style_written_cells
-from workbook_access import column_index, open_workbook, parse_cell, parse_range, resolve_sheet, sheet_of
-from workbook_fidelity import EditRecord, preserve_source_content
-from workbook_package import Package, read_package, write_package
-from workbook_structure import isolate_column, rename_sheet_references, shift_workbook
-from workbook_values import evaluate_workbook
-from written_cells import require_writable
+from sheet.excel_functions import written_value
+from sheet.formula_cache import cell_labels, evaluation_issues, listed, save_workbook_with_values
+from sheet.formula_names import name_issues, names_already_broken
+from sheet.formula_references import COLUMN_AXIS, ROW_AXIS, Shift
+from core.office_operations import Change, OperationSet
+from core.office_result import OfficeFailure
+from sheet.sheet_charts import plan_add_chart, plan_delete_chart, plan_edit_chart
+from sheet.sheet_data import plan_find_replace, plan_sort_range
+from sheet.sheet_definitions import CIRCULAR_REFERENCE, CONTENT_DROPPED, CONTENT_WOULD_BE_LOST, OPERATIONS
+from sheet.sheet_formatting import plan_format_range, plan_hide_columns, plan_hide_rows, plan_hide_sheet, plan_merge_cells, plan_set_row_height, plan_unmerge_cells
+from sheet.sheet_objects import plan_add_table, plan_set_comment, plan_set_hyperlink, plan_set_page_setup
+from sheet.sheet_pivots import plan_add_pivot_table
+from sheet.sheet_rules import plan_add_conditional_format, plan_add_data_validation, plan_clear_conditional_formats, plan_clear_data_validations
+from sheet.sheet_drawings import plan_add_image, plan_add_shape
+from sheet.sheet_ranges import plan_clear_range, plan_convert_to_values, plan_copy_range, plan_fill_range, plan_set_filter_criteria
+from sheet.sheet_sparklines import plan_add_sparklines
+from sheet.sheet_workbook import plan_add_defined_name, plan_delete_defined_name, plan_delete_sheet, plan_duplicate_sheet, plan_move_sheet, plan_protect_sheet, validate_sheet_name
+from sheet.sheet_styling import data_bounds, style_written_cells
+from sheet.workbook_access import column_index, open_workbook, parse_cell, parse_range, resolve_sheet, sheet_of
+from sheet.workbook_fidelity import EditRecord, preserve_source_content
+from sheet.workbook_package import Package, read_package, write_package
+from sheet.workbook_structure import isolate_column, rename_sheet_references, shift_workbook
+from sheet.workbook_values import evaluate_workbook
+from sheet.written_cells import require_writable
 
 
 @dataclass

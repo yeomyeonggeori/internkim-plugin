@@ -4,10 +4,10 @@ from lxml import etree
 from pptx.oxml import parse_xml
 from pptx.oxml.ns import nsdecls, qn
 
-from office_operations import Change
-from pptx_animation import remove_animations_of
-from pptx_shape_kinds import NON_VISUAL_TAGS, shape_identifier
-from pptx_targets import PptxEditing, live_slides, resolve_shape, resolve_slide
+from core.office_operations import Change
+from deck.pptx_animation import remove_animations_of
+from deck.pptx_shape_kinds import NON_VISUAL_TAGS, shape_identifier
+from deck.pptx_targets import PptxEditing, live_slides, resolve_shape, resolve_slide
 
 
 MARKUP_COMPATIBILITY = "http://schemas.openxmlformats.org/markup-compatibility/2006"

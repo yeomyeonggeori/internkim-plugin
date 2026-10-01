@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 
-from amounts import (
+from paperwork.amounts import (
     ROUNDING_RULE,
     VAT_RATE_PERCENT,
     grand_total,
@@ -17,8 +17,8 @@ from amounts import (
     value_added_tax,
     vat_total,
 )
-from office_result import WRONG_TYPE, Issue, IssueKind, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
-from paperwork_definitions import (
+from core.office_result import WRONG_TYPE, Issue, IssueKind, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
+from paperwork.paperwork_definitions import (
     AMOUNT_HEADERS,
     AMOUNT_IN_WORDS_MISMATCH,
     AMOUNT_UNREADABLE,

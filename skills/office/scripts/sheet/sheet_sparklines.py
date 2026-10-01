@@ -3,13 +3,13 @@ from __future__ import annotations
 from lxml import etree
 from openpyxl.utils import get_column_letter
 
-from formula_references import quote_sheet_name
-from office_operations import OPERATION_NOT_APPLICABLE, Change
-from office_result import OfficeFailure
-from sheet_formatting import require_colors
-from workbook_access import parse_range, sheet_of
-from workbook_fidelity import EditRecord, merge_extension, rewrite_extension_references
-from workbook_package import Package, main_tag, worksheet_parts
+from sheet.formula_references import quote_sheet_name
+from core.office_operations import OPERATION_NOT_APPLICABLE, Change
+from core.office_result import OfficeFailure
+from sheet.sheet_formatting import require_colors
+from sheet.workbook_access import parse_range, sheet_of
+from sheet.workbook_fidelity import EditRecord, merge_extension, rewrite_extension_references
+from sheet.workbook_package import Package, main_tag, worksheet_parts
 
 
 SPARKLINE_URI = "{05C60535-1F16-4fd2-B633-F4F36F0B64E0}"

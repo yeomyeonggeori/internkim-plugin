@@ -6,11 +6,11 @@ from docx.oxml.ns import qn
 from docx.text.paragraph import Paragraph
 from lxml import etree
 
-from doc_definitions import CHART_EMPTY, EMPTY_HEADING, FIELD_NOT_EVALUATED, HEADING_SKIP, MISSING_IMAGE, UNRESOLVED_COMMENTS
-from docx_blocks import PARAGRAPH_TAG, element_text, heading_level
-from docx_charts import CHART_NAMESPACE, cached_points, document_charts, is_number, read_specification
-from docx_comments import describe_comment_threads
-from office_result import Issue
+from doc.doc_definitions import CHART_EMPTY, EMPTY_HEADING, FIELD_NOT_EVALUATED, HEADING_SKIP, MISSING_IMAGE, UNRESOLVED_COMMENTS
+from doc.docx_blocks import PARAGRAPH_TAG, element_text, heading_level
+from doc.docx_charts import CHART_NAMESPACE, cached_points, document_charts, is_number, read_specification
+from doc.docx_comments import describe_comment_threads
+from core.office_result import Issue
 
 
 DRAWING_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/main"

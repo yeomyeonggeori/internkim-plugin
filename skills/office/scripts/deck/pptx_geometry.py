@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from pptx.oxml.ns import qn
 
-from units import EMU_PER_POINT
+from core.units import EMU_PER_POINT
 
 
 ROTATION_UNITS_PER_DEGREE = 60000

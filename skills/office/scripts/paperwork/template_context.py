@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Callable
 
-from amounts import korean_number_words, parse_amount, truncate_to_won
-from template_fields import template_fields, template_list_fields
+from paperwork.amounts import korean_number_words, parse_amount, truncate_to_won
+from paperwork.template_fields import template_fields, template_list_fields
 
 
 DEFAULT_VALUES = {

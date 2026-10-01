@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from openpyxl.utils import range_boundaries
 
-from xlsx_colors import css_color
+from sheet.xlsx_colors import css_color
 
 
 COMPARISONS = {

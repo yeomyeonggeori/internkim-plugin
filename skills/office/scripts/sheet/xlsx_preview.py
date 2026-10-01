@@ -7,17 +7,17 @@ import re
 from openpyxl.styles.fonts import DEFAULT_FONT
 from openpyxl.utils import get_column_letter, range_boundaries
 
-from number_format import Displayed, displayed
-from office_preview import PageGeometry, Preview, escaped, page_section, pixels, positioned, style_attribute
-from units import emu_to_pixels, inches_to_pixels, points_to_pixels
+from core.number_format import Displayed, displayed
+from render.office_preview import PageGeometry, Preview, escaped, page_section, pixels, positioned, style_attribute
+from core.units import emu_to_pixels, inches_to_pixels, points_to_pixels
 from fonts.registry import OFFICE_KOREAN_FAMILY
 from fonts.preview import FontRegistry, FontRequest, css_font_family, draws_scripts_apart, script_font_family, script_runs
-from sheet_formatting import STACKED_ROTATION, rotation_degrees
-from sheet_objects import EXCEL_DEFAULT_FIT_PAGES
-from xlsx_colors import css_color
-from xlsx_conditional import ConditionalStyles
-from xlsx_preview_charts import chart_html, chart_kind, chart_title, drawing_box, image_html, is_whole
-from page_sizes import DEFAULT_PAPER, PAPER_BY_SPREADSHEET_CODE
+from sheet.sheet_formatting import STACKED_ROTATION, rotation_degrees
+from sheet.sheet_objects import EXCEL_DEFAULT_FIT_PAGES
+from sheet.xlsx_colors import css_color
+from sheet.xlsx_conditional import ConditionalStyles
+from sheet.xlsx_preview_charts import chart_html, chart_kind, chart_title, drawing_box, image_html, is_whole
+from core.page_sizes import DEFAULT_PAPER, PAPER_BY_SPREADSHEET_CODE
 
 
 DEFAULT_COLUMN_CHARACTERS = 8.43

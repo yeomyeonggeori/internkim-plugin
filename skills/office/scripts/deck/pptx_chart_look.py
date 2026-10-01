@@ -5,9 +5,9 @@ from pptx.oxml.ns import qn
 from charts.kinds import PERCENT_GROUPING, STACKED_GROUPINGS, plot_kind
 from charts.look import DEFAULT_GAP_WIDTH, DEFAULT_HOLE_PERCENT, DEFAULT_TITLE_SIZE, GENERAL_FORMAT, GRID_COLOR, ChartLook, LabelLook, PointLabel, TextLook
 from charts.svg import ChartModel, ChartSeries
-from office_theme import ACCENT_SLOTS, OFFICE_THEME
-from pptx_preview_paint import point_pixels
-from pptx_style import resolve_color, theme_slot_color
+from core.office_theme import ACCENT_SLOTS, OFFICE_THEME
+from deck.pptx_preview_paint import point_pixels
+from deck.pptx_style import resolve_color, theme_slot_color
 
 
 HORIZONTAL_POSITIONS = {"b", "t"}

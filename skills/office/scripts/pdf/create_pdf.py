@@ -6,11 +6,11 @@ import os
 from pathlib import Path
 
 from fonts.registry import BODY_SIZE_POINTS, SANS_BODY, default_family
-from office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
-from office_schema import require_valid
-from pdf_definitions import PDF_SPECIFICATION
+from core.office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
+from core.office_schema import require_valid
+from pdf.pdf_definitions import PDF_SPECIFICATION
 from fonts.pdf_registration import register_document_font
-from page_sizes import DEFAULT_PAPER, PAPER_BY_NAME
+from core.page_sizes import DEFAULT_PAPER, PAPER_BY_NAME
 
 
 def read_specification(arguments):

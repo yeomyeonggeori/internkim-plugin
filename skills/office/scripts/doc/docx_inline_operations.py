@@ -3,16 +3,16 @@ from __future__ import annotations
 import datetime
 
 from docx.oxml import parse_xml
-from docx.oxml.ns import nsdecls, qn
+from docx.oxml.ns import nsdecls
 
-from docx_editing import DocxEditing, placement, resolve_paragraph
-from docx_reference_operations import field_runs, insertion_point, place_runs
-from docx_settings import request_field_update
-from docx_text import visible_text
-from docx_tracking import mark_block_inserted
-from latex_math import OMML_NAMESPACE, LatexNotReadable, latex_omml
-from office_operations import Change
-from office_result import INVALID_VALUE, MISSING_FIELD, OfficeFailure
+from doc.docx_editing import DocxEditing, placement, resolve_paragraph
+from doc.docx_reference_operations import field_runs, insertion_point, place_runs
+from doc.docx_settings import request_field_update
+from doc.docx_text import visible_text
+from doc.docx_tracking import mark_block_inserted
+from doc.latex_math import OMML_NAMESPACE, LatexNotReadable, latex_omml
+from core.office_operations import Change
+from core.office_result import INVALID_VALUE, MISSING_FIELD, OfficeFailure
 
 
 DATE_FIELDS = ("DATE", "TIME", "CREATEDATE", "SAVEDATE")

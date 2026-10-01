@@ -10,10 +10,10 @@ from openpyxl import Workbook
 from python_calamine import CalamineWorkbook
 import xlrd
 
-from convert_definitions import CONVERSION_APPROXIMATED
-from formula_cache import cache_formula_values
-from office_result import Issue
-from excel_limits import fitting_sheet_name
+from convert.convert_definitions import CONVERSION_APPROXIMATED
+from sheet.formula_cache import cache_formula_values
+from core.office_result import Issue
+from core.excel_limits import fitting_sheet_name
 
 
 OPEN_DOCUMENT_NAMESPACES = {

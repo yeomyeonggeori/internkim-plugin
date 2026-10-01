@@ -5,43 +5,39 @@ import base64
 from dataclasses import dataclass, field, replace
 import mimetypes
 from pathlib import Path
-import sys
 import tempfile
 
-SCRIPTS_PATH = Path(__file__).resolve().parents[1]
-sys.path[1:1] = [str(SCRIPTS_PATH / "doc"), str(SCRIPTS_PATH / "sheet"), str(SCRIPTS_PATH / "deck")]
-
-from block_writers import file_data_uri, html_document, markdown_text  # noqa: E402
-from convert_definitions import (  # noqa: E402
+from doc.block_writers import file_data_uri, html_document, markdown_text
+from convert.convert_definitions import (
     CONVERSION_APPROXIMATED, PAGE_WITHOUT_TEXT, ROUTES, TABLE_NOT_FOUND, UNSUPPORTED_CONVERSION, Route, find_route, normalized_extension,
 )
-from docx.shared import Pt  # noqa: E402
-from fonts.docx_embedding import save_document  # noqa: E402
-from fonts.registry import BODY_SIZE_POINTS  # noqa: E402
-from docx_markdown import DEFAULT_DOCUMENT_FONT, markdown_document  # noqa: E402
-from docx_to_blocks import read_docx_blocks  # noqa: E402
-from export_document import export_pdf  # noqa: E402
-from html_to_blocks import read_html_blocks  # noqa: E402
-from latex_math import math_issues  # noqa: E402
-from office_preview import PAGE_SELECTOR, Preview, write_preview  # noqa: E402
-from markdown_blocks import Image, parse_markdown  # noqa: E402
-from markdown_charts import require_valid_charts  # noqa: E402
-from office_inputs import KINDS_BY_NAME, PDF, add_password_argument, office_file, require_unlocked_pdf
-from office_result import INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
-from office_inputs import read_text_input, unlocked_pdf_bytes  # noqa: E402
-from pdf.pdf_definitions import OCR_DOWNLOAD_SIZE, OCR_UNAVAILABLE, PAGE_READ_BY_OCR, page_reading_suggestion  # noqa: E402
-from pdf_ocr import OcrUnavailable, pages_without_words, read_pages_by_ocr  # noqa: E402
-from pdf_to_blocks import read_pdf_blocks  # noqa: E402
-from pdf_workbook import read_pdf_tables, table_details, write_pdf_workbook  # noqa: E402
-from pdf_to_pptx import NO_TEXT_LAYER_REASON, write_pdf_slides  # noqa: E402
-from pptx import Presentation  # noqa: E402
-from pptx_preview import preview_document  # noqa: E402
-from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE, RenderFailed, RendererUnavailable, draw_preview  # noqa: E402
-from render_docx import docx_preview  # noqa: E402
-from render_xlsx import xlsx_preview  # noqa: E402
-from check_pptx import SLIDE_SELECTOR, preview_fonts  # noqa: E402
-from spreadsheet_import import legacy_workbook_to_xlsx  # noqa: E402
-from table_conversions import DELIMITERS, delimited_to_workbook, workbook_to_delimited  # noqa: E402
+from docx.shared import Pt
+from fonts.docx_embedding import save_document
+from fonts.registry import BODY_SIZE_POINTS
+from doc.docx_markdown import DEFAULT_DOCUMENT_FONT, markdown_document
+from convert.docx_to_blocks import read_docx_blocks
+from doc.export_document import export_pdf
+from convert.html_to_blocks import read_html_blocks
+from doc.latex_math import math_issues
+from render.office_preview import PAGE_SELECTOR, Preview, write_preview
+from doc.markdown_blocks import Image, parse_markdown
+from doc.markdown_charts import require_valid_charts
+from core.office_inputs import KINDS_BY_NAME, PDF, add_password_argument, office_file, require_unlocked_pdf
+from core.office_result import INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
+from core.office_inputs import read_text_input, unlocked_pdf_bytes
+from pdf.pdf_definitions import OCR_DOWNLOAD_SIZE, OCR_UNAVAILABLE, PAGE_READ_BY_OCR, page_reading_suggestion
+from pdf.ocr.pdf_ocr import OcrUnavailable, pages_without_words, read_pages_by_ocr
+from convert.pdf_to_blocks import read_pdf_blocks
+from convert.pdf_workbook import read_pdf_tables, table_details, write_pdf_workbook
+from convert.pdf_to_pptx import NO_TEXT_LAYER_REASON, write_pdf_slides
+from pptx import Presentation
+from deck.pptx_preview import preview_document
+from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE, RenderFailed, RendererUnavailable, draw_preview
+from doc.render_docx import docx_preview
+from sheet.render_xlsx import xlsx_preview
+from deck.check_pptx import SLIDE_SELECTOR, preview_fonts
+from convert.spreadsheet_import import legacy_workbook_to_xlsx
+from convert.table_conversions import DELIMITERS, delimited_to_workbook, workbook_to_delimited
 
 
 OCR_ROUTES = (("pdf", "docx"), ("pdf", "md"), ("pdf", "xlsx"))

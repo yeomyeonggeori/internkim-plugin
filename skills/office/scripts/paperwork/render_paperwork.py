@@ -7,12 +7,12 @@ from pathlib import Path
 
 from fonts.registry import SANS_BODY, default_family
 from fonts.docx_embedding import save_document
-from office_result import DOCUMENTS_FOLDER, MISSING_FIELD, PERMISSION_DENIED, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
-from office_schema import require_valid
+from core.office_result import DOCUMENTS_FOLDER, MISSING_FIELD, PERMISSION_DENIED, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
+from core.office_schema import require_valid
 from fonts.pdf_registration import register_document_font
-from paperwork_definitions import CONTRACT_DOCUMENT, PAPERWORK_CONTENT_FIELDS, PAPERWORK_DOCUMENT
-from page_sizes import DEFAULT_PAPER
-from paperwork_design import (
+from paperwork.paperwork_definitions import CONTRACT_DOCUMENT, PAPERWORK_CONTENT_FIELDS, PAPERWORK_DOCUMENT
+from core.page_sizes import DEFAULT_PAPER
+from paperwork.paperwork_design import (
     COLOR_BORDER,
     COLOR_HEADER_FILL,
     COLOR_INK,

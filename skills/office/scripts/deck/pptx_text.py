@@ -4,11 +4,11 @@ from dataclasses import dataclass
 import html
 import re
 
-from css_color import Color, parse_css_color
+from core.css_color import Color, parse_css_color
 from fonts.pptx_embedding import RunFont, run_font
-from pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU
-from text_script import is_east_asian
-from units import EMU_PER_POINT
+from deck.pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU
+from core.text_script import is_east_asian
+from core.units import EMU_PER_POINT
 
 
 LINE_WIDTH_SLACK_RATIO = 0.01

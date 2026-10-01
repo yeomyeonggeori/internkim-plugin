@@ -4,7 +4,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"))
 
-from office_schema import closest_name  # noqa: E402
+from core.office_schema import closest_name  # noqa: E402
 
 
 OPERATIONS = ["set_cell", "set_range", "delete_chart", "hide_sheet", "rename_sheet", "add_table", "add_chart", "format_range"]

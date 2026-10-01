@@ -8,14 +8,14 @@ from pptx.oxml import parse_xml
 from pptx.oxml.ns import qn
 from pptx.parts.slide import SlidePart
 
-from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
-from office_result import INVALID_VALUE, OfficeFailure
-from office_schema import closest_suggestion
-from pptx_element_operations import rgb
-from pptx_relationships import NOT_COPIED_RELATIONSHIP_TYPES, carry_relationships
-from pptx_sections import remember_section, remove_from_custom_shows
-from pptx_targets import PptxEditing, resolve_slide
-from pptx_text_operations import replace_text
+from core.office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
+from core.office_result import INVALID_VALUE, OfficeFailure
+from core.office_schema import closest_suggestion
+from deck.pptx_element_operations import rgb
+from deck.pptx_relationships import NOT_COPIED_RELATIONSHIP_TYPES, carry_relationships
+from deck.pptx_sections import remember_section, remove_from_custom_shows
+from deck.pptx_targets import PptxEditing, resolve_slide
+from deck.pptx_text_operations import replace_text
 
 
 TITLE_PLACEHOLDER_TYPES = {"title", "ctrTitle"}

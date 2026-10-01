@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 
-from office_theme import OFFICE_ACCENTS
+from core.office_theme import OFFICE_ACCENTS
 
 
 LABEL_FLAGS = {"none": (), "value": ("showVal",), "category": ("showCatName",), "percent": ("showPercent",), "category_percent": ("showCatName", "showPercent")}

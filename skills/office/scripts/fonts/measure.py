@@ -6,7 +6,7 @@ import functools
 from PIL import ImageFont
 
 from fonts.registry import BOLD_WEIGHT, REGULAR_WEIGHT, resolved_face
-from text_script import has_east_asian, is_ideograph
+from core.text_script import has_east_asian, is_ideograph
 
 
 MEASURE_SIZE = 200

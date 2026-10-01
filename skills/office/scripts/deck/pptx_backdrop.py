@@ -5,12 +5,12 @@ import io
 from PIL import Image, UnidentifiedImageError
 from pptx.oxml.ns import qn
 
-from css_color import most_contrasting
-from pptx_geometry import Box, own_box
-from pptx_inheritance import SlideContext, slide_context
-from pptx_preview_paint import background_color, fill_color
-from pptx_shape_kinds import shape_kind
-from pptx_style import resolve_color
+from core.css_color import most_contrasting
+from deck.pptx_geometry import Box, own_box
+from deck.pptx_inheritance import SlideContext, slide_context
+from deck.pptx_preview_paint import background_color, fill_color
+from deck.pptx_shape_kinds import shape_kind
+from deck.pptx_style import resolve_color
 
 
 DARK_TEXT_SLOT = "tx1"

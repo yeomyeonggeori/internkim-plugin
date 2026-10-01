@@ -5,13 +5,13 @@ from pathlib import Path
 from fpdf import FPDF
 from PIL import Image as PillowImage, UnidentifiedImageError
 
-from doc_definitions import IMAGE_UNAVAILABLE
-from markdown_charts import Chart, number_text
-from markdown_blocks import Equation, Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, has_link, inline_segments, link_parts, local_image_problem, strip_inline_markers
-from office_result import Issue
-from office_theme import HYPERLINK_COLOR
-from units import MILLIMETRES_PER_INCH
-from page_sizes import DEFAULT_PAPER
+from doc.doc_definitions import IMAGE_UNAVAILABLE
+from doc.markdown_charts import Chart, number_text
+from doc.markdown_blocks import Equation, Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, has_link, inline_segments, link_parts, local_image_problem, strip_inline_markers
+from core.office_result import Issue
+from core.office_theme import HYPERLINK_COLOR
+from core.units import MILLIMETRES_PER_INCH
+from core.page_sizes import DEFAULT_PAPER
 
 
 HEADING_SIZES = {1: 20, 2: 15, 3: 12.5, 4: 11}

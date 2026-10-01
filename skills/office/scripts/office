@@ -5,10 +5,10 @@ import os
 import pathlib
 import sys
 
-from office_commands import COMMANDS, FORMATS, Command, find_command, find_format
+from core.office_commands import COMMANDS, FORMATS, Command, find_command, find_format
 from office_guide import formats_text, guide_text, guide_verbs
-from office_result import DEPENDENCIES_UNAVAILABLE, UNKNOWN_COMMAND, OfficeFailure, failure_result, print_result, run_command
-from office_schema import closest_name
+from core.office_result import DEPENDENCIES_UNAVAILABLE, UNKNOWN_COMMAND, OfficeFailure, failure_result, print_result, run_command
+from core.office_schema import closest_name
 from skill_runtime import ensure_requirements
 
 
@@ -16,6 +16,7 @@ SKILL_NAME = "office"
 SCRIPTS_PATH = pathlib.Path(__file__).resolve().parent
 PYTHON_COMMAND_SUMMARY = "run a task-local Python script with the office packages installed"
 GUIDE_COMMAND_SUMMARY = "print a format's commands, input fields and issue codes"
+MODULE_LAUNCHER = "import runpy, sys; sys.path[0] = sys.argv.pop(1); runpy.run_module(sys.argv.pop(1), run_name='__main__', alter_sys=True)"
 
 
 def main(arguments: list[str]) -> int:
@@ -126,10 +127,7 @@ def run_python(arguments: list[str]) -> int:
 def run_office_command(command: Command, arguments: list[str]) -> int:
     if command.needs_packages and not ensure_requirements(SKILL_NAME):
         return run_command(reject_missing_dependencies)
-    script_path = str(SCRIPTS_PATH / command.script)
-    if script_path.endswith(".sh"):
-        os.execvpe("bash", ["bash", script_path, *arguments], script_environment(command))
-    os.execve(sys.executable, [sys.executable, script_path, *arguments], script_environment(command))
+    os.execve(sys.executable, [sys.executable, "-c", MODULE_LAUNCHER, str(SCRIPTS_PATH), command.module, *arguments], script_environment(command))
 
 
 def script_environment(command: Command | None) -> dict[str, str]:

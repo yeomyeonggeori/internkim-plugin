@@ -5,17 +5,17 @@ import json
 from openpyxl.styles import Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
-from office_operations import OPERATION_NOT_APPLICABLE, Change
-from office_result import INVALID_VALUE, OfficeFailure
-from cell_values import DATE_FORMAT, typed_date, typed_text
-from display_width import display_width
-from office_schema import closest_suggestion, did_you_mean
-from pivot_formula import parse_formula
-from pivot_layout import PivotAxis, PivotGrid, PivotModel, PivotValue, TopFilter, as_datetime, binned_field, build_model, grouped_field, numbers, pivot_grid, plain_field
-from pivot_parts import PivotPlacement, add_pivot_parts
-from text_values import conversion_operations
-from workbook_access import parse_cell, parse_range, sheet_of
-from workbook_snapshot import cell_values
+from core.office_operations import OPERATION_NOT_APPLICABLE, Change
+from core.office_result import INVALID_VALUE, OfficeFailure
+from sheet.cell_values import DATE_FORMAT, typed_date, typed_text
+from sheet.display_width import display_width
+from core.office_schema import closest_suggestion, did_you_mean
+from sheet.pivot_formula import parse_formula
+from sheet.pivot_layout import PivotAxis, PivotGrid, PivotModel, PivotValue, TopFilter, as_datetime, binned_field, build_model, grouped_field, numbers, pivot_grid, plain_field
+from sheet.pivot_parts import PivotPlacement, add_pivot_parts
+from sheet.text_values import conversion_operations
+from sheet.workbook_access import parse_cell, parse_range, sheet_of
+from sheet.workbook_snapshot import cell_values
 
 
 FUNCTION_CAPTIONS = {"sum": "Sum", "count": "Count", "average": "Average", "max": "Max", "min": "Min"}

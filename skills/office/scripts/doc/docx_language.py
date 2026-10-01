@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from docx.oxml.ns import qn
 
-from doc_definitions import EAST_ASIA_FONT_MISSING
-from docx_blocks import element_text
-from docx_defaults import DOCUMENT_FONT, KOREAN_LANGUAGE, set_default_east_asia_language, set_theme_font_language
-from docx_styles import run_styles
-from office_result import Issue
-from text_script import has_hangul
+from doc.doc_definitions import EAST_ASIA_FONT_MISSING
+from doc.docx_blocks import element_text
+from doc.docx_defaults import DOCUMENT_FONT, KOREAN_LANGUAGE, set_default_east_asia_language, set_theme_font_language
+from doc.docx_styles import run_styles
+from core.office_result import Issue
+from core.text_script import has_hangul
 
 
 DEFAULT_EAST_ASIA_FONT = DOCUMENT_FONT

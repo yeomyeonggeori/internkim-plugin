@@ -1,4 +1,4 @@
-import importlib.util
+import importlib
 import json
 from pathlib import Path
 import re
@@ -13,23 +13,15 @@ SCRIPTS_PATH = OFFICE_PATH / "scripts"
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
 
 sys.path.insert(0, str(SCRIPTS_PATH))
-sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
 
-from office_commands import COMMANDS, FORMATS  # noqa: E402
+from core.office_commands import COMMANDS, FORMATS  # noqa: E402
 from office_guide import guide_text  # noqa: E402
-from office_result import COMMAND_ISSUE_KINDS, IssueKind  # noqa: E402
-from office_schema import CellValue, Field, ListOf, Number, Record, Text, Variant  # noqa: E402
+from core.office_result import COMMAND_ISSUE_KINDS, IssueKind  # noqa: E402
+from core.office_schema import CellValue, Field, ListOf, Number, Record, Text, Variant  # noqa: E402
 
 
 def load_definitions(office_format):
-    definitions_path = SCRIPTS_PATH / office_format.definitions_script
-    sys.path.insert(0, str(definitions_path.parent))
-    module_name = f"{office_format.name}_test_definitions"
-    specification = importlib.util.spec_from_file_location(module_name, definitions_path)
-    module = importlib.util.module_from_spec(specification)
-    sys.modules[module_name] = module
-    specification.loader.exec_module(module)
-    return module
+    return importlib.import_module(office_format.definitions_module)
 
 
 def defined_issue_kinds(module):
@@ -231,7 +223,7 @@ def skeleton_shape(document, definitions):
 
 class DeckReviewResultTest(unittest.TestCase):
     def test_the_review_reports_every_warning_it_writes_as_an_issue_without_legacy_codes(self):
-        from render_review import review_deck
+        from deck.render_review import review_deck
 
         with tempfile.TemporaryDirectory() as temporary_directory:
             deck_path = Path(temporary_directory)

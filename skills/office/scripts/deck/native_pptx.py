@@ -4,14 +4,14 @@ import html
 import pathlib
 import zipfile
 
-from native_pptx_layouts import draw_native_slide
-from native_rendering import SLIDE_HEIGHT, SLIDE_WIDTH, native_colors
+from deck.native_pptx_layouts import draw_native_slide
+from deck.native_rendering import SLIDE_HEIGHT, SLIDE_WIDTH, native_colors
 from fonts.registry import BOLD_WEIGHT, DECK, REGULAR_WEIGHT, default_family
 from fonts.pptx_embedding import RunFont, run_font
-from pptx_notes import noted_slide_numbers, notes_relationship_xml, write_notes_parts
-from pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU, DeckFonts, slide_document, write_pptx_static_files, xml_document
-from slide_model import SlideModel
-from units import EMU_PER_PIXEL
+from deck.pptx_notes import noted_slide_numbers, notes_relationship_xml, write_notes_parts
+from deck.pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU, DeckFonts, slide_document, write_pptx_static_files, xml_document
+from deck.slide_model import SlideModel
+from core.units import EMU_PER_PIXEL
 
 
 class NativeSlideCanvas:

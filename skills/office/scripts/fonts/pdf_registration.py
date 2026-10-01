@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from fonts.registry import BOLD_WEIGHT, FAMILIES, REGULAR_WEIGHT, SANS_BODY, default_family, resolved_face
-from office_result import BOLD_FONT_UNAVAILABLE, Issue
+from core.office_result import BOLD_FONT_UNAVAILABLE, Issue
 
 
 BUNDLED_FAMILY_NAMES = ", ".join(family.name for family in FAMILIES)

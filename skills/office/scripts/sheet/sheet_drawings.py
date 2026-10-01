@@ -6,15 +6,15 @@ from lxml import etree
 from openpyxl.drawing.image import Image
 from PIL import Image as PillowImage, UnidentifiedImageError
 
-from office_operations import Change
-from office_result import INPUT_NOT_FOUND, INVALID_VALUE, OfficeFailure
-from sheet_definitions import SHAPE_GEOMETRIES
-from sheet_formatting import require_colors
-from workbook_access import parse_cell, sheet_of
-from workbook_fidelity import DRAWING_NAMESPACE, EditRecord, create_drawing, drawing_part, shift_anchor
-from workbook_package import Package, worksheet_parts
-from units import EMU_PER_CENTIMETRE, EMU_PER_PIXEL, PIXELS_PER_CENTIMETRE
-from image_formats import PICTURE_FORMATS_TEXT
+from core.office_operations import Change
+from core.office_result import INPUT_NOT_FOUND, INVALID_VALUE, OfficeFailure
+from sheet.sheet_definitions import SHAPE_GEOMETRIES
+from sheet.sheet_formatting import require_colors
+from sheet.workbook_access import parse_cell, sheet_of
+from sheet.workbook_fidelity import DRAWING_NAMESPACE, EditRecord, create_drawing, drawing_part, shift_anchor
+from sheet.workbook_package import Package, worksheet_parts
+from core.units import EMU_PER_CENTIMETRE, EMU_PER_PIXEL, PIXELS_PER_CENTIMETRE
+from core.image_formats import PICTURE_FORMATS_TEXT
 
 
 DRAWING_MAIN_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/main"

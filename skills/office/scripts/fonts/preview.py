@@ -6,9 +6,9 @@ import functools
 from fontTools.ttLib import TTFont
 
 from fonts.registry import SANS_BODY, default_family, resolved_face
-from units import points_to_pixels
+from core.units import points_to_pixels
 from fonts.measure import FontFace, font_face, split_breakable, text_width_points
-from text_script import has_east_asian, is_ideograph
+from core.text_script import has_east_asian, is_ideograph
 
 
 DEFAULT_FAMILY = default_family(SANS_BODY).name

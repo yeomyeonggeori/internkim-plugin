@@ -7,16 +7,16 @@ import tempfile
 from lxml import etree
 from openpyxl.utils import get_column_letter
 
-from formula_cache import cache_formula_values
-from office_operations import apply_batch, save_atomically
-from office_inputs import office_file
-from office_result import OfficeArgumentParser, Result, read_json_file, run_command
-from office_schema import require_valid
-from formula_references import ROW_AXIS, parse_end, rebuild_reference, reference_parts, same_sheet, unquote_sheet_name
-from sheet_operations import SHEET_OPERATIONS, load_editing, save_editing
-from workbook_structure import rewrite_chart_references, rewrite_defined_names, rewrite_formulas
-from template_merge import MERGE_VALUES, MISSING, PLACEHOLDER, MergeReport, fill_text_nodes, repeated_list_name, whole_placeholder, write_package
-from workbook_package import MAIN_NAMESPACE, read_package, worksheet_parts
+from sheet.formula_cache import cache_formula_values
+from core.office_operations import apply_batch, save_atomically
+from core.office_inputs import office_file
+from core.office_result import OfficeArgumentParser, Result, read_json_file, run_command
+from core.office_schema import require_valid
+from sheet.formula_references import ROW_AXIS, parse_end, rebuild_reference, reference_parts, same_sheet, unquote_sheet_name
+from sheet.sheet_operations import SHEET_OPERATIONS, load_editing, save_editing
+from sheet.workbook_structure import rewrite_chart_references, rewrite_defined_names, rewrite_formulas
+from core.template_merge import MERGE_VALUES, MISSING, PLACEHOLDER, MergeReport, fill_text_nodes, repeated_list_name, whole_placeholder, write_package
+from sheet.workbook_package import MAIN_NAMESPACE, read_package, worksheet_parts
 
 
 SHARED_STRINGS_PART = "xl/sharedStrings.xml"
