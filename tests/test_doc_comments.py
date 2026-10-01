@@ -36,6 +36,11 @@ class CommentThreadTest(ContractFixture):
         self.assertNotIn("commentRange", document_xml)
         self.assertNotIn("commentReference", document_xml)
 
+    def test_a_tracked_run_signs_its_comments_with_the_tracking_author(self):
+        write_json(self.directory / "ops.json", [{"op": "add_comment", "block": 5, "find": "일천만 원", "text": "금액 확인 요청"}])
+        self.assertEqual(run_office(["doc", "apply", "contract.docx", "ops.json", "--track", "--author", "최견본"], self.directory)["status"], "ok")
+        self.assertEqual(read_details(self.directory, "contract.docx")["comments"][0]["author"], "최견본")
+
     def test_text_the_block_does_not_hold_is_refused_with_the_block_text(self):
         write_json(self.directory / "ops.json", [{"op": "add_comment", "block": 5, "find": "일천이백만", "text": "확인"}])
         envelope = run_office(["doc", "apply", "contract.docx", "ops.json"], self.directory)

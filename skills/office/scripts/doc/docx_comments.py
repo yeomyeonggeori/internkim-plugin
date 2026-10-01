@@ -143,12 +143,18 @@ def is_removed_run(run) -> bool:
     return False
 
 
+def comment_author(editing: DocxEditing, operation: dict) -> str:
+    if operation.get("author"):
+        return operation["author"]
+    return editing.tracking.author if editing.tracking is not None else ""
+
+
 def plan_add_comment(editing: DocxEditing, operation: dict, location: str) -> Change:
     paragraph = resolve_paragraph(editing, operation["block"], f"{location}.block")
     if not live_runs(paragraph._p):
         raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}: block {operation['block']} has no text to comment on", location))
     runs = anchor_runs(paragraph, anchor_span(paragraph._p, operation, location))
-    comment = editing.document.add_comment(runs, text=operation["text"], author=operation.get("author") or "")
+    comment = editing.document.add_comment(runs, text=operation["text"], author=comment_author(editing, operation))
     ensure_paragraph_identifier(editing.document, comment._comment_elm)
 
     def change() -> str:
@@ -240,7 +246,7 @@ def plan_reply_comment(editing: DocxEditing, operation: dict, location: str) -> 
 
     def change() -> str:
         root = thread_root(editing, parent)
-        reply = editing.document.comments.add_comment(text=operation["text"], author=operation.get("author") or "")
+        reply = editing.document.comments.add_comment(text=operation["text"], author=comment_author(editing, operation))
         reply_element = reply._comment_elm
         set_extended_entry(editing, root)
         set_extended_entry(editing, reply_element, parent_identifier=ensure_paragraph_identifier(editing.document, root))
