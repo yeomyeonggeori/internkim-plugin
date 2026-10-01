@@ -40,6 +40,9 @@ SLIDE_TOO_CROWDED = review_check("SLIDE_TOO_CROWDED", "the slide is visually cro
 CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is larger than its box, so it is clipped or spills out", "enlarge the box, cut the content, or lower the type size")
 OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "move or resize the element so it sits inside the slide")
 TEXT_OVERLAP = review_check("TEXT_OVERLAP", "two pieces of text cover each other", "separate the two text blocks or shorten the one that spills")
+TEXT_COVERED = review_check("TEXT_COVERED", "a box painted over text hides part of it", "shorten the slide's body so each part stays in its own place, or split the slide in two")
+FOOTER_CROSSED = review_check("FOOTER_CROSSED", "slide content reaches into the footer band", "shorten or split the content so it ends above the footer")
+TITLE_TOO_LONG = review_check("TITLE_TOO_LONG", "a slide title runs past three lines", "state the conclusion in one short sentence and move the detail into the body or the speaker notes")
 TINY_TEXT = review_check("TINY_TEXT", "rendered text is smaller than 1% of the slide width (16px on a 1600px slide)", "raise the text size, or shorten the slide so the kit does not shrink it")
 IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "set object-fit: cover or contain, or size the image to its ratio")
 GEOMETRY_NOT_MEASURED = review_check("GEOMETRY_NOT_MEASURED", "no renderer measured element geometry, so overflow, overlap and stretched images were not checked", "install bun or node 18 and build again, or say the layout was not measured")
@@ -59,7 +62,7 @@ INCONSISTENT_FOOTER_BASELINE = review_check("INCONSISTENT_FOOTER_BASELINE", "the
 UNPINNED_FOOTER = review_check("UNPINNED_FOOTER", "the recurring footer is not pinned to the frame bottom", "give it margin-top: auto inside the flex column slide")
 MISSING_SPEAKER_NOTES = review_check("MISSING_SPEAKER_NOTES", "a slide has no speaker notes", 'add an <aside class="notes"> script to every slide')
 
-SLIDE_RENDER_CHECKS = (SLIDE_BLANK, SAFE_MARGIN_INTRUSION, EDGE_CLIPPING, SLIDE_TOO_SPARSE, SLIDE_TOO_CROWDED, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, IMAGE_DISTORTED, TINY_TEXT, GEOMETRY_NOT_MEASURED, FRAME_FIT_RISK, UNRELIABLE_VISUAL_EVIDENCE)
+SLIDE_RENDER_CHECKS = (SLIDE_BLANK, SAFE_MARGIN_INTRUSION, EDGE_CLIPPING, SLIDE_TOO_SPARSE, SLIDE_TOO_CROWDED, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, TEXT_COVERED, FOOTER_CROSSED, TITLE_TOO_LONG, IMAGE_DISTORTED, TINY_TEXT, GEOMETRY_NOT_MEASURED, FRAME_FIT_RISK, UNRELIABLE_VISUAL_EVIDENCE)
 DESIGN_CHECKS = (
     SIDE_STRIPE,
     GHOST_CARD,

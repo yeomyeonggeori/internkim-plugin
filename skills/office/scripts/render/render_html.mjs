@@ -20,7 +20,7 @@ import { measurePageGeometry } from "./page_geometry.mjs";
 import { analyzePagePixels } from "./page_pixels.mjs";
 import { exportedListAttribute, exportedTextAttribute, extractTextLayout, hideExportedText, insertMarkerProbes, markerProbeAttribute, markerProbeHostId } from "./text_layout.mjs";
 
-const geometryThresholds = { pixelTolerance: 4, overlapRatioMinimum: 0.12, aspectRatioTolerance: 0.05, textPreviewLength: 40, smallestTextShareOfWidth: 0.01 };
+const geometryThresholds = { pixelTolerance: 4, overlapRatioMinimum: 0.12, aspectRatioTolerance: 0.05, textPreviewLength: 40, smallestTextShareOfWidth: 0.01, titleLineMaximum: 3, backgroundShareOfSlide: 0.9 };
 const pageAttribute = "data-render-page";
 const pdfPageStyle = `[${pageAttribute}] { break-after: page; overflow: hidden; margin: 0 !important; } [${pageAttribute}="last"] { break-after: auto; }`;
 const resetStyle = "html, body { margin: 0 !important; padding: 0 !important; }";

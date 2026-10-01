@@ -131,10 +131,29 @@
 
   function overflows(slide) {
     if (slide.scrollHeight > slide.clientHeight + overflowTolerance || slide.scrollWidth > slide.clientWidth + overflowTolerance) return true;
+    if (partsCollide(slide)) return true;
     return Array.from(slide.querySelectorAll("*")).some((child) => {
       if (child.closest("aside.notes, .kit-chart") || child.clientHeight === 0) return false;
       return child.scrollHeight > child.clientHeight + overflowTolerance || child.scrollWidth > child.clientWidth + overflowTolerance;
     });
+  }
+
+  function placedParts(slide) {
+    return Array.from(slide.children)
+      .filter((child) => !child.classList.contains("kit-ring") && child.tagName !== "ASIDE")
+      .map((child) => child.getBoundingClientRect())
+      .filter((rect) => rect.width > 0 && rect.height > 0);
+  }
+
+  function rectanglesCollide(first, second) {
+    const width = Math.min(first.right, second.right) - Math.max(first.left, second.left);
+    const height = Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top);
+    return width > overflowTolerance && height > overflowTolerance;
+  }
+
+  function partsCollide(slide) {
+    const parts = placedParts(slide);
+    return parts.some((part, index) => parts.slice(index + 1).some((other) => rectanglesCollide(part, other)));
   }
 
   async function fitSlide(slide, layOut) {

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import json
 import pathlib
 
-from deck_definitions import CONTENT_OVERFLOW, GEOMETRY_NOT_MEASURED, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_OVERLAP, TINY_TEXT
+from deck_definitions import CONTENT_OVERFLOW, FOOTER_CROSSED, GEOMETRY_NOT_MEASURED, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_COVERED, TEXT_OVERLAP, TINY_TEXT, TITLE_TOO_LONG
 from design_warnings import append_deck_warning
 from office_result import Issue
 
@@ -66,6 +66,9 @@ def geometry_warnings(measured: dict[str, object] | None) -> list[Issue]:
         *finding_issues(CONTENT_OVERFLOW, measured["overflow"], describe_overflow, "{count} elements hold more than their box shows"),
         *finding_issues(OUT_OF_FRAME, measured["outOfFrame"], describe_out_of_frame, "{count} elements lie outside the slide"),
         *finding_issues(TEXT_OVERLAP, measured["overlaps"], describe_overlap, "{count} pairs of text overlap"),
+        *finding_issues(TEXT_COVERED, measured.get("coveredText", []), describe_covered_text, "{count} text elements are hidden under a box drawn over them"),
+        *finding_issues(FOOTER_CROSSED, measured.get("footerCrossings", []), describe_footer_crossing, "{count} parts of the slide reach into the footer"),
+        *finding_issues(TITLE_TOO_LONG, measured.get("longTitles", []), describe_long_title, "{count} titles run past three lines"),
         *finding_issues(IMAGE_DISTORTED, measured["distortedImages"], describe_distorted_image, "{count} images are stretched"),
         *finding_issues(TINY_TEXT, measured.get("smallText", []), describe_small_text, "{count} text elements are smaller than the slide can show legibly"),
     ]
@@ -99,6 +102,18 @@ def describe_out_of_frame(finding: dict[str, object]) -> str:
 
 def describe_overlap(finding: dict[str, object]) -> str:
     return f"{element_label(finding['first'])} and {element_label(finding['second'])} overlap by {finding['ratio']:.0%} of the smaller text"
+
+
+def describe_covered_text(finding: dict[str, object]) -> str:
+    return f"{element_label(finding['text'])} lies {finding['ratio']:.0%} under {element_label(finding['box'])}"
+
+
+def describe_footer_crossing(finding: dict[str, object]) -> str:
+    return f"{element_label(finding)} ends at y {finding['bottom']}, below the footer's top at y {finding['footerTop']}"
+
+
+def describe_long_title(finding: dict[str, object]) -> str:
+    return f"{element_label(finding)} wraps to {finding['lines']} lines; keep a title to {finding['maximum']}"
 
 
 def describe_distorted_image(finding: dict[str, object]) -> str:

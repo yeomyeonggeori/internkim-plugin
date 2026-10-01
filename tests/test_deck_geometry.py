@@ -124,5 +124,41 @@ class RenderedGeometryTest(unittest.TestCase):
         self.assertIn("empty below it", dead_zones["slide 2"])
 
 
+def cards_slide(sentence_count: int) -> str:
+    paragraph = "매장 운영 시간을 줄이고 발주 정확도를 높입니다. " * sentence_count
+    cards = "".join(f'<div class="card"><h3>{title}</h3><p>{paragraph}</p></div>' for title in ("품절 알림", "발주 추천", "매출 정산"))
+    return f'<section data-layout="cards"><h2>세 기능이 재고 업무를 줄입니다</h2>{cards}<aside class="notes">세 기능</aside></section>'
+
+
+def kit_deck(*slides: str) -> str:
+    return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>맞춤 시험</title></head><body data-theme="editorial">' + "".join(slides) + "</body></html>"
+
+
+LONG_STATEMENT = '<section data-layout="statement"><h2>' + "재고 관리 자동화로 매장 운영 시간을 줄이고 발주 정확도를 높이며 고객 만족도를 끌어올립니다. " * 6 + '</h2><aside class="notes">긴 문장</aside></section>'
+
+
+class KitCollisionTest(unittest.TestCase):
+    def build(self, source: str) -> dict:
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory) / "slides.html").write_text(source, encoding="utf-8")
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build"], capture_output=True, text=True, cwd=directory)
+        envelope = json.loads(completed.stdout)
+        if envelope["details"]["review"]["renderSource"] != "layout":
+            self.skipTest("the renderer could not run on this host")
+        return envelope
+
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+    def test_cards_that_cover_the_title_and_cross_the_footer_and_a_paragraph_long_title_are_defects(self):
+        acceptance = self.build(kit_deck(cards_slide(30), LONG_STATEMENT))["details"]["acceptance"]
+        self.assertFalse(acceptance["acceptable"])
+        defects = {(defect["code"], defect["location"]) for defect in acceptance["defects"]}
+        self.assertTrue({("TEXT_COVERED", "slide 1"), ("FOOTER_CROSSED", "slide 1"), ("TITLE_TOO_LONG", "slide 2")} <= defects, defects)
+
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+    def test_the_kit_shrinks_cards_that_would_cover_the_title_until_they_fit(self):
+        envelope = self.build(kit_deck(cards_slide(12)))
+        self.assertTrue(envelope["details"]["acceptance"]["acceptable"], envelope["summary"])
+
+
 if __name__ == "__main__":
     unittest.main()

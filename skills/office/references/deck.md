@@ -95,7 +95,7 @@ It writes `build/<deck-slug>.pdf`; add `--format pptx` for PowerPoint or `--form
 1. The build first checks the markup of `slides.html`: an unknown layout, a missing part, a repeated layout, a placeholder such as `XX` or `TODO`, a missing required fact, a wrong slide count, chart numbers that do not parse, or a missing image stops it. Each issue names the slide and the fix.
 2. It then renders and measures every slide. The summary starts with the verdict:
    - `ACCEPTABLE`: deliver the file it names. Other issues are advice; do not redesign a slide that is clean.
-   - `FIX ROUND 1 OF 2` or `2 OF 2`: fix only the listed defects (text that overflows or overlaps, content off the slide, a missing fact, an off-palette color, tiny text, a mostly empty slide) by shortening, splitting or filling, then build again.
+   - `FIX ROUND 1 OF 2` or `2 OF 2`: fix only the listed defects (text that overflows, overlaps or hides under a box, content off the slide or in the footer, a title over three lines, a missing fact, an off-palette color, tiny text, a mostly empty slide) by shortening, splitting or filling, then build again.
    - `STOP FIXING`: deliver and name the defects that remain.
    - `NOT MEASURED`: neither bun nor node 18 could draw the slides, so there is no PDF and a requested PPTX holds only the slide text in stock layouts; deliver the file the verdict names and say the layout was not checked.
 3. Before attaching, open `build/review/contact-sheet-01.png` once and confirm the slides read as intended.
