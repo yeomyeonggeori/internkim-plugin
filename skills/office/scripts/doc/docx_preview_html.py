@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from chart_svg import chart_svg
 from docx_layout import BreakLayout, Fragment, Line, ParagraphLayout, TableLayout, trimmed
 from docx_pagination import NOTE_SEPARATOR_PIXELS, Page, ParagraphSlice, TableSlice
 from docx_preview_css import border_value
@@ -81,7 +82,7 @@ class PageWriter:
         }
         if align == "justify" and not line.is_last:
             declarations["word-spacing"] = justify_spacing(fragments, line.available)
-        if any(fragment.kind in ("image", "box") for fragment in fragments):
+        if any(fragment.kind in ("image", "box", "chart") for fragment in fragments):
             declarations.update({"display": "flex", "align-items": "flex-end", "justify-content": FLEX_ALIGNMENT.get(align, "flex-start")})
         return f"<div{style_attribute(declarations)}>{self.fragments_html(fragments)}</div>"
 
@@ -115,6 +116,10 @@ class PageWriter:
             return f'<span{style_attribute({"display": "inline-block", "width": pixels(fragment.width)})}></span>'
         if fragment.kind == "image":
             return f'<img src="{fragment.item.source}"{style_attribute({"width": pixels(fragment.width), "height": pixels(fragment.height), "vertical-align": "bottom"})}>'
+        if fragment.kind == "chart":
+            item = fragment.item
+            box = {"display": "inline-block", "width": pixels(fragment.width), "height": pixels(fragment.height), "vertical-align": "bottom"}
+            return f"<div{style_attribute(box)}>{chart_svg(item.model, fragment.width, fragment.height, fragment.text, item.palette)}</div>"
         if fragment.kind == "box":
             box = {"display": "inline-block", "width": pixels(fragment.width), "height": pixels(fragment.height), "vertical-align": "bottom", "overflow": "hidden", "white-space": "normal"}
             return f"<div{style_attribute(box)}>{self.layouts_html(fragment.inner)}</div>"

@@ -6,6 +6,7 @@ from fpdf import FPDF
 from PIL import Image as PillowImage, UnidentifiedImageError
 
 from doc_definitions import IMAGE_UNAVAILABLE
+from markdown_charts import Chart, number_text
 from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, has_link, inline_segments, link_parts, local_image_problem, strip_inline_markers
 from office_result import Issue
 
@@ -41,6 +42,8 @@ class MarkdownPdf:
             self.write_line(block.text, self.font_size, "I", indent=QUOTE_INDENT)
         elif isinstance(block, Image):
             return self.add_image(block)
+        elif isinstance(block, Chart):
+            self.add_chart_table(block)
         elif isinstance(block, Paragraph):
             self.write_line(block.text, self.font_size)
         return []
@@ -69,6 +72,14 @@ class MarkdownPdf:
                 self.pdf.write(line_height, strip_inline_markers(segment))
         self.pdf.ln(line_height)
         self.pdf.set_left_margin(original_margin)
+
+    def add_chart_table(self, chart: Chart) -> None:
+        specification = chart.specification
+        if specification.get("title"):
+            self.write_line(specification["title"], self.font_size, "B", spacing=1)
+        header = ["", *(entry["name"] for entry in specification["series"])]
+        rows = [[str(category), *(number_text(entry["values"][index]) for entry in specification["series"])] for index, category in enumerate(specification["categories"])]
+        self.add_table([header, *rows])
 
     def add_table(self, rows: list[list[str]]) -> None:
         self.pdf.set_font(self.family, "", self.font_size)

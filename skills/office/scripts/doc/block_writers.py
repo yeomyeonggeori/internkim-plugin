@@ -5,10 +5,16 @@ from dataclasses import dataclass
 import html
 import mimetypes
 
+from chart_svg import chart_svg
+from docx_charts import specification
+from markdown_charts import Chart
 from markdown_blocks import Heading, Image, ListItem, Quote, Table, inline_segments, link_parts
 
 
 LIST_INDENT = "   "
+CHART_FONT_FAMILY = "Malgun Gothic"
+CHART_WIDTH_PIXELS = 640
+CHART_HEIGHT_RATIO = 0.56
 
 
 @dataclass(frozen=True)
@@ -50,6 +56,8 @@ def markdown_lines(block) -> list[str]:
         return [f"> {block.text}"]
     if isinstance(block, Image):
         return [f"![{block.alt}]({block.source})"]
+    if isinstance(block, Chart):
+        return block.source().split("\n")
     return [block.text]
 
 
@@ -75,7 +83,7 @@ def html_document(blocks: list, title: str) -> str:
     )
 
 
-def html_blocks(blocks: list) -> list[str]:
+def html_blocks(blocks: list, chart_font_family: str = CHART_FONT_FAMILY) -> list[str]:
     parts = []
     index = 0
     while index < len(blocks):
@@ -87,9 +95,14 @@ def html_blocks(blocks: list) -> list[str]:
             parts.append(html_list(blocks[index:end]))
             index = end
             continue
-        parts.append(html_block(block))
+        parts.append(chart_html(block, chart_font_family) if isinstance(block, Chart) else html_block(block))
         index += 1
     return parts
+
+
+def chart_html(chart: Chart, font_family: str) -> str:
+    svg = chart_svg(specification(chart.specification).model(), CHART_WIDTH_PIXELS, CHART_WIDTH_PIXELS * CHART_HEIGHT_RATIO, font_family)
+    return f'<figure class="chart" style="margin:12px 0">{svg}</figure>'
 
 
 def html_block(block) -> str:

@@ -6,7 +6,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 import pypdfium2
 
-from office_inputs import office_file
+from office_inputs import add_password_argument, office_file, require_unlocked_pdf
 from office_result import INVALID_VALUE, OfficeArgumentParser, OfficeFailure, Result, run_command
 from pdf_pages import select_pages
 
@@ -25,15 +25,16 @@ BACKGROUND = (235, 235, 235)
 
 def main() -> Result:
     arguments = parse_arguments()
+    require_unlocked_pdf(arguments.pdf_path, arguments.password)
     source_path = Path(arguments.pdf_path).expanduser()
     output_directory = Path(arguments.output_directory).expanduser() if arguments.output_directory else source_path.with_name(f"{source_path.stem}-pages")
-    details = render_pages(source_path, arguments.pages, arguments.scale, output_directory)
+    details = render_pages(source_path, arguments.pages, arguments.scale, output_directory, arguments.password)
     return Result(summary=f"rendered {len(details['pages'])} of {details['pageCount']} pages to {output_directory}", output_path=str(output_directory), details=details)
 
 
-def render_pages(source_path: Path, selection: str, scale: float, output_directory: Path) -> dict:
+def render_pages(source_path: Path, selection: str, scale: float, output_directory: Path, password: str | None) -> dict:
     require_scale(scale)
-    document = pypdfium2.PdfDocument(str(source_path))
+    document = pypdfium2.PdfDocument(str(source_path), password=password)
     try:
         page_count = len(document)
         numbers = choose_pages(selection, page_count)
@@ -101,6 +102,7 @@ def parse_arguments():
     parser.add_argument("--pages", default="", help=f"pages to render, such as 1,3-5; default the first {DEFAULT_PAGE_LIMIT}")
     parser.add_argument("--scale", type=float, default=DEFAULT_SCALE, help=f"pixels per point, default {DEFAULT_SCALE}; 1 is 72 dpi")
     parser.add_argument("--output-directory", default="", help="where the PNG files go, default <pdf name>-pages beside the PDF")
+    add_password_argument(parser)
     return parser.parse_args()
 
 

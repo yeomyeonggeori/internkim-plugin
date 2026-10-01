@@ -4,11 +4,14 @@ from dataclasses import dataclass
 from pathlib import Path
 import re
 
+from markdown_charts import FENCE, parse_chart_fence
+
 
 HEADING_PATTERN = re.compile(r"^(#{1,4})\s+(.*)$")
 LIST_PATTERN = re.compile(r"^(\s*)([-*]|\d+[.)])\s+(.*)$")
 IMAGE_LINE_PATTERN = re.compile(r"^\s*!\[([^\]]*)\]\(([^)\s]+)\)\s*$")
 LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
+CHART_FENCE_OPENING = f"{FENCE}chart"
 INLINE_PATTERN = re.compile(r"(\[[^\]]+\]\([^)\s]+\)|\*\*.+?\*\*|\*.+?\*|`.+?`)")
 
 
@@ -61,12 +64,21 @@ def parse_markdown(markdown_text: str) -> list:
         if not stripped:
             index += 1
             continue
+        if stripped.lower() == CHART_FENCE_OPENING:
+            block, index = chart_block(lines, index)
+            blocks.append(block)
+            continue
         list_match = LIST_PATTERN.match(line)
         if not list_match:
             list_indents = []
         block, index = next_block(lines, index, list_match, list_indents)
         blocks.append(block)
     return blocks
+
+
+def chart_block(lines: list[str], index: int):
+    end = next((position for position in range(index + 1, len(lines)) if lines[position].strip() == FENCE), len(lines))
+    return parse_chart_fence(lines[index + 1:end], index + 1), end + 1
 
 
 def next_block(lines: list[str], index: int, list_match, list_indents: list[int]):
@@ -105,7 +117,7 @@ def paragraph_block(lines: list[str], index: int):
 
 def continues_paragraph(line: str) -> bool:
     stripped = line.strip()
-    if not stripped or HEADING_PATTERN.match(stripped) or is_table_line(line):
+    if not stripped or HEADING_PATTERN.match(stripped) or is_table_line(line) or stripped.lower() == CHART_FENCE_OPENING:
         return False
     return not LIST_PATTERN.match(line) and not IMAGE_LINE_PATTERN.match(line)
 

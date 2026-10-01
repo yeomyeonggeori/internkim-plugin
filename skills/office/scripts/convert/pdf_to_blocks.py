@@ -91,11 +91,11 @@ class PdfReading:
     text_right: float | None = None
 
 
-def read_pdf_blocks(path: Path, media_directory: Path, media_prefix: str) -> PdfReading:
+def read_pdf_blocks(path: Path, media_directory: Path, media_prefix: str, password: str | None) -> PdfReading:
     reading = PdfReading()
-    rendered = pypdfium2.PdfDocument(str(path))
+    rendered = pypdfium2.PdfDocument(str(path), password=password)
     try:
-        with pdfplumber.open(str(path)) as pdf:
+        with pdfplumber.open(str(path), password=password or "") as pdf:
             pages = [page_segments(page) for page in pdf.pages]
             repeated = repeated_furniture(pages, pdf.pages)
             body_size = dominant_size([segment for segments in pages for segment in segments])

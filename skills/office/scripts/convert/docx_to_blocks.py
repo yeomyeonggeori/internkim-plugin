@@ -9,6 +9,8 @@ from docx.text.paragraph import Paragraph as DocxParagraph
 
 from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, heading_level
 from docx_text import live_runs, run_text, visible_text
+from docx_charts import RELATIONSHIP_NAMESPACE, chart_references, read_specification
+from markdown_charts import Chart
 from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table
 
 
@@ -49,6 +51,7 @@ def read_docx_blocks(path: Path, media_directory_name: str) -> DocumentReading:
 def add_paragraph(reading: DocumentReading, paragraph: DocxParagraph, numbering: dict, media_directory_name: str) -> None:
     for image in paragraph_images(reading, paragraph, media_directory_name):
         reading.blocks.append(image)
+    reading.blocks.extend(paragraph_charts(paragraph))
     text = inline_markdown(paragraph).strip()
     if not text:
         return
@@ -62,6 +65,15 @@ def add_paragraph(reading: DocumentReading, paragraph: DocxParagraph, numbering:
         return
     style_name = paragraph.style.name if paragraph.style is not None else ""
     reading.blocks.append(Quote(text) if style_name in QUOTE_STYLES else Paragraph(text))
+
+
+def paragraph_charts(paragraph: DocxParagraph) -> list[Chart]:
+    charts = []
+    for reference in chart_references(paragraph._p):
+        relationship_id = reference.get(f"{{{RELATIONSHIP_NAMESPACE}}}id")
+        if relationship_id in paragraph.part.rels:
+            charts.append(Chart(read_specification(paragraph.part.rels[relationship_id].target_part).to_dictionary()))
+    return charts
 
 
 def numbering_formats(document) -> dict[tuple[str, int], str]:

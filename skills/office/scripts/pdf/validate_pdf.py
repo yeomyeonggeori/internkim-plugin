@@ -5,7 +5,7 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
-from office_inputs import office_file
+from office_inputs import add_password_argument, office_file, require_unlocked_pdf
 from office_result import Issue, OfficeArgumentParser, Result, run_command
 from pdf_definitions import (
     KOREAN_FONT_NOT_EMBEDDED,
@@ -22,8 +22,9 @@ from text_checks import contains_korean, korean_font_issues, text_presence_issue
 
 def main() -> Result:
     arguments = parse_arguments()
+    require_unlocked_pdf(arguments.pdf_path, arguments.password)
     source_path = Path(arguments.pdf_path)
-    reader = PdfReader(str(source_path))
+    reader = PdfReader(str(source_path), password=arguments.password)
     extracted_text = "\n".join(page.extract_text() or "" for page in reader.pages)
     font_summary = summarize_fonts(reader)
     issues = (
@@ -149,6 +150,7 @@ def parse_arguments():
     parser.add_argument("--required-text", action="append", default=[])
     parser.add_argument("--forbidden-text", action="append", default=[])
     parser.add_argument("--required-font-substring", default="")
+    add_password_argument(parser)
     return parser.parse_args()
 
 

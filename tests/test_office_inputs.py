@@ -82,6 +82,30 @@ class InputBoundaryTest(unittest.TestCase):
         self.assertNotIn("Traceback", stderr)
         self.assertEqual(envelope["issues"][0]["code"], "PDF_PASSWORD_REQUIRED")
 
+    def test_the_password_opens_the_pdf_for_every_reader_and_convert(self):
+        for command in READERS["pdf"]:
+            with self.subTest(command=command):
+                envelope, stderr = run_office([*command.split(), "locked.pdf", "--password", "sample-password"], self.directory)
+                self.assertNotIn("Traceback", stderr)
+                self.assertNotIn("PDF_PASSWORD_REQUIRED", [issue["code"] for issue in envelope["issues"]], command)
+        envelope, _ = run_office(["convert", "locked.pdf", "opened.md", "--password", "sample-password"], self.directory)
+        self.assertNotIn("PDF_PASSWORD_REQUIRED", [issue["code"] for issue in envelope["issues"]])
+        self.assertTrue((self.directory / "opened.md").exists())
+
+    def test_a_wrong_password_is_refused_as_wrong(self):
+        envelope, _ = run_office(["pdf", "read", "locked.pdf", "--password", "guess"], self.directory)
+        self.assertEqual(envelope["issues"][0]["code"], "PDF_PASSWORD_REQUIRED")
+        self.assertIn("does not open it", envelope["issues"][0]["message"])
+
+    def test_an_edited_locked_pdf_stays_locked_with_the_same_password(self):
+        edited = self.directory / "edited-locked.pdf"
+        edited.write_bytes((self.directory / "locked.pdf").read_bytes())
+        envelope, _ = run_office(["pdf", "edit", edited.name, "--heading", "추가 조항", "--password", "sample-password"], self.directory)
+        self.assertEqual(envelope["status"], "ok", envelope["issues"])
+        self.assert_refused("pdf read", edited.name, "PDF_PASSWORD_REQUIRED")
+        envelope, _ = run_office(["pdf", "read", edited.name, "--password", "sample-password"], self.directory)
+        self.assertEqual(envelope["details"]["pageCount"], 2)
+
     def test_apply_checks_its_input_before_reading_the_operations(self):
         (self.directory / "ops.json").write_text("[]", encoding="utf-8")
         for command, other in (("doc apply", "plain.xlsx"), ("sheet apply", "plain.pptx"), ("deck apply", "plain.docx")):

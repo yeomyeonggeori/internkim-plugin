@@ -55,7 +55,7 @@ def render_document_pdf(blocks: list, output_path: Path, source_directory: Path,
 
 def render_request(blocks: list, output_path: Path, title: str, fonts: list[tuple[str, int, Path]]) -> DocumentPdfRequest:
     return DocumentPdfRequest(
-        html="\n".join(html_blocks(blocks)),
+        html="\n".join(html_blocks(blocks, fonts[0][0])),
         css=CSS_PATH.read_text(encoding="utf-8"),
         output_path=output_path,
         title=title,

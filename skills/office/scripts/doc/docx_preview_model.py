@@ -58,6 +58,14 @@ class NoteReferenceItem:
 
 
 @dataclass
+class ChartItem:
+    model: object
+    palette: tuple
+    width: float
+    height: float
+
+
+@dataclass
 class BoxItem:
     blocks: list
     width: float

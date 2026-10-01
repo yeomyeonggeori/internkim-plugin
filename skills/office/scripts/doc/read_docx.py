@@ -6,6 +6,7 @@ from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml.ns import qn
 
 from docx_blocks import block_kind, body_block_elements, element_text, has_page_break, heading_level, table_cell_texts, wrap_block
+from docx_charts import chart_references, describe as describe_chart, document_charts
 from docx_comments import describe_comment_threads
 from docx_reference_operations import bookmark_names, describe_notes
 from docx_revisions import collect_revisions
@@ -35,6 +36,9 @@ def main() -> Result:
         "tableStyles": style_names(document, WD_STYLE_TYPE.TABLE),
         "comments": describe_comment_threads(document, elements),
     }
+    charts = [describe_chart(chart) for chart in document_charts(document, elements)]
+    if charts:
+        details["charts"] = charts
     bookmarks = sorted(bookmark_names(document) - {"_GoBack"})
     if bookmarks:
         details["bookmarks"] = bookmarks
@@ -65,7 +69,7 @@ def describe_block(element, document, index: int) -> dict:
     if has_page_break(block):
         description["pageBreak"] = True
     if next(element.iter(qn("w:drawing")), None) is not None:
-        description["picture"] = True
+        description["chart" if chart_references(element) else "picture"] = True
     return description
 
 
@@ -116,7 +120,7 @@ def limited(text: str) -> str:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Read a .docx as indexed blocks, section headers and footers, comment threads, and tracked changes. Block indexes, comment ids and revision ids are what doc apply takes. Block text is the text as if every tracked change were accepted.")
+    parser = OfficeArgumentParser(description="Read a .docx as indexed blocks, section headers and footers, charts with their data, comment threads, and tracked changes. Block indexes, chart indexes, comment ids and revision ids are what doc apply takes. Block text is the text as if every tracked change were accepted.")
     parser.add_argument("document_path", type=office_file("docx"))
     parser.add_argument("--start", type=int, default=0, help="first block index to show")
     parser.add_argument("--revisions", action="store_true", help="list every tracked change with its id, type, author, date, block and text")

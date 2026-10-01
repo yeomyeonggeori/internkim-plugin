@@ -8,6 +8,7 @@ from docx_markdown import DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, mar
 from doc_definitions import PDF_RENDERER_UNAVAILABLE
 from document_pdf import can_render, render_document_pdf
 from markdown_blocks import Heading, parse_markdown
+from markdown_charts import require_valid_charts
 from office_result import KOREAN_FONT_UNAVAILABLE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
 from pdf_fonts import register_regular_and_bold
 from pdf_markdown import MarkdownPdf
@@ -25,6 +26,7 @@ def main() -> Result:
     output_path = Path(arguments.output) if arguments.output else markdown_path.with_suffix("." + arguments.format)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     blocks = parse_markdown(markdown_text)
+    require_valid_charts(blocks, markdown_path.name)
     if arguments.format == "pdf":
         issues = export_pdf(blocks, markdown_text, output_path, markdown_path.parent, arguments.font_path, arguments.font_size)
     else:

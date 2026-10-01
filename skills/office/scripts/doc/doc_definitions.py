@@ -92,8 +92,9 @@ VALIDATE_ISSUE_KINDS = (
 )
 
 BLOCK_INDEX = Number(minimum=0, integer=True)
-INSERT_AFTER = Field("after", Number(minimum=-1, integer=True), "insert after this block index from doc read; -1 inserts at the start")
-INSERT_BEFORE = Field("before", BLOCK_INDEX, "insert before this block index; give after or before, not both")
+INSERT_AFTER = Field("after", BLOCK_INDEX, "insert after this block index from doc read")
+INSERT_BEFORE = Field("before", BLOCK_INDEX, "insert before this block index")
+INSERT_AT = Field("at", Choice(("start", "end")), "insert at the start or the end of the body; give one of after, before and at")
 TARGET_BLOCK = Field("block", BLOCK_INDEX, "block index from doc read", required=True)
 TABLE_BLOCK = Field("block", BLOCK_INDEX, "index of a table block from doc read", required=True)
 ROW_INDEX = Number(minimum=0, integer=True)
@@ -133,6 +134,20 @@ HEADER_FOOTER_FIELDS = (
     Field("page", Choice(("default", "first", "even")), "which pages: first turns on a different first page, even a different even page; default every page"),
     Field("align", ALIGNMENT, "alignment"),
 )
+CHART_KINDS = ("column", "stacked_column", "bar", "stacked_bar", "line", "area", "pie", "doughnut", "combo")
+CHART_SERIES = Record("series", "one data series", (
+    Field("name", Text(non_empty=True), "series name shown in the legend", required=True),
+    Field("values", ListOf(Number(), non_empty=True), "one plain number per category; the unit goes in the title", required=True),
+    Field("line", Boolean(), "combo only: draw this series as a line over the columns"),
+))
+CHART_DATA = (
+    Field("categories", ListOf(CellValue(), non_empty=True), "category labels along the axis, or slice names of a pie"),
+    Field("series", ListOf(CHART_SERIES, non_empty=True), "data series; pie and doughnut take one"),
+    Field("title", Text(), "chart title, with the unit, such as 분기 매출 (억 원)"),
+    Field("legend", Boolean(), "show the legend; default when there is more than one series or a pie"),
+    Field("secondaryAxis", Boolean(), "combo only: draw the lines against their own axis on the right; default when lines and columns differ more than tenfold"),
+)
+CHART_INDEX = Field("chart", Number(minimum=0, integer=True), "chart index from doc read", required=True)
 COMMENT_ID = Field("comment", Number(minimum=0, integer=True), "comment id from doc read", required=True)
 REVISION_SELECTOR = (
     Field("all", Boolean(), "every tracked change"),
@@ -159,24 +174,28 @@ OPERATIONS = Variant(
         Record("insert_paragraph", "insert a paragraph", (
             INSERT_AFTER,
             INSERT_BEFORE,
+            INSERT_AT,
             Field("text", Text(), "paragraph text", required=True),
             Field("style", Text(non_empty=True), "paragraph style name, default Normal"),
         )),
         Record("insert_heading", "insert a heading", (
             INSERT_AFTER,
             INSERT_BEFORE,
+            INSERT_AT,
             Field("text", Text(), "heading text", required=True),
             Field("level", Number(1, 9, integer=True), "heading depth, default 1"),
         )),
         Record("insert_list", "insert list items", (
             INSERT_AFTER,
             INSERT_BEFORE,
+            INSERT_AT,
             Field("items", ListOf(Text(non_empty=True), non_empty=True), "one entry per item", required=True),
             Field("numbered", Boolean(), "numbered instead of bulleted"),
         )),
         Record("insert_table", "insert a table", (
             INSERT_AFTER,
             INSERT_BEFORE,
+            INSERT_AT,
             Field("rows", TABLE_ROWS, "every row the same width, header row first", required=True),
             Field("style", Text(non_empty=True), "table style name, default Table Grid"),
         )),
@@ -203,7 +222,8 @@ OPERATIONS = Variant(
         )),
         Record("insert_table_column", "insert a column copying the formatting of the column it follows; the table keeps its width", (
             TABLE_BLOCK,
-            Field("after", Number(minimum=-1, integer=True), "insert after this column index; -1 inserts first", required=True),
+            Field("after", ROW_INDEX, "insert after this column index"),
+            Field("at", Choice(("start", "end")), "insert as the first or the last column; give after or at"),
             Field("cells", ListOf(CellValue()), "one value per row, header first; missing cells stay empty"),
         )),
         Record("delete_table_column", "delete a column; the others widen to keep the table's width", (
@@ -243,15 +263,33 @@ OPERATIONS = Variant(
         Record("insert_image", "insert a picture as its own paragraph, scaled down to the text width unless a size is given", (
             INSERT_AFTER,
             INSERT_BEFORE,
+            INSERT_AT,
             Field("path", Text(non_empty=True), "PNG, JPEG, GIF, BMP or TIFF file", required=True),
             Field("widthInches", Number(minimum=0.1), "width; the height keeps the aspect ratio unless also given"),
             Field("heightInches", Number(minimum=0.1), "height"),
             Field("align", ALIGNMENT, "paragraph alignment"),
             Field("description", Text(), "alt text read aloud by screen readers"),
         )),
+        Record("insert_chart", "insert a native Word chart with its own data workbook as its own paragraph, as wide as the text unless a size is given", (
+            INSERT_AFTER,
+            INSERT_BEFORE,
+            INSERT_AT,
+            Field("type", Choice(CHART_KINDS), "chart kind; combo draws columns with the series marked line as lines", required=True),
+            *(field if field.name not in ("categories", "series") else Field(field.name, field.shape, field.description, required=True) for field in CHART_DATA),
+            Field("widthInches", Number(minimum=1), "width; default the text width"),
+            Field("heightInches", Number(minimum=1), "height; default a little over half the width"),
+            Field("align", ALIGNMENT, "paragraph alignment"),
+        )),
+        Record("edit_chart", "change a chart's kind, data, title or legend; fields left out keep their current value", (
+            CHART_INDEX,
+            Field("type", Choice(CHART_KINDS), "chart kind"),
+            *CHART_DATA,
+        )),
+        Record("delete_chart", "delete a chart, and its paragraph when nothing else is in it", (CHART_INDEX,)),
         Record("insert_table_of_contents", "insert a table of contents field listing the headings now in the document; Word fills in page numbers when the file opens", (
             INSERT_AFTER,
             INSERT_BEFORE,
+            INSERT_AT,
             Field("levels", Number(1, 9, integer=True), "deepest heading level listed, default 3"),
             Field("title", Text(), "title paragraph above the list"),
         )),
@@ -334,6 +372,7 @@ CHECK_ISSUE_KINDS = (PLACEHOLDER_LEFT, BROKEN_INTERNAL_REFERENCE, STALE_TABLE_OF
 
 MERGE_ISSUE_KINDS = (UNRESOLVED_PLACEHOLDER, UNUSED_VALUE, TEMPLATE_SYNTAX_ERROR)
 
+CHART_BLOCK_INVALID = IssueKind("CHART_BLOCK_INVALID", ERROR, "a ```chart block in the Markdown does not parse or its numbers do not line up, so nothing was written", "fix the line the message names: type:, labels: and values: (or series: name: 1, 2; other: 3, 4) with plain numbers")
 IMAGE_UNAVAILABLE = IssueKind("IMAGE_UNAVAILABLE", WARNING, "a Markdown image is not a readable local file, so its alt text was written instead", "fix the image path relative to the Markdown file, or save a remote image locally first")
 
 PDF_RENDERER_FAILED = IssueKind("PDF_RENDERER_FAILED", ERROR, "the document PDF renderer (takumi-pdf, run by bun or node) could not be installed or could not render", "check that bun or node 18 is on PATH and the network allows its first install, then rerun")
@@ -341,7 +380,7 @@ PDF_RENDERER_UNAVAILABLE = IssueKind("PDF_RENDERER_UNAVAILABLE", WARNING, "neith
 
 GLYPH_NOT_COVERED = IssueKind("GLYPH_NOT_COVERED", WARNING, "some characters have no glyph in the bundled Paperlogy font or the installed Korean font, so they print as empty boxes", "replace those characters, such as an emoji or a rare Hanja, with words")
 
-EXPORT_ISSUE_KINDS = (IMAGE_UNAVAILABLE, PDF_RENDERER_FAILED, PDF_RENDERER_UNAVAILABLE, GLYPH_NOT_COVERED)
+EXPORT_ISSUE_KINDS = (CHART_BLOCK_INVALID, IMAGE_UNAVAILABLE, PDF_RENDERER_FAILED, PDF_RENDERER_UNAVAILABLE, GLYPH_NOT_COVERED)
 
 GUIDE_INPUTS = (
     ("doc create --spec <file>", DOCUMENT_SPECIFICATION),

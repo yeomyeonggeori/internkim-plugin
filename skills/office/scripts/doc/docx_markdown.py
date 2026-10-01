@@ -13,6 +13,8 @@ from doc_definitions import IMAGE_UNAVAILABLE
 from docx_defaults import apply_korean_defaults, set_page
 from docx_tables import add_space_after_table, format_table
 from docx_lists import add_list_paragraph, start_list
+from docx_charts import add_chart_part, drawing_run, next_drawing_id, specification
+from markdown_charts import Chart
 from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, inline_segments, link_parts, local_image_problem
 from office_result import Issue
 
@@ -21,6 +23,7 @@ DEFAULT_DOCUMENT_FONT = "맑은 고딕"
 DEFAULT_DOCUMENT_FONT_SIZE = 10.5
 MAXIMUM_IMAGE_WIDTH = Inches(6)
 LINK_COLOR = "0563C1"
+CHART_HEIGHT_RATIO = 0.56
 
 
 def markdown_document(blocks: list, font_name: str, font_size: float, source_directory: Path) -> tuple[Document, list[Issue]]:
@@ -53,9 +56,19 @@ def add_block(document: Document, block, source_directory: Path, list_ids: dict[
         add_quote(document, block.text)
     elif isinstance(block, Image):
         return add_image(document, block, source_directory)
+    elif isinstance(block, Chart):
+        add_chart(document, block)
     elif isinstance(block, Paragraph):
         add_inline_runs(document.add_paragraph(), block.text)
     return []
+
+
+def add_chart(document: Document, chart: Chart) -> None:
+    section = document.sections[-1]
+    width = int(section.page_width - section.left_margin - section.right_margin)
+    relationship_id = add_chart_part(document, specification(chart.specification))
+    drawing_id = next_drawing_id(document)
+    document.add_paragraph()._p.append(drawing_run(relationship_id, width, int(width * CHART_HEIGHT_RATIO), drawing_id, f"Chart {drawing_id}"))
 
 
 def add_list_item(document: Document, item: ListItem, list_ids: dict[bool, int]):
