@@ -61,7 +61,7 @@ class ApplyTest(DocumentFixture):
     def test_a_misspelled_operation_or_field_suggests_the_close_name(self):
         write_json(self.directory / "ops.json", [{"op": "replace_txt", "find": "a", "replace": "b"}, {"op": "set_text", "block": 1, "texts": "바뀜"}])
         envelope = run_office(["doc", "apply", "fixture.docx", "ops.json"], self.directory)
-        self.assertEqual([issue["suggestion"] for issue in envelope["issues"] if issue["code"] in ("INVALID_VALUE", "UNKNOWN_FIELD")], ["did you mean 'replace_text'?", "did you mean 'text'?"])
+        self.assertEqual([issue["suggestion"] for issue in envelope["issues"] if issue["code"] in ("INVALID_VALUE", "UNKNOWN_FIELD")], ['use "op": "replace_text"', "rename the field to 'text'"])
 
     def test_a_block_out_of_range_names_the_valid_range(self):
         write_json(self.directory / "ops.json", [{"op": "set_text", "block": 40, "text": "바뀜"}])

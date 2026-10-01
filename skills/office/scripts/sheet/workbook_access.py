@@ -5,11 +5,13 @@ import os
 from typing import Iterable
 
 from openpyxl import load_workbook
+from openpyxl.utils import column_index_from_string
 from openpyxl.utils.cell import coordinate_from_string, range_boundaries
 from openpyxl.utils.exceptions import CellCoordinatesException
 
 from office_operations import TARGET_NOT_FOUND
 from office_result import INVALID_VALUE, OfficeFailure
+from office_schema import closest_suggestion, did_you_mean
 
 
 def is_macro_workbook(path: str) -> bool:
@@ -28,8 +30,23 @@ def resolve_sheet(workbook, sheet_name: str | None, location: str):
     match = next((worksheet for worksheet in workbook.worksheets if worksheet.title == sheet_name), None)
     if match is None:
         names = ", ".join(workbook.sheetnames)
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}: the workbook has no sheet named {sheet_name!r}; it has {names}", location))
+        message = f"{location}: the workbook has no sheet named {sheet_name!r}{did_you_mean(sheet_name, workbook.sheetnames)}; it has {names}"
+        raise OfficeFailure(TARGET_NOT_FOUND.issue(message, location, closest_suggestion(sheet_name, workbook.sheetnames, 'use "sheet": "{match}"')))
     return match
+
+
+MAXIMUM_COLUMN = 16384
+
+
+def sheet_of(workbook, operation: dict, location: str):
+    return resolve_sheet(workbook, operation.get("sheet"), f"{location}.sheet")
+
+
+def column_index(text: str, location: str) -> int:
+    letters = text.strip().upper()
+    if not letters.isalpha() or not letters.isascii() or len(letters) > 3 or column_index_from_string(letters) > MAXIMUM_COLUMN:
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: {text!r} is not a column letter such as C", location))
+    return column_index_from_string(letters)
 
 
 def parse_cell(text: str, location: str) -> tuple[int, int]:

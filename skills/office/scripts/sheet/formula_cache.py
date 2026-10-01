@@ -1,33 +1,42 @@
 from __future__ import annotations
 
-import os
-import posixpath
-import tempfile
-import zipfile
+from openpyxl.worksheet.formula import ArrayFormula
 
-from lxml import etree
-
+from dynamic_arrays import cell_element, dynamic_array_cell_metadata, mark_array_formula
+from excel_functions import is_dynamic_array_formula
 from office_result import Issue
 from sheet_definitions import FORMULA_NOT_EVALUATED
-from workbook_values import NUMBER, CachedValue, Evaluation, evaluate_workbook
+from workbook_package import Package, main_tag, read_package, worksheet_parts, write_package
+from workbook_values import NUMBER, CachedValue, Evaluation, clear_array_area, evaluate_workbook
 
 
-MAIN_NAMESPACE = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
-RELATIONSHIP_NAMESPACE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-PACKAGE_RELATIONSHIP_NAMESPACE = "http://schemas.openxmlformats.org/package/2006/relationships"
-WORKSHEET_RELATIONSHIP = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"
 LISTED_CELL_LIMIT = 20
 
 
-
 def save_workbook_with_values(workbook, path: str) -> list[Issue]:
+    restore_dynamic_arrays(workbook)
     workbook.save(path)
     return cache_formula_values(path)
 
 
+def restore_dynamic_arrays(workbook) -> None:
+    for worksheet in workbook.worksheets:
+        for cell in list(worksheet._cells.values()):
+            if isinstance(cell.value, ArrayFormula) and is_dynamic_array_formula(cell.value.text or ""):
+                clear_previous_spill(worksheet, cell)
+
+
+def clear_previous_spill(worksheet, cell) -> None:
+    formula = cell.value.text
+    clear_array_area(worksheet, cell.value.ref, cell.coordinate)
+    cell.value = formula
+
+
 def cache_formula_values(path: str) -> list[Issue]:
-    evaluation = evaluate_workbook(path)
-    rewrite_archive(path, evaluation)
+    evaluation = evaluate_workbook(path, writes_dynamic_arrays=True)
+    package = read_package(path)
+    store_values(package, evaluation)
+    write_package(package, path)
     return not_evaluated_issues(evaluation)
 
 
@@ -41,69 +50,52 @@ def not_evaluated_issues(evaluation: Evaluation) -> list[Issue]:
     return [FORMULA_NOT_EVALUATED.issue(f"{len(cells)} formula cells have no computed value: {listed}{suffix}", cells[0])]
 
 
-def rewrite_archive(path: str, evaluation: Evaluation) -> None:
-    with zipfile.ZipFile(path) as archive:
-        entries = [(info, archive.read(info.filename)) for info in archive.infolist()]
-        sheet_parts = worksheet_parts(archive)
-    directory = os.path.dirname(os.path.abspath(path))
-    descriptor, temporary_path = tempfile.mkstemp(prefix=".office-", suffix=".xlsx", dir=directory)
-    os.close(descriptor)
-    try:
-        with zipfile.ZipFile(temporary_path, "w") as rewritten:
-            for info, content in entries:
-                sheet_name = sheet_parts.get(info.filename)
-                rewritten.writestr(info, with_cached_values(content, sheet_name, evaluation) if sheet_name else content)
-        os.replace(temporary_path, path)
-    finally:
-        if os.path.exists(temporary_path):
-            os.unlink(temporary_path)
+def store_values(package: Package, evaluation: Evaluation) -> None:
+    dynamic = any(array.is_dynamic for array in evaluation.arrays.values())
+    cell_metadata = dynamic_array_cell_metadata(package) if dynamic else None
+    for part, sheet_name in worksheet_parts(package).items():
+        root = package.xml(part)
+        if store_sheet_values(root, sheet_name, evaluation, cell_metadata):
+            package.set_xml(part, root)
 
 
-def worksheet_parts(archive: zipfile.ZipFile) -> dict:
-    workbook = etree.fromstring(archive.read("xl/workbook.xml"))
-    relationships = etree.fromstring(archive.read("xl/_rels/workbook.xml.rels"))
-    targets = {
-        relationship.get("Id"): relationship.get("Target")
-        for relationship in relationships.iter(f"{{{PACKAGE_RELATIONSHIP_NAMESPACE}}}Relationship")
-        if relationship.get("Type") == WORKSHEET_RELATIONSHIP
-    }
-    parts = {}
-    for sheet in workbook.iter(f"{{{MAIN_NAMESPACE}}}sheet"):
-        target = targets.get(sheet.get(f"{{{RELATIONSHIP_NAMESPACE}}}id"))
-        if target is not None:
-            parts[part_name(target)] = sheet.get("name")
-    return parts
-
-
-def part_name(target: str) -> str:
-    if target.startswith("/"):
-        return target.lstrip("/")
-    return posixpath.normpath(posixpath.join("xl", target))
-
-
-def with_cached_values(content: bytes, sheet_name: str, evaluation: Evaluation) -> bytes:
-    root = etree.fromstring(content)
+def store_sheet_values(root, sheet_name: str, evaluation: Evaluation, cell_metadata: str | None) -> bool:
     changed = False
-    for cell in root.iter(f"{{{MAIN_NAMESPACE}}}c"):
-        value = evaluation.values.get((sheet_name, cell.get("r")))
-        if value is None or cell.find(f"{{{MAIN_NAMESPACE}}}f") is None:
+    for cell in list(root.iter(main_tag("c"))):
+        key = (sheet_name, cell.get("r"))
+        value = evaluation.values.get(key)
+        if value is None or cell.find(main_tag("f")) is None:
             continue
         store_value(cell, value)
+        array = evaluation.arrays.get(key)
+        if array is not None:
+            mark_array_formula(cell, array.reference, cell_metadata if array.is_dynamic else None)
+            store_array_cells(root, array)
         changed = True
-    if not changed:
-        return content
-    return etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+    return changed
+
+
+def store_array_cells(root, array) -> None:
+    for coordinate, value in array.cells.items():
+        cell = cell_element(root, coordinate)
+        for child in list(cell):
+            cell.remove(child)
+        cell.attrib.pop("t", None)
+        if value is not None:
+            store_value(cell, value)
 
 
 def store_value(cell, value: CachedValue) -> None:
-    for existing in cell.findall(f"{{{MAIN_NAMESPACE}}}v"):
+    for existing in cell.findall(main_tag("v")):
         cell.remove(existing)
     if value.cell_type == NUMBER:
         cell.attrib.pop("t", None)
     else:
         cell.set("t", value.cell_type)
-    element = etree.SubElement(cell, f"{{{MAIN_NAMESPACE}}}v")
+    element = cell.makeelement(main_tag("v"), {})
     element.text = value.text
-    formula = cell.find(f"{{{MAIN_NAMESPACE}}}f")
-    cell.remove(element)
-    formula.addnext(element)
+    formula = cell.find(main_tag("f"))
+    if formula is None:
+        cell.append(element)
+    else:
+        formula.addnext(element)

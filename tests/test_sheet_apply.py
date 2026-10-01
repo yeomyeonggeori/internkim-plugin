@@ -63,6 +63,15 @@ class WorkbookEditTest(WorkbookFixture):
         return series.tx.strRef.f, series.cat.numRef.f if series.cat.numRef else series.cat.strRef.f, series.val.numRef.f
 
 
+class MisspelledInputTest(WorkbookEditTest):
+    def test_a_misspelled_operation_field_or_sheet_names_the_closest_one(self):
+        envelope = self.apply([{"op": "set_cel", "cell": "A1"}, {"op": "format_range", "range": "A1", "fontcolor": "FF0000"}], name="fixture.xlsx")
+        self.assertEqual([issue["suggestion"] for issue in envelope["issues"]], ['use "op": "set_cell"', "rename the field to 'fontColor'"])
+        envelope = self.apply([{"op": "set_cell", "sheet": "sales", "cell": "A1"}], name="fixture.xlsx")
+        self.assertEqual(envelope["issues"][0]["suggestion"], 'use "sheet": "Sales"')
+        self.assertIn("it has Sales, Summary", envelope["issues"][0]["message"])
+
+
 class InsertAndDeleteTest(WorkbookEditTest):
     def test_inserted_rows_shift_every_reference_that_points_past_them(self):
         self.edit([{"op": "insert_rows", "sheet": "Sales", "at": 3, "count": 2}])
@@ -221,7 +230,7 @@ class CellAndStyleTest(WorkbookEditTest):
     def test_a_chart_is_added_from_a_block_with_its_header_and_categories(self):
         self.edit([{"op": "add_chart", "sheet": "Sales", "type": "line", "range": "A1:B4", "title": "Amounts", "anchor": "G20"}])
         sales, _ = self.sheet_info()
-        self.assertEqual(sales["charts"], 2)
+        self.assertEqual([chart["type"] for chart in sales["charts"]], ["bar", "line"])
         chart = load_workbook(self.directory / "fixture.xlsx")["Sales"]._charts[1]
         self.assertEqual(type(chart).__name__, "LineChart")
         self.assertEqual(chart.series[0].val.numRef.f, "'Sales'!$B$2:$B$4")

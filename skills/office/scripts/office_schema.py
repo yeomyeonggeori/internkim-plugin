@@ -81,7 +81,7 @@ class Choice(Shape):
     def problems(self, value: object, location: str) -> list[Issue]:
         if value in self.values:
             return []
-        return [INVALID_VALUE.issue(f"{location}: {value!r} is not {self.label}", location)]
+        return [INVALID_VALUE.issue(f"{location}: {value!r} is not {self.label}{did_you_mean(value, self.values)}", location, closest_suggestion(value, self.values))]
 
 
 @dataclass(frozen=True)
@@ -194,9 +194,9 @@ class Record(Shape):
         field_names = {field.name for field in self.fields} | known_names
         problems = [
             UNKNOWN_FIELD.issue(
-                f"{join_location(location, name)}: {self.name} has no field {name!r}; it takes {', '.join(sorted(field_names))}",
+                f"{join_location(location, name)}: {self.name} has no field {name!r}{did_you_mean(name, field_names)}; it takes {', '.join(sorted(field_names))}",
                 join_location(location, name),
-                suggestion=closest_name_suggestion(name, sorted(field_names), UNKNOWN_FIELD.suggestion),
+                closest_suggestion(name, field_names, "rename the field to {match!r}"),
             )
             for name in value
             if name not in field_names and not self.keeps_other_fields
@@ -233,8 +233,12 @@ class Variant(Shape):
             return [MISSING_FIELD.issue(f"{discriminator_location}: required field is missing; it is one of {', '.join(self.record_names())}", discriminator_location)]
         record = self.record_named(value[self.discriminator])
         if record is None:
-            suggestion = closest_name_suggestion(value[self.discriminator], self.record_names(), INVALID_VALUE.suggestion)
-            return [INVALID_VALUE.issue(f"{discriminator_location}: {value[self.discriminator]!r} is not one of {', '.join(self.record_names())}", discriminator_location, suggestion=suggestion)]
+            written = value[self.discriminator]
+            return [INVALID_VALUE.issue(
+                f"{discriminator_location}: {written!r} is not one of {', '.join(self.record_names())}{did_you_mean(written, self.record_names())}",
+                discriminator_location,
+                closest_suggestion(written, self.record_names(), f'use "{self.discriminator}": "{{match}}"'),
+            )]
         return record.field_problems(value, location, known_names={self.discriminator})
 
     def record_names(self) -> list[str]:
@@ -247,17 +251,29 @@ class Variant(Shape):
                 yield from field.shape.structures()
 
 
+def closest_name(written: object, candidates) -> str | None:
+    if not isinstance(written, str):
+        return None
+    matches = difflib.get_close_matches(written.casefold(), {candidate.casefold(): candidate for candidate in candidates}, n=1, cutoff=0.6)
+    if not matches:
+        return None
+    return next(candidate for candidate in candidates if candidate.casefold() == matches[0])
+
+
+def did_you_mean(written: object, candidates) -> str:
+    match = closest_name(written, candidates)
+    return f" (did you mean {match!r}?)" if match else ""
+
+
+def closest_suggestion(written: object, candidates, template: str = "use {match!r}") -> str | None:
+    match = closest_name(written, candidates)
+    return template.format(match=match) if match else None
+
+
 def field_value_problems(field: Field, value: object, location: str) -> list[Issue]:
     if value is None:
         return [MISSING_FIELD.issue(f"{location}: required field is missing", location)] if field.required else []
     return field.shape.problems(value, location)
-
-
-def closest_name_suggestion(given: object, candidates: list[str], fallback: object) -> object:
-    if not isinstance(given, str):
-        return fallback
-    matches = difflib.get_close_matches(given, candidates, n=1, cutoff=0.5)
-    return f"did you mean {matches[0]!r}?" if matches else fallback
 
 
 def require_valid(shape: Shape, value: object, location: str) -> None:

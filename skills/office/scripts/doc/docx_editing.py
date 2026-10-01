@@ -10,7 +10,7 @@ from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, body_block_elements
 from docx_tracking import Tracking, start_tracking
 from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND
 from office_result import INVALID_VALUE, OfficeFailure
-from office_schema import closest_name_suggestion
+from office_schema import closest_name
 
 
 
@@ -63,7 +63,7 @@ def require_style(editing: DocxEditing, style_name: str, style_types: tuple, loc
     style = next((style for style in editing.document.styles if style.name == style_name), None)
     if style is None:
         available = [style.name for style in editing.document.styles if style.type in style_types]
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}: the document defines no style named {style_name!r}", location, suggestion=closest_suggestion(style_name, available)))
+        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}: the document defines no style named {style_name!r}", location, suggestion=available_names_suggestion(style_name, available)))
     if style.type not in style_types:
         raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}: style {style_name!r} cannot apply here", location))
 
@@ -74,10 +74,10 @@ def index_range_suggestion(noun: str, count: int) -> str:
     return f"use a {noun} index from 0 to {count - 1}; doc read lists them"
 
 
-def closest_suggestion(given: str, available: list[str]) -> str:
+def available_names_suggestion(given: str, available: list[str]) -> str:
     listed = f"available: {', '.join(repr(name) for name in available[:40])}"
-    closest = closest_name_suggestion(given, available, None)
-    return f"{closest} {listed}" if closest else listed
+    closest = closest_name(given, available)
+    return f"did you mean {closest!r}? {listed}" if closest else listed
 
 
 def placement(editing: DocxEditing, operation: dict, location: str):

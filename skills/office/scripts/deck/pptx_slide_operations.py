@@ -10,7 +10,7 @@ from pptx.parts.slide import SlidePart
 
 from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
 from office_result import INVALID_VALUE, OfficeFailure
-from office_schema import closest_name_suggestion
+from office_schema import closest_suggestion
 from pptx_element_operations import rgb
 from pptx_relationships import NOT_COPIED_RELATIONSHIP_TYPES, carry_relationships
 from pptx_sections import remember_section, remove_from_custom_shows
@@ -33,7 +33,7 @@ def resolve_layout(editing: PptxEditing, name: str, location: str):
         return match
     names = [layout.name for layout in layouts]
     fallback = "use one of " + ", ".join(repr(layout_name) for layout_name in names)
-    raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}: the deck has no layout {name!r}", location, closest_name_suggestion(name, names, fallback)))
+    raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}: the deck has no layout {name!r}", location, closest_suggestion(name, names, "did you mean {match!r}?") or fallback))
 
 
 def resolve_anchor(editing: PptxEditing, after: int | None, location: str):

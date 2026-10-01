@@ -35,9 +35,9 @@ class FormulaValueTest(WorkbookFixture):
         self.assertEqual((cell["formula"], cell["value"], cell["type"]), ("A1/B1", "#DIV/0!", "e"))
 
     def test_an_uncomputable_formula_is_kept_without_a_value_and_reported(self):
-        envelope = self.create_workbook([{"title": "Sheet", "rows": [[1, "=ROMAN(A1)", "=B1&A1"]]}])
+        envelope = self.create_workbook([{"title": "Sheet", "rows": [[1, "=BAHTTEXT(A1)", "=B1&A1"]]}])
         cells = self.cells()
-        self.assertEqual((cells["B1"]["formula"], cells["B1"]["value"]), ("ROMAN(A1)", None))
+        self.assertEqual((cells["B1"]["formula"], cells["B1"]["value"]), ("BAHTTEXT(A1)", None))
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["FORMULA_NOT_EVALUATED"])
         self.assertIn("Sheet!B1", envelope["issues"][0]["message"])
         self.assertEqual(envelope["status"], "warning")

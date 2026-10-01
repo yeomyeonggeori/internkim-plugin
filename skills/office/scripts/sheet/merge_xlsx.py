@@ -2,15 +2,15 @@
 from __future__ import annotations
 
 import os
-import zipfile
 
 from lxml import etree
 
-from formula_cache import MAIN_NAMESPACE, cache_formula_values, worksheet_parts
+from formula_cache import cache_formula_values
 from office_operations import save_atomically
 from office_result import OfficeArgumentParser, Result, read_json_file, run_command
 from office_schema import require_valid
 from template_merge import MERGE_VALUES, MISSING, MergeReport, fill_text_nodes, whole_placeholder, write_package
+from workbook_package import MAIN_NAMESPACE, read_package, worksheet_parts
 
 
 SHARED_STRINGS_PART = "xl/sharedStrings.xml"
@@ -32,10 +32,10 @@ def main() -> Result:
 
 
 def merged_parts(template_path: str, report: MergeReport) -> dict[str, bytes]:
-    with zipfile.ZipFile(template_path) as archive:
-        sheet_names = worksheet_parts(archive)
-        shared = etree.fromstring(archive.read(SHARED_STRINGS_PART)) if SHARED_STRINGS_PART in archive.namelist() else None
-        sheets = {part: etree.fromstring(archive.read(part)) for part in sheet_names}
+    package = read_package(template_path)
+    sheet_names = worksheet_parts(package)
+    shared = package.xml(SHARED_STRINGS_PART) if SHARED_STRINGS_PART in package.entries else None
+    sheets = {part: package.xml(part) for part in sheet_names}
     shared_items = list(shared.iterchildren(qualified("si"))) if shared is not None else []
     filled_items: set[int] = set()
     for part, worksheet in sheets.items():

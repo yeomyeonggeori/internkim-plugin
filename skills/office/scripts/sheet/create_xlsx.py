@@ -6,10 +6,12 @@ import os
 from pathlib import Path
 
 from cell_values import typed_cell_value
-from formula_cache import cache_formula_values
+from excel_functions import written_value
+from office_operations import apply_batch
 from office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
 from sheet_definitions import WORKBOOK_SPECIFICATION
+from sheet_operations import SHEET_OPERATIONS, SheetEditing, save_editing
 from sheet_styling import style_table
 
 
@@ -56,7 +58,7 @@ def add_sheet(workbook, sheet_specification, get_column_letter):
     if heading:
         worksheet.append([heading])
     for row in rows:
-        worksheet.append(["" if value is None else value for value in row])
+        worksheet.append([written_value(value) for value in row])
     default_freeze_panes = "A3" if heading else "A2"
     freeze_panes = sheet_specification.get("freezePanes", default_freeze_panes)
     header_row = header_row_index(sheet_specification)
@@ -138,9 +140,11 @@ def main():
     workbook = create_workbook(specification)
     output_path = Path(os.path.expanduser(arguments.output_path))
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    workbook.save(output_path)
-    issues = cache_formula_values(str(output_path))
-    return Result(summary=f"created {output_path}", output_path=str(output_path), issues=tuple(issues))
+    editing = SheetEditing(workbook, None)
+    changes = apply_batch(SHEET_OPERATIONS, editing, specification.get("operations") or [])
+    issues = save_editing(editing, str(output_path))
+    details = {"changes": changes} if changes else None
+    return Result(summary=f"created {output_path}", output_path=str(output_path), issues=tuple(issues), details=details)
 
 
 if __name__ == "__main__":

@@ -282,7 +282,7 @@ class DeckOperationTest(KoreanDeckFixture):
 class ValidationTest(KoreanDeckFixture):
     def test_an_unknown_operation_or_field_says_which_was_meant(self):
         envelope = self.apply([{"op": "set_txt", "slide": 1, "shape": 0, "text": "a"}, {"op": "set_text", "slide": 1, "shape": 0, "txt": "a"}])
-        self.assertEqual([issue["suggestion"] for issue in envelope["issues"][:2]], ["did you mean 'set_text'?", "did you mean 'text'?"])
+        self.assertEqual([issue["suggestion"] for issue in envelope["issues"][:2]], ['use "op": "set_text"', "rename the field to 'text'"])
 
     def test_a_missing_shape_lists_the_shapes_the_slide_has(self):
         envelope = self.apply([{"op": "set_text", "slide": 3, "shape": 7, "text": "a"}])
