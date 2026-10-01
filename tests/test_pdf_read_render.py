@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -96,6 +97,34 @@ class RenderTest(PdfFixture):
     def test_a_scale_outside_the_range_is_refused(self):
         envelope = run_office(["pdf", "render", "fixture.pdf", "--scale", "40"], self.directory)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["INVALID_VALUE"])
+
+
+class LibraryWarningTest(PdfFixture):
+    def setUp(self):
+        super().setUp()
+        whole = (self.directory / "fixture.pdf").read_bytes()
+        (self.directory / "truncated.pdf").write_bytes(whole[:len(whole) * 2 // 3])
+        pointer = whole.rindex(b"startxref") + len(b"startxref\n")
+        (self.directory / "misplaced.pdf").write_bytes(whole[:pointer] + b"1" + whole[pointer:])
+
+    def run_command(self, arguments):
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *arguments], capture_output=True, text=True, cwd=self.directory)
+        return completed.stderr, json.loads(completed.stdout)
+
+    def test_a_command_writes_only_its_envelope_when_the_pdf_is_truncated(self):
+        for arguments in (["pdf", "read"], ["pdf", "render"], ["pdf", "validate"], ["pdf", "edit", "--heading", "추가"], ["convert"]):
+            with self.subTest(command=arguments[:2]):
+                command = [*arguments[:2], "truncated.pdf", *arguments[2:]] if arguments[0] == "pdf" else ["convert", "truncated.pdf", "truncated.md"]
+                stderr, envelope = self.run_command(command)
+                self.assertEqual(stderr, "")
+                self.assertEqual([issue["code"] for issue in envelope["issues"]], ["FILE_DAMAGED"])
+
+    def test_a_problem_the_reader_worked_around_is_an_issue_not_stderr(self):
+        stderr, envelope = self.run_command(["pdf", "read", "misplaced.pdf"])
+        self.assertEqual(stderr, "")
+        self.assertEqual(envelope["status"], "warning")
+        warning = next(issue for issue in envelope["issues"] if issue["code"] == "LIBRARY_WARNING")
+        self.assertIn("pypdf reported: incorrect startxref pointer", warning["message"])
 
 
 class GuideTest(unittest.TestCase):
