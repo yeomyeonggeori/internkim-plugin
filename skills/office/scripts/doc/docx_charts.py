@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 from dataclasses import dataclass
 
 from docx.opc.constants import CONTENT_TYPE, RELATIONSHIP_TYPE
@@ -9,20 +8,17 @@ from docx.oxml import parse_xml
 from docx.oxml.ns import nsdecls, qn
 from lxml import etree
 from pptx.chart.chart import Chart
-from pptx.chart.data import CategoryChartData
 from pptx.enum.chart import XL_LEGEND_POSITION
 from pptx.oxml import parse_xml as parse_chart_xml
 
+from charts.combo import CHART_NAMESPACE, category_chart_data, combo_chart_space, lines_need_own_axis
 from charts.kinds import COMBO_CHART_KIND, OFFICE_CHART_KINDS, ROUND_CHART_KINDS, document_kind, drawn_kind, is_stacked_kind, office_chart_type, plot_kind
 from charts.look import ChartLook, document_look
 from charts.svg import ChartModel, ChartSeries
 
 
-CHART_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/chart"
 RELATIONSHIP_NAMESPACE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 DRAWN_KINDS = {drawn_kind(kind) for kind in OFFICE_CHART_KINDS}
-SECONDARY_AXIS_RATIO = 0.1
-SECONDARY_AXIS_IDENTIFIERS = ("50010", "50020")
 CHART_TEXT_SIZE = "1000"
 
 
@@ -41,12 +37,7 @@ class ChartSpecification:
             return False
         if self.secondary_axis is not None:
             return self.secondary_axis
-        lines = [abs(value) for _, values, is_line in self.series if is_line for value in values]
-        columns = [abs(value) for _, values, is_line in self.series if not is_line for value in values]
-        if not lines or not columns or max(lines) == 0 or max(columns) == 0:
-            return False
-        ratio = max(lines) / max(columns)
-        return ratio < SECONDARY_AXIS_RATIO or ratio > 1 / SECONDARY_AXIS_RATIO
+        return lines_need_own_axis(list(self.series))
 
     def to_dictionary(self) -> dict:
         dictionary = {
@@ -100,19 +91,11 @@ def specification(operation: dict) -> ChartSpecification:
     )
 
 
-def chart_data(categories: tuple[str, ...], series: list[tuple[str, tuple[float, ...], bool]]) -> CategoryChartData:
-    data = CategoryChartData()
-    data.categories = list(categories)
-    for name, values, _ in series:
-        data.add_series(name, list(values))
-    return data
-
-
 def chart_space(specification: ChartSpecification):
     if specification.kind != COMBO_CHART_KIND:
-        root = parse_chart_xml(chart_data(specification.categories, list(specification.series)).xml_bytes(office_chart_type(specification.kind)))
+        root = parse_chart_xml(category_chart_data(specification.categories, list(specification.series)).xml_bytes(office_chart_type(specification.kind)))
     else:
-        root = combo_chart_space(specification)
+        root = combo_chart_space(specification.categories, list(specification.series), specification.uses_secondary_axis)
     chart = Chart(root, None)
     chart.has_title = bool(specification.title)
     if specification.title:
@@ -126,50 +109,6 @@ def chart_space(specification: ChartSpecification):
     return root
 
 
-def combo_chart_space(specification: ChartSpecification):
-    all_series = list(specification.series)
-    root = parse_chart_xml(chart_data(specification.categories, all_series).xml_bytes(office_chart_type("column")))
-    bar_chart = root.find(f".//{{{CHART_NAMESPACE}}}barChart")
-    line_source = parse_chart_xml(chart_data(specification.categories, all_series).xml_bytes(office_chart_type("line")))
-    line_chart = line_source.find(f".//{{{CHART_NAMESPACE}}}lineChart")
-    for bar_series_element, line_series_element, (_, _, is_line) in zip(bar_chart.findall(f"{{{CHART_NAMESPACE}}}ser"), line_chart.findall(f"{{{CHART_NAMESPACE}}}ser"), all_series):
-        (bar_chart if is_line else line_chart).remove(bar_series_element if is_line else line_series_element)
-    for axis_identifier in line_chart.findall(f"{{{CHART_NAMESPACE}}}axId"):
-        line_chart.remove(axis_identifier)
-    for axis_identifier in bar_chart.findall(f"{{{CHART_NAMESPACE}}}axId"):
-        line_chart.append(copy.deepcopy(axis_identifier))
-    bar_chart.addnext(line_chart)
-    if specification.uses_secondary_axis:
-        add_secondary_axes(root, line_chart)
-    return root
-
-
-def add_secondary_axes(root, line_chart) -> None:
-    category_axis = root.find(f".//{{{CHART_NAMESPACE}}}catAx")
-    value_axis = root.find(f".//{{{CHART_NAMESPACE}}}valAx")
-    category_identifier, value_identifier = SECONDARY_AXIS_IDENTIFIERS
-    for axis_identifier, new_identifier in zip(line_chart.findall(f"{{{CHART_NAMESPACE}}}axId"), SECONDARY_AXIS_IDENTIFIERS):
-        axis_identifier.set("val", new_identifier)
-    hidden_category = copy.deepcopy(category_axis)
-    set_child(hidden_category, "axId", category_identifier)
-    set_child(hidden_category, "delete", "1")
-    set_child(hidden_category, "crossAx", value_identifier)
-    right_values = copy.deepcopy(value_axis)
-    set_child(right_values, "axId", value_identifier)
-    set_child(right_values, "axPos", "r")
-    set_child(right_values, "crossAx", category_identifier)
-    set_child(right_values, "crosses", "max")
-    gridlines = right_values.find(f"{{{CHART_NAMESPACE}}}majorGridlines")
-    if gridlines is not None:
-        right_values.remove(gridlines)
-    value_axis.addnext(right_values)
-    value_axis.addnext(hidden_category)
-
-
-def set_child(element, tag: str, value: str) -> None:
-    element.find(f"{{{CHART_NAMESPACE}}}{tag}").set("val", value)
-
-
 def chart_blob(root, workbook_relationship: str) -> bytes:
     for existing in root.findall(f"{{{CHART_NAMESPACE}}}externalData"):
         root.remove(existing)
@@ -180,7 +119,7 @@ def chart_blob(root, workbook_relationship: str) -> bytes:
 
 
 def workbook_blob(specification: ChartSpecification) -> bytes:
-    return chart_data(specification.categories, list(specification.series)).xlsx_blob
+    return category_chart_data(specification.categories, list(specification.series)).xlsx_blob
 
 
 def add_chart_part(document, specification: ChartSpecification) -> str:

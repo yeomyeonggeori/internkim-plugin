@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
-from charts.kinds import OFFICE_CHART_KINDS
+from charts.kinds import DECK_CHART_KINDS
+from charts.look import LABEL_FLAGS
 from core.office_result import Issue
 from core.office_theme import THEME_SLOTS
 from core.office_schema import Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, wrong_type
@@ -75,6 +76,12 @@ CELL_ROWS = ListOf(ListOf(CellValue()), non_empty=True)
 SERIES = Record("series", "one data series", (
     Field("name", Text(non_empty=True), "series name shown in the legend", required=True),
     Field("values", ListOf(Number(), non_empty=True), "one number per category", required=True),
+))
+
+
+CHART_SERIES = Record("series", "one data series", (
+    *SERIES.fields,
+    Field("line", Boolean(), "combo only: draw this series as a line over the columns"),
 ))
 
 
@@ -187,11 +194,16 @@ INSERT_OPERATIONS = (
         Field("rows", CELL_ROWS, "rows of cell values", required=True),
     ),
     operation("add_chart", "add a native chart with its own data workbook", SLIDE_FIELD, *BOX_FIELDS,
-        Field("type", Choice(OFFICE_CHART_KINDS), "chart kind", required=True),
-        Field("categories", ListOf(CellValue(), non_empty=True), "category labels along the axis", required=True),
-        Field("series", ListOf(SERIES, non_empty=True), "data series; pie and doughnut take one", required=True),
+        Field("type", Choice(DECK_CHART_KINDS), "chart kind; combo draws the series marked line as lines over columns, scatter places points by number", required=True),
+        Field("categories", ListOf(CellValue(), non_empty=True), "category labels along the axis; for scatter the x value of each point", required=True),
+        Field("series", ListOf(CHART_SERIES, non_empty=True), "data series; pie and doughnut take one", required=True),
         Field("title", Text(), "chart title"),
         Field("legend", Boolean(), "show the legend; default when there is more than one series or a pie"),
+        Field("colors", ListOf(HexColor()), "one color per series in order, or per slice of a pie or doughnut; the rest keep the theme's"),
+        Field("dataLabels", Choice(tuple(LABEL_FLAGS)), "label each point with its value or category, or each slice of a pie or doughnut with its percent of the whole"),
+        Field("xTitle", Text(), "category axis title, the x axis of a scatter"),
+        Field("yTitle", Text(), "value axis title"),
+        Field("secondaryAxis", Boolean(), "combo only: draw the lines against their own axis on the right; default when lines and columns differ more than tenfold"),
     ),
 )
 TABLE_AND_CHART_OPERATIONS = (

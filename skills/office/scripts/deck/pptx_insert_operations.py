@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from pptx.chart.data import CategoryChartData
-from pptx.enum.chart import XL_LEGEND_POSITION
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.util import Emu
 
-from charts.kinds import ROUND_CHART_KINDS, office_chart_type
 from core.office_operations import Change
 from core.office_result import INVALID_VALUE, OfficeFailure
 from deck.pptx_backdrop import readable_text_color
@@ -130,25 +128,6 @@ def chart_data(categories: list, series: list[dict], location: str, number_forma
     return data
 
 
-def plan_add_chart(editing: PptxEditing, operation: dict, location: str) -> Change:
-    slide = resolve_slide(editing, operation["slide"], f"{location}.slide")
-    data = chart_data(operation["categories"], operation["series"], location)
-    if operation["type"] in ROUND_CHART_KINDS and len(operation["series"]) > 1:
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}.series: a {operation['type']} chart shows one series", f"{location}.series", "give one series, or pick column or bar"))
-
-    def change() -> str:
-        chart = slide.shapes.add_chart(office_chart_type(operation["type"]), *box_arguments(operation), data).chart
-        legend = operation.get("legend")
-        chart.has_legend = legend if legend is not None else len(operation["series"]) > 1 or operation["type"] in ROUND_CHART_KINDS
-        if chart.has_legend:
-            chart.legend.position = XL_LEGEND_POSITION.BOTTOM
-            chart.legend.include_in_layout = False
-        set_chart_title(chart, operation.get("title"))
-        editing.mark_edited(slide)
-        return f"added a {operation['type']} chart {len(slide.shapes) - 1} to slide {operation['slide']}"
-    return change
-
-
 def set_chart_title(chart, title: str | None) -> None:
     if title is None:
         return
@@ -163,5 +142,4 @@ INSERT_PLANNERS = {
     "add_shape": plan_add_shape,
     "add_picture": plan_add_picture,
     "add_table": plan_add_table,
-    "add_chart": plan_add_chart,
 }

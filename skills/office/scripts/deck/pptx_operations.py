@@ -4,6 +4,7 @@ import io
 
 from core.office_operations import OperationSet
 from deck.pptx_arrangement_operations import ARRANGEMENT_PLANNERS
+from deck.pptx_chart_insert import CHART_INSERT_PLANNERS
 from deck.pptx_comments import COMMENT_PLANNERS
 from deck.pptx_deck_operations import DECK_PLANNERS
 from deck.pptx_edit_definitions import OPERATIONS
@@ -42,6 +43,7 @@ PPTX_OPERATIONS = OperationSet(OPERATIONS, {
     **ARRANGEMENT_PLANNERS,
     **LINK_PLANNERS,
     **INSERT_PLANNERS,
+    **CHART_INSERT_PLANNERS,
     **TABLE_AND_CHART_PLANNERS,
     **TABLE_FORMAT_PLANNERS,
     **SLIDE_PLANNERS,

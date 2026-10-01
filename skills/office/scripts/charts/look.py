@@ -6,6 +6,8 @@ from core.office_theme import OFFICE_ACCENTS
 
 
 LABEL_FLAGS = {"none": (), "value": ("showVal",), "category": ("showCatName",), "percent": ("showPercent",), "category_percent": ("showCatName", "showPercent")}
+LABEL_FLAG_NAMES = tuple(dict.fromkeys(flag for flags in LABEL_FLAGS.values() for flag in flags))
+SHARE_FLAG = "showPercent"
 GENERAL_FORMAT = "General"
 PERCENT_FORMAT = "0%"
 INSIDE_POSITIONS = ("ctr", "inEnd", "inBase", "bestFit")
@@ -151,3 +153,7 @@ def document_labels(mode: str | None, is_round: bool, is_stacked: bool) -> Label
         position="ctr" if inside else OUTSIDE_POSITION,
         text=DOCUMENT_SLICE_TEXT if is_round and inside else DOCUMENT_LABEL_TEXT,
     ))
+
+
+def labels_need_round_chart(mode: str) -> bool:
+    return SHARE_FLAG in LABEL_FLAGS[mode]
