@@ -130,25 +130,6 @@ BUILD_ISSUE_KINDS = (
     TEXT_KEPT_AS_PICTURE,
 )
 
-SLIDE_EMPTY = IssueKind("SLIDE_EMPTY", WARNING, "a slide has no text", "check that the slide exported")
-SLIDE_TITLE_MISSING = IssueKind("SLIDE_TITLE_MISSING", WARNING, "a slide has no title", "give every slide a title")
-TOO_MANY_SHAPES = IssueKind("TOO_MANY_SHAPES", WARNING, "a slide has more than 40 shapes that hold text, pictures, tables or charts", "simplify the slide")
-DEFAULT_FONT_REMAINS = IssueKind("DEFAULT_FONT_REMAINS", WARNING, "text still uses Aptos or Calibri", "set the deck's own font")
-THEME_FONT_INHERITED = IssueKind("THEME_FONT_INHERITED", WARNING, "text runs inherit the theme font", "set the font on every run")
-OVERLAY_WITHOUT_BACKGROUND = IssueKind("OVERLAY_WITHOUT_BACKGROUND", WARNING, "editable overlays have no hybrid background image", "add the background image or remove the overlays")
-OVERLAY_OUT_OF_BOUNDS = IssueKind("OVERLAY_OUT_OF_BOUNDS", WARNING, "an editable overlay extends past the slide", "move the overlay inside the slide")
-
-VALIDATE_ISSUE_KINDS = (SLIDE_EMPTY, SLIDE_TITLE_MISSING, TOO_MANY_SHAPES, DEFAULT_FONT_REMAINS, THEME_FONT_INHERITED, OVERLAY_WITHOUT_BACKGROUND, OVERLAY_OUT_OF_BOUNDS)
-
-REVIEW_REPORT_MISSING = IssueKind("REVIEW_REPORT_MISSING", ERROR, "slide-review.json is absent from the review directory", "run office deck build first")
-REVIEW_DECISION_MISSING = IssueKind("REVIEW_DECISION_MISSING", WARNING, "review-decision.json is absent", "attach the usable deck with the review report notes if the requested file exists")
-CONTACT_SHEETS_NOT_INSPECTED = IssueKind("CONTACT_SHEETS_NOT_INSPECTED", WARNING, "inspectedEvidence omits contact sheets", "open every contact sheet and list it in inspectedEvidence")
-WARNINGS_NOT_ADDRESSED = IssueKind("WARNINGS_NOT_ADDRESSED", WARNING, "review warnings are not addressed in the decision", "list them in acceptedWarnings, remainingNotes, or issues, or rebuild a clean deck")
-DECISION_SUMMARY_MISSING = IssueKind("DECISION_SUMMARY_MISSING", WARNING, "the review decision has no summary", "write a one-line summary")
-DECISION_FIELD_NOT_LIST = IssueKind("DECISION_FIELD_NOT_LIST", WARNING, "a review decision field is not a list", "write the field as a JSON array")
-
-ACCEPT_ISSUE_KINDS = (REVIEW_REPORT_MISSING, REVIEW_DECISION_MISSING, CONTACT_SHEETS_NOT_INSPECTED, WARNINGS_NOT_ADDRESSED, DECISION_SUMMARY_MISSING, DECISION_FIELD_NOT_LIST)
-
 IMAGE_SEARCH_FAILED = IssueKind("IMAGE_SEARCH_FAILED", ERROR, "the image search could not be reached", "skip imagery or try a simpler English query")
 NO_IMAGE_FOUND = IssueKind("NO_IMAGE_FOUND", ERROR, "no usable public-domain image matched", "try a simpler English query or skip imagery")
 
@@ -269,11 +250,9 @@ GUIDE_INPUTS = (
 )
 GUIDE_ISSUES = (
     ("deck build", BUILD_ISSUE_KINDS + REVIEW_ISSUE_KINDS),
-    ("deck validate", VALIDATE_ISSUE_KINDS),
     ("deck apply", OPERATION_ISSUE_KINDS + APPLY_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS),
     ("deck check", SOURCE_CHECK_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS + PPTX_CHECK_ISSUE_KINDS),
     ("deck merge", PACKAGE_MERGE_ISSUE_KINDS),
     ("deck restore", (NO_SLIDE_SECTIONS,)),
-    ("deck accept", ACCEPT_ISSUE_KINDS),
     ("deck image", IMAGE_ISSUE_KINDS),
 )

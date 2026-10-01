@@ -12,7 +12,7 @@ OFFICE_ENTRY = Path(__file__).resolve().parents[1] / "skills" / "office" / "scri
 READERS = {
     "docx": ("doc read", "doc check", "doc validate", "doc render"),
     "xlsx": ("sheet read", "sheet check", "sheet validate", "sheet render"),
-    "pptx": ("deck read", "deck validate", "deck check"),
+    "pptx": ("deck read", "deck check"),
     "pdf": ("pdf read", "pdf render", "pdf validate"),
 }
 

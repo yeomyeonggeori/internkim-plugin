@@ -73,7 +73,9 @@ class ResultEnvelopeTest(unittest.TestCase):
     def test_an_unknown_command_is_an_issue(self):
         with tempfile.TemporaryDirectory() as working_directory:
             _, envelope = run_office(["doc", "shred"], working_directory)
+            _, retired = run_office(["deck", "validate", "slides.html"], working_directory)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["UNKNOWN_COMMAND"])
+        self.assertIn("deck check", retired["issues"][0]["suggestion"])
 
     def test_issue_codes_are_unique(self):
         kinds = set(COMMAND_ISSUE_KINDS)
