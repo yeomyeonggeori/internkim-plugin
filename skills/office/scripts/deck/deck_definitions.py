@@ -143,11 +143,10 @@ IMAGE_ISSUE_KINDS = (IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND)
 LAYOUT_AUDIT_ISSUE_KINDS = (CONTENT_OVERFLOW.kind, OUT_OF_FRAME.kind, TEXT_OVERLAP.kind, IMAGE_DISTORTED.kind)
 
 PICTURE_UNREADABLE = IssueKind("PICTURE_UNREADABLE", ERROR, "an image file given to an operation is not a PNG, JPEG or GIF picture", "pass the path of a PNG, JPEG or GIF file")
-PPTX_NOT_RENDERED = IssueKind("PPTX_NOT_RENDERED", WARNING, "LibreOffice is not installed, so nobody looked at the slides", "say the slides were checked by measurement only and not seen")
-PPTX_RENDER_FAILED = IssueKind("PPTX_RENDER_FAILED", WARNING, "LibreOffice could not render the deck, so nobody looked at the slides", "say the slides were not seen, and read the message for why")
+PPTX_NOT_RENDERED = IssueKind("PPTX_NOT_RENDERED", WARNING, "no image of the slides was drawn, so nobody looked at them", "say the slides were checked by measurement only and not seen")
 
 APPLY_ISSUE_KINDS = (PICTURE_UNREADABLE,)
-CHECK_ISSUE_KINDS = (PPTX_NOT_RENDERED, PPTX_RENDER_FAILED)
+CHECK_ISSUE_KINDS = (PPTX_NOT_RENDERED,)
 
 GUIDE_INPUTS = (
     ("deck apply <file.pptx> <ops.json>", ListOf(OPERATIONS, non_empty=True)),

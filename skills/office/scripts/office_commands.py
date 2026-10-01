@@ -55,7 +55,7 @@ COMMANDS = (
     Command("deck", "validate", "deck/validate_pptx.py", "check a .pptx for design warnings"),
     Command("deck", "read", "deck/read_pptx.py", "list a .pptx's slides with each shape's index, kind, box, text and style, tables, charts and notes"),
     Command("deck", "apply", "deck/apply_pptx.py", "apply a batch of edits to a .pptx, all or none, with --dry-run, and report the layout problems they leave"),
-    Command("deck", "check", "deck/check_pptx.py", "find text that overflows its box, shapes off the slide and overlaps in a .pptx, and render it to look at"),
+    Command("deck", "check", "deck/check_pptx.py", "find text that overflows its box, shapes off the slide and overlaps in a .pptx, and write an HTML preview of it"),
     Command("deck", "restore", "deck/restore_source.py", "recover controller-free slides.html from a delivered deck", needs_packages=False),
     Command("deck", "accept", "deck/accept_review.py", "check review-decision.json against the review evidence", needs_packages=False),
     Command("deck", "image", "deck/fetch_image.py", "download a public-domain photo for a search query", needs_packages=False),

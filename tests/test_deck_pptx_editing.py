@@ -1,3 +1,4 @@
+import base64
 import difflib
 import json
 from pathlib import Path
@@ -7,6 +8,7 @@ import sys
 import tempfile
 import unittest
 
+import lxml.html
 from pptx import Presentation
 
 from deck_fixture import OFFICE_ENTRY, SCRIPTS_PATH
@@ -17,7 +19,7 @@ from pptx_edit_fixture import CUSTOM_PART_NAME, UNKNOWN_EXTENSION_URI, build_kor
 sys.path.insert(0, str(SCRIPTS_PATH))
 sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
 
-from pptx_render import soffice_command  # noqa: E402
+from pptx_text_measure import font_face  # noqa: E402
 
 
 def run_office(arguments, directory):
@@ -349,32 +351,69 @@ class LayoutAuditTest(KoreanDeckFixture):
         spill = [issue for issue in envelope["issues"] if "grows with its text past shape 1" in issue["message"]]
         self.assertEqual(spill[0]["suggestion"]["shape"], 1)
 
-    def test_check_without_rendering_reports_the_same_findings(self):
+    def test_check_without_a_preview_reports_the_same_findings(self):
         self.apply([{"op": "set_transform", "slide": 3, "shape": 1, "y": 3600000}])
-        envelope = run_office(["deck", "check", "deck.pptx", "--no-render", "--slides", "3"], self.directory)
+        envelope = run_office(["deck", "check", "deck.pptx", "--no-preview", "--slides", "3"], self.directory)
         self.assertEqual(codes(envelope), ["OUT_OF_FRAME"])
         self.assertEqual(envelope["details"]["checkedSlides"], [3])
 
 
-@unittest.skipUnless(soffice_command(), "LibreOffice is not installed")
-class RenderTest(KoreanDeckFixture):
-    def test_check_renders_every_slide_including_hidden_ones(self):
-        self.apply([{"op": "set_slide_hidden", "slide": 2, "hidden": True}])
+class PreviewTest(KoreanDeckFixture):
+    def check_preview(self, *operations):
+        if operations:
+            self.apply(list(operations))
         envelope = run_office(["deck", "check", "deck.pptx"], self.directory)
-        self.assertTrue(envelope["details"]["seen"], envelope["issues"])
-        self.assertEqual([page["slide"] for page in envelope["details"]["slides"]], [1, 2, 3, 4, 5])
-        self.assertTrue(Path(self.directory / envelope["details"]["contactSheet"]).exists())
+        document = lxml.html.fromstring((self.directory / envelope["details"]["preview"]).read_text(encoding="utf-8"))
+        return envelope, document
 
+    def section(self, document, number):
+        return document.xpath(f"//section[@data-slide='{number}']")[0]
 
-class RenderUnavailableTest(unittest.TestCase):
-    def test_without_libreoffice_the_check_says_the_slides_were_not_seen(self):
-        import check_pptx
-        original = check_pptx.soffice_command
-        check_pptx.soffice_command = lambda: None
-        self.addCleanup(setattr, check_pptx, "soffice_command", original)
-        issues, details = check_pptx.rendering(Path("deck.pptx"), [1], 1, "", frozenset())
-        self.assertEqual([issue.kind.code for issue in issues], ["PPTX_NOT_RENDERED"])
-        self.assertFalse(details["seen"])
+    def styled(self, node):
+        return dict(part.split(":", 1) for part in node.get("style").split(";"))
+
+    def test_every_slide_is_a_page_at_the_slide_size_and_nothing_was_seen(self):
+        envelope, document = self.check_preview({"op": "set_slide_hidden", "slide": 2, "hidden": True}, {"op": "set_background", "slide": 1, "color": "F3F6FA"})
+        self.assertEqual(codes(envelope), ["PPTX_NOT_RENDERED"])
+        self.assertFalse(envelope["details"]["seen"])
+        sections = document.xpath("//section")
+        self.assertEqual([section.get("data-slide") for section in sections], ["1", "2", "3", "4", "5"])
+        self.assertEqual({(self.styled(section)["width"], self.styled(section)["height"]) for section in sections}, {("1280.0px", "720.0px")})
+        self.assertEqual(self.styled(sections[0])["background-color"], "#F3F6FA")
+        self.assertTrue(all(Path(font["path"]).exists() for font in envelope["details"]["previewFonts"]))
+
+    def test_text_keeps_its_box_style_and_korean_face(self):
+        _, document = self.check_preview()
+        label = next(span for span in self.section(document, 2).iter("span") if span.text == "매출")
+        style = self.styled(label)
+        self.assertEqual((style["font-size"], style["font-weight"], style["color"]), ("32.0px", "700", "#FFFFFF"))
+        self.assertEqual(style["font-family"], f"'{font_face('맑은 고딕', True, True).family}'")
+        box = self.styled(label.getparent().getparent().getparent())
+        self.assertEqual((box["left"], box["top"], box["width"]), ("80.0px", "208.0px", "320.0px"))
+
+    def test_pictures_are_cropped_and_group_children_placed_on_the_slide(self):
+        _, document = self.check_preview()
+        frame = next(node for node in self.section(document, 2).iter("div") if self.styled(node).get("overflow") == "hidden")
+        image = self.styled(frame[0])
+        self.assertEqual((self.styled(frame)["width"], image["width"], image["left"]), ("480.0px", "600.00px", "-60.00px"))
+        member = next(span for span in self.section(document, 4).iter("span") if span.text == "담당")
+        self.assertEqual(self.styled(member.getparent().getparent().getparent())["left"], f"{8382000 * 96 / 914400:.1f}px")
+
+    def test_tables_and_charts_are_drawn_from_their_data(self):
+        _, document = self.check_preview()
+        cells = [node for node in self.section(document, 4).iter("div") if self.styled(node).get("border") == "1px solid #FFFFFF"]
+        self.assertEqual(len(cells), 9)
+        self.assertEqual(self.styled(cells[0])["background-color"], "#4F81BD")
+        chart = next(image for image in self.section(document, 3).iter("img"))
+        svg = base64.b64decode(chart.get("src").split(",", 1)[1]).decode("utf-8")
+        self.assertEqual(svg.count("<rect") - svg.count('width="10" height="10"'), 6)
+        self.assertIn("3분기", svg)
+
+    def test_the_preview_uses_only_inline_css_a_renderer_without_selectors_draws(self):
+        _, document = self.check_preview()
+        markup = lxml.html.tostring(document, encoding="unicode")
+        for unsupported in (":has(", "::before", "::after", "counter(", "<style", "<script"):
+            self.assertNotIn(unsupported, markup)
 
 
 if __name__ == "__main__":

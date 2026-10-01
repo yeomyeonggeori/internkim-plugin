@@ -10,7 +10,7 @@ from office_result import Issue
 from pptx_geometry import EMU_PER_POINT, SLIDE_FRAME, Box, Frame, child_frame, local_box
 from pptx_inheritance import slide_context
 from pptx_shape_kinds import shape_address, shape_kind
-from pptx_text_measure import TextFit, largest_text_size, measure_text
+from pptx_text_measure import TextFit, grown_box, grows_with_text, largest_text_size, measure_text, wraps
 
 
 EDGE_TOLERANCE = EMU_PER_POINT
@@ -44,10 +44,7 @@ class Entry:
 
     @property
     def visible_box(self) -> Box:
-        if self.fit is None or not grows_with_text(self.element):
-            return self.box
-        width = self.box.w + max(0, self.fit.width_overflow) if not wraps(self.element) else self.box.w
-        return Box(self.box.x, self.box.y, width, self.box.h + max(0, self.fit.height_overflow))
+        return grown_box(self.element, self.box, self.fit)
 
 
 @dataclass(frozen=True)
@@ -55,14 +52,6 @@ class SlideArea:
     number: int
     width: int
     height: int
-
-
-def wraps(element) -> bool:
-    return element.find(f"{qn('p:txBody')}/{qn('a:bodyPr')}").get("wrap", "square") != "none"
-
-
-def grows_with_text(element) -> bool:
-    return element.find(f"{qn('p:txBody')}/{qn('a:bodyPr')}/{qn('a:spAutoFit')}") is not None
 
 
 @dataclass(frozen=True)

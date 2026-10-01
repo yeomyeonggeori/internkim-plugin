@@ -36,6 +36,7 @@ class FontFace:
     index: int
     family: str
     substituted: bool
+    bold: bool = False
 
 
 @dataclass(frozen=True)
@@ -72,10 +73,10 @@ def font_face(family: str, bold: bool, east_asian: bool) -> FontFace:
     for substitute in METRIC_SUBSTITUTES.get(family.casefold(), ()) + (() if east_asian else GENERIC_LATIN_SUBSTITUTES):
         candidate = matched_font(substitute, bold, east_asian)
         if candidate is not None and not candidate.substituted:
-            return FontFace(candidate.path, candidate.index, candidate.family, True)
+            return FontFace(candidate.path, candidate.index, candidate.family, True, bold)
     if requested is not None:
         return requested
-    return FontFace(str(FALLBACK_BOLD if bold else FALLBACK_REGULAR), 0, "Paperlogy", True)
+    return FontFace(str(FALLBACK_BOLD if bold else FALLBACK_REGULAR), 0, "Paperlogy", True, bold)
 
 
 def matched_font(family: str, bold: bool, east_asian: bool) -> FontFace | None:
@@ -89,7 +90,7 @@ def matched_font(family: str, bold: bool, east_asian: bool) -> FontFace | None:
     if completed.returncode != 0 or not path:
         return None
     names = {name.strip().casefold() for name in families.split(",")}
-    return FontFace(path, int(index or 0), families.split(",")[0], family.casefold() not in names)
+    return FontFace(path, int(index or 0), families.split(",")[0], family.casefold() not in names, bold)
 
 
 @functools.lru_cache(maxsize=None)
@@ -125,6 +126,21 @@ def measure_text(context, shape_element, box: Box, size_factor: float = 1.0) -> 
         needed += height
         widest = max(widest, width)
     return TextFit(round(needed * EMU_PER_POINT), box.h - insets["tIns"] - insets["bIns"], round(widest * EMU_PER_POINT), available_width, frozenset(faces))
+
+
+def wraps(element) -> bool:
+    return element.find(f"{qn('p:txBody')}/{qn('a:bodyPr')}").get("wrap", "square") != "none"
+
+
+def grows_with_text(element) -> bool:
+    return element.find(f"{qn('p:txBody')}/{qn('a:bodyPr')}/{qn('a:spAutoFit')}") is not None
+
+
+def grown_box(element, box: Box, fit: TextFit | None) -> Box:
+    if fit is None or not grows_with_text(element):
+        return box
+    width = box.w + max(0, fit.width_overflow) if not wraps(element) else box.w
+    return Box(box.x, box.y, width, box.h + max(0, fit.height_overflow))
 
 
 def largest_text_size(context, shape_element) -> float:
