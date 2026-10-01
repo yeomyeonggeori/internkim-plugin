@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import math
 
+from deck_definitions import KIT_LAYOUTS
 
-PHOTO_LAYOUTS = ("cover", "image")
+
+PHOTO_LAYOUTS = tuple(layout.name for layout in KIT_LAYOUTS if any(part.selector == "img" for part in layout.parts))
 CAPACITY_ENTRIES_NAMED = 3
-PART_LABELS = {"title": "the title", "lead": "the lead line", "eyebrow": "the eyebrow", "takeaway": "the takeaway", "chart": "the chart", "quote": "the quote", "steps": "the steps"}
+PART_LABELS = {"title": "the title", "lead": "the lead line", "eyebrow": "the eyebrow", "takeaway": "the takeaway", "chart": "the chart", "quote": "the quote", "steps": "the steps", "diagram": "the diagram"}
 DEAD_ZONE_ADVICE = {
     "kpi": "give each .kpi a change line under its .value, add a .takeaway band, or add the third or fourth metric",
     "cards": "add a .takeaway band under the cards, or a .label or .value at the top of each card",

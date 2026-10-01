@@ -5,6 +5,7 @@ import re
 
 from office_result import Issue
 from office_schema import Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, wrong_type
+from pptx_connectors import ARROW_ENDS, CONNECTOR_KINDS, DEFAULT_ARROW, DEFAULT_WIDTH_POINTS, ELBOW_KIND, STRAIGHT_KIND
 from pptx_lengths import LENGTH_EXAMPLES, Length
 
 
@@ -163,10 +164,10 @@ INSERT_OPERATIONS = (
     operation("add_connector", "draw a connector between two shapes of one slide, from the side of the first that faces the second; it stays attached when either shape moves", SLIDE_FIELD,
         Field("from", ShapeAddress(), "shape the connector starts at, from deck read", required=True),
         Field("to", ShapeAddress(), "shape the connector ends at, from deck read", required=True),
-        Field("kind", Choice(("straight", "elbow")), "straight (default) or elbow, which turns at right angles"),
-        Field("arrow", Choice(("end", "start", "both", "none")), "where arrowheads go; default end"),
+        Field("kind", Choice(CONNECTOR_KINDS), f"{STRAIGHT_KIND} (default) or {ELBOW_KIND}, which turns at right angles"),
+        Field("arrow", Choice(tuple(ARROW_ENDS)), f"where arrowheads go; default {DEFAULT_ARROW}"),
         Field("color", HexColor(), "line color; default the theme's dark or light text color, whichever reads on the slide"),
-        Field("width", Number(minimum=0.25, maximum=20), "line width in points, default 1.5"),
+        Field("width", Number(minimum=0.25, maximum=20), f"line width in points, default {DEFAULT_WIDTH_POINTS:g}"),
     ),
     operation("add_picture", "add an image; give w or h alone to keep its ratio", SLIDE_FIELD, *POSITION_FIELDS,
         Field("image", Text(non_empty=True), "path to a PNG, JPEG or GIF file", required=True),

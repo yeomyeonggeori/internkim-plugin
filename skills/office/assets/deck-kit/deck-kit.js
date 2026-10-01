@@ -21,7 +21,7 @@
   const processHeight = 62;
   const matrixAxisInset = { left: 4, bottom: 9 };
   const matrixGapShare = 2;
-  const capacityPartNames = [["h1, h2", "title"], [".lead", "lead"], [".eyebrow", "eyebrow"], [".takeaway", "takeaway"], [".card", "card"], [".kpi", "kpi"], [".column", "column"], [".step", "step"], [".kit-steps", "steps"], [".insight", "insight"], ["ol, ul", "list"], ["table", "table"], ["figure", "chart"], ["blockquote", "quote"]];
+  const capacityPartNames = [["h1, h2", "title"], [".lead", "lead"], [".eyebrow", "eyebrow"], [".takeaway", "takeaway"], [".card", "card"], [".kpi", "kpi"], [".column", "column"], [".step", "step"], [".kit-steps", "steps"], [".insight", "insight"], ["ol, ul", "list"], ["table", "table"], ["figure", "chart"], ["blockquote", "quote"], [".kit-diagram", "diagram"]];
   const numericCellPattern = /^[+\-−]?[₩$€£¥]?\s?[\d.,]+\s?(%|%p|[^\s\d]{0,4})?$/;
   const svgNamespace = "http://www.w3.org/2000/svg";
   const barScaleShare = 0.84;

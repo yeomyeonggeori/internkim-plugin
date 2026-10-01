@@ -16,6 +16,8 @@ sys.path.insert(0, str(SCRIPTS_PATH))
 sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
 
 from check_deck import CheckRequest, check_deck  # noqa: E402
+from pptx_connectors import facing_route  # noqa: E402
+from pptx_geometry import Box  # noqa: E402
 
 PROCESS = '<section data-layout="process"><h2>주문은 네 단계로 처리됩니다</h2><ol><li>주문 접수</li><li>재고 확인</li><li>출고</li><li class="pick">배송 완료</li></ol></section>'
 CYCLE = '<section data-layout="cycle"><h2>개선은 네 단계를 반복합니다</h2><ol><li>계획</li><li>실행</li><li>점검</li><li>개선</li></ol></section>'
@@ -81,9 +83,21 @@ class DiagramBuildTest(unittest.TestCase):
                 for connector in attached:
                     self.assertEqual(slide["shapes"][connector["connects"]["from"]]["kind"], "shape")
                     self.assertEqual(slide["shapes"][connector["connects"]["to"]]["kind"], "shape")
+        self.assert_cycle_arrows_leave_by_the_sides_deck_apply_would_pick(layers["slides"][2])
         texts = [shape.get("text", "") for slide in read["details"]["slides"] for shape in slide["shapes"]]
         for label in ("수도권팀", "개선", "자동 발주", "권역 센터 3곳", "기대 효과"):
             self.assertTrue(any(re.search(re.escape(label), text) for text in texts), label)
+
+
+    def assert_cycle_arrows_leave_by_the_sides_deck_apply_would_pick(self, slide: dict):
+        boxes = {shape["exportId"]: pixel_box(shape["box"]) for shape in slide["shapes"] if shape.get("exportId") and shape["geometry"] != "line"}
+        for connector in slide["connectors"]:
+            route = facing_route(boxes[connector["fromShape"]], boxes[connector["toShape"]])
+            self.assertEqual(list(route.sides), connector["sides"])
+
+
+def pixel_box(box: dict) -> Box:
+    return Box(round(box["left"]), round(box["top"]), round(box["right"] - box["left"]), round(box["bottom"] - box["top"]))
 
 
 if __name__ == "__main__":

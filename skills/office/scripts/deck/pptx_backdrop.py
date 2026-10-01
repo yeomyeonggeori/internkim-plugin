@@ -5,6 +5,7 @@ import io
 from PIL import Image, UnidentifiedImageError
 from pptx.oxml.ns import qn
 
+from css_color import most_contrasting
 from pptx_geometry import Box, own_box
 from pptx_inheritance import SlideContext, slide_context
 from pptx_preview_paint import background_color, fill_color
@@ -20,8 +21,8 @@ FALLBACK_BACKDROP = "#FFFFFF"
 def readable_text_color(presentation, slide, box: Box) -> str:
     context = slide_context(presentation, slide)
     backdrop = backdrop_color(context, slide, box)
-    candidates = [color for color in (resolve_color(context, DARK_TEXT_SLOT), resolve_color(context, LIGHT_TEXT_SLOT)) if color]
-    return max(candidates, key=lambda candidate: contrast_ratio(candidate, backdrop)).lstrip("#").upper()
+    candidates = [f"#{color.lstrip('#')}" for color in (resolve_color(context, DARK_TEXT_SLOT), resolve_color(context, LIGHT_TEXT_SLOT)) if color]
+    return most_contrasting(candidates, backdrop).lstrip("#").upper()
 
 
 def backdrop_color(context: SlideContext, slide, box: Box) -> str:
@@ -83,14 +84,3 @@ def average_color(blob: bytes, share: tuple[float, float, float, float] | None) 
         image = image.crop((int(left * image.width), int(top * image.height), max(int(right * image.width), int(left * image.width) + 1), max(int(bottom * image.height), int(top * image.height) + 1)))
     red, green, blue = image.resize((1, 1), Image.Resampling.BOX).getpixel((0, 0))
     return f"#{red:02X}{green:02X}{blue:02X}"
-
-
-def relative_luminance(color: str) -> float:
-    channels = [int(color.lstrip("#")[index:index + 2], 16) / 255 for index in (0, 2, 4)]
-    linear = [channel / 12.92 if channel <= 0.03928 else ((channel + 0.055) / 1.055) ** 2.4 for channel in channels]
-    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
-
-
-def contrast_ratio(first: str, second: str) -> float:
-    lighter, darker = sorted((relative_luminance(first), relative_luminance(second)), reverse=True)
-    return (lighter + 0.05) / (darker + 0.05)

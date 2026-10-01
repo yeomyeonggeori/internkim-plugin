@@ -7,13 +7,10 @@ from pptx.util import Pt
 from office_operations import Change
 from office_result import INVALID_VALUE, OfficeFailure
 from pptx_backdrop import readable_text_color
-from pptx_connectors import Attachment, Route, connection_site, connector_xml, facing_route, line_xml
+from pptx_connectors import DEFAULT_ARROW, DEFAULT_WIDTH_POINTS, ELBOW_KIND, Attachment, Route, connection_site, connector_xml, facing_route, line_xml
 from pptx_element_operations import current_box, next_shape_identifier
 from pptx_geometry import Box
 from pptx_targets import PptxEditing, ShapeTarget, resolve_shape
-
-
-DEFAULT_WIDTH_POINTS = 1.5
 
 
 def plan_add_connector(editing: PptxEditing, operation: dict, location: str) -> Change:
@@ -24,12 +21,12 @@ def plan_add_connector(editing: PptxEditing, operation: dict, location: str) -> 
 
     def change() -> str:
         route = facing_route(current_box(editing, first), current_box(editing, second))
-        elbow = operation.get("kind") == "elbow"
+        elbow = operation.get("kind") == ELBOW_KIND
         identifier = next_shape_identifier(first.slide._element)
         attachments = (attachment(first, route.sides[0]), attachment(second, route.sides[1]))
         paint = f'<a:solidFill><a:srgbClr val="{connector_color(editing, first, route, operation)}"/></a:solidFill>'
         width = Pt(operation.get("width", DEFAULT_WIDTH_POINTS))
-        xml = connector_xml(identifier, f"Connector {identifier}", route, elbow, line_xml(int(width), paint, operation.get("arrow", "end")), attachments)
+        xml = connector_xml(identifier, f"Connector {identifier}", route, elbow, line_xml(int(width), paint, operation.get("arrow", DEFAULT_ARROW)), attachments)
         first.slide.shapes._spTree.insert_element_before(parse_xml(f'<p:spTree {nsdecls("p", "a")}>{xml}</p:spTree>')[0], "p:extLst")
         editing.mark_edited(first.slide)
         return f"connected {first.label} to shape {second.address} with an {'elbow' if elbow else 'straight'} connector {len(first.slide.shapes) - 1}"

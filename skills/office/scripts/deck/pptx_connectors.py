@@ -11,7 +11,12 @@ ARROW_HEAD = "triangle"
 RECTANGLE_SITES = {"top": 0, "left": 1, "bottom": 2, "right": 3}
 ELLIPSE_SITES = {"top": 0, "left": 2, "bottom": 4, "right": 6}
 CONNECTION_SITES = {"rect": RECTANGLE_SITES, "roundRect": RECTANGLE_SITES, "round2SameRect": RECTANGLE_SITES, "diamond": RECTANGLE_SITES, "ellipse": ELLIPSE_SITES}
-ARROW_ENDS = {"none": (False, False), "end": (False, True), "start": (True, False), "both": (True, True)}
+ARROW_ENDS = {"end": (False, True), "start": (True, False), "both": (True, True), "none": (False, False)}
+DEFAULT_ARROW = "end"
+STRAIGHT_KIND = "straight"
+ELBOW_KIND = "elbow"
+CONNECTOR_KINDS = (STRAIGHT_KIND, ELBOW_KIND)
+DEFAULT_WIDTH_POINTS = 1.5
 
 
 class Rectangle(Protocol):
