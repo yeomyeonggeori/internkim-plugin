@@ -1,10 +1,17 @@
 from pathlib import Path
 import re
+import sys
 import tempfile
 import unittest
 import zipfile
 
-from doc_fixture import run_office, run_office_python, write_json
+from doc_fixture import SCRIPTS_PATH, run_office, run_office_python, write_json
+
+sys.path.insert(0, str(SCRIPTS_PATH))
+
+from fonts.registry import SANS_BODY, default_family  # noqa: E402
+
+DOCUMENT_FONT = default_family(SANS_BODY).name
 
 
 def package_part(document_path, part_name):
@@ -43,7 +50,7 @@ class KoreanLanguageTest(GeneratedDocumentTest):
         self.assertRegex(settings, r'<w:themeFontLang [^>]*w:eastAsia="ko-KR"')
         for style_id in ("Title", "Heading1", "Heading2", "Heading3"):
             fonts = re.search(r"<w:rFonts [^>]*/>", style_xml(styles, style_id)).group(0)
-            self.assertIn('w:eastAsia="맑은 고딕"', fonts, style_id)
+            self.assertIn(f'w:eastAsia="{DOCUMENT_FONT}"', fonts, style_id)
             self.assertNotIn("Theme=", fonts, style_id)
 
     def test_created_document_is_korean_by_default(self):

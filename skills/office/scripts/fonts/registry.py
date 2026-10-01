@@ -18,10 +18,14 @@ BOLD_WEIGHT = 700
 FAMILY_NAME_ID = 1
 FULL_NAME_ID = 4
 POSTSCRIPT_NAME_ID = 6
+STYLE_NAME_ID = 2
 FACE_NAME_IDS = (FAMILY_NAME_ID, FULL_NAME_ID, POSTSCRIPT_NAME_ID)
 WINDOWS_PLATFORM = 3
 UNICODE_BMP_ENCODING = 1
 ENGLISH_UNITED_STATES = 0x409
+KOREAN_CODE_PAGE_BITS = (19, 21)
+RESTRICTED_LICENSE_BITS = 0x000F
+RESTRICTED_LICENSE_EMBEDDING = 0x0002
 
 SANS_BODY = "sans body"
 SERIF_BODY = "serif body"
@@ -62,6 +66,21 @@ class BundledFamily:
 
     def path(self, face: BundledFace) -> pathlib.Path:
         return unpacked_font(self.asset(face))
+
+
+@dataclass(frozen=True)
+class FaceFacts:
+    family_names: tuple[str, ...]
+    style: str
+    fs_type: int
+    panose: str
+    is_korean: bool
+    is_fixed_pitch: bool
+    has_truetype_outlines: bool
+
+    @property
+    def can_embed_in_office(self) -> bool:
+        return self.has_truetype_outlines and self.fs_type & RESTRICTED_LICENSE_BITS != RESTRICTED_LICENSE_EMBEDDING
 
 
 @dataclass(frozen=True)
@@ -185,11 +204,36 @@ def name_records(path: pathlib.Path) -> tuple:
         return tuple(font["name"].names)
 
 
-@functools.lru_cache(maxsize=None)
 def typeface(family: BundledFamily, face: BundledFace) -> str:
-    records = name_records(family.path(face))
-    english = next((record for record in records if (record.nameID, record.platformID, record.platEncID, record.langID) == (FAMILY_NAME_ID, WINDOWS_PLATFORM, UNICODE_BMP_ENCODING, ENGLISH_UNITED_STATES)), None)
-    return (english or next(record for record in records if record.nameID == FAMILY_NAME_ID)).toUnicode()
+    return face_facts(family, face).family_names[0]
+
+
+@functools.lru_cache(maxsize=None)
+def face_facts(family: BundledFamily, face: BundledFace) -> FaceFacts:
+    from fontTools.ttLib import TTFont
+
+    with TTFont(str(family.path(face)), lazy=True) as font:
+        names = font["name"]
+        metrics = font["OS/2"]
+        return FaceFacts(
+            family_names=tuple(dict.fromkeys((english_name(names, FAMILY_NAME_ID), *(record.toUnicode() for record in names.names if record.nameID == FAMILY_NAME_ID)))),
+            style=english_name(names, STYLE_NAME_ID),
+            fs_type=metrics.fsType,
+            panose=panose_hex(metrics.panose),
+            is_korean=any(metrics.ulCodePageRange1 & (1 << bit) for bit in KOREAN_CODE_PAGE_BITS),
+            is_fixed_pitch=bool(font["post"].isFixedPitch),
+            has_truetype_outlines="glyf" in font,
+        )
+
+
+def english_name(names, name_id: int) -> str:
+    record = names.getName(name_id, WINDOWS_PLATFORM, UNICODE_BMP_ENCODING, ENGLISH_UNITED_STATES) or next(record for record in names.names if record.nameID == name_id)
+    return record.toUnicode()
+
+
+def panose_hex(panose) -> str:
+    fields = ("bFamilyType", "bSerifStyle", "bWeight", "bProportion", "bContrast", "bStrokeVariation", "bArmStyle", "bLetterForm", "bMidline", "bXHeight")
+    return bytes(getattr(panose, field) for field in fields).hex().upper()
 
 
 def stand_in_family(name: str) -> BundledFamily:

@@ -19,7 +19,7 @@ An editable draft agreement between the company ("Company") and an employee ("Em
 ```json
 {
   "title": "Employment Agreement",
-  "fontName": "Noto Sans",
+  "fontName": "Pretendard",
   "fontSize": 10.5,
   "page": { "marginInches": 0.9 },
   "blocks": [

@@ -16,6 +16,7 @@ from convert_definitions import (  # noqa: E402
     CONVERSION_APPROXIMATED, PAGE_WITHOUT_TEXT, ROUTES, TABLE_NOT_FOUND, UNSUPPORTED_CONVERSION, Route, find_route, normalized_extension,
 )
 from docx.shared import Pt  # noqa: E402
+from fonts.docx_embedding import save_document  # noqa: E402
 from docx_markdown import DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, markdown_document  # noqa: E402
 from docx_to_blocks import read_docx_blocks  # noqa: E402
 from export_document import export_pdf  # noqa: E402
@@ -188,7 +189,7 @@ def pdf_to_docx(conversion: Conversion) -> None:
         reading = read_pdf_reading(conversion, Path(media_directory), Path(media_directory).name)
         document = write_docx(conversion, reading.blocks, Path(media_directory).parent, save=False)
         match_pdf_page(document, reading)
-        document.save(conversion.output_path)
+        save_document(document, conversion.output_path)
 
 
 def pdf_to_markdown(conversion: Conversion) -> None:
@@ -307,7 +308,7 @@ def write_docx(conversion: Conversion, blocks: list, source_directory: Path, sav
     document, issues = markdown_document(blocks, DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, source_directory)
     conversion.issues.extend(issues)
     if save:
-        document.save(conversion.output_path)
+        save_document(document, conversion.output_path)
     return document
 
 

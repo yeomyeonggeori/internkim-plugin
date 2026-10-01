@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 from fonts.registry import SANS_BODY, default_family
+from fonts.docx_embedding import save_document
 from office_result import MISSING_FIELD, PERMISSION_DENIED, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
 from fonts.pdf_registration import register_document_font
@@ -466,7 +467,7 @@ def generate_docx(document, output_path):
         run.font.color.rgb = RGBColor(*COLOR_INK)
     for block in document["blocks"]:
         append_docx_block(word_document, block)
-    word_document.save(str(output_path))
+    save_document(word_document, output_path)
 
 
 def text_or_default(value, default):

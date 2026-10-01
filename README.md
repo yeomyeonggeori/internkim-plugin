@@ -62,11 +62,11 @@ the commands. Each command prints one JSON result with a status and coded
 issues, and `scripts/office guide <format>` prints the fields every input takes
 and every code a command reports, generated from the validators themselves.
 
-Those environments, the package cache and the bundled fonts unpacked for
-drawing live under `XDG_CACHE_HOME`, falling back to `~/.cache` when it is
-unset. A host with a shared package cache points `UV_CACHE_DIR` at it. Neither
-is required, and the skills read no variable named after the host that runs
-them.
+Those environments, the package cache, the bundled fonts unpacked for drawing
+and the font subsets a `.docx` carries live under `XDG_CACHE_HOME`, falling
+back to `~/.cache` when it is unset. A host with a shared package cache points
+`UV_CACHE_DIR` at it. Neither is required, and the skills read no variable
+named after the host that runs them.
 
 ## Tool server
 

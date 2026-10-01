@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from fonts.docx_embedding import save_document
 from docx_markdown import DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, markdown_document
 from doc_definitions import PDF_RENDERER_UNAVAILABLE
 from document_pdf import can_render, markdown_source_text, render_document_pdf
@@ -33,7 +34,7 @@ def main() -> Result:
         issues = export_pdf(blocks, output_path, markdown_path.parent, arguments.font_path, arguments.font_size)
     else:
         document, issues = markdown_document(blocks, arguments.font, arguments.font_size, markdown_path.parent)
-        document.save(output_path)
+        save_document(document, output_path)
     return Result(summary=f"exported {output_path} from {markdown_path}", output_path=str(output_path), issues=(*math_issues(blocks, output_format), *issues))
 
 

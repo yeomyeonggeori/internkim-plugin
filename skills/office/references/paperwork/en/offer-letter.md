@@ -18,7 +18,7 @@ An editable outbound document proposing a role and compensation package to a con
 ```json
 {
   "title": "Offer Letter",
-  "fontName": "Noto Sans",
+  "fontName": "Pretendard",
   "fontSize": 10.5,
   "page": { "marginInches": 0.9 },
   "blocks": [

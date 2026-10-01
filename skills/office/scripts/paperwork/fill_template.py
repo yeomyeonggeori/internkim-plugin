@@ -7,6 +7,7 @@ from pathlib import Path
 
 from docxtpl import DocxTemplate
 
+from fonts.docx_embedding import save_document
 from office_result import MISSING_FIELD, PERMISSION_DENIED, WRONG_TYPE, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from template_context import caller_fields, complete_context, non_empty_fields
 from template_fields import TEMPLATES_PATH, template_list_fields, template_names
@@ -23,7 +24,7 @@ def main() -> Result:
     template.render(context)
     try:
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        template.save(str(output_path))
+        save_document(template, output_path)
     except PermissionError as error:
         raise OfficeFailure(PERMISSION_DENIED.issue(
             f"cannot write to {output_path} (permission denied)",

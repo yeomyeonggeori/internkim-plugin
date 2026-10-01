@@ -6,10 +6,13 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Mm
 
+from fonts.registry import MONOSPACE, SANS_BODY, default_family
 from docx_settings import insert_setting
 
 
 KOREAN_LANGUAGE = "ko-KR"
+DOCUMENT_FONT = default_family(SANS_BODY).name
+CODE_FONT = default_family(MONOSPACE).name
 DEFAULT_MARGIN_INCHES = 1.0
 A4_WIDTH = Mm(210)
 A4_HEIGHT = Mm(297)
