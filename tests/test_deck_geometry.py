@@ -153,6 +153,8 @@ class KitCollisionTest(unittest.TestCase):
         self.assertFalse(acceptance["acceptable"])
         defects = {(defect["code"], defect["location"]) for defect in acceptance["defects"]}
         self.assertTrue({("CONTENT_OVERFLOW", "slide 1"), ("OUT_OF_FRAME", "slide 1"), ("TITLE_TOO_LONG", "slide 2")} <= defects, defects)
+        overflow = next(issue for issue in envelope["issues"] if (issue["code"], issue["location"]) == ("CONTENT_OVERFLOW", "slide 1"))
+        self.assertIn("characters where about", overflow["suggestion"])
 
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_the_kit_shrinks_cards_that_would_cover_the_title_until_they_fit(self):

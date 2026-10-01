@@ -4,6 +4,8 @@
   const footerlessLayouts = new Set(["cover", "section"]);
   const itemClasses = ["kpi", "card", "step", "column"];
   const gridCardCount = 4;
+  const capacityAttribute = "data-kit-capacity";
+  const capacityPartNames = [["h1, h2", "title"], [".lead", "lead"], [".eyebrow", "eyebrow"], [".takeaway", "takeaway"], [".card", "card"], [".kpi", "kpi"], [".column", "column"], [".step", "step"], [".kit-steps", "steps"], [".insight", "insight"], ["ol, ul", "list"], ["table", "table"], ["figure", "chart"], ["blockquote", "quote"]];
   const numericCellPattern = /^[+\-−]?[₩$€£¥]?\s?[\d.,]+\s?(%|%p|[^\s\d]{0,4})?$/;
   const svgNamespace = "http://www.w3.org/2000/svg";
   const barScaleShare = 0.84;
@@ -174,11 +176,69 @@
   }
 
   async function fitSlide(slide, layOut) {
+    slide.removeAttribute(capacityAttribute);
     for (const step of fitSteps) {
       slide.style.setProperty("--fit", String(step));
       if (layOut) await layOut(slide);
       if (!slide.clientHeight || !overflows(slide)) return;
+      if (step === fitSteps[0]) slide.setAttribute(capacityAttribute, JSON.stringify(slideCapacity(slide)));
     }
+  }
+
+  function contentFloor(slide) {
+    const footer = directChildren(slide, "kit-footer")[0];
+    return footer ? footer.getBoundingClientRect().top : slide.getBoundingClientRect().bottom;
+  }
+
+  function partName(element) {
+    const named = capacityPartNames.find(([selector]) => element.matches(selector));
+    return named ? named[1] : element.tagName.toLowerCase();
+  }
+
+  function partIndex(element) {
+    const siblings = Array.from(element.parentElement.children).filter((sibling) => partName(sibling) === partName(element));
+    return siblings.indexOf(element) + 1;
+  }
+
+  function itemsOf(part) {
+    if (part.tagName === "TABLE") return Array.from(part.querySelectorAll("tr")).filter((row) => row.querySelector("td"));
+    if (["OL", "UL"].includes(part.tagName)) return Array.from(part.children);
+    if (part.classList.contains("kit-steps")) return Array.from(part.children);
+    return [];
+  }
+
+  function spills(element, floor) {
+    const rect = element.getBoundingClientRect();
+    return element.scrollHeight > element.clientHeight + overflowTolerance || rect.bottom > floor + overflowTolerance;
+  }
+
+  function textShare(element, floor) {
+    const rect = element.getBoundingClientRect();
+    const room = Math.min(element.clientHeight || rect.height, floor - rect.top);
+    return Math.max(0, Math.min(1, room / Math.max(element.scrollHeight, rect.height, 1)));
+  }
+
+  function textCapacity(element, floor) {
+    const characters = element.textContent.replace(/\s+/g, " ").trim().length;
+    return { part: partName(element), index: partIndex(element), characters, fits: Math.floor(characters * textShare(element, floor)) };
+  }
+
+  function partCapacity(part, floor) {
+    const items = itemsOf(part);
+    const limit = Math.min(floor, part.getBoundingClientRect().bottom) + overflowTolerance;
+    const shown = items.filter((item) => item.getBoundingClientRect().bottom <= limit).length;
+    if (items.length && shown < items.length) return { part: partName(part), index: partIndex(part), items: items.length, fits: shown };
+    const crowded = items.find((item) => spills(item, floor));
+    return textCapacity(crowded || part, floor);
+  }
+
+  function slideCapacity(slide) {
+    const floor = contentFloor(slide);
+    const parts = Array.from(slide.children).filter((child) => !child.matches("aside, .kit-footer, .kit-ring") && child.getBoundingClientRect().height > 0);
+    const crowded = parts.filter((part) => spills(part, floor) || itemsOf(part).some((item) => spills(item, floor)));
+    if (crowded.length) return crowded.map((part) => partCapacity(part, floor));
+    const used = Math.max(...parts.map((part) => part.getBoundingClientRect().bottom)) - slide.getBoundingClientRect().top;
+    return [{ part: "slide", index: 1, share: Math.round(((floor - slide.getBoundingClientRect().top) / Math.max(used, 1)) * 100) / 100 }];
   }
 
   function parseList(text) {

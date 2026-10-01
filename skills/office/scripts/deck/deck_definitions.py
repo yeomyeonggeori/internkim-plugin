@@ -21,8 +21,8 @@ NATIVE_RENDER_SOURCE = "nativeFallback"
 class ReviewCheck:
     kind: IssueKind
 
-    def issue(self, text: str, location: str | None = None) -> Issue:
-        return self.kind.issue(text, location)
+    def issue(self, text: str, location: str | None = None, suggestion: object = None) -> Issue:
+        return self.kind.issue(text, location, suggestion)
 
     def deck_issue(self, text: str) -> Issue:
         return self.issue(text, DECK_LOCATION)
@@ -33,22 +33,22 @@ def review_check(code: str, meaning: str, suggestion: str) -> ReviewCheck:
 
 
 SLIDE_BLANK = review_check("SLIDE_BLANK", "the slide render shows no content", "check that the slide's content is not hidden or outside the frame")
-CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is larger than its box, so it is clipped or spills out", "enlarge the box, cut the content, or lower the type size")
-OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "move or resize the element so it sits inside the slide")
+CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is larger than its box, so it is clipped or spills out", "cut or split what the message names; a build suggestion says how many rows, items or characters fit at full type size, and a .pptx suggestion is the operation to apply")
+OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "keep every part on the slide: split or cut what pushes it off, as the suggestion counts; in a .pptx, apply the operation the suggestion names")
 TEXT_OVERLAP = review_check("TEXT_OVERLAP", "two pieces of text cover each other", "separate the two text blocks or shorten the one that spills")
-TEXT_COVERED = review_check("TEXT_COVERED", "a box painted over text hides part of it", "shorten the slide's body so each part stays in its own place, or split the slide in two")
+TEXT_COVERED = review_check("TEXT_COVERED", "a box painted over text hides part of it", "follow the suggestion, which names the cause: rows, items or text that do not fit, or a custom style that moves a part over another")
 FOOTER_CROSSED = review_check("FOOTER_CROSSED", "slide content reaches into the footer band", "shorten or split the content so it ends above the footer")
 TITLE_TOO_LONG = review_check("TITLE_TOO_LONG", "a slide title runs past three lines", "state the conclusion in one short sentence and move the detail into the body or the speaker notes")
-TINY_TEXT = review_check("TINY_TEXT", "rendered text is smaller than 1% of the slide width (16px on a 1600px slide)", "raise the text size, or shorten the slide so the kit does not shrink it")
-IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "set object-fit: cover or contain, or size the image to its ratio")
+TINY_TEXT = review_check("TINY_TEXT", "rendered text is smaller than 1% of the slide width (16px on a 1600px slide)", "shorten the slide so the kit does not shrink its type; the suggestion says how much fits at full size")
+IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "put the photo in a cover or image slide, which crops it to its frame; in a .pptx, apply the set_transform the suggestion names")
 GEOMETRY_NOT_MEASURED = review_check("GEOMETRY_NOT_MEASURED", "no renderer measured element geometry, so overflow, overlap and stretched images were not checked", "install bun or node 18 and build again, or say the layout was not measured")
 UNRELIABLE_VISUAL_EVIDENCE = review_check("UNRELIABLE_VISUAL_EVIDENCE", "review images were not drawn from the deck's layout", "treat the previews as approximate and say so when delivering")
 
 TOPIC_TITLE = review_check("TOPIC_TITLE", "the title is a topic label, not a claim", "write the title as the slide's conclusion")
 LANGUAGE_MISMATCH = review_check("LANGUAGE_MISMATCH", "slide titles are Latin-only in a Korean deck", "write the titles in the request language")
 UNSOURCED_CURRENT_DATE = review_check("UNSOURCED_CURRENT_DATE", "a slide shows today's date that the source does not", "show only dates from the source material")
-VERTICAL_DEAD_ZONE = review_check("VERTICAL_DEAD_ZONE", "an empty band spans much of the slide height, between content or under the body", "distribute content to fill the frame")
-EMOJI_ICON = review_check("EMOJI_ICON", "a slide uses emoji glyphs", "use text labels, CSS markers, or inline SVG")
+VERTICAL_DEAD_ZONE = review_check("VERTICAL_DEAD_ZONE", "an empty band spans much of the slide height, between content or under the body", "give the body what its layout holds, such as a .takeaway band, more items or an .insight, or move the content to a layout that fills the frame")
+EMOJI_ICON = review_check("EMOJI_ICON", "a slide uses emoji glyphs", "write a .label word instead; the kit draws list markers and numbers itself")
 MISSING_SPEAKER_NOTES = review_check("MISSING_SPEAKER_NOTES", "a slide has no speaker notes", 'add an <aside class="notes"> script to every slide')
 
 SLIDE_RENDER_CHECKS = (SLIDE_BLANK, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, TEXT_COVERED, FOOTER_CROSSED, TITLE_TOO_LONG, IMAGE_DISTORTED, TINY_TEXT, GEOMETRY_NOT_MEASURED, UNRELIABLE_VISUAL_EVIDENCE)

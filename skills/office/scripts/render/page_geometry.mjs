@@ -1,3 +1,5 @@
+export const capacityAttribute = "data-kit-capacity";
+
 export function measurePageGeometry(pages, thresholds) {
   const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, backgroundShareOfSlide } = thresholds;
 
@@ -276,5 +278,6 @@ export function measurePageGeometry(pages, thresholds) {
     coveredText: coveredText(page),
     footerCrossings: footerCrossings(page),
     longTitles: longTitles(page),
+    capacity: JSON.parse(page.getAttribute(capacityAttribute) || "[]"),
   }));
 }

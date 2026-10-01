@@ -101,7 +101,7 @@ def apply_emoji_icon_warning(slides: list[dict[str, object]], slide_texts: list[
             slides,
             EMOJI_ICON.deck_issue(
                 "slide " + ", ".join(emoji_indexes)
-                + " uses emoji glyphs; use text labels, CSS markers, or inline SVG instead"
+                + " uses emoji glyphs"
             ),
         )
 
