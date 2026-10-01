@@ -1,7 +1,7 @@
 export const capacityAttribute = "data-kit-capacity";
 
 export function measurePageGeometry(pages, thresholds) {
-  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, backgroundShareOfSlide } = thresholds;
+  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, backgroundShareOfSlide, deadZoneShareOfSlide } = thresholds;
 
   const isMeasurable = (element) => {
     const style = getComputedStyle(element);
@@ -236,10 +236,10 @@ export function measurePageGeometry(pages, thresholds) {
       .filter(({ lines }) => lines > titleLineMaximum)
       .map(({ title, lines }) => ({ ...describe(title), lines, maximum: titleLineMaximum }));
 
-  const contentRects = (page) => {
+  const contentRects = (page, elements = elementsOf(page).slice(1)) => {
     const frame = page.getBoundingClientRect();
     const slideArea = frame.width * frame.height;
-    return elementsOf(page).slice(1).flatMap((element) => {
+    return elements.flatMap((element) => {
       const rect = element.getBoundingClientRect();
       const isMedia = mediaTags.has(element.tagName.toUpperCase());
       const isBox = paintsBox(getComputedStyle(element)) && rect.width * rect.height < slideArea * backgroundShareOfSlide;
@@ -251,25 +251,68 @@ export function measurePageGeometry(pages, thresholds) {
     }).filter((rect) => rect.right > rect.left && rect.bottom > rect.top);
   };
 
-  const contentBands = (page) => {
-    const frame = page.getBoundingClientRect();
-    const intervals = contentRects(page)
-      .map((rect) => [rect.top - frame.top, rect.bottom - frame.top])
-      .filter(([top, bottom]) => bottom > top)
+  const mergedBands = (rects, top, bottom) => {
+    const intervals = rects
+      .map((rect) => [Math.max(rect.top, top) - top, Math.min(rect.bottom, bottom) - top])
+      .filter(([start, end]) => end > start)
       .sort((first, second) => first[0] - second[0]);
     const bands = [];
-    for (const [top, bottom] of intervals) {
+    for (const [start, end] of intervals) {
       const last = bands[bands.length - 1];
-      if (last && top <= last[1]) last[1] = Math.max(last[1], bottom);
-      else bands.push([top, bottom]);
+      if (last && start <= last[1]) last[1] = Math.max(last[1], end);
+      else bands.push([start, end]);
     }
-    return bands.map(([top, bottom]) => [round(top), round(bottom)]);
+    return bands;
+  };
+
+  const contentBands = (page) => {
+    const frame = page.getBoundingClientRect();
+    return mergedBands(contentRects(page), frame.top, Infinity).map(([top, bottom]) => [round(top), round(bottom)]);
+  };
+
+  const contentBoxOf = (box, rect) => {
+    const style = getComputedStyle(box);
+    const inset = (side) => (parseFloat(style[`border${side}Width`]) || 0) + (parseFloat(style[`padding${side}`]) || 0);
+    return { top: rect.top + inset("Top"), bottom: rect.bottom - inset("Bottom") };
+  };
+
+  const emptyHeightInside = (box, rect, page) => {
+    const inner = [...ownTextRects(box), ...contentRects(page, Array.from(box.querySelectorAll("*")).filter(isMeasurable))];
+    const { top, bottom } = contentBoxOf(box, rect);
+    const covered = mergedBands(inner, top, bottom).reduce((sum, [start, end]) => sum + end - start, 0);
+    return Math.max(0, bottom - top - covered);
+  };
+
+  const rowsOf = (boxes) => {
+    const rows = new Map();
+    for (const box of boxes) {
+      const key = `${Math.round(box.rect.top)}:${Math.round(box.rect.bottom)}`;
+      const siblings = rows.get(box.element.parentElement) || new Map();
+      siblings.set(key, [...(siblings.get(key) || []), box]);
+      rows.set(box.element.parentElement, siblings);
+    }
+    return Array.from(rows.values()).flatMap((siblings) => Array.from(siblings.values()));
+  };
+
+  const hollowBoxes = (page) => {
+    const frame = page.getBoundingClientRect();
+    const boxes = elementsOf(page)
+      .slice(1)
+      .filter((element) => !mediaTags.has(element.tagName.toUpperCase()) && paintsBox(getComputedStyle(element)) && descendantTextRects(element).length > 0)
+      .map((element) => ({ element, rect: element.getBoundingClientRect() }))
+      .filter(({ rect }) => area(rect) > 0 && !isBackground(rect, page))
+      .map(({ element, rect }) => ({ element, rect, empty: emptyHeightInside(element, rect, page) }));
+    return rowsOf(boxes)
+      .filter((row) => Math.min(...row.map((box) => box.empty)) >= frame.height * deadZoneShareOfSlide)
+      .flat()
+      .map(({ element, rect, empty }) => ({ ...describe(element), height: round(rect.bottom - rect.top), emptyHeight: round(empty) }));
   };
 
   return pages.map((page, index) => ({
     index: index + 1,
     height: round(page.getBoundingClientRect().height),
     contentBands: contentBands(page),
+    hollowBoxes: hollowBoxes(page),
     overflow: overflowingElements(page).map(describeOverflow),
     outOfFrame: elementsOutsideFrame(page).map((element) => ({ ...describe(element), rect: describeRect(element.getBoundingClientRect()) })),
     overlaps: overlappingText(page),

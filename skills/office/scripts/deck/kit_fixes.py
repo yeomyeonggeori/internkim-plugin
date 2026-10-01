@@ -77,8 +77,12 @@ def placement_fix(finding_text: str) -> str:
     return f"{finding_text}: no kit layout places one part over another or off the slide, so remove the <style> rule or style attribute that moves it"
 
 
-def size_fix() -> str:
-    return "the kit draws every part at 16px or more; remove the <style> rule or style attribute that sets this size"
+def size_fix(minimum: float) -> str:
+    return f"the kit draws every part at {minimum:g}px or more; remove the <style> rule or style attribute that sets this size"
+
+
+def hollow_fix() -> str:
+    return "the kit sizes a box to the parts it holds: give it what its layout lists, such as a <p> under each <h3>, or remove the <style> rule or style attribute that sets its height"
 
 
 def dead_zone_fix(layout: str) -> str:

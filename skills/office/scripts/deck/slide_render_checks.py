@@ -6,12 +6,13 @@ import typing
 from deck.deck_definitions import SLIDE_BLANK, VERTICAL_DEAD_ZONE
 from deck.design_warnings import LABEL_ONLY_SLIDE_ROLES, slide_design_warnings
 from deck.geometry_checks import content_extent, geometry_warnings, slide_geometry
-from deck.kit_fixes import dead_zone_fix
+from deck.kit_fixes import dead_zone_fix, hollow_fix
+from deck.layout_thresholds import VERTICAL_DEAD_ZONE_HEIGHT_RATIO
 from core.office_result import Issue
 
 
-VERTICAL_DEAD_ZONE_HEIGHT_RATIO = 0.27
 UNFILLED_BOTTOM_HEIGHT_RATIO = 0.2
+HOLLOW_BOXES_NAMED = 3
 CENTERED_BODY_GAP_RATIO = 1.6
 CENTERED_KIT_LAYOUTS = {"statement", "quote", "closing"}
 UNMEASURED_PAGE = {"width": 0, "height": 0, "bounds": None, "density": 0.0, "verticalGapRatio": 0.0}
@@ -36,7 +37,7 @@ def review_slide(path: typing.Optional[pathlib.Path], pixels: dict[str, object] 
         return review_slide_without_image(index, slide_text, structure)
     page = pixels or UNMEASURED_PAGE
     is_blank = pixels is not None and page["bounds"] is None
-    warnings = slide_warnings(is_blank, structure, measured) + vertical_dead_zone_warnings(page, measured, structure)
+    warnings = slide_warnings(is_blank, structure, measured) + hollow_box_warnings(measured, structure) + vertical_dead_zone_warnings(page, measured, structure)
     return {
         "index": index,
         "filename": path.name,
@@ -90,6 +91,14 @@ def vertical_dead_zone_warnings(analysis: dict[str, object], measured: dict[str,
     if analysis["verticalGapRatio"] >= VERTICAL_DEAD_ZONE_HEIGHT_RATIO:
         return [VERTICAL_DEAD_ZONE.issue(f"an empty band spans {analysis['verticalGapRatio']:.0%} of the slide height", suggestion=suggestion)]
     return []
+
+
+def hollow_box_warnings(measured: dict[str, object] | None, structure: dict[str, object]) -> list[Issue]:
+    boxes = (measured or {}).get("hollowBoxes") or []
+    if not boxes:
+        return []
+    named = "; ".join(f"{box['selector']} \"{box['text']}\" is {box['height']:g}px tall and {box['emptyHeight']:g}px of it holds nothing" for box in boxes[:HOLLOW_BOXES_NAMED])
+    return [VERTICAL_DEAD_ZONE.issue(f"{len(boxes)} boxes are mostly empty inside: {named}", suggestion=hollow_fix() if structure["kitLayout"] else None)]
 
 
 def body_is_centered(extent) -> bool:
