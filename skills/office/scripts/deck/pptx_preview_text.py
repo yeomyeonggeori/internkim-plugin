@@ -7,9 +7,10 @@ from pptx.oxml.ns import qn
 
 from pptx_preview_paint import element, pixels, point_pixels
 from pptx_style import paragraph_chain, resolve_color, run_style
-from pptx_text_measure import autofit_scale, font_face, line_height_points, line_spacing, paragraph_spacing, paragraph_value
+from pptx_text_measure import autofit_scale, line_spacing, paragraph_spacing, paragraph_value
 from text_script import has_east_asian, is_east_asian
 from units import DEFAULT_TEXT_INSETS
+from fonts.measure import font_face, line_height_points
 
 
 CELL_MARGINS = {"lIns": "marL", "rIns": "marR", "tIns": "marT", "bIns": "marB"}

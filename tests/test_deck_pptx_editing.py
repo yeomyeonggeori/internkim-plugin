@@ -21,7 +21,7 @@ from pptx_edit_fixture import CUSTOM_PART_NAME, UNKNOWN_EXTENSION_URI, build_kor
 sys.path.insert(0, str(SCRIPTS_PATH))
 sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
 
-from pptx_text_measure import font_face  # noqa: E402
+from fonts.measure import font_face  # noqa: E402
 
 
 def run_office(arguments, directory):

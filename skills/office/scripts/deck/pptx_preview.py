@@ -16,9 +16,10 @@ from pptx_preview_shapes import geometry_html
 from pptx_preview_table import table_html
 from pptx_preview_text import TextPaint, body_html, body_layout
 from pptx_shape_kinds import placeholder_of, shape_kind
-from pptx_text_measure import font_face, grown_box, measure_text
+from pptx_text_measure import grown_box, measure_text
 from text_script import has_east_asian
 from image_formats import WEB_IMAGE_CONTENT_TYPES
+from fonts.measure import font_face
 
 
 CROP_SCALE = 100000
