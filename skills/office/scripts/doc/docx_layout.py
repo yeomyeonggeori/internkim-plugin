@@ -6,7 +6,8 @@ from doc.docx_preview_model import (
     BoxItem, CellBlock, ChartItem, FieldItem, ImageItem, LineBreakItem, NoteReferenceItem, PageBreakBlock, ParagraphBlock, TabItem, TableBlock, TextItem, TextStyle,
 )
 from core.units import twips_to_pixels
-from fonts.preview import FontRegistry, breakable_pieces, is_ideograph_piece
+from fonts.measure import split_breakable
+from fonts.preview import FontRegistry, is_ideograph_piece
 
 
 DEFAULT_TAB_PIXELS = 48
@@ -112,7 +113,7 @@ class Layout:
 
     def item_fragments(self, item, available: float) -> list[Fragment]:
         if isinstance(item, TextItem):
-            return [self.text_fragment(piece, item.style) for piece in breakable_pieces(item.text)]
+            return [self.text_fragment(piece, item.style) for piece in split_breakable(item.text)]
         if isinstance(item, TabItem):
             return [Fragment("tab", 0, 0, style=item.style)]
         if isinstance(item, LineBreakItem):

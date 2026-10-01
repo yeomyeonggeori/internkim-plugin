@@ -7,7 +7,7 @@ from fontTools.ttLib import TTFont
 
 from fonts.registry import SANS_BODY, default_family, resolved_face
 from core.units import points_to_pixels
-from fonts.measure import FontFace, font_face, split_breakable, text_width_points
+from fonts.measure import FontFace, font_face, text_width_points
 from core.text_script import has_east_asian, is_ideograph
 
 
@@ -81,10 +81,6 @@ def script_runs(text: str) -> list[str]:
         else:
             runs.append((script, character))
     return [run for _, run in runs]
-
-
-def breakable_pieces(text: str) -> list[str]:
-    return split_breakable(text)
 
 
 def is_ideograph_piece(piece: str) -> bool:
