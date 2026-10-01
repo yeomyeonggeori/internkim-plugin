@@ -22,6 +22,13 @@ from render_fixture import can_render, pdf_page_count  # noqa: E402
 
 
 LAYOUT_DEFECT_CODES = {"CONTENT_OVERFLOW", "TEXT_OVERLAP", "OUT_OF_FRAME", "VERTICAL_DEAD_ZONE"}
+PERCENT_DONUT_DECK = """<body data-theme="corporate">
+<section data-layout="cover"><h1>제품별 매출 비중</h1><p class="lead">주식회사 예시랩 · 2026년 3분기</p></section>
+<section data-layout="chart"><h2>매출의 절반 이상이 클라우드입니다</h2>
+<figure data-chart="donut" data-labels="클라우드, 온프레미스, 컨설팅" data-values="52, 31, 17" data-unit="%"><figcaption>제품별 매출 비중</figcaption></figure></section>
+<section data-layout="closing"><h2>클라우드 비중을 더 키웁니다</h2></section>
+</body>
+"""
 GENERATED_PHOTO_SIZE = (960, 640)
 
 
@@ -88,6 +95,19 @@ class SampleDeckBuildTest(unittest.TestCase):
                 self.assertEqual(pdf_page_count(str(deck_path / "build" / f"{deck_path.name}.pdf")), count)
                 self.assert_review_measured_every_page(deck_path, count)
                 self.assert_pptx_keeps_the_layout(deck_path / "build" / f"{deck_path.name}.pptx")
+
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+    def test_a_donut_of_percentages_lists_each_share_once(self):
+        with tempfile.TemporaryDirectory() as directory:
+            deck_path = Path(directory) / "shares"
+            deck_path.mkdir()
+            (deck_path / "slides.html").write_text(PERCENT_DONUT_DECK, encoding="utf-8")
+            subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path)
+            pptx_path = deck_path / "build" / "shares.pptx"
+            read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "read", str(pptx_path)], capture_output=True, text=True).stdout)
+            texts = [shape.get("text", "") for slide in read["details"]["slides"] for shape in slide["shapes"]]
+            self.assertEqual(texts.count("31%"), 1, texts)
+            self.assert_pptx_keeps_the_layout(pptx_path)
 
     def assert_pptx_keeps_the_layout(self, pptx_path: Path):
         check = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "check", str(pptx_path)], capture_output=True, text=True).stdout)

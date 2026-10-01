@@ -396,15 +396,19 @@
       ring.appendChild(center);
     }
     const legend = element("div", "kit-donut-legend");
+    const valuesAreShares = (figure.getAttribute("data-unit") || "").trim() === "%";
     data.labels.forEach((label, index) => {
       const row = element("div");
       const name = element("span");
       name.textContent = label;
       const amount = element("b");
       amount.textContent = format(values[index]);
-      const share = element("span", "kit-share");
-      share.textContent = `${Math.round((values[index] / total) * 100)}%`;
-      row.append(element("i", "kit-swatch"), name, amount, share);
+      row.append(element("i", "kit-swatch"), name, amount);
+      if (!valuesAreShares) {
+        const share = element("span", "kit-share");
+        share.textContent = `${Math.round((values[index] / total) * 100)}%`;
+        row.appendChild(share);
+      }
       row.firstChild.style.setProperty("background", colors[index]);
       legend.appendChild(row);
     });
