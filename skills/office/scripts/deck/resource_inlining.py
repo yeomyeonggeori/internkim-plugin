@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import base64
 import html
 import mimetypes
 import pathlib
 import re
+
+from office_preview import data_uri
 
 
 SKILL_ASSET_PATH = pathlib.Path(__file__).resolve().parents[2] / "assets"
@@ -175,8 +176,7 @@ def resolve_paperlogy_alias(asset_relative_text: str) -> pathlib.Path | None:
 
 
 def base64_data_url(mime_type: str, path: pathlib.Path) -> str:
-    encoded = base64.b64encode(path.read_bytes()).decode()
-    return f"data:{mime_type};base64,{encoded}"
+    return data_uri(mime_type, path.read_bytes())
 
 
 def image_mime_type(path: pathlib.Path) -> str:

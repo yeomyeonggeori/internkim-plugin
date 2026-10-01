@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import base64
 from dataclasses import dataclass
 import html
 
 from pptx.oxml.ns import qn
 
+from office_preview import data_uri
 from pptx_style import PERCENT_SCALE, resolve_color
 
 
@@ -35,10 +35,6 @@ def css(properties: dict) -> str:
 
 def element(tag: str, properties: dict, content: str = "", attributes: str = "") -> str:
     return f'<{tag}{attributes} style="{html.escape(css(properties))}">{content}</{tag}>'
-
-
-def data_uri(content_type: str, blob: bytes) -> str:
-    return f"data:{content_type};base64,{base64.b64encode(blob).decode('ascii')}"
 
 
 def svg_uri(svg: str) -> str:

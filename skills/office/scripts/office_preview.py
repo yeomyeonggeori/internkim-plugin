@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass, field
 import html
 from pathlib import Path
@@ -90,6 +91,10 @@ def page_section(number: int, geometry: PageGeometry, inner_html: str) -> str:
         "color": "#000000",
     }
     return f'<section data-page="{number}"{style_attribute(declarations)}>{inner_html}</section>'
+
+
+def data_uri(content_type: str, blob: bytes) -> str:
+    return f"data:{content_type};base64,{base64.b64encode(blob).decode('ascii')}"
 
 
 def positioned(left: float, top: float, width: float, inner_html: str, extra: dict | None = None) -> str:

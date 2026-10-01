@@ -11,6 +11,7 @@ from docx.oxml.ns import qn
 from docx.shared import Emu, Inches, Mm
 from docx.text.paragraph import Paragraph
 
+from doc_definitions import PICTURE_FORMATS
 from docx_drawing_operations import align_drawing, set_wrap
 from docx_editing import DocxEditing, placement, resolve_block
 from docx_format_operations import ALIGNMENTS
@@ -238,17 +239,25 @@ def require_watermark_source(operation: dict, location: str) -> str | None:
         raise OfficeFailure(INVALID_VALUE.issue(f"{location}: give exactly one of text and image", location, suggestion='text "" removes the watermark'))
     if operation.get("image") is None:
         return None
-    path = os.path.expanduser(operation["image"])
+    return require_picture_file(operation["image"], f"{location}.image")
+
+
+def require_picture_file(written_path: str, location: str) -> str:
+    path = os.path.expanduser(written_path)
     if not os.path.isfile(path):
-        raise OfficeFailure(INPUT_NOT_FOUND.issue(f"{location}.image: {operation['image']} does not exist", f"{location}.image", suggestion="pass an absolute path, or one relative to the directory doc apply runs in"))
+        raise OfficeFailure(INPUT_NOT_FOUND.issue(f"{location}: {written_path} does not exist", location, suggestion="pass an absolute path, or one relative to the directory doc apply runs in"))
     return path
+
+
+def unreadable_picture(written_path: str, location: str) -> OfficeFailure:
+    return OfficeFailure(INVALID_VALUE.issue(f"{location}: {written_path} is not a {PICTURE_FORMATS} image", location))
 
 
 def picture_watermark_paragraph(header, section, operation: dict, image_path: str, number: int, location: str):
     try:
         relationship_id, image = header.part.get_or_add_image(image_path)
     except UnrecognizedImageError as error:
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}.image: {os.path.basename(image_path)} is not a PNG, JPEG, GIF, BMP or TIFF image", f"{location}.image")) from error
+        raise unreadable_picture(operation["image"], f"{location}.image") from error
     scale = operation["scale"] / 100 if operation.get("scale") else fitting_scale(section, image)
     return parse_xml(PICTURE_WATERMARK_TEMPLATE.format(
         shape_id=f"{PICTURE_WATERMARK_PREFIX}{number}",
@@ -294,9 +303,7 @@ def xml_attribute(text: str) -> str:
 
 
 def plan_insert_image(editing: DocxEditing, operation: dict, location: str) -> Change:
-    path = os.path.expanduser(operation["path"])
-    if not os.path.isfile(path):
-        raise OfficeFailure(INPUT_NOT_FOUND.issue(f"{location}.path: {operation['path']} does not exist", f"{location}.path", suggestion="pass an absolute path, or one relative to the directory doc apply runs in"))
+    path = require_picture_file(operation["path"], f"{location}.path")
     place = placement(editing, operation, location)
 
     def change() -> str:
@@ -305,7 +312,7 @@ def plan_insert_image(editing: DocxEditing, operation: dict, location: str) -> C
         try:
             picture = editing.document.add_picture(path, width=width, height=height)
         except UnrecognizedImageError as error:
-            raise OfficeFailure(INVALID_VALUE.issue(f"{location}.path: {operation['path']} is not a PNG, JPEG, GIF, BMP or TIFF image", f"{location}.path")) from error
+            raise unreadable_picture(operation["path"], f"{location}.path") from error
         fit_to_text_width(editing, picture, width, height)
         if operation.get("description"):
             picture._inline.docPr.set("descr", operation["description"])

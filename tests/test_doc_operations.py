@@ -5,7 +5,7 @@ import sys
 import unittest
 import zipfile
 
-from doc_fixture import OFFICE_ENTRY, ContractFixture, block_texts, read_details, run_office, run_office_python, write_json
+from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, ContractFixture, block_texts, read_details, run_office, run_office_python, write_json
 
 
 RICH_ADDITIONS = """
@@ -183,6 +183,16 @@ class PageOperationTest(RichDocumentFixture):
         envelope = self.apply([{"op": "insert_image", "after": 1, "path": "logo.png", "widthInches": 2, "description": "회사 로고"}])
         self.assertIn("2.00 x 0.75 inches", envelope["details"]["changes"][0]["change"])
         self.assertTrue(read_details(self.directory, "edited.docx")["blocks"][2]["picture"])
+
+
+class SectionPropertyOrderTest(unittest.TestCase):
+    def test_page_numbering_is_inserted_before_what_python_docx_orders_after_it(self):
+        sys.path[:0] = [str(SCRIPTS_PATH), str(SCRIPTS_PATH / "doc")]
+        from docx.oxml.section import CT_SectPr
+        from docx_page_operations import SECTION_PROPERTIES_AFTER_PAGE_NUMBERING
+        page_margin_successors = CT_SectPr._insert_pgMar.__closure__[0].cell_contents._successors
+        after_page_numbering = page_margin_successors[page_margin_successors.index("w:pgNumType") + 1:]
+        self.assertEqual(SECTION_PROPERTIES_AFTER_PAGE_NUMBERING, after_page_numbering)
 
 
 if __name__ == "__main__":

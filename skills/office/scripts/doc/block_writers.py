@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 from dataclasses import dataclass
 import html
 import mimetypes
@@ -9,6 +8,7 @@ from chart_svg import chart_svg
 from docx_charts import specification
 from markdown_charts import Chart
 from latex_math import LatexNotReadable, latex_html
+from office_preview import data_uri
 from markdown_blocks import Equation, Heading, Image, ListItem, Quote, Table, ThematicBreak, inline_segments, link_parts, math_latex
 
 
@@ -28,7 +28,7 @@ class SizedImage:
 
     @property
     def source(self) -> str:
-        return data_uri(self.data, f"image{self.suffix}")
+        return file_data_uri(self.data, f"image{self.suffix}")
 HTML_STYLE = """body{font-family:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR","Nanum Gothic",sans-serif;line-height:1.6;max-width:46rem;margin:2rem auto;padding:0 1rem;color:#1a1a1a}
 table{border-collapse:collapse;margin:1rem 0}th,td{border:1px solid #999;padding:.3rem .6rem;text-align:left;vertical-align:top}th{background:#eef2f7}
 img{max-width:100%}hr{border:0;border-top:1px solid #8c959f;margin:1rem 0}.equation{text-align:center;margin:1rem 0}blockquote{margin:1rem 0;padding-left:1rem;border-left:3px solid #ccc;color:#444}"""
@@ -196,6 +196,5 @@ def math_html(latex: str, source: str, display: bool = False) -> str:
         return html.escape(source)
 
 
-def data_uri(blob: bytes, name: str) -> str:
-    media_type = mimetypes.guess_type(name)[0] or "application/octet-stream"
-    return f"data:{media_type};base64,{base64.b64encode(blob).decode()}"
+def file_data_uri(blob: bytes, name: str) -> str:
+    return data_uri(mimetypes.guess_type(name)[0] or "application/octet-stream", blob)

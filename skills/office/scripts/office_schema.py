@@ -9,6 +9,7 @@ from office_result import INVALID_VALUE, MISSING_FIELD, UNKNOWN_FIELD, WRONG_TYP
 
 
 HEX_COLOR_PATTERN = re.compile(r"#?[0-9A-Fa-f]{6}")
+LISTED_NAMES_LIMIT = 40
 
 
 class Shape:
@@ -339,6 +340,15 @@ def name_similarity(written: str, candidate: str) -> float:
 def did_you_mean(written: object, candidates) -> str:
     match = closest_name(written, candidates)
     return f" (did you mean {match!r}?)" if match else ""
+
+
+def names_suggestion(written: object, candidates) -> str:
+    match = closest_name(written, candidates)
+    return f"did you mean {match!r}? {listed_names(candidates)}" if match else listed_names(candidates)
+
+
+def listed_names(candidates) -> str:
+    return f"use one of: {', '.join(repr(name) for name in list(candidates)[:LISTED_NAMES_LIMIT])}"
 
 
 def closest_suggestion(written: object, candidates, template: str = "use {match!r}") -> str | None:
