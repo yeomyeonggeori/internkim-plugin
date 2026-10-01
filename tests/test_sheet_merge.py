@@ -56,5 +56,42 @@ class SheetMergeTest(WorkbookFixture):
         self.assertEqual(unchanged, [])
 
 
+LIST_TEMPLATE = """
+from openpyxl import Workbook
+workbook = Workbook()
+sheet = workbook.active
+sheet.title = "견적"
+sheet["A1"], sheet["B1"], sheet["C1"], sheet["D1"] = "품목", "수량", "단가", "금액"
+sheet["A2"], sheet["B2"], sheet["C2"], sheet["D2"] = "{{ items.name }}", "{{ items.qty }}", "{{ items.price }}", "=B2*C2"
+sheet["A3"], sheet["D3"] = "합계", "=SUM(D2:D2)"
+workbook.save("list.xlsx")
+"""
+
+
+class SheetListMergeTest(WorkbookFixture):
+    def setUp(self):
+        super().setUp()
+        run_office_python(LIST_TEMPLATE, self.directory)
+
+    def merge(self, items):
+        write_json(self.directory / "values.json", {"items": items})
+        return run_office(["sheet", "merge", "list.xlsx", "values.json", "filled.xlsx"], self.directory)
+
+    def formulas_and_values(self, cell_range):
+        read = run_office(["sheet", "read", "filled.xlsx", "--range", cell_range, "--where", "formula"], self.directory)
+        return {cell["cell"]: (cell["formula"], cell["value"]) for cell in read["details"]["range"]["cells"]}
+
+    def test_a_row_naming_a_list_repeats_per_item_and_the_total_grows_with_it(self):
+        envelope = self.merge([{"name": "노트북", "qty": 2, "price": 1200000}, {"name": "모니터", "qty": 3, "price": 300000}, {"name": "키보드", "qty": 5, "price": 89000}])
+        self.assertEqual(envelope["status"], "ok", envelope)
+        self.assertEqual(self.formulas_and_values("D2:D5"), {
+            "D2": ("=B2*C2", 2400000), "D3": ("=B3*C3", 900000), "D4": ("=B4*C4", 445000), "D5": ("=SUM(D2:D4)", 3745000),
+        })
+
+    def test_an_empty_list_leaves_the_row_blank_and_the_total_whole(self):
+        self.assertEqual(self.merge([])["status"], "ok")
+        self.assertEqual(self.formulas_and_values("D2:D3"), {"D2": ("=B2*C2", 0), "D3": ("=SUM(D2:D2)", 0)})
+
+
 if __name__ == "__main__":
     unittest.main()
