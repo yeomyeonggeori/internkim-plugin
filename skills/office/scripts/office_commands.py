@@ -65,7 +65,7 @@ COMMANDS = (
     Command("deck", "read", "deck/read_pptx.py", "list a .pptx's slides with each shape's index, kind, box, text and style, tables, charts and notes"),
     Command("deck", "apply", "deck/apply_pptx.py", "apply a batch of edits to a .pptx, all or none, with --dry-run, and report the layout problems they leave"),
     Command("deck", "merge", "deck/merge_pptx.py", "fill a .pptx template's {{ placeholders }} from a values file, repeating table rows per list item"),
-    Command("deck", "restore", "deck/restore_source.py", "recover controller-free slides.html from a delivered deck", needs_packages=False),
+    Command("deck", "restore", "deck/restore_source.py", "recover the small authored slides.html from a delivered deck .html", needs_packages=False),
     Command("deck", "accept", "deck/accept_review.py", "check review-decision.json against the review evidence", needs_packages=False),
     Command("deck", "image", "deck/fetch_image.py", "download a public-domain photo for a search query", needs_packages=False),
     Command("paperwork", "render", "paperwork/render_paperwork.py", "render a company form to PDF on letterhead"),

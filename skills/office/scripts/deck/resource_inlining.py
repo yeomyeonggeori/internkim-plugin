@@ -40,6 +40,9 @@ FONT_MIME_TYPES = {
 }
 REMOTE_URL_PREFIXES = ("data:", "http:", "https:")
 VENDORED_FONTS_MARKER = "data-internkim-vendored-fonts"
+SOURCE_ATTRIBUTE = "data-internkim-source"
+SOURCE_COMMENT_PREFIX = "internkim-source:"
+VENDORED_FAMILY_INSERTION = ' "PaperlogyLocal",'
 
 
 def inject_vendored_paperlogy_fallback(source_text: str) -> str:
@@ -55,11 +58,11 @@ def inject_vendored_paperlogy_fallback(source_text: str) -> str:
         )
     style_match = re.search(r"<style\b[^>]*>", source_text, flags=re.IGNORECASE)
     if style_match:
-        return insert_text(source_text, style_match.start(), "\n" + font_style + "\n")
+        return insert_text(source_text, style_match.start(), font_style + "\n")
     head_match = re.search(r"</head>", source_text, flags=re.IGNORECASE)
     if head_match:
-        return insert_text(source_text, head_match.start(), "<style>\n" + font_style + "\n</style>\n")
-    return "<style>\n" + font_style + "\n</style>\n" + source_text
+        return insert_text(source_text, head_match.start(), font_style + "\n")
+    return font_style + "\n" + source_text
 
 
 def insert_text(source_text: str, insert_index: int, inserted_text: str) -> str:
@@ -71,12 +74,12 @@ def add_paperlogy_local_to_font_family_lists(source_text: str) -> str:
         return source_text
     source_text = re.sub(
         r'(["\']Paperlogy["\']\s*,)(?!\s*["\']PaperlogyLocal["\'])',
-        r'\1 "PaperlogyLocal",',
+        r'\1' + VENDORED_FAMILY_INSERTION,
         source_text,
     )
     return re.sub(
         r'(?<![-\w])Paperlogy\s*,(?!\s*["\']?PaperlogyLocal)',
-        'Paperlogy, "PaperlogyLocal",',
+        'Paperlogy,' + VENDORED_FAMILY_INSERTION,
         source_text,
     )
 
@@ -102,7 +105,7 @@ def inline_local_images(source_text: str, base_path: pathlib.Path) -> str:
         image_path = local_resource_path(match.group(1), base_path)
         if image_path is None:
             return match.group(0)
-        return f'src="{base64_data_url(image_mime_type(image_path), image_path)}"'
+        return f'src="{base64_data_url(image_mime_type(image_path), image_path)}" {SOURCE_ATTRIBUTE}="{match.group(1)}"'
 
     return re.sub(image_pattern, replace_image, source_text, flags=re.IGNORECASE)
 
@@ -115,9 +118,16 @@ def inline_local_fonts(source_text: str, base_path: pathlib.Path) -> str:
         if font_path is None:
             return match.group(0)
         quote = match.group(1) or ""
-        return f"url({quote}{base64_data_url(font_mime_type(font_path), font_path)}{quote})"
+        return f"url({quote}{base64_data_url(font_mime_type(font_path), font_path)}{quote})/*{SOURCE_COMMENT_PREFIX}{match.group(2)}*/"
 
     return re.sub(font_pattern, replace_font, source_text, flags=re.IGNORECASE)
+
+
+def restore_authored_source(delivered_text: str) -> str:
+    restored = re.sub(rf"<style\b[^>]*{VENDORED_FONTS_MARKER}[^>]*>.*?</style>\n?", "", delivered_text, flags=re.IGNORECASE | re.DOTALL)
+    restored = restored.replace(VENDORED_FAMILY_INSERTION, "")
+    restored = re.sub(rf'src="data:[^"]*" {SOURCE_ATTRIBUTE}="([^"]*)"', r'src="\1"', restored)
+    return re.sub(rf"url\((['\"]?)data:[^)'\"]*\1\)/\*{SOURCE_COMMENT_PREFIX}([^*]*)\*/", r"url(\1\2\1)", restored)
 
 
 def local_resource_path(escaped_url: str, base_path: pathlib.Path) -> pathlib.Path | None:
