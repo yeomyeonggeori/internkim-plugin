@@ -80,6 +80,8 @@ LAYOUT_PART_EXCESS = IssueKind("LAYOUT_PART_EXCESS", ERROR, "a slide holds more 
 LAYOUT_REPEATED = IssueKind("LAYOUT_REPEATED", ERROR, "three slides in a row use the same layout", "change the middle slide to another layout that fits its content")
 TOO_FEW_LAYOUTS = IssueKind("TOO_FEW_LAYOUTS", ERROR, "a deck of six or more slides uses fewer than three layouts", "pick each slide's layout from its content: one number, metrics, comparison, sequence, table or chart")
 FIRST_SLIDE_NOT_COVER = IssueKind("FIRST_SLIDE_NOT_COVER", WARNING, "the deck does not open with a cover slide", 'make slide 1 data-layout="cover" with the deck title and who presents it')
+OUTLINE_LAYOUT_MISPLACED = IssueKind("OUTLINE_LAYOUT_MISPLACED", WARNING, "a cover layout sits after slide 1, or a closing layout before the last slide", "keep cover for slide 1 and closing for the last slide, and give this slide the layout its content calls for, such as section for a divider or statement for one message")
+CLOSING_WITHOUT_ACTION = IssueKind("CLOSING_WITHOUT_ACTION", WARNING, "the closing slide holds no part that carries a decision or a next step, such as a thank-you title alone", "put the decision asked for or the next steps in the parts office guide deck names for the closing, under the title")
 LAST_SLIDE_NOT_CLOSING = IssueKind("LAST_SLIDE_NOT_CLOSING", WARNING, "a deck of three or more slides does not end on a closing slide", 'end with data-layout="closing": the decision asked for or the next steps')
 SLIDE_COUNT_MISMATCH = IssueKind("SLIDE_COUNT_MISMATCH", ERROR, "the slide count differs from --slide-count", "add or remove slides until the count matches the request")
 SLIDE_WITHOUT_CONTENT = IssueKind("SLIDE_WITHOUT_CONTENT", ERROR, "a slide has no visible text, image or chart", "give the slide its content or delete it")
@@ -99,6 +101,8 @@ SOURCE_CHECK_ISSUE_KINDS = (
     TOO_FEW_LAYOUTS,
     FIRST_SLIDE_NOT_COVER,
     LAST_SLIDE_NOT_CLOSING,
+    OUTLINE_LAYOUT_MISPLACED,
+    CLOSING_WITHOUT_ACTION,
     SLIDE_COUNT_MISMATCH,
     SLIDE_WITHOUT_CONTENT,
     CHART_DATA_INVALID,
@@ -243,13 +247,15 @@ REPEAT_LIMIT = 3
 COVER_LAYOUT = "cover"
 CLOSING_LAYOUT = "closing"
 CLOSING_SLIDE_MINIMUM = 3
+CLOSING_ACTION = LayoutPart(".card|ol|.takeaway", maximum=None)
 VARIETY_SLIDE_MINIMUM = 6
 VARIETY_LAYOUT_MINIMUM = 3
 
 
 def order_lines() -> list[str]:
     return [
-        f"  slide 1 is a {COVER_LAYOUT}; from {CLOSING_SLIDE_MINIMUM} slides on, the last is a {CLOSING_LAYOUT}",
+        f"  slide 1 is a {COVER_LAYOUT}; from {CLOSING_SLIDE_MINIMUM} slides on, the last is a {CLOSING_LAYOUT}; neither layout appears anywhere else",
+        f"  the {CLOSING_LAYOUT} carries the decision or the next steps as {CLOSING_ACTION.selector.replace('|', ', ')}, never a thank-you line alone",
         f"  {REPEAT_LIMIT} slides in a row never share a layout, and {VARIETY_SLIDE_MINIMUM} or more slides use at least {VARIETY_LAYOUT_MINIMUM} layouts",
         "  choose every other slide's layout from its content, by the purposes below",
     ]

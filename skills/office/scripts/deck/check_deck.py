@@ -7,8 +7,10 @@ import re
 
 from core.css_color import parse_css_color
 from deck.deck_definitions import (
+    CLOSING_ACTION,
     CLOSING_LAYOUT,
     CLOSING_SLIDE_MINIMUM,
+    CLOSING_WITHOUT_ACTION,
     COVER_LAYOUT,
     REPEAT_LIMIT,
     VARIETY_LAYOUT_MINIMUM,
@@ -24,6 +26,7 @@ from deck.deck_definitions import (
     LAYOUT_UNKNOWN,
     NO_SLIDE_SECTIONS,
     OFF_PALETTE_COLOR,
+    OUTLINE_LAYOUT_MISPLACED,
     SLIDE_COUNT_MISMATCH,
     SLIDE_WITHOUT_CONTENT,
     SOURCE_NOT_HTML,
@@ -202,7 +205,15 @@ def outline_issues(slides: list[Slide]) -> list[Issue]:
         issues.append(FIRST_SLIDE_NOT_COVER.issue(f'slide 1 uses data-layout="{slides[0].layout}"', slides[0].location))
     if len(slides) >= CLOSING_SLIDE_MINIMUM and slides[-1].intended_layout != CLOSING_LAYOUT:
         issues.append(LAST_SLIDE_NOT_CLOSING.issue(f'the last slide uses data-layout="{slides[-1].layout}"', slides[-1].location))
+    issues += [misplaced_issue(slide, "after slide 1") for slide in slides[1:] if slide.intended_layout == COVER_LAYOUT]
+    issues += [misplaced_issue(slide, "before the last slide") for slide in slides[:-1] if slide.intended_layout == CLOSING_LAYOUT]
+    if slides[-1].intended_layout == CLOSING_LAYOUT and not any(CLOSING_ACTION.matches(part.tag, part.classes, part.attributes) for part in slides[-1].parts()):
+        issues.append(CLOSING_WITHOUT_ACTION.issue(f"{slides[-1].location} (closing) holds only {', '.join(part.tag for part in slides[-1].parts()) or 'nothing'}", slides[-1].location))
     return issues
+
+
+def misplaced_issue(slide: Slide, place: str) -> Issue:
+    return OUTLINE_LAYOUT_MISPLACED.issue(f'{slide.location} uses data-layout="{slide.layout}" {place}', slide.location)
 
 
 def slide_count_issues(requested_slide_count: int | None, slides: list[Slide]) -> list[Issue]:
