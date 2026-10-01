@@ -236,6 +236,10 @@ def rename_part(part: Part, old_name: str, new_name: str) -> Part:
     return Part(quote_sheet_name(new_name), part.rest)
 
 
+def deleted_sheet_reference(value: str, deleted: str) -> str:
+    return REFERENCE_ERROR if any(same_sheet(name, deleted) for name in referenced_sheet_names(value)) else value
+
+
 def rewrite_formula(formula: str, rewrite_reference: Callable[[str], str]) -> str:
     if not formula.startswith("="):
         return formula

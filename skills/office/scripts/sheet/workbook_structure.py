@@ -5,6 +5,7 @@ from typing import Callable
 
 from openpyxl.formatting.formatting import ConditionalFormattingList
 from openpyxl.utils import get_column_letter
+from openpyxl.utils.cell import column_index_from_string, coordinate_from_string
 from openpyxl.worksheet.cell_range import CellRange, MultiCellRange
 from openpyxl.worksheet.dimensions import ColumnDimension
 
@@ -242,10 +243,21 @@ def column_dimension_copy(worksheet, dimension, first: int, last: int) -> Column
 
 def shift_chart_anchors(worksheet, shift: Shift) -> None:
     attribute = "row" if shift.axis == ROW_AXIS else "col"
-    for chart in worksheet._charts:
-        for marker in anchor_markers(chart.anchor):
+    for drawn in worksheet._charts + worksheet._images:
+        if isinstance(drawn.anchor, str):
+            drawn.anchor = shifted_anchor_cell(drawn.anchor, shift)
+            continue
+        for marker in anchor_markers(drawn.anchor):
             moved = shift_single(getattr(marker, attribute) + 1, shift)
             setattr(marker, attribute, (moved if moved is not None else shift.at) - 1)
+
+
+def shifted_anchor_cell(coordinate: str, shift: Shift) -> str:
+    letters, row = coordinate_from_string(coordinate)
+    column = column_index_from_string(letters)
+    index = row if shift.axis == ROW_AXIS else column
+    moved = shift_single(index, shift) or shift.at
+    return f"{letters}{moved}" if shift.axis == ROW_AXIS else f"{get_column_letter(moved)}{row}"
 
 
 def anchor_markers(anchor) -> list:

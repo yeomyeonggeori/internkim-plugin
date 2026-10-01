@@ -32,6 +32,7 @@ RANGE = Field("range", CELL_ADDRESS, "range such as A1:D10, or one cell", requir
 COLOR = Text(non_empty=True)
 HIDDEN = Field("hidden", Boolean(), "true (default) hides, false shows again")
 CHART_INDEX = Field("chart", Number(minimum=0, integer=True), "chart index on the sheet, from sheet read", required=True)
+SHAPE_GEOMETRIES = {"rectangle": "rect", "rounded_rectangle": "roundRect", "ellipse": "ellipse", "arrow": "rightArrow", "callout": "wedgeRectCallout", "textbox": "rect"}
 COMPARISON_OPERATORS = ("between", "not_between", "equal", "not_equal", "greater_than", "less_than", "greater_or_equal", "less_or_equal")
 CHART_TYPES = ("bar", "line", "pie", "area", "doughnut", "scatter", "radar", "combo")
 CHART_FIELDS = (
@@ -131,6 +132,34 @@ OPERATIONS = Variant(
             Field("thenDescending", Boolean(), "thenBy largest first"),
             Field("hasHeader", Boolean(), "the first row is a header that stays on top, default true"),
         )),
+        Record("fill_range", "fill a range from its first row downward, or its first column rightward, the way dragging the fill handle does; formulas shift their relative references", (
+            SHEET_NAME,
+            Field("range", CELL_ADDRESS, "the first row or column and the cells to fill, such as C2:C40", required=True),
+            Field("direction", Choice(("down", "right")), "down (default) copies the first row; right copies the first column"),
+            Field("series", Boolean(), "count up from the first value: numbers and dates by step, text ending in a number by its number"),
+            Field("step", Number(), "series: amount added per cell, default 1; days for dates"),
+        )),
+        Record("copy_range", "copy a block to another place, like copy and paste; formulas shift their relative references", (
+            SHEET_NAME,
+            Field("range", CELL_ADDRESS, "block to copy, such as A1:F20", required=True),
+            Field("to", CELL_ADDRESS, "top-left cell of the destination", required=True),
+            Field("toSheet", Text(non_empty=True), "sheet of the destination, default the same sheet"),
+            Field("paste", Choice(("all", "values", "formats")), "all (default), values only with formulas turned into their results, or formats only"),
+        )),
+        Record("clear_range", "empty a range", (
+            SHEET_NAME,
+            RANGE,
+            Field("what", Choice(("contents", "formats", "all")), "contents (default) keeps the formatting; formats keeps the values; all also removes links and notes"),
+        )),
+        Record("convert_to_values", "replace the formulas in a range with the values they compute", (
+            SHEET_NAME,
+            RANGE,
+        )),
+        Record("set_filter_criteria", "show only the rows whose cell in a filtered column holds one of the values, and hide the rest", (
+            SHEET_NAME,
+            Field("column", Text(non_empty=True), "column letter inside the sheet's filter", required=True),
+            Field("values", ListOf(Text()), "values to show, matched as text ignoring case; empty or absent shows every row again"),
+        )),
         Record("find_replace", "replace text in text cells, in formulas, or both", (
             Field("sheet", Text(non_empty=True), "sheet name, default every sheet"),
             Field("find", Text(non_empty=True), "text to find", required=True),
@@ -203,10 +232,41 @@ OPERATIONS = Variant(
             Field("margins", Choice(("normal", "narrow", "wide")), "page margins"),
             Field("centerHorizontally", Boolean(), "center the printout between the side margins"),
             Field("pageNumbers", Boolean(), "print page X / Y in the footer"),
+            Field("scale", Number(minimum=10, maximum=400, integer=True), "print at this percent of full size instead of fitting the width"),
+            Field("header", Text(), "text printed at the top of every page; {page}, {pages}, {date}, {sheet} and {file} are filled in; empty text removes it"),
+            Field("footer", Text(), "text printed at the bottom of every page, with header's placeholders; empty text removes it"),
+            Field("pageBreakRows", ListOf(Number(minimum=1, integer=True)), "rows after which a new page starts; an empty list removes them"),
+            Field("pageBreakColumns", ListOf(Text(non_empty=True)), "column letters after which a new page starts; an empty list removes them"),
+        )),
+        Record("protect_sheet", "lock a sheet's cells against editing, or unlock it with protected false", (
+            SHEET_NAME,
+            Field("protected", Boolean(), "true (default) locks, false unlocks"),
+            Field("password", Text(non_empty=True), "password asked to unlock it"),
         )),
         Record("add_sheet", "add an empty sheet", (
             Field("name", Text(non_empty=True), "new sheet name, at most 31 characters", required=True),
             Field("index", Number(minimum=0, integer=True), "position among the sheets, default last"),
+        )),
+        Record("delete_sheet", "delete a sheet; formulas, names and charts that read it show #REF!, which sheet check reports", (
+            Field("sheet", Text(non_empty=True), "sheet name", required=True),
+        )),
+        Record("duplicate_sheet", "copy a sheet with its cells, styles, sizes, merges, conditional formats and validations right after it; charts, images, tables and pivots stay on the original", (
+            Field("sheet", Text(non_empty=True), "sheet to copy", required=True),
+            Field("name", Text(non_empty=True), "name of the copy, default the sheet name with (2)"),
+        )),
+        Record("move_sheet", "move a sheet to another position among the sheets", (
+            Field("sheet", Text(non_empty=True), "sheet name", required=True),
+            Field("index", Number(minimum=0, integer=True), "new position, 0 for first", required=True),
+        )),
+        Record("add_defined_name", "name a range or a constant so formulas can use the name; an existing name is replaced", (
+            Field("name", Text(non_empty=True), "name such as TaxRate, starting with a letter", required=True),
+            SHEET_NAME,
+            Field("range", CELL_ADDRESS, "range the name stands for, such as B2:B20"),
+            Field("value", CellValue(), "number or text the name stands for, instead of a range"),
+            Field("local", Boolean(), "the name works only on its sheet, default the whole workbook"),
+        )),
+        Record("delete_defined_name", "remove a defined name; formulas that use it show #NAME?", (
+            Field("name", Text(non_empty=True), "name from sheet read", required=True),
         )),
         Record("rename_sheet", "rename a sheet and rewrite every formula, defined name and chart reference to it", (
             Field("sheet", Text(non_empty=True), "current sheet name", required=True),
@@ -247,6 +307,25 @@ OPERATIONS = Variant(
             *CHART_FIELDS,
         )),
         Record("delete_chart", "remove a chart", (SHEET_NAME, CHART_INDEX)),
+        Record("add_image", "place a PNG, JPEG, GIF or BMP image with its top-left corner on a cell", (
+            SHEET_NAME,
+            Field("cell", CELL_ADDRESS, "cell the image's top-left corner sits on", required=True),
+            Field("path", Text(non_empty=True), "image file path", required=True),
+            Field("width", Number(minimum=1, maximum=60), "width in centimetres, default 8; the height keeps the image's proportions"),
+        )),
+        Record("add_shape", "draw a shape or text box with text, its top-left corner on a cell", (
+            SHEET_NAME,
+            Field("cell", CELL_ADDRESS, "cell the shape's top-left corner sits on", required=True),
+            Field("shape", Choice(tuple(SHAPE_GEOMETRIES)), "kind of shape, default rectangle"),
+            Field("text", Text(), "text inside; \\n starts a new line"),
+            Field("fill", COLOR, "fill color, default DCEAF7; a textbox has none unless given"),
+            Field("lineColor", COLOR, "outline color, default 2563EB"),
+            Field("fontColor", COLOR, "text color, default 1F2937"),
+            Field("fontSize", Number(minimum=6, maximum=72), "text size in points, default 11"),
+            Field("bold", Boolean(), "bold text"),
+            Field("width", Number(minimum=1, maximum=60), "width in centimetres, default 6"),
+            Field("height", Number(minimum=0.5, maximum=40), "height in centimetres, default 2"),
+        )),
         Record("add_sparklines", "draw one small chart per row of a block into the cells of a one-column target range", (
             SHEET_NAME,
             Field("range", CELL_ADDRESS, "data block, one row per sparkline, such as B2:M10", required=True),

@@ -13,7 +13,7 @@ from dynamic_arrays import dynamic_array_cell_metadata, mark_array_formula
 from excel_functions import is_dynamic_array_formula
 from formula_dependencies import DependencyReader, cell_position, propagate
 from formula_references import is_bare_name, join_parts, quote_sheet_name, reference_parts, rewrite_formula
-from ironcalc_compatibility import is_divergent_criteria, needs_criteria_probe, prepare
+from ironcalc_compatibility import constant_names, is_divergent_criteria, needs_criteria_probe, prepare, with_constant_names
 from workbook_access import open_workbook
 from workbook_package import main_tag, read_package, relationships_part, worksheet_parts, write_package
 
@@ -135,8 +135,9 @@ def evaluate_workbook(path: str, writes_dynamic_arrays: bool = False) -> Evaluat
 
 def plan_evaluation(workbook, cells: list[FormulaCell], marked: set, writes_dynamic_arrays: bool, allows_user_functions: bool) -> EvaluationPlan:
     plan = EvaluationPlan()
+    constants = {title: constant_names(workbook, title) for title in workbook.sheetnames}
     for cell in cells:
-        preparation = prepare(cell.formula, allows_user_functions)
+        preparation = prepare(with_constant_names(cell.formula, constants[cell.sheet]), allows_user_functions)
         plan.preparations[cell.key] = preparation
         if not preparation.is_computable:
             plan.roots.add(cell.key)

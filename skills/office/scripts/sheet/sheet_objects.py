@@ -7,12 +7,13 @@ from openpyxl.styles import Border, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.cell_range import CellRange
 from openpyxl.worksheet.hyperlink import Hyperlink
+from openpyxl.worksheet.pagebreak import Break, ColBreak, RowBreak
 from openpyxl.worksheet.properties import PageSetupProperties
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
 from office_operations import OPERATION_NOT_APPLICABLE, Change
 from office_result import INVALID_VALUE, OfficeFailure
-from workbook_access import parse_cell, parse_range, sheet_of
+from workbook_access import column_index, parse_cell, parse_range, sheet_of
 
 
 TABLE_NAME = re.compile(r"^[A-Za-z_\u0080-￿][A-Za-z0-9_.\u0080-￿]*$")
@@ -28,6 +29,7 @@ MARGINS = {
     "wide": {"left": 1.0, "right": 1.0, "top": 1.0, "bottom": 1.0, "header": 0.5, "footer": 0.5},
 }
 PAGE_NUMBER_FOOTER = "&P / &N"
+HEADER_FOOTER_CODES = {"{page}": "&P", "{pages}": "&N", "{date}": "&D", "{sheet}": "&A", "{file}": "&F"}
 
 
 def table_names(workbook) -> set:
@@ -136,6 +138,8 @@ def plan_set_page_setup(workbook, operation: dict, location: str) -> Change:
     for name in ("printTitleRows", "printArea"):
         if operation.get(name):
             validate_print_reference(operation[name], name, location)
+    for letter in operation.get("pageBreakColumns", []):
+        column_index(letter, f"{location}.pageBreakColumns")
 
     def change() -> str:
         apply_page_setup(worksheet, operation)
@@ -169,6 +173,26 @@ def apply_page_setup(worksheet, operation: dict) -> None:
         worksheet.print_options.horizontalCentered = operation["centerHorizontally"]
     if "pageNumbers" in operation:
         worksheet.oddFooter.center.text = PAGE_NUMBER_FOOTER if operation["pageNumbers"] else None
+    if "scale" in operation:
+        fit_to_width(worksheet, False)
+        worksheet.page_setup.scale = operation["scale"]
+    if "header" in operation:
+        worksheet.oddHeader.center.text = header_footer_text(operation["header"])
+    if "footer" in operation:
+        worksheet.oddFooter.center.text = header_footer_text(operation["footer"])
+    if "pageBreakRows" in operation:
+        worksheet.row_breaks = RowBreak(brk=[Break(id=row) for row in operation["pageBreakRows"]])
+    if "pageBreakColumns" in operation:
+        worksheet.col_breaks = ColBreak(brk=[Break(id=column_index(letter, "pageBreakColumns")) for letter in operation["pageBreakColumns"]])
+
+
+def header_footer_text(text: str) -> str | None:
+    if not text:
+        return None
+    escaped = text.replace("&", "&&")
+    for placeholder, code in HEADER_FOOTER_CODES.items():
+        escaped = escaped.replace(placeholder, code)
+    return escaped
 
 
 def fit_to_width(worksheet, enabled: bool) -> None:

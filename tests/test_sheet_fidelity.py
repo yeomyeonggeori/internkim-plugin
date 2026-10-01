@@ -63,6 +63,19 @@ class RoundTripTest(WorkbookFixture):
         self.assertIn("<xm:sqref>F2</xm:sqref>", sheet)
         self.assertIn("<xm:f>목록!$A$1:$A$3</xm:f>", sheet)
 
+    def test_deleting_a_sheet_drops_its_own_parts_without_calling_them_lost(self):
+        envelope = self.apply_to_rich([{"op": "delete_sheet", "sheet": "Data"}])
+        self.assertEqual(envelope["status"], "ok", envelope)
+        after = package(self.directory / "rich.xlsx")
+        self.assertNotIn("xl/slicers/slicer1.xml", after)
+        self.assertIn("customXml/item1.xml", after)
+
+    def test_moving_a_sheet_keeps_its_sparklines(self):
+        envelope = self.apply_to_rich([{"op": "move_sheet", "sheet": "Lists", "index": 0}])
+        self.assertEqual(envelope["status"], "ok", envelope)
+        data_part = next(name for name, content in package(self.directory / "rich.xlsx").items() if name.startswith("xl/worksheets/sheet") and SPARKLINE_URI.encode() in content)
+        self.assertIn("<xm:sqref>F6</xm:sqref>", package(self.directory / "rich.xlsx")[data_part].decode())
+
     def test_appending_rows_keeps_the_same_content(self):
         write_json(self.directory / "rows.json", [["r9", 1, 2, 3]])
         envelope = run_office(["sheet", "edit", "rich.xlsx", "--sheet", "Data", "--rows", "rows.json"], self.directory)
