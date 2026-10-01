@@ -110,3 +110,30 @@ class StaleCachedValueTest(WorkbookFixture):
         self.assertEqual(self.apply([issue["suggestion"]])["status"], "ok")
         self.assertEqual(self.findings(), [])
         self.assertEqual(stored_cells(self.directory / "book.xlsx")["C2"]["value"], "20")
+
+
+CHART_FIXTURE = """
+from openpyxl import Workbook
+from openpyxl.chart import BarChart, Reference
+
+workbook = Workbook()
+sales = workbook.active
+sales.title = "Sales"
+for row in [["month", "amount"], ["1월", 10], ["2월", 20]]:
+    sales.append(row)
+chart = BarChart()
+chart.add_data(Reference(sales, min_col=2, min_row=1, max_row=3), titles_from_data=True)
+sales.add_chart(chart, "E2")
+empty = BarChart()
+empty.add_data(Reference(sales, min_col=8, min_row=1, max_row=3), titles_from_data=True)
+sales.add_chart(empty, "E20")
+workbook.save("charts.xlsx")
+"""
+
+
+class ChartReferenceTest(WorkbookFixture):
+    def test_a_chart_reading_an_empty_range_is_reported_and_one_with_data_is_not(self):
+        run_office_python(CHART_FIXTURE, self.directory)
+        issues = run_office(["sheet", "check", "charts.xlsx"], self.directory)["issues"]
+        self.assertEqual([(issue["code"], issue["location"]) for issue in issues], [("CHART_REFERENCE_BROKEN", "Sales chart 1")])
+        self.assertIn("$H$2:$H$3", issues[0]["message"])

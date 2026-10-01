@@ -288,6 +288,7 @@ MISSING_SHEET_REFERENCE = IssueKind("MISSING_SHEET_REFERENCE", ERROR, "a formula
 BROKEN_DEFINED_NAME = IssueKind("BROKEN_DEFINED_NAME", ERROR, "a defined name points at #REF! or a sheet the workbook does not have", "read the workbook's defined names and recreate the reference")
 CONTENT_WOULD_BE_LOST = IssueKind("CONTENT_WOULD_BE_LOST", ERROR, "the workbook holds content the editor cannot carry through a save, such as form controls, embedded objects or an unknown extension, so nothing was written", "pass --allow-loss to save without it, or leave this workbook to Excel")
 CONTENT_DROPPED = IssueKind("CONTENT_DROPPED", WARNING, "--allow-loss saved the workbook without content the editor cannot carry", "tell the user what was dropped")
+CHART_REFERENCE_BROKEN = IssueKind("CHART_REFERENCE_BROKEN", ERROR, "a chart series reads a sheet the workbook does not have or a range with no values, so the chart draws nothing for it", "read the sheet and point the chart at its data with edit_chart and range")
 NUMBER_TOO_WIDE = IssueKind("NUMBER_TOO_WIDE", ERROR, "a number is wider than its column and Excel shows it as ####", "apply the suggested set_column_width")
 
 VALIDATE_ISSUE_KINDS = (
@@ -301,6 +302,7 @@ CHECK_ISSUE_KINDS = (
     MISSING_SHEET_REFERENCE,
     BROKEN_DEFINED_NAME,
     NUMBER_TOO_WIDE,
+    CHART_REFERENCE_BROKEN,
     PLACEHOLDER_LEFT,
     FORMULA_NOT_EVALUATED,
 )

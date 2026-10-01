@@ -230,7 +230,7 @@ class CellAndStyleTest(WorkbookEditTest):
     def test_a_chart_is_added_from_a_block_with_its_header_and_categories(self):
         self.edit([{"op": "add_chart", "sheet": "Sales", "type": "line", "range": "A1:B4", "title": "Amounts", "anchor": "G20"}])
         sales, _ = self.sheet_info()
-        self.assertEqual(sales["charts"], 2)
+        self.assertEqual([chart["type"] for chart in sales["charts"]], ["bar", "line"])
         chart = load_workbook(self.directory / "fixture.xlsx")["Sales"]._charts[1]
         self.assertEqual(type(chart).__name__, "LineChart")
         self.assertEqual(chart.series[0].val.numRef.f, "'Sales'!$B$2:$B$4")
