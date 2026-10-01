@@ -53,6 +53,7 @@ with zipfile.ZipFile(directory / "plain.docx") as source, zipfile.ZipFile(direct
 (directory / "보고서.md").write_bytes("# 분기 보고서\\n\\n이샘플 작성\\n".encode("cp949"))
 (directory / "실적.csv").write_bytes("지역,매출\\n서울,120\\n".encode("cp949"))
 (directory / "utf16.md").write_bytes("# 제목\\n".encode("utf-16"))
+(directory / "undecodable.md").write_bytes(bytes([0x80, 0xff, 0xfe, 0x41, 0xff, 0x0a]))
 (directory / "pdf-named.md").write_bytes((directory / "report.pdf").read_bytes())
 (directory / "legacy.xls").write_bytes(bytes.fromhex("d0cf11e0a1b11ae1") + bytes(504))
 """
@@ -169,14 +170,15 @@ class InputBoundaryTest(unittest.TestCase):
         self.assertNotIn("Traceback", stderr)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["FILE_DAMAGED"])
 
-    def test_text_inputs_are_read_as_utf8_or_cp949_and_anything_else_is_named(self):
-        envelope, _ = run_office(["doc", "export", "보고서.md", "--output", "보고서.docx"], self.directory)
-        self.assertEqual(envelope["status"], "ok", envelope["issues"])
+    def test_text_inputs_are_read_as_utf8_utf16_or_cp949_and_anything_else_is_named(self):
+        for name in ("보고서.md", "utf16.md"):
+            envelope, _ = run_office(["doc", "export", name, "--output", "보고서.docx"], self.directory)
+            self.assertEqual(envelope["status"], "ok", envelope["issues"])
         envelope, _ = run_office(["convert", "실적.csv", "실적.xlsx"], self.directory)
         self.assertEqual(envelope["status"], "ok", envelope["issues"])
         rows, _ = run_office(["sheet", "read", "실적.xlsx"], self.directory)
         self.assertIn("서울", json.dumps(rows, ensure_ascii=False))
-        for command in (["doc", "export", "utf16.md", "--output", "x.docx"], ["convert", "utf16.md", "x.html"]):
+        for command in (["doc", "export", "undecodable.md", "--output", "x.docx"], ["convert", "undecodable.md", "x.html"]):
             with self.subTest(command=command):
                 envelope, stderr = run_office(command, self.directory)
                 self.assertNotIn("Traceback", stderr)

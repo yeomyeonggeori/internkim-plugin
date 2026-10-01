@@ -3,6 +3,7 @@ from __future__ import annotations
 from pptx.oxml.ns import qn
 
 from core.office_theme import OFFICE_THEME
+from core.units import EMU_PER_POINT
 from deck.pptx_preview_paint import FILL_TAGS, element, paint_color
 from deck.pptx_preview_text import TextPaint, body_html, body_layout
 from deck.pptx_style import TRUE_VALUES, theme_slot_color
@@ -116,4 +117,4 @@ def cell_border(context, line, pixels_per_emu: float, fallback: str) -> str:
     fill = next((child for child in line if child.tag in FILL_TAGS), None)
     if fill is None or fill.tag == qn("a:noFill"):
         return "none"
-    return f"{max(1.0, int(line.get('w', '12700')) * pixels_per_emu):.2f}px solid {paint_color(context, fill)}"
+    return f"{max(1.0, int(line.get('w', EMU_PER_POINT)) * pixels_per_emu):.2f}px solid {paint_color(context, fill)}"

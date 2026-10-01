@@ -46,6 +46,15 @@ class SheetCheckTest(WorkbookFixture):
             ("PLACEHOLDER_LEFT", "Sales!D1"),
         })
 
+    def test_draft_text_in_a_cell_is_a_placeholder_left(self):
+        self.assertEqual(self.apply([{"op": "set_range", "sheet": "Sales", "cell": "F1", "values": [["TODO", "단가 XX원", "XXL"]]}], name="fixture.xlsx")["status"], "ok")
+        placeholders = sorted(location for code, location in self.findings() if code == "PLACEHOLDER_LEFT")
+        self.assertEqual(placeholders, ["Sales!D1", "Sales!F1", "Sales!G1"])
+
+    def test_apply_refuses_an_operation_holding_a_fill_in(self):
+        envelope = self.apply([{"op": "set_cell", "sheet": "Sales", "cell": "D1", "value": "<value> 님"}], name="fixture.xlsx")
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("FILL_IN_LEFT", "ops[0].value")])
+
     def test_the_computed_error_is_named(self):
         message = next(issue["message"] for issue in self.check()["issues"] if issue["code"] == "FORMULA_ERROR")
         self.assertIn("#DIV/0!", message)
@@ -134,10 +143,14 @@ workbook.save("charts.xlsx")
 """
 
 
+def chart_issues(issues):
+    return [issue for issue in issues if issue["code"] != "SHEET_PRINTS_WIDE"]
+
+
 class ChartReferenceTest(WorkbookFixture):
     def test_a_chart_reading_an_empty_range_is_reported_and_one_with_data_is_not(self):
         run_office_python(CHART_FIXTURE, self.directory)
-        issues = run_office(["sheet", "check", "charts.xlsx"], self.directory)["issues"]
+        issues = chart_issues(run_office(["sheet", "check", "charts.xlsx"], self.directory)["issues"])
         self.assertEqual([(issue["code"], issue["location"]) for issue in issues], [("CHART_REFERENCE_BROKEN", "Sales chart 1")])
         self.assertIn("$H$2:$H$3", issues[0]["message"])
 
@@ -158,7 +171,7 @@ class ChartValueTest(WorkbookFixture):
             sheet.add_chart(chart, "E2")
             workbook.save("charts.xlsx")
         """, self.directory)
-        issues = run_office(["sheet", "check", "charts.xlsx"], self.directory)["issues"]
+        issues = chart_issues(run_office(["sheet", "check", "charts.xlsx"], self.directory)["issues"])
         self.assertEqual([(issue["code"], issue["location"]) for issue in issues], [("CHART_REFERENCE_BROKEN", "실적 chart 0")])
         self.assertIn("$B$2:$B$3, which holds text and no number", issues[0]["message"])
 
@@ -290,6 +303,23 @@ class TextValueTest(WorkbookFixture):
         self.assertEqual(load_workbook(self.directory / "book.xlsx")["S"]["A3"].value, "2026-09-02")
         issues = self.text_issues()
         self.assertEqual([(issue["location"], issue["fix"][0]["value"]) for issue in issues], [("S!A4", "2026-09-03")])
+
+    def test_a_row_argument_is_one_csv_line_so_a_quoted_thousands_number_stays_one_text_cell(self):
+        created = run_office(["sheet", "create", "book.xlsx", "--title", "S", "--row", "품목,금액", "--row", '사과, "1,500"'], self.directory)
+        self.assertEqual(created["status"], "ok", created)
+        self.assertEqual(run_office(["sheet", "edit", "book.xlsx", "--row", '배,"2,000"'], self.directory)["status"], "ok")
+        sheet = load_workbook(self.directory / "book.xlsx")["S"]
+        self.assertEqual([[cell.value for cell in row] for row in sheet.iter_rows()], [["품목", "금액"], ["사과", "1,500"], ["배", "2,000"]])
+
+    def test_a_row_wider_than_the_header_is_refused_and_writes_nothing(self):
+        created = run_office(["sheet", "create", "book.xlsx", "--title", "S", "--row", "품목,금액", "--row", "사과,1,500"], self.directory)
+        self.assertEqual([(issue["code"], issue["location"]) for issue in created["issues"]], [("INVALID_VALUE", "--row")])
+        self.assertFalse((self.directory / "book.xlsx").exists())
+        self.assertEqual(run_office(["sheet", "create", "book.xlsx", "--title", "S", "--row", "품목,금액"], self.directory)["status"], "ok")
+        original = (self.directory / "book.xlsx").read_bytes()
+        appended = run_office(["sheet", "edit", "book.xlsx", "--row", "배,2,000"], self.directory)
+        self.assertEqual([(issue["code"], issue["location"]) for issue in appended["issues"]], [("INVALID_VALUE", "--row")])
+        self.assertEqual((self.directory / "book.xlsx").read_bytes(), original)
 
     def test_a_date_written_by_row_csv_or_append_is_the_same_date(self):
         (self.directory / "data.csv").write_text("일자,금액\n2026-01-06,200\n", encoding="utf-8")

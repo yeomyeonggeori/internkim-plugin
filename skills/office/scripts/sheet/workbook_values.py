@@ -14,6 +14,7 @@ from sheet.excel_functions import is_dynamic_array_formula
 from sheet.formula_dependencies import DependencyReader, cell_position, propagate
 from sheet.formula_references import is_bare_name, join_parts, quote_sheet_name, reference_parts, rewrite_formula
 from sheet.ironcalc_compatibility import constant_names, is_divergent_criteria, needs_criteria_probe, prepare, with_constant_names
+from core.excel_limits import MAXIMUM_ROW
 from core.office_inputs import holds_macros
 from sheet.workbook_access import open_workbook
 from sheet.workbook_package import main_tag, read_package, relationships_part, worksheet_parts, write_package
@@ -31,7 +32,6 @@ EXCEL_ERROR_CODES = frozenset((
 PROBE_SHEET = "InternKimProbe"
 CIRCULAR_ERROR = "#CIRC!"
 IMPLICIT_INTERSECTION = "=@"
-LAST_ROW = 1048576
 
 
 @dataclass(frozen=True)
@@ -219,13 +219,13 @@ def repair_implicit_intersections(model, cells: list[FormulaCell], sheet_indexes
         return set()
     for position, (_, sheet, row, column) in enumerate(broken):
         expression = model.get_cell_content(sheet, row, column)[len(IMPLICIT_INTERSECTION):]
-        model.set_user_input(sheet, LAST_ROW - position, column, f"=ROWS({expression})*COLUMNS({expression})")
+        model.set_user_input(sheet, MAXIMUM_ROW - position, column, f"=ROWS({expression})*COLUMNS({expression})")
     model.evaluate()
     roots = set()
     for position, (cell, sheet, row, column) in enumerate(broken):
-        size = model.get_cell_value(sheet, LAST_ROW - position, column)
+        size = model.get_cell_value(sheet, MAXIMUM_ROW - position, column)
         expression = model.get_cell_content(sheet, row, column)[len(IMPLICIT_INTERSECTION):]
-        model.clear_cell_contents(sheet, LAST_ROW - position, column)
+        model.clear_cell_contents(sheet, MAXIMUM_ROW - position, column)
         if size == 1:
             model.set_user_input(sheet, row, column, f"=INDEX({expression},1,1)")
         else:

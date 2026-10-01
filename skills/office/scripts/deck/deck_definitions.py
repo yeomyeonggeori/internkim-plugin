@@ -36,14 +36,14 @@ def review_check(code: str, meaning: str, suggestion: str) -> ReviewCheck:
 
 
 SLIDE_BLANK = review_check("SLIDE_BLANK", "the slide render shows no content", "check that the slide's content is not hidden or outside the frame")
-CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is larger than its box, so it is clipped or spills out", "cut or split what the message names; a build suggestion says how many rows, items or characters fit at full type size, and a .pptx suggestion is the operation to apply")
-OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "keep every part on the slide: split or cut what pushes it off, as the suggestion counts; in a .pptx, apply the operation the suggestion names")
+CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is larger than its box, so it is clipped or spills out", "cut or split what the message names, or give it a larger box; a build suggestion says how many rows, items or characters fit at full type size")
+OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "keep every part on the slide: split or cut what pushes it off, as a build suggestion counts, or move or resize it inside the slide's edges")
 TEXT_OVERLAP = review_check("TEXT_OVERLAP", "two pieces of text cover each other", "separate the two text blocks or shorten the one that spills")
 TEXT_COVERED = review_check("TEXT_COVERED", "a box painted over text hides part of it", "follow the suggestion, which names the cause: rows, items or text that do not fit, or a custom style that moves a part over another")
 FOOTER_CROSSED = review_check("FOOTER_CROSSED", "slide content reaches into the footer band", "shorten or split the content so it ends above the footer")
 TITLE_TOO_LONG = review_check("TITLE_TOO_LONG", f"a slide title runs past {TITLE_LINE_MAXIMUM} lines", "state the conclusion in one short sentence and move the detail into the body or the speaker notes")
 TINY_TEXT = review_check("TINY_TEXT", f"rendered text is smaller than {SMALLEST_TEXT_SHARE_OF_WIDTH * slide_size()[0]:g}px on a {slide_size()[0]}px slide ({SMALLEST_TEXT_SHARE_OF_WIDTH:.2%} of its width)", "shorten the slide so the kit does not shrink its type; the suggestion says how much fits at full size")
-IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "put the photo in a cover or image slide, which crops it to its frame; in a .pptx, apply the set_transform the suggestion names")
+IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "put the photo in a cover or image slide, which crops it to its frame, or give its box the image's own ratio")
 GEOMETRY_NOT_MEASURED = review_check("GEOMETRY_NOT_MEASURED", "no renderer measured element geometry, so overflow, overlap and stretched images were not checked", "install bun or node 18 and build again, or say the layout was not measured")
 UNRELIABLE_VISUAL_EVIDENCE = review_check("UNRELIABLE_VISUAL_EVIDENCE", "review images were not drawn from the deck's layout", "treat the previews as approximate and say so when delivering")
 
@@ -80,6 +80,8 @@ LAYOUT_PART_EXCESS = IssueKind("LAYOUT_PART_EXCESS", ERROR, "a slide holds more 
 LAYOUT_REPEATED = IssueKind("LAYOUT_REPEATED", ERROR, "three slides in a row use the same layout", "change the middle slide to another layout that fits its content")
 TOO_FEW_LAYOUTS = IssueKind("TOO_FEW_LAYOUTS", ERROR, "a deck of six or more slides uses fewer than three layouts", "pick each slide's layout from its content: one number, metrics, comparison, sequence, table or chart")
 FIRST_SLIDE_NOT_COVER = IssueKind("FIRST_SLIDE_NOT_COVER", WARNING, "the deck does not open with a cover slide", 'make slide 1 data-layout="cover" with the deck title and who presents it')
+OUTLINE_LAYOUT_MISPLACED = IssueKind("OUTLINE_LAYOUT_MISPLACED", WARNING, "a cover layout sits after slide 1, or a closing layout before the last slide", "keep cover for slide 1 and closing for the last slide, and give this slide the layout its content calls for, such as section for a divider or statement for one message")
+CLOSING_WITHOUT_ACTION = IssueKind("CLOSING_WITHOUT_ACTION", WARNING, "the closing slide holds no part that carries a decision or a next step, such as a thank-you title alone", "put the decision asked for or the next steps in the parts office guide deck names for the closing, under the title")
 LAST_SLIDE_NOT_CLOSING = IssueKind("LAST_SLIDE_NOT_CLOSING", WARNING, "a deck of three or more slides does not end on a closing slide", 'end with data-layout="closing": the decision asked for or the next steps')
 SLIDE_COUNT_MISMATCH = IssueKind("SLIDE_COUNT_MISMATCH", ERROR, "the slide count differs from --slide-count", "add or remove slides until the count matches the request")
 SLIDE_WITHOUT_CONTENT = IssueKind("SLIDE_WITHOUT_CONTENT", ERROR, "a slide has no visible text, image or chart", "give the slide its content or delete it")
@@ -99,6 +101,8 @@ SOURCE_CHECK_ISSUE_KINDS = (
     TOO_FEW_LAYOUTS,
     FIRST_SLIDE_NOT_COVER,
     LAST_SLIDE_NOT_CLOSING,
+    OUTLINE_LAYOUT_MISPLACED,
+    CLOSING_WITHOUT_ACTION,
     SLIDE_COUNT_MISMATCH,
     SLIDE_WITHOUT_CONTENT,
     CHART_DATA_INVALID,
@@ -204,6 +208,7 @@ CHART_ATTRIBUTES = (
     "data-chart: " + ", ".join(chart_types()),
     "data-labels: category names separated by commas",
     "data-values: one number per label, for a single series",
+    "numbers are separated by a comma and a space, so \"1,200, 1,350\" is two numbers, and the unit goes in data-unit, never in the numbers",
     "data-series: \"name: 1, 2, 3; other: 4, 5, 6\" for several series, each with one number per label",
     "combo: the last series is a line on its own axis, the ones before it are columns",
     "scatter: two series, the horizontal axis first and the vertical second; each label names one point",
@@ -213,7 +218,7 @@ CHART_ATTRIBUTES = (
     "data-highlight: one label drawn in the accent color while the others are muted (single series, or a scatter point)",
     "data-center, data-center-label: the text in a donut's hole; default the first slice's share",
     "data-zero: true starts a line chart's axis at zero",
-    "<figcaption>: the unit, period and source under the chart",
+    "<figcaption>: the unit, period and source under the chart, one unit and one source per chart",
 )
 
 
@@ -243,13 +248,15 @@ REPEAT_LIMIT = 3
 COVER_LAYOUT = "cover"
 CLOSING_LAYOUT = "closing"
 CLOSING_SLIDE_MINIMUM = 3
+CLOSING_ACTION = LayoutPart(".card|ol|.takeaway", maximum=None)
 VARIETY_SLIDE_MINIMUM = 6
 VARIETY_LAYOUT_MINIMUM = 3
 
 
 def order_lines() -> list[str]:
     return [
-        f"  slide 1 is a {COVER_LAYOUT}; from {CLOSING_SLIDE_MINIMUM} slides on, the last is a {CLOSING_LAYOUT}",
+        f"  slide 1 is a {COVER_LAYOUT}; from {CLOSING_SLIDE_MINIMUM} slides on, the last is a {CLOSING_LAYOUT}; neither layout appears anywhere else",
+        f"  the {CLOSING_LAYOUT} carries the decision or the next steps as {CLOSING_ACTION.selector.replace('|', ', ')}, never a thank-you line alone",
         f"  {REPEAT_LIMIT} slides in a row never share a layout, and {VARIETY_SLIDE_MINIMUM} or more slides use at least {VARIETY_LAYOUT_MINIMUM} layouts",
         "  choose every other slide's layout from its content, by the purposes below",
     ]

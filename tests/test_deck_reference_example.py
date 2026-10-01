@@ -20,7 +20,7 @@ TESTS_PATH = Path(__file__).resolve().parent
 OFFICE_PATH = TESTS_PATH.parent / "skills" / "office"
 OFFICE_ENTRY = OFFICE_PATH / "scripts" / "office"
 DECK_REFERENCE_PATH = OFFICE_PATH / "references" / "deck.md"
-SLIDE_PLACEHOLDER = '<!-- one <section data-layout="..."> per slide -->'
+EVERY_LAYOUT_DECK_PATH = TESTS_PATH / "fixtures" / "deck-kit" / "every-layout" / "slides.html"
 
 
 def html_blocks(markdown: str) -> list[str]:
@@ -28,8 +28,11 @@ def html_blocks(markdown: str) -> list[str]:
 
 
 def reference_deck() -> str:
-    skeleton, layouts = html_blocks(DECK_REFERENCE_PATH.read_text(encoding="utf-8"))[:2]
-    return skeleton.replace(SLIDE_PLACEHOLDER, layouts.strip())
+    return html_blocks(DECK_REFERENCE_PATH.read_text(encoding="utf-8"))[0]
+
+
+def layouts_in(source: str) -> list[str]:
+    return sorted(set(re.findall(r'data-layout="([a-z]+)"', source)))
 
 
 def write_referenced_images(deck_source: str, deck_path: Path) -> None:
@@ -40,8 +43,15 @@ def write_referenced_images(deck_source: str, deck_path: Path) -> None:
 
 
 class ReferenceExampleTest(unittest.TestCase):
-    def test_the_example_shows_every_kit_layout(self):
-        self.assertEqual(sorted(set(re.findall(r'data-layout="([a-z]+)"', reference_deck()))), sorted(KIT_LAYOUT_NAMES))
+    def test_the_reference_keeps_one_worked_example_and_leaves_the_layouts_to_the_guide(self):
+        reference = DECK_REFERENCE_PATH.read_text(encoding="utf-8")
+        self.assertEqual(len(html_blocks(reference)), 1)
+        self.assertEqual(layouts_in(reference_deck()), ["chart", "closing", "cover"])
+        guide = subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", "deck"], capture_output=True, text=True, check=True).stdout
+        self.assertTrue(all(f"\n  {name} " in guide for name in KIT_LAYOUT_NAMES))
+
+    def test_the_sample_decks_show_every_kit_layout(self):
+        self.assertEqual(layouts_in(EVERY_LAYOUT_DECK_PATH.read_text(encoding="utf-8")), sorted(KIT_LAYOUT_NAMES))
 
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_the_reference_example_deck_builds_acceptable_as_written(self):

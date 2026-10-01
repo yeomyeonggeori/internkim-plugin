@@ -13,8 +13,11 @@ from core.units import emu_to_pixels, inches_to_pixels, points_to_pixels
 from fonts.registry import OFFICE_KOREAN_FAMILY
 from fonts.preview import FontRegistry, FontRequest, css_font_family, draws_scripts_apart, script_font_family, script_runs
 from sheet.sheet_formatting import STACKED_ROTATION, rotation_degrees
-from sheet.sheet_objects import EXCEL_DEFAULT_FIT_PAGES
-from sheet.xlsx_colors import css_color
+from core.office_result import Issue
+from sheet.sheet_definitions import SHEET_PRINTS_WIDE
+from sheet.sheet_objects import EXCEL_DEFAULT_FIT_PAGES, is_fitted_to_pages
+from sheet.sheet_charts import DEFAULT_ANCHOR_GAP
+from sheet.xlsx_colors import css_color, theme_palette
 from sheet.xlsx_conditional import ConditionalStyles
 from sheet.xlsx_preview_charts import chart_html, chart_kind, chart_title, drawing_box, image_html, is_whole
 from core.page_sizes import DEFAULT_PAPER, PAPER_BY_SPREADSHEET_CODE
@@ -50,6 +53,14 @@ class SheetFrame:
     title_rows: list[int] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class PrintLayout:
+    frame: SheetFrame
+    geometry: PageGeometry
+    scale: float
+    column_chunks: list[list[int]]
+
+
 class SheetPreviewer:
     def __init__(self, workbook, values, file_name: str, palette: tuple, fonts: FontRegistry, preview: Preview):
         self.workbook = workbook
@@ -61,20 +72,27 @@ class SheetPreviewer:
         self.page_painted = False
         self.page_drawings: list[dict] = []
         self.page_contents: list[dict] = []
+        self.print_issues: list[Issue] = []
 
     def sheet_pages(self, worksheet, sheet_values) -> list[tuple[PageGeometry, list[int], list[int], float, SheetFrame]]:
-        frame = self.frame(worksheet, sheet_values)
-        if frame is None:
+        layout = self.print_layout(worksheet, sheet_values)
+        if layout is None:
             return []
-        geometry, scale = self.page_geometry(worksheet, frame)
-        column_chunks = chunks(frame.columns, [frame.widths[column] * scale for column in frame.columns], geometry.content_width, set())
+        frame, geometry, scale = layout.frame, layout.geometry, layout.scale
         title_height = sum(frame.heights[row] for row in frame.title_rows) * scale
         breaks = {brk.id for brk in worksheet.row_breaks.brk} if worksheet.row_breaks else set()
         body_rows = [row for row in frame.rows if row not in frame.title_rows]
         row_chunks = chunks(body_rows, [frame.heights[row] * scale for row in body_rows], geometry.height - geometry.margin_top - geometry.margin_bottom - title_height, breaks)
-        if len(column_chunks) > 1:
-            self.preview.approximate(f"{worksheet.title}: columns printed across {len(column_chunks)} pages wide")
-        return [(geometry, columns, frame.title_rows + rows, scale, frame) for columns in column_chunks for rows in row_chunks]
+        self.print_issues.extend(print_width_issues(worksheet, layout))
+        return [(geometry, columns, frame.title_rows + rows, scale, frame) for columns in layout.column_chunks for rows in row_chunks]
+
+    def print_layout(self, worksheet, sheet_values) -> PrintLayout | None:
+        frame = self.frame(worksheet, sheet_values)
+        if frame is None:
+            return None
+        geometry, scale = self.page_geometry(worksheet, frame)
+        column_chunks = chunks(frame.columns, [frame.widths[column] * scale for column in frame.columns], geometry.content_width, set())
+        return PrintLayout(frame, geometry, scale, column_chunks)
 
     def frame(self, worksheet, sheet_values) -> SheetFrame | None:
         bounds = print_bounds(worksheet, sheet_values)
@@ -348,20 +366,21 @@ def print_bounds(worksheet, sheet_values) -> tuple[int, int, int, int] | None:
 
 
 def drawing_spans(worksheet) -> list[tuple[int, int, int, int]]:
-    spans = []
-    for drawing in [*getattr(worksheet, "_charts", []), *getattr(worksheet, "_images", [])]:
-        start = getattr(drawing.anchor, "_from", None)
-        if start is None:
-            continue
-        end = getattr(drawing.anchor, "to", None)
-        extent = getattr(drawing.anchor, "ext", None)
-        if end is not None:
-            spans.append((start.row + 1, start.col + 1, end.row + 1, end.col + 1))
-        elif extent is not None:
-            rows = int(emu_to_pixels(extent.height) // points_to_pixels(DEFAULT_ROW_POINTS)) + 1
-            columns = int(emu_to_pixels(extent.width) // column_pixels(DEFAULT_COLUMN_CHARACTERS)) + 1
-            spans.append((start.row + 1, start.col + 1, start.row + rows, start.col + columns))
-    return spans
+    spans = [drawing_span(drawing) for drawing in [*getattr(worksheet, "_charts", []), *getattr(worksheet, "_images", [])]]
+    return [span for span in spans if span is not None]
+
+
+def drawing_span(drawing) -> tuple[int, int, int, int] | None:
+    start = getattr(drawing.anchor, "_from", None)
+    end = getattr(drawing.anchor, "to", None)
+    extent = getattr(drawing.anchor, "ext", None)
+    if start is not None and end is not None:
+        return start.row + 1, start.col + 1, end.row + 1, end.col + 1
+    if start is not None and extent is not None:
+        rows = int(emu_to_pixels(extent.height) // points_to_pixels(DEFAULT_ROW_POINTS)) + 1
+        columns = int(emu_to_pixels(extent.width) // column_pixels(DEFAULT_COLUMN_CHARACTERS)) + 1
+        return start.row + 1, start.col + 1, start.row + rows, start.col + columns
+    return None
 
 
 def drawing_corners(worksheet) -> list[tuple[int, int]]:
@@ -405,6 +424,49 @@ def print_title_rows(worksheet, rows: list[int]) -> list[int]:
         return []
     start, _, end = titles.replace("$", "").partition(":")
     return [row for row in rows if int(start) <= row <= int(end or start)]
+
+
+def print_width_issues(worksheet, layout: PrintLayout) -> list[Issue]:
+    pages_wide = len(layout.column_chunks)
+    if pages_wide <= chosen_width_pages(worksheet):
+        return []
+    first_page = layout.column_chunks[0]
+    rest = [column for chunk in layout.column_chunks[1:] for column in chunk]
+    message = (
+        f"{worksheet.title} prints {pages_wide} pages wide: columns {get_column_letter(first_page[0])}-{get_column_letter(first_page[-1])} fill the first page "
+        f"and {get_column_letter(rest[0])}-{get_column_letter(rest[-1])} print on {'a page' if pages_wide == 2 else 'pages'} of their own, so each printed row is cut apart"
+    )
+    fix = [{"op": "set_page_setup", "sheet": worksheet.title, "fitToWidth": 1}]
+    return [SHEET_PRINTS_WIDE.issue(message, worksheet.title, chart_move_suggestion(worksheet, first_page), fix)]
+
+
+def chart_move_suggestion(worksheet, first_page: list[int]) -> str | None:
+    charts = [index for index, chart in enumerate(getattr(worksheet, "_charts", [])) if crosses_past(drawing_span(chart), first_page)]
+    if not charts:
+        return None
+    below = last_filled_row(worksheet) + DEFAULT_ANCHOR_GAP
+    named = ", ".join(str(index) for index in charts)
+    return f"apply the set_page_setup in fix to shrink the sheet onto one page wide; or, to keep the type size, move chart {named} under the tables with edit_chart \"anchor\": \"A{below}\""
+
+
+def last_filled_row(worksheet) -> int:
+    return max((cell.row for row in worksheet.iter_rows() for cell in row if cell.value not in (None, "")), default=0)
+
+
+def crosses_past(span: tuple[int, int, int, int] | None, first_page: list[int]) -> bool:
+    return span is not None and span[3] > first_page[-1]
+
+
+def chosen_width_pages(worksheet) -> int:
+    if not is_fitted_to_pages(worksheet) or worksheet.page_setup.fitToWidth is None:
+        return 1
+    return max(1, int(worksheet.page_setup.fitToWidth))
+
+
+def sheet_print_width_issues(workbook) -> list[Issue]:
+    previewer = SheetPreviewer(workbook, workbook, "", theme_palette(workbook.loaded_theme), FontRegistry(), Preview(title=""))
+    layouts = [(worksheet, previewer.print_layout(worksheet, worksheet)) for worksheet in workbook.worksheets if worksheet.sheet_state == "visible"]
+    return [issue for worksheet, layout in layouts if layout is not None for issue in print_width_issues(worksheet, layout)]
 
 
 def print_scale(worksheet, frame: SheetFrame, geometry: PageGeometry) -> float:

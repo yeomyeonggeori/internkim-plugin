@@ -11,6 +11,7 @@ from core.office_schema import require_valid
 from pdf.pdf_definitions import PDF_SPECIFICATION
 from fonts.pdf_registration import register_document_font
 from core.page_sizes import DEFAULT_PAPER, PAPER_BY_NAME
+from core.office_outputs import output_file
 
 
 def read_specification(arguments):
@@ -242,7 +243,7 @@ def resolve_font(specification):
 
 def parse_arguments():
     parser = OfficeArgumentParser()
-    parser.add_argument("output_path", help="Path to the output .pdf file")
+    parser.add_argument("output_path", type=output_file(".pdf"), help="Path to the output .pdf file")
     parser.add_argument("--title", metavar="TEXT", default="", help="Document title")
     parser.add_argument("--subtitle", metavar="TEXT", default="", help="Document subtitle (optional)")
     parser.add_argument("--heading", action="append", default=[], metavar="TEXT", help="Add a section heading (repeatable)")

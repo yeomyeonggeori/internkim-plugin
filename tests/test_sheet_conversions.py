@@ -65,6 +65,17 @@ class DelimitedRouteTest(ConversionFixture):
     def test_the_sheet_reference_sends_a_csv_through_convert_before_any_guide(self):
         reference = (SCRIPTS_PATH.parent / "references" / "sheet.md").read_text(encoding="utf-8")
         self.assertLess(reference.index("office convert <data.csv>"), reference.index("office guide sheet"))
+        self.assertNotIn("Python's `csv`", reference)
+        self.assertNotIn("newest", reference)
+
+    def test_excel_unicode_text_in_utf16_converts_whatever_its_extension(self):
+        exported = "\ufeff지역\t실적\n서울\t6200\n".encode("utf-16-le")
+        for name in ("유니코드.tsv", "유니코드.csv"):
+            with self.subTest(name=name):
+                (self.directory / name).write_bytes(exported)
+                self.assertEqual(run_office(["convert", name, "유니코드.xlsx"], self.directory)["status"], "ok")
+                values = run_office(["sheet", "read", "유니코드.xlsx"], self.directory)["details"]["range"]["values"]
+                self.assertEqual(values, [["지역", "실적"], ["서울", 6200]])
 
     def test_a_converted_csv_takes_a_summary_sheet_from_one_apply(self):
         (self.directory / "판매.csv").write_text("월,지역,실적\n2026-04,서울,6200\n2026-04,경기,4140\n2026-05,서울,6280\n", encoding="utf-8")

@@ -114,6 +114,12 @@ class ApplyTest(DeckEditFixture):
         self.assertEqual(envelope["issues"][0]["location"], "ops[1].slide")
         self.assertEqual((self.directory / "fixture.pptx").read_bytes(), original)
 
+    def test_an_operation_holding_a_fill_in_is_refused(self):
+        original = (self.directory / "fixture.pptx").read_bytes()
+        envelope = self.apply([{"op": "set_text", "slide": 1, "shape": 1, "text": "<value>"}])
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("FILL_IN_LEFT", "ops[0].text")])
+        self.assertEqual((self.directory / "fixture.pptx").read_bytes(), original)
+
     def test_a_dry_run_reports_changes_and_writes_nothing(self):
         original = (self.directory / "fixture.pptx").read_bytes()
         envelope = self.apply([{"op": "delete_slide", "slide": 1}], "--dry-run")

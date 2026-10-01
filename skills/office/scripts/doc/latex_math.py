@@ -5,7 +5,20 @@ import re
 from xml.etree import ElementTree
 
 import latex2mathml.converter
-from latex2mathml.exceptions import NoAvailableTokensError
+from latex2mathml.exceptions import (
+    DenominatorNotFoundError,
+    DoubleSubscriptsError,
+    DoubleSuperscriptsError,
+    ExtraLeftOrMissingRightError,
+    InvalidAlignmentError,
+    InvalidStyleForGenfracError,
+    InvalidWidthError,
+    LimitsMustFollowMathOperatorError,
+    MissingEndError,
+    MissingSuperScriptOrSubscriptError,
+    NoAvailableTokensError,
+    NumeratorNotFoundError,
+)
 import mathml2omml
 from docx.oxml import parse_xml
 from lxml import etree
@@ -21,6 +34,20 @@ TOKEN_ELEMENTS = ("mi", "mn", "mo", "mtext", "ms")
 STACKED_ELEMENTS = {"munder": ("under",), "mover": ("over",), "munderover": ("under", "over")}
 OVERBARS = frozenset("¯‾―")
 ARGUMENT_COUNTS = {"mfrac": 2, "msup": 2, "msub": 2, "msubsup": 3, "mroot": 2, "munder": 2, "mover": 2, "munderover": 3}
+LATEX_ERROR_REASONS = {
+    NoAvailableTokensError: "a command or a brace ends before what it needs",
+    MissingSuperScriptOrSubscriptError: "a ^ or _ has nothing after it",
+    NumeratorNotFoundError: "a \\frac has no numerator",
+    DenominatorNotFoundError: "a \\frac has no denominator",
+    DoubleSubscriptsError: "two _ apply to one symbol; group them with braces",
+    DoubleSuperscriptsError: "two ^ apply to one symbol; group them with braces",
+    ExtraLeftOrMissingRightError: "a \\left has no matching \\right",
+    MissingEndError: "a \\begin has no matching \\end",
+    LimitsMustFollowMathOperatorError: "\\limits follows something other than an operator such as \\sum",
+    InvalidAlignmentError: "a matrix column alignment is not l, c or r",
+    InvalidStyleForGenfracError: "a \\genfrac style is not 0 to 3",
+    InvalidWidthError: "a width is not a TeX length such as 2em",
+}
 RULE = "1px solid #1f2328"
 ROW = "display:inline-flex;align-items:center;white-space:nowrap"
 FRACTION = "display:inline-flex;flex-direction:column;align-items:center;margin:0 .12em"
@@ -37,16 +64,20 @@ class LatexNotReadable(Exception):
     pass
 
 
+def latex_error_reason(error: Exception) -> str:
+    return LATEX_ERROR_REASONS.get(type(error)) or str(error) or type(error).__name__
+
+
 def latex_mathml(latex: str, display: bool) -> str:
     try:
         mathml = latex2mathml.converter.convert(latex, display="block" if display else "inline")
-    except (NoAvailableTokensError, RuntimeError, ValueError, IndexError, KeyError) as error:
-        raise LatexNotReadable(f"{latex!r} is not LaTeX this converter reads ({error or type(error).__name__})") from error
+    except (*LATEX_ERROR_REASONS, RuntimeError, ValueError, IndexError, KeyError) as error:
+        raise LatexNotReadable(f"{latex!r} is not LaTeX this converter reads: {latex_error_reason(error)}") from error
     tree = ElementTree.fromstring(mathml)
     if any(UNKNOWN_COMMAND.search(text) for text in tree.itertext()):
         raise LatexNotReadable(f"{latex!r} uses a command the converter does not know")
     if any(len(element) != ARGUMENT_COUNTS[local_name(element)] for element in tree.iter() if local_name(element) in ARGUMENT_COUNTS):
-        raise LatexNotReadable(f"{latex!r} is not LaTeX this converter reads (a command is missing an argument or a closing brace)")
+        raise LatexNotReadable(f"{latex!r} is not LaTeX this converter reads: a command is missing an argument or a closing brace")
     return mathml
 
 
@@ -94,7 +125,7 @@ def latex_omml(latex: str, display: bool = False):
         omml = mathml2omml.convert(mathml)
         return parse_xml(f'<m:oMath xmlns:m="{OMML_NAMESPACE}">{omml.removeprefix("<m:oMath>").removesuffix("</m:oMath>")}</m:oMath>')
     except (ValueError, IndexError, KeyError, AttributeError, TypeError, etree.XMLSyntaxError) as error:
-        raise LatexNotReadable(f"{latex!r} has no Word equation form: mathml2omml wrote {error or type(error).__name__}") from error
+        raise LatexNotReadable(f"{latex!r} has no Word equation form: mathml2omml wrote {str(error) or type(error).__name__}") from error
 
 
 def latex_html(latex: str, display: bool = False) -> str:

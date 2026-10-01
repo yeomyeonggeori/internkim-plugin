@@ -19,6 +19,7 @@ from core.text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
 from sheet.text_values import text_value_issues
 from sheet.workbook_access import open_workbook
 from sheet.workbook_values import evaluate_workbook
+from sheet.xlsx_preview import sheet_print_width_issues
 
 
 DEFAULT_COLUMN_WIDTH = 8.43
@@ -42,6 +43,7 @@ def main() -> Result:
         + empty_pivot_issues(workbook)
         + placeholder_issues(workbook)
         + evaluation_issues(evaluation)
+        + sheet_print_width_issues(workbook)
     )
     return Result(summary=f"checked {arguments.workbook_path}: {len(issues)} issues", output_path=arguments.workbook_path, issues=tuple(issues))
 

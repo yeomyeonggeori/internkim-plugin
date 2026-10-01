@@ -9,6 +9,7 @@ from docxtpl import DocxTemplate
 
 from fonts.docx_embedding import save_document
 from core.office_result import DOCUMENTS_FOLDER, MISSING_FIELD, PERMISSION_DENIED, WRONG_TYPE, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
+from core.office_outputs import output_file
 from paperwork.template_context import caller_fields, complete_context, non_empty_fields
 from paperwork.template_fields import TEMPLATES_PATH, template_list_fields, template_names
 
@@ -70,7 +71,7 @@ def parse_arguments():
     parser = OfficeArgumentParser()
     parser.add_argument("template_name", choices=template_names(), help="Template name")
     parser.add_argument("context_path", help="Path to the context JSON file")
-    parser.add_argument("output_path", help="Path to the output .docx file")
+    parser.add_argument("output_path", type=output_file(".docx"), help="Path to the output .docx file")
     return parser.parse_args()
 
 

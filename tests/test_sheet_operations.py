@@ -1,10 +1,15 @@
 import re
+import sys
 import unittest
 import zipfile
 
 from openpyxl import load_workbook
 
-from sheet_fixture import WorkbookFixture
+from sheet_fixture import SCRIPTS_PATH, WorkbookFixture
+
+sys.path.insert(0, str(SCRIPTS_PATH))
+
+from sheet.sheet_definitions import CHART_COLUMN_LEFT_OUT  # noqa: E402
 
 SALES = [["region", "product", "qty", "amount"]] + [
     [region, product, quantity, quantity * 1000]
@@ -222,6 +227,19 @@ class ChartTest(OperationFixture):
         self.edit([{"op": "set_range", "cell": "E1", "values": [["memo"], ["가"], ["나"]]}])
         issue = self.edit([{"op": "add_chart", "type": "bar", "range": "C1:E7"}])["issues"][0]
         self.assertIn('"range": "C1:D7"', issue["suggestion"])
+
+    def test_text_columns_on_both_sides_of_the_numbers_get_a_suggestion_of_their_own(self):
+        self.edit([{"op": "set_range", "cell": "E1", "values": [["memo"], ["가"], ["나"]]}])
+        issue = self.edit([{"op": "add_chart", "type": "bar", "range": "A1:E7"}])["issues"][0]
+        self.assertEqual((issue["code"], issue["fix"]), ("CHART_COLUMN_LEFT_OUT", []))
+        self.assertNotEqual(issue["suggestion"], CHART_COLUMN_LEFT_OUT.suggestion)
+
+    def test_a_range_that_starts_under_its_header_is_refused_with_the_range_that_holds_it(self):
+        original = (self.directory / "book.xlsx").read_bytes()
+        issue = self.refused([{"op": "add_chart", "type": "bar", "range": "B2:D4"}])
+        self.assertEqual((issue["code"], issue["location"]), ("OPERATION_NOT_APPLICABLE", "ops[0].range"))
+        self.assertIn('"range": "B1:D4"', issue["suggestion"])
+        self.assertEqual((self.directory / "book.xlsx").read_bytes(), original)
 
     def test_one_category_column_is_widened_to_the_number_columns_beside_it(self):
         issue = self.refused([{"op": "add_chart", "type": "bar", "range": "A1:A7"}])

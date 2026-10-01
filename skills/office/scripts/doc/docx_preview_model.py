@@ -87,6 +87,10 @@ class ParagraphBlock:
     line_rule: str = "auto"
     keep_next: bool = False
     page_break_before: bool = False
+    style: str | None = None
+    contextual_spacing: bool = False
+    is_heading: bool = False
+    source: object = field(default=None, compare=False, repr=False)
     label: str = ""
     label_style: TextStyle | None = None
     background: str | None = None

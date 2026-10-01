@@ -84,6 +84,30 @@ class RenderedPagesTest(WorkbookFixture):
         envelope, _ = self.render()
         self.assertNotIn("BLANK_PAGE", [issue["code"] for issue in envelope["issues"]])
 
+    def test_a_sheet_printing_pages_wide_is_a_print_defect_with_a_fit_to_width_fix(self):
+        header = [f"항목{index}" for index in range(1, 13)]
+        self.create_workbook([{"title": "넓은표", "rows": [header, list(range(1, 13))], "columnWidths": {letter: 18 for letter in "ABCDEFGHIJKL"}}])
+        rendered, _ = self.render()
+        checked = run_office(["sheet", "check", "book.xlsx"], self.directory)
+        for envelope in (rendered, checked):
+            issue = next(issue for issue in envelope["issues"] if issue["code"] == "SHEET_PRINTS_WIDE")
+            self.assertEqual((issue["location"], issue["fix"]), ("넓은표", [{"op": "set_page_setup", "sheet": "넓은표", "fitToWidth": 1}]))
+        self.assertNotIn("PREVIEW_APPROXIMATED", [issue["code"] for issue in rendered["issues"]])
+        self.assertEqual(self.apply(issue["fix"])["status"], "ok")
+        self.assertNotIn("SHEET_PRINTS_WIDE", [issue["code"] for issue in run_office(["sheet", "check", "book.xlsx"], self.directory)["issues"]])
+        self.assertEqual(self.render()[0]["details"]["pageCount"], 1)
+
+    def test_a_width_the_author_spread_over_pages_is_left_alone(self):
+        header = [f"항목{index}" for index in range(1, 13)]
+        self.create_workbook([{"title": "넓은표", "rows": [header, list(range(1, 13))], "columnWidths": {letter: 18 for letter in "ABCDEFGHIJKL"}}])
+        self.apply([{"op": "set_page_setup", "fitToWidth": 2, "fitToHeight": 0}])
+        self.assertNotIn("SHEET_PRINTS_WIDE", [issue["code"] for issue in self.render()[0]["issues"]])
+
+    def test_a_chart_cut_at_the_page_edge_is_offered_a_place_under_the_tables(self):
+        self.create_workbook([{"title": "Sales", "rows": MONTHS}])
+        self.apply([{"op": "add_chart", "type": "line", "range": "A1:B5", "anchor": "F2", "width": 20}])
+        issue = next(issue for issue in run_office(["sheet", "check", "book.xlsx"], self.directory)["issues"] if issue["code"] == "SHEET_PRINTS_WIDE")
+        self.assertIn('edit_chart "anchor": "A7"', issue["suggestion"])
 
     def test_fit_to_one_page_tall_and_printed_gridlines_shape_the_pages(self):
         self.create_workbook([{"title": "일지", "rows": [["일자", "건수"]] + [[f"{day}일", day] for day in range(1, 151)]}])

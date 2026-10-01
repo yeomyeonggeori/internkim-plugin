@@ -3,13 +3,14 @@ from __future__ import annotations
 
 import io
 import json
+import os
 
 from fpdf import FPDF
 from pypdf import PdfReader, PdfWriter
 
 from pdf import create_pdf as pdf_helper
-from core.office_inputs import add_password_argument, office_file, require_unlocked_pdf, resolve_document_path
-from core.office_result import DOCUMENTS_FOLDER, OfficeArgumentParser, Result, read_json_file, run_command
+from core.office_inputs import add_password_argument, office_file, require_unlocked_pdf
+from core.office_result import OfficeArgumentParser, Result, read_json_file, run_command
 from core.office_schema import require_valid
 from pdf.pdf_definitions import SECTION
 from fonts.pdf_registration import register_document_font
@@ -19,7 +20,7 @@ from core.page_sizes import DEFAULT_PAPER
 def main() -> Result:
     arguments = parse_arguments()
     section = read_section(arguments)
-    pdf_path = resolve_document_path(arguments.pdf_path, "pdf")
+    pdf_path = os.path.expanduser(arguments.pdf_path)
     require_unlocked_pdf(pdf_path, arguments.password)
     font_name, font_path = pdf_helper.resolve_font({})
     appended_page_bytes, font_issues = build_appended_page(section, font_name, font_path)
@@ -66,7 +67,7 @@ def merge_into_original(pdf_path: str, appended_page_bytes: bytes, password: str
 
 def parse_arguments():
     parser = OfficeArgumentParser()
-    parser.add_argument("pdf_path", nargs="?", type=office_file("pdf"), help=f"Path to the .pdf; defaults to the newest .pdf in {DOCUMENTS_FOLDER}")
+    parser.add_argument("pdf_path", type=office_file("pdf"), help="Path to the .pdf to edit in place")
     parser.add_argument("--heading", metavar="TEXT", help="Section heading for the appended page")
     parser.add_argument("--paragraph", action="append", default=[], metavar="TEXT", help="Paragraph to add")
     parser.add_argument("--bullet", action="append", default=[], metavar="TEXT", help="Bullet item to add")

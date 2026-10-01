@@ -17,6 +17,7 @@ from core.office_inputs import office_file
 from core.office_result import Issue, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from core.office_schema import require_valid
 from core.template_merge import MERGE_VALUES, TEMPLATE_SYNTAX_ERROR, UNRESOLVED_PLACEHOLDER, UNUSED_VALUE, index_list_placeholders, list_outside_row_issues, repeated_list_name, write_package
+from core.office_outputs import same_kind_output
 
 
 FILLED_PART_PATTERN = re.compile(r"word/(document|header\d*|footer\d*)\.xml")
@@ -26,7 +27,7 @@ def main() -> Result:
     arguments = parse_arguments()
     values = read_json_file(arguments.values_path)
     require_valid(MERGE_VALUES, values, "values")
-    output_path = os.path.expanduser(arguments.output_path)
+    output_path = os.path.expanduser(same_kind_output(arguments.output_path, arguments.template_path))
     with tempfile.TemporaryDirectory() as directory:
         expanded_path = os.path.join(directory, "template.docx")
         expand_list_rows(os.path.expanduser(arguments.template_path), values, expanded_path)

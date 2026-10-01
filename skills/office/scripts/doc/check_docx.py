@@ -11,11 +11,12 @@ from doc.docx_content_checks import chart_empty_issues, field_result_issues, hea
 from doc.docx_defaults import KOREAN_LANGUAGE
 from doc.docx_language import east_asia_font_issues, effective_east_asia_language
 from doc.docx_package import open_document
+from doc.docx_page_checks import stranded_heading_issues
 from doc.docx_reference_operations import bookmark_names
 from doc.docx_revisions import collect_revisions, describe_pending
 from doc.docx_blocks import PARAGRAPH_TAG, body_block_elements, element_text, heading_level
 from core.office_inputs import office_file
-from core.office_result import Issue, OfficeArgumentParser, Result, run_command
+from core.office_result import VALUE_FILL_IN, Issue, OfficeArgumentParser, Result, run_command
 from core.text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
 from core.text_script import has_hangul
 
@@ -43,6 +44,7 @@ def main() -> Result:
         + heading_issues(document, elements)
         + unresolved_comment_issues(document, elements)
         + field_result_issues(elements, fields_update_on_open(document))
+        + stranded_heading_issues(arguments.document_path)
     )
     return Result(summary=f"checked {arguments.document_path}: {len(issues)} issues", output_path=arguments.document_path, issues=tuple(issues))
 
@@ -80,7 +82,7 @@ def placeholders_in(element, location: str, block_index: int | None) -> list[Iss
 
 
 def replacement(placeholder: str, block_index: int | None) -> dict:
-    operation = {"op": "replace_text", "find": placeholder, "replace": "<value>"}
+    operation = {"op": "replace_text", "find": placeholder, "replace": VALUE_FILL_IN}
     if block_index is not None:
         operation["block"] = block_index
     return operation

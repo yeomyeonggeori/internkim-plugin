@@ -81,6 +81,8 @@ def paragraph_properties(element) -> dict:
         "style": attribute(element, "w:pStyle", "w:val"),
         "page_break_before": on(element, "w:pageBreakBefore"),
         "keep_next": on(element, "w:keepNext"),
+        "contextual_spacing": on(element, "w:contextualSpacing"),
+        "outline_level": number(attribute(element, "w:outlineLvl", "w:val")),
         "tab_stops": tab_stops(element.find(qn("w:tabs"))),
         "shading": None if shading in NO_COLOR else shading,
         "borders": border_set(element.find(qn("w:pBdr"))),

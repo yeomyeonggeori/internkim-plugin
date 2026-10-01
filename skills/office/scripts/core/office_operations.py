@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 import os
 from pathlib import Path
@@ -7,16 +8,18 @@ import tempfile
 from typing import Callable, Sequence
 
 from core.office_inputs import office_file
-from core.office_result import ERROR, WARNING, Issue, IssueKind, OfficeArgumentParser, OfficeFailure, Result, read_json_file
-from core.office_schema import ListOf, Variant, require_valid
+from core.office_outputs import same_kind_output
+from core.office_result import ERROR, FILL_INS, VALUE_FILL_IN, WARNING, Issue, IssueKind, OfficeArgumentParser, OfficeFailure, Result, read_json_file
+from core.office_schema import ListOf, Variant, join_location, require_valid
 
 
 TARGET_NOT_FOUND = IssueKind("TARGET_NOT_FOUND", ERROR, "an operation names a block, cell, sheet, or slide the file does not have", "read the file again and use an index or name it reports")
 OPERATION_NOT_APPLICABLE = IssueKind("OPERATION_NOT_APPLICABLE", ERROR, "an operation cannot apply to the element it names", "pick an element of the kind the operation edits")
+FILL_IN_LEFT = IssueKind("FILL_IN_LEFT", ERROR, f"an operation copied from a fix still holds a value in angle brackets, such as {VALUE_FILL_IN}, that was left for you to fill in, so nothing was written", "write the real value from the source in its place")
 
 OPERATION_REFUSED = IssueKind("OPERATION_REFUSED", WARNING, "a --mode best-effort or stop-on-error batch left out an operation that does not apply and wrote the others", "correct the operation as the message says and apply it in a batch of its own")
 
-OPERATION_ISSUE_KINDS = (TARGET_NOT_FOUND, OPERATION_NOT_APPLICABLE, OPERATION_REFUSED)
+OPERATION_ISSUE_KINDS = (TARGET_NOT_FOUND, OPERATION_NOT_APPLICABLE, FILL_IN_LEFT, OPERATION_REFUSED)
 
 Change = Callable[[], str]
 
@@ -145,22 +148,48 @@ def read_batch(operation_set: OperationSet, operations_path: str, mode: str = AL
     operations = read_json_file(operations_path)
     if mode == ALL_MODE or not isinstance(operations, list) or not operations:
         require_valid(operation_set.batch, operations, "ops")
+    issues = fill_in_issues(operations, "ops")
+    if issues:
+        raise OfficeFailure(*issues)
     return operations
 
 
+def fill_in_issues(value: object, location: str) -> list[Issue]:
+    if isinstance(value, dict):
+        return [issue for name, item in value.items() for issue in fill_in_issues(item, join_location(location, name))]
+    if isinstance(value, list):
+        return [issue for index, item in enumerate(value) for issue in fill_in_issues(item, f"{location}[{index}]")]
+    left = [fill_in for fill_in in FILL_INS if isinstance(value, str) and fill_in in value]
+    return [FILL_IN_LEFT.issue(f"{location} still holds {', '.join(left)}, which a fix leaves for you to fill in", location)] if left else []
+
+
 def save_atomically(save: Callable[[str], Sequence[Issue] | None], output_path: str) -> Sequence[Issue]:
-    directory = os.path.dirname(os.path.abspath(output_path))
-    os.makedirs(directory, exist_ok=True)
-    suffix = Path(output_path).suffix
-    descriptor, temporary_path = tempfile.mkstemp(prefix=".office-", suffix=suffix, dir=directory)
-    os.close(descriptor)
+    temporary_path = temporary_path_beside(output_path)
     try:
         issues = save(temporary_path) or ()
-        os.replace(temporary_path, output_path)
+        with failures_named(output_path):
+            os.replace(temporary_path, output_path)
         return issues
     finally:
         if os.path.exists(temporary_path):
             os.unlink(temporary_path)
+
+
+def temporary_path_beside(output_path: str) -> str:
+    directory = os.path.dirname(os.path.abspath(output_path))
+    os.makedirs(directory, exist_ok=True)
+    with failures_named(output_path):
+        descriptor, temporary_path = tempfile.mkstemp(prefix=".office-", suffix=Path(output_path).suffix, dir=directory)
+    os.close(descriptor)
+    return temporary_path
+
+
+@contextmanager
+def failures_named(path: str):
+    try:
+        yield
+    except OSError as error:
+        raise OSError(error.errno, error.strerror, path) from error
 
 
 def apply_parser(input_kind: str) -> OfficeArgumentParser:
@@ -171,6 +200,10 @@ def apply_parser(input_kind: str) -> OfficeArgumentParser:
     parser.add_argument("--dry-run", action="store_true", help="check and plan every operation, report the changes, and write nothing")
     parser.add_argument("--mode", choices=BATCH_MODES, default=ALL_MODE, help="all (default) writes the batch whole or not at all; best-effort writes every operation that applies and reports the others; stop-on-error writes the operations before the first that does not apply")
     return parser
+
+
+def apply_output_path(arguments) -> str:
+    return os.path.expanduser(same_kind_output(arguments.output, arguments.path) if arguments.output else arguments.path)
 
 
 @dataclass(frozen=True)
@@ -188,6 +221,6 @@ def run_apply(arguments, operation_set: OperationSet, load: Callable[[str], obje
     details = {"dryRun": arguments.dry_run, **outcome.details(), **reviewed.details}
     if arguments.dry_run:
         return Result(summary=f"dry run: {outcome.counted()} would apply to {arguments.path}", issues=issues, details=details)
-    output_path = os.path.expanduser(arguments.output or arguments.path)
+    output_path = apply_output_path(arguments)
     saved_issues = save_atomically(lambda temporary_path: save(document, temporary_path), output_path)
     return Result(summary=f"applied {outcome.counted()} to {output_path}", output_path=output_path, issues=issues + tuple(saved_issues), details=details)

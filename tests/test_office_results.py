@@ -1,3 +1,4 @@
+import errno
 import importlib
 import json
 from pathlib import Path
@@ -16,7 +17,7 @@ sys.path.insert(0, str(SCRIPTS_PATH))
 
 from core.office_commands import COMMANDS, FORMATS  # noqa: E402
 from office_guide import guide_text  # noqa: E402
-from core.office_result import COMMAND_ISSUE_KINDS, IssueKind  # noqa: E402
+from core.office_result import COMMAND_ISSUE_KINDS, IssueKind, command_result  # noqa: E402
 from core.office_schema import CellValue, Field, ListOf, Number, Record, Text, Variant  # noqa: E402
 
 
@@ -77,6 +78,13 @@ class ResultEnvelopeTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             kind.issue("found", fix=[{"block": 2}])
 
+    def test_a_kind_whose_suggestion_applies_fix_refuses_an_issue_without_fix(self):
+        kind = IssueKind("SAMPLE", "warning", "a sample", "apply the operation in fix", suggestion_applies_fix=True)
+        self.assertEqual(kind.issue("found", fix=[{"op": "recalculate"}]).suggestion, "apply the operation in fix")
+        self.assertEqual(kind.issue("found", suggestion="leave it as it is").fix, ())
+        with self.assertRaises(TypeError):
+            kind.issue("found")
+
     def test_an_unknown_command_is_an_issue(self):
         with tempfile.TemporaryDirectory() as working_directory:
             _, envelope = run_office(["doc", "shred"], working_directory)
@@ -108,6 +116,84 @@ class ResultEnvelopeTest(unittest.TestCase):
         codes = [kind.code for kind in kinds]
         duplicates = sorted({code for code in codes if codes.count(code) > 1})
         self.assertEqual(duplicates, [])
+
+
+class OutputPathTest(unittest.TestCase):
+    def path_issues(self, arguments, working_directory):
+        completed, envelope = run_office(arguments, working_directory)
+        self.assertEqual(completed.returncode, 1, completed.stderr)
+        return [(issue["code"], issue["location"]) for issue in envelope["issues"]]
+
+    def test_an_output_path_the_disk_refuses_is_one_envelope_naming_the_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            working_directory = Path(directory)
+            (working_directory / "folder.xlsx").mkdir()
+            (working_directory / "plain").write_text("not a folder", encoding="utf-8")
+            (working_directory / "notes.md").write_text("# 제목\n\n본문\n", encoding="utf-8")
+            long_name = "n" * 300
+            cases = {
+                ("sheet", "create", "folder.xlsx", "--row", "a,b"): ("PATH_UNUSABLE", "folder.xlsx"),
+                ("sheet", "create", "plain/book.xlsx", "--row", "a,b"): ("PATH_UNUSABLE", "plain"),
+                ("pdf", "create", f"{long_name}.pdf", "--title", "제목"): ("PATH_UNUSABLE", f"{long_name}.pdf"),
+                ("doc", "export", "notes.md", "--output", "plain/notes.docx"): ("PATH_UNUSABLE", "plain"),
+                ("convert", "notes.md", f"{long_name}.docx"): ("PATH_UNUSABLE", f"{long_name}.docx"),
+            }
+            for arguments, expected in cases.items():
+                with self.subTest(arguments=arguments[:3]):
+                    self.assertEqual(self.path_issues(list(arguments), working_directory), [expected])
+
+    def test_an_output_whose_extension_names_another_format_is_refused_before_writing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            working_directory = Path(directory)
+            cases = {
+                ("sheet", "create", "표.csv", "--row", "a,b"): "표.xlsx",
+                ("pdf", "create", "보고서.docx", "--title", "제목"): "보고서.pdf",
+                ("doc", "create", "보고서.pdf", "--title", "제목", "--paragraph", "본문"): "보고서.docx",
+                ("deck", "image", "harbor cranes", "images/harbor.gif"): "images/harbor.jpg",
+            }
+            for arguments, meant in cases.items():
+                with self.subTest(arguments=arguments[:3]):
+                    completed, envelope = run_office(list(arguments), working_directory)
+                    self.assertEqual([issue["code"] for issue in envelope["issues"]], ["WRONG_OUTPUT_FORMAT"])
+                    self.assertIn(meant, envelope["issues"][0]["suggestion"])
+            self.assertEqual(sorted(path.name for path in working_directory.iterdir()), [])
+
+    def test_apply_and_merge_write_the_kind_of_file_they_read(self):
+        with tempfile.TemporaryDirectory() as directory:
+            working_directory = Path(directory)
+            self.assertEqual(run_office(["sheet", "create", "book.xlsx", "--row", "a,b"], working_directory)[1]["status"], "ok")
+            (working_directory / "ops.json").write_text('[{"op": "set_cell", "cell": "A2", "value": 1}]', encoding="utf-8")
+            (working_directory / "values.json").write_text("{}", encoding="utf-8")
+            for arguments in (["sheet", "apply", "book.xlsx", "ops.json", "--output", "book.csv"], ["sheet", "merge", "book.xlsx", "values.json", "filled.pdf"]):
+                with self.subTest(command=arguments[:2]):
+                    _, envelope = run_office(arguments, working_directory)
+                    self.assertEqual([issue["code"] for issue in envelope["issues"]], ["WRONG_OUTPUT_FORMAT"])
+            self.assertEqual(sorted(path.name for path in working_directory.iterdir()), ["book.xlsx", "ops.json", "values.json"])
+
+    def test_an_empty_image_query_is_refused_before_any_search(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, envelope = run_office(["deck", "image", " ", "images/photo.jpg"], Path(directory))
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["INVALID_ARGUMENTS"])
+
+    def test_an_edit_without_a_path_never_picks_a_file_by_itself(self):
+        with tempfile.TemporaryDirectory() as directory:
+            working_directory = Path(directory)
+            (working_directory / "documents").mkdir()
+            self.assertEqual(run_office(["sheet", "create", "documents/book.xlsx", "--row", "a,b"], working_directory)[1]["status"], "ok")
+            original = (working_directory / "documents" / "book.xlsx").read_bytes()
+            for arguments in (["sheet", "edit", "--row", "1,2"], ["doc", "edit", "--paragraph", "본문"], ["pdf", "edit", "--heading", "제목"]):
+                with self.subTest(command=arguments[:2]):
+                    _, envelope = run_office(arguments, working_directory)
+                    self.assertEqual([issue["code"] for issue in envelope["issues"]], ["INVALID_ARGUMENTS"])
+            self.assertEqual((working_directory / "documents" / "book.xlsx").read_bytes(), original)
+
+    def test_a_read_only_disk_is_named_rather_than_raised(self):
+        def write_on_read_only_disk():
+            raise OSError(errno.EROFS, "Read-only file system", "/Volumes/archive/report.docx")
+
+        result = command_result(write_on_read_only_disk)
+        self.assertEqual([(issue.kind.code, issue.location) for issue in result.issues], [("PATH_UNUSABLE", "/Volumes/archive/report.docx")])
+        self.assertIn("read-only", result.issues[0].message)
 
 
 class GuideTest(unittest.TestCase):
@@ -198,6 +284,14 @@ class SchemaTest(unittest.TestCase):
 
     def test_a_boolean_is_not_a_number(self):
         self.assertEqual(self.codes_and_locations({"name": "a", "size": True}), [("WRONG_TYPE", "spec.size")])
+
+    def test_an_empty_list_or_text_says_it_is_empty_rather_than_absent(self):
+        empty_list = ListOf(Text(), non_empty=True).problems([], "spec.blocks")[0]
+        empty_text = Text(non_empty=True).problems(" ", "spec.title")[0]
+        self.assertEqual((empty_list.kind.code, empty_text.kind.code), ("MISSING_FIELD", "MISSING_FIELD"))
+        self.assertIn("the list is empty", empty_list.message)
+        self.assertNotEqual(empty_list.suggestion, empty_list.kind.default_suggestion())
+        self.assertNotEqual(empty_text.suggestion, empty_text.kind.default_suggestion())
 
 
 class PaperworkSkeletonTest(unittest.TestCase):

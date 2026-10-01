@@ -32,7 +32,8 @@ CHART = (
     '<figure data-chart="column" data-labels="1Q, 2Q, 3Q" data-values="96, 104, 128" data-unit="억"></figure></section>'
 )
 TABLE = '<section data-layout="table"><h2>수도권이 성장을 이끌었습니다</h2><table><tr><th>지역</th><th>매출</th></tr><tr><td>수도권</td><td>58억</td></tr></table></section>'
-CLOSING = '<section data-layout="closing"><h2>예산을 승인해 주십시오</h2></section>'
+CLOSING = '<section data-layout="closing"><h2>예산을 승인해 주십시오</h2><ol><li>예산 6억 원</li><li>11월 3일 출시</li></ol></section>'
+THANKS = '<section data-layout="closing"><h2>감사합니다</h2></section>'
 CLEAN_DECK = kit_deck(COVER, STATEMENT, KPI, CHART, TABLE, CLOSING)
 
 
@@ -61,6 +62,14 @@ class DeckCheckTest(unittest.TestCase):
         self.assertIn(("LAST_SLIDE_NOT_CLOSING", "slide 3"), codes)
         self.assertEqual(self.check(kit_deck(STATEMENT, KPI, CHART)).status, "warning")
         self.assertNotIn("LAST_SLIDE_NOT_CLOSING", [code for code, _ in self.codes(kit_deck(COVER, STATEMENT))])
+
+    def test_a_cover_or_closing_in_the_middle_of_the_deck_is_warned(self):
+        codes = self.codes(kit_deck(COVER, STATEMENT, CLOSING, KPI, COVER, CHART, CLOSING))
+        self.assertEqual([code for code in codes if code[0] == "OUTLINE_LAYOUT_MISPLACED"], [("OUTLINE_LAYOUT_MISPLACED", "slide 5"), ("OUTLINE_LAYOUT_MISPLACED", "slide 3")])
+
+    def test_a_closing_that_holds_only_its_title_is_warned_and_one_with_next_steps_is_not(self):
+        self.assertIn(("CLOSING_WITHOUT_ACTION", "slide 4"), self.codes(kit_deck(COVER, STATEMENT, KPI, THANKS)))
+        self.assertNotIn("CLOSING_WITHOUT_ACTION", [code for code, _ in self.codes(kit_deck(COVER, STATEMENT, KPI, CLOSING))])
 
     def test_an_unknown_layout_names_the_closest_one(self):
         result = self.check(kit_deck(COVER, '<section data-layout="kpis"><h2>지표가 좋아졌습니다</h2></section>'))

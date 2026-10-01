@@ -1,10 +1,12 @@
 import ast
 import hashlib
 import json
+import os
 import re
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
 
 
@@ -79,16 +81,77 @@ class OfficeEntryTest(unittest.TestCase):
         self.assertEqual(command_names ^ listed_names, set())
 
 
+DECK_SOURCE = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>예시</title></head><body data-theme="corporate">
+<section data-layout="cover"><h1>매출이 6% 늘었습니다</h1><p class="meta">이샘플</p></section>
+</body></html>"""
+QUOTE = {
+    "title": "견 적 서",
+    "items": {
+        "headers": ["품명", "수량", "단가", "공급가액"],
+        "rows": [["의자", "10", "50,000", "500,000"]],
+        "totals": [{"label": "공급가액 합계", "value": "500,000원"}, {"label": "부가세", "value": "50,000원"}, {"label": "총 합계", "value": "550,000원"}],
+    },
+}
+
+
+def prepare_deck_restore(directory):
+    (directory / "slides.html").write_text(DECK_SOURCE, encoding="utf-8")
+    subprocess.run([sys.executable, str(OFFICE_SCRIPTS_PATH / "office"), "deck", "build", "--format", "html", "--name", "deck"], capture_output=True, check=True, cwd=directory)
+    return ["deck", "restore", "build/deck.html", "restored.html"]
+
+
+def prepare_paperwork_check(directory):
+    (directory / "quote.json").write_text(json.dumps(QUOTE, ensure_ascii=False), encoding="utf-8")
+    return ["paperwork", "check", "quote.json"]
+
+
+PACKAGE_FREE_CASES = {
+    "deck restore": prepare_deck_restore,
+    "paperwork check": prepare_paperwork_check,
+}
+
+
+def bare_interpreter(directory):
+    subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(directory)], check=True)
+    return directory / "bin" / "python"
+
+
 class PackageFreeCommandTest(unittest.TestCase):
-    def test_a_command_that_needs_no_packages_imports_without_them(self):
-        loader = "import importlib, sys; importlib.import_module(sys.argv[1])"
-        for command in office_command_table():
-            if command.needs_packages:
-                continue
-            with self.subTest(command=command.name):
-                environment = {"PYTHONPATH": str(OFFICE_SCRIPTS_PATH)}
-                completed = subprocess.run([sys.executable, "-S", "-c", loader, command.module], capture_output=True, text=True, env=environment)
-                self.assertEqual(completed.returncode, 0, completed.stderr[-800:])
+    def test_every_command_declared_package_free_has_a_case(self):
+        self.assertEqual(set(PACKAGE_FREE_CASES), {command.name for command in office_command_table() if not command.needs_packages})
+
+    def test_each_package_free_command_runs_on_an_interpreter_without_the_skill_packages_or_a_font_cache(self):
+        with tempfile.TemporaryDirectory() as directory:
+            interpreter = bare_interpreter(Path(directory) / "bare")
+            environment = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"} | {"XDG_CACHE_HOME": str(Path(directory) / "empty-cache")}
+            for name, prepare in PACKAGE_FREE_CASES.items():
+                with self.subTest(command=name):
+                    working_directory = Path(directory) / name.replace(" ", "-")
+                    working_directory.mkdir()
+                    arguments = prepare(working_directory)
+                    completed = subprocess.run([str(interpreter), str(OFFICE_SCRIPTS_PATH / "office"), *arguments], capture_output=True, text=True, cwd=working_directory, env=environment)
+                    self.assertNotIn("ModuleNotFoundError", completed.stderr)
+                    self.assertEqual(json.loads(completed.stdout)["status"], "ok", completed.stdout)
+
+
+OWNED_LITERALS = {
+    "1048576": "core/excel_limits.py",
+    "16384": "core/excel_limits.py",
+    "12700": "core/units.py",
+    "914400": "core/units.py",
+}
+
+
+class OwnedLiteralTest(unittest.TestCase):
+    def test_excel_limits_and_emu_sizes_are_written_only_where_they_are_owned(self):
+        scripts = sorted((SKILLS_PATH / "office" / "scripts").rglob("*.py"))
+        written_elsewhere = sorted(
+            (literal, str(path.relative_to(OFFICE_SCRIPTS_PATH)))
+            for path in scripts
+            for literal, owner in OWNED_LITERALS.items()
+            if str(path.relative_to(OFFICE_SCRIPTS_PATH)) != owner and re.search(rf"(?<![0-9.]){literal}(?![0-9])", path.read_text(encoding="utf-8"))
+        )
+        self.assertEqual(written_elsewhere, [])
 
 
 class OldPythonTest(unittest.TestCase):

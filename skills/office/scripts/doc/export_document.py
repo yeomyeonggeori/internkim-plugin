@@ -12,20 +12,21 @@ from doc.markdown_blocks import Heading, parse_markdown
 from doc.markdown_charts import require_valid_charts
 from core.office_inputs import read_text_input
 from fonts.registry import BODY_SIZE_POINTS, REGULAR_WEIGHT, SANS_BODY, default_family, resolved_face
-from core.office_result import INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
+from core.office_outputs import require_output_extension
+from core.office_result import Issue, OfficeArgumentParser, Result, run_command
 from fonts.pdf_registration import register_document_font
 from doc.pdf_markdown import MarkdownPdf
 
 
 PDF_FONT_FAMILY = "DocumentFont"
-EXPORT_FORMATS = ("docx", "pdf")
+EXPORT_EXTENSIONS = (".docx", ".pdf")
 
 
 def main() -> Result:
     arguments = parse_arguments()
     markdown_path = Path(arguments.markdown_path)
     output_path = Path(arguments.output) if arguments.output else markdown_path.with_suffix(".docx")
-    output_format = require_export_format(output_path)
+    output_format = require_output_extension(str(output_path), EXPORT_EXTENSIONS).lstrip(".")
     markdown_text = read_text_input(arguments.markdown_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     blocks = parse_markdown(markdown_text)
@@ -36,18 +37,6 @@ def main() -> Result:
         document, issues = markdown_document(blocks, arguments.font, arguments.font_size, markdown_path.parent)
         save_document(document, output_path)
     return Result(summary=f"exported {output_path} from {markdown_path}", output_path=str(output_path), issues=(*math_issues(blocks, output_format), *issues))
-
-
-def require_export_format(output_path: Path) -> str:
-    extension = output_path.suffix.lower().lstrip(".")
-    if extension in EXPORT_FORMATS:
-        return extension
-    ending = f"ends in {output_path.suffix}" if output_path.suffix else "has no extension"
-    raise OfficeFailure(INVALID_VALUE.issue(
-        f"--output {output_path.name} {ending}; doc export writes .docx or .pdf, chosen by that extension",
-        "--output",
-        suggestion=f"name the output {output_path.stem}.docx for Word or {output_path.stem}.pdf for a PDF",
-    ))
 
 
 def export_pdf(blocks: list, output_path: Path, source_directory: Path, font_path_argument: str, font_size: float) -> list[Issue]:

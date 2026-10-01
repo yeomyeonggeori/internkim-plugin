@@ -13,7 +13,9 @@ SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scri
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
+from deck.deck_definitions import OUT_OF_FRAME  # noqa: E402
 from deck.geometry_checks import geometry_warnings  # noqa: E402
+from deck.pptx_layout_audit import layout_issue  # noqa: E402
 
 
 CARD_SENTENCE = "품절 3일 전에 알립니다. "
@@ -81,6 +83,13 @@ class KitAdviceTest(unittest.TestCase):
         overflow = {"selector": "ol", "text": "", "scrollWidth": 900, "clientWidth": 900, "scrollHeight": 900, "clientHeight": 600}
         issue = geometry_warnings(self.measured(overflow=[overflow], capacity=[{"part": "list", "index": 1, "items": 9, "fits": 5}]), "closing")[0]
         self.assertIn("shows 5 of its 9 items", issue.suggestion)
+
+    def test_a_pptx_layout_issue_points_at_its_fix_or_says_what_to_do_without_one(self):
+        moved = layout_issue(OUT_OF_FRAME, "slide 1 shape 2 lies partly outside the slide", "slide 1 shape 2", {"op": "set_transform", "slide": 1, "shape": 2, "x": 0})
+        unplaced = layout_issue(OUT_OF_FRAME, "slide 1 shape 2 lies partly outside the slide", "slide 1 shape 2", None)
+        self.assertIn("set_transform in fix", moved.suggestion)
+        self.assertEqual(moved.fix, ({"op": "set_transform", "slide": 1, "shape": 2, "x": 0},))
+        self.assertEqual((unplaced.suggestion, unplaced.fix), (OUT_OF_FRAME.kind.suggestion, ()))
 
     def test_the_guide_names_kit_actions_for_layout_defects(self):
         guide = subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", "deck", "build"], capture_output=True, text=True, check=True).stdout

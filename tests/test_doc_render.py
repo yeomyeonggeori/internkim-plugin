@@ -1,6 +1,7 @@
 import base64
 import io
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -228,6 +229,71 @@ class WatermarkAndPageNumberingTest(unittest.TestCase):
         (self.directory / "both.json").write_text(json.dumps([{"op": "set_watermark", "text": "대외비", "image": "logo.png"}]), encoding="utf-8")
         envelope = run_office(["doc", "apply", "구역.docx", "both.json", "--dry-run"], self.directory)
         self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("INVALID_VALUE", "ops[0]")])
+
+
+STRANDED_HEADING = """
+from docx import Document
+from docx.shared import Pt
+
+document = Document()
+document.add_paragraph("머리 문단").paragraph_format.space_after = Pt(20)
+for index in range(23):
+    document.add_paragraph(f"본문 문단 {index}")
+heading = document.add_heading("다음 단계", 2)
+heading.paragraph_format.keep_with_next = False
+document.add_paragraph("세부 계획은 착수 전에 확정합니다.")
+document.save("떨어진제목.docx")
+"""
+
+KEPT_HEADING = """
+from docx import Document
+from docx.shared import Pt
+
+document = Document()
+for index in range(24):
+    document.add_paragraph(f"본문 문단 {index}")
+document.add_heading("다음 단계", 2)
+document.add_paragraph("세부 계획은 착수 전에 확정합니다.").paragraph_format.space_after = Pt(24)
+for item in ("첫째", "둘째"):
+    document.add_paragraph(item, style="List Bullet")
+document.save("빠듯한.docx")
+"""
+
+
+class PaginationTest(unittest.TestCase):
+    def setUp(self):
+        self.temporary_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary_directory.cleanup)
+        self.directory = Path(self.temporary_directory.name)
+
+    def page_texts(self, name):
+        run_office(["doc", "render", name], self.directory)
+        html = (self.directory / f"{Path(name).stem}-preview" / "preview.html").read_text(encoding="utf-8")
+        return [re.sub(r"<[^>]+>", "", body) for _, _, body in page_sections(html)]
+
+    def test_a_heading_left_at_a_page_bottom_is_reported_with_keep_with_next_as_its_fix(self):
+        run_office_python(STRANDED_HEADING, self.directory)
+        issues = [issue for issue in run_office(["doc", "check", "떨어진제목.docx"], self.directory)["issues"] if issue["code"] == "HEADING_STRANDED"]
+        self.assertEqual([(issue["location"], issue["fix"]) for issue in issues], [("block 24", [{"op": "set_paragraph_format", "block": 24, "keepWithNext": True}])])
+        (self.directory / "fix.json").write_text(json.dumps(issues[0]["fix"]), encoding="utf-8")
+        self.assertEqual(run_office(["doc", "apply", "떨어진제목.docx", "fix.json"], self.directory)["status"], "ok")
+        self.assertNotIn("HEADING_STRANDED", [issue["code"] for issue in run_office(["doc", "check", "떨어진제목.docx"], self.directory)["issues"]])
+        pages = self.page_texts("떨어진제목.docx")
+        self.assertIn("다음 단계", pages[1])
+        self.assertNotIn("다음 단계", pages[0])
+
+    def test_a_kept_heading_stays_with_a_last_line_whose_space_after_runs_past_the_page(self):
+        run_office_python(KEPT_HEADING, self.directory)
+        pages = self.page_texts("빠듯한.docx")
+        heading_page = next(index for index, page in enumerate(pages) if "다음 단계" in page)
+        self.assertIn("세부 계획은 착수 전에 확정합니다.", pages[heading_page])
+
+    def test_list_items_of_one_style_drop_the_space_between_them(self):
+        run_office_python(KEPT_HEADING, self.directory)
+        reader = "import json; from pathlib import Path; from doc.docx_preview import DocxModelBuilder; blocks = DocxModelBuilder(Path('빠듯한.docx')).sections()[0].blocks; print(json.dumps([[block.space_before, block.space_after] for block in blocks[-2:]]))"
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", reader], capture_output=True, text=True, check=True, cwd=self.directory, env={**os.environ, "PYTHONPATH": str(SCRIPTS_PATH)})
+        first_item, second_item = json.loads(completed.stdout)
+        self.assertEqual((first_item[1], second_item[0]), (0, 0))
 
 
 def washed_pixel(base64_png):

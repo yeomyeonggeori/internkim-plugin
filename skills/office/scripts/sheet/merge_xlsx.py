@@ -16,6 +16,7 @@ from sheet.formula_references import ROW_AXIS, parse_end, rebuild_reference, ref
 from sheet.sheet_operations import SHEET_OPERATIONS, load_editing, save_editing
 from sheet.workbook_structure import rewrite_chart_references, rewrite_defined_names, rewrite_formulas
 from core.template_merge import MERGE_VALUES, MISSING, PLACEHOLDER, MergeReport, fill_text_nodes, repeated_list_name, whole_placeholder, write_package
+from core.office_outputs import same_kind_output
 from sheet.workbook_package import MAIN_NAMESPACE, read_package, worksheet_parts
 
 
@@ -28,7 +29,7 @@ def main() -> Result:
     arguments = parse_arguments()
     values = read_json_file(arguments.values_path)
     require_valid(MERGE_VALUES, values, "values")
-    output_path = os.path.expanduser(arguments.output_path)
+    output_path = os.path.expanduser(same_kind_output(arguments.output_path, arguments.template_path))
     report = MergeReport(values)
     with tempfile.TemporaryDirectory() as directory:
         template_path, list_names = expanded_template(os.path.expanduser(arguments.template_path), values, os.path.join(directory, "template.xlsx"))
