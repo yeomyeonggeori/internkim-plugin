@@ -8,6 +8,7 @@ import pathlib
 import zipfile
 
 from native_charts import ChartPart, chart_count, chart_frames_xml, chart_relationships_xml, chart_text_styles, slide_chart_parts, write_chart_parts
+from native_tables import cell_blocks, table_count, table_frames_xml
 from pptx_fonts import run_font
 from pptx_notes import noted_slide_numbers, notes_relationship_xml, write_notes_parts
 from pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU, DeckFonts, slide_document, write_pptx_static_files, xml_document
@@ -35,6 +36,7 @@ class EditablePptx:
     text_box_count: int
     shape_count: int
     chart_count: int
+    table_count: int
     boxes_kept_as_picture: int
     embedded_typefaces: tuple[str, ...]
     unembedded_families: tuple[str, ...]
@@ -70,9 +72,10 @@ def write_editable_pptx(layers: TextLayers, notes: list[str], pptx_path: pathlib
         for number, (slide, background_path) in enumerate(zip(layers.slides, layers.background_paths), start=1):
             first_chart_number += write_slide(archive, number, slide, background_path, context_language, bool(notes[number - 1]), first_chart_number)
     return EditablePptx(
-        text_box_count=sum(len(slide["blocks"]) for slide in layers.slides),
+        text_box_count=sum(len(free_blocks(slide)) for slide in layers.slides),
         shape_count=sum(len(slide["shapes"]) for slide in layers.slides),
         chart_count=chart_count(layers.slides),
+        table_count=table_count(layers.slides),
         boxes_kept_as_picture=sum(slide["boxesKeptAsPicture"] for slide in layers.slides),
         embedded_typefaces=tuple(face.family for face in faces),
         unembedded_families=unembedded_families(styled_text),
@@ -85,16 +88,24 @@ def write_slide(archive: zipfile.ZipFile, number: int, slide: dict, background_p
     scale = SlideScale(slide["width"], slide["height"])
     context = TextContext(scale, language, links)
     shapes = slide["shapes"]
+    blocks = free_blocks(slide)
+    tables = slide.get("tables", [])
     first_text_box_id = FIRST_SHAPE_ID + len(shapes)
-    first_chart_id = first_text_box_id + len(slide["blocks"])
+    first_table_id = first_text_box_id + len(blocks)
+    first_chart_id = first_table_id + len(tables)
     charts = slide_chart_parts(slide.get("charts", []), first_chart_number, FIRST_LINK_RELATIONSHIP_NUMBER + len(links))
     boxes = "".join(shape_xml(shape_id, shape, scale) for shape_id, shape in enumerate(shapes, start=FIRST_SHAPE_ID))
-    text_boxes = "".join(text_box_xml(shape_id, block, context) for shape_id, block in enumerate(slide["blocks"], start=first_text_box_id))
+    text_boxes = "".join(text_box_xml(shape_id, block, context) for shape_id, block in enumerate(blocks, start=first_text_box_id))
+    table_frames = table_frames_xml(tables, cell_blocks(slide["blocks"]), first_table_id, context)
     archive.write(background_path, f"ppt/media/background{number}.png")
-    archive.writestr(f"ppt/slides/slide{number}.xml", slide_document(background_picture_xml() + boxes + text_boxes + chart_frames_xml(charts, first_chart_id, context)))
+    archive.writestr(f"ppt/slides/slide{number}.xml", slide_document(background_picture_xml() + boxes + text_boxes + table_frames + chart_frames_xml(charts, first_chart_id, context)))
     archive.writestr(f"ppt/slides/_rels/slide{number}.xml.rels", slide_relationships_xml(number, has_notes, links, charts))
     write_chart_parts(archive, charts, context)
     return len(charts)
+
+
+def free_blocks(slide: dict) -> list[dict]:
+    return [block for block in slide["blocks"] if not block.get("cell")]
 
 
 def background_picture_xml() -> str:

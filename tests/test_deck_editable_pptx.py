@@ -71,6 +71,10 @@ def text_box_texts(slide_xml: ElementTree.Element) -> list[str]:
     return ["".join(text.text or "" for text in shape.iterfind(".//a:t", NAMESPACES)) for shape in slide_xml.iterfind(".//p:sp", NAMESPACES)]
 
 
+def table_cell_texts(slide_xml: ElementTree.Element) -> list[str]:
+    return ["".join(text.text or "" for text in cell.iterfind(".//a:t", NAMESPACES)) for cell in slide_xml.iterfind(".//a:tc", NAMESPACES)]
+
+
 def without_whitespace(text: str) -> str:
     return re.sub(r"\s+", "", text)
 
@@ -313,6 +317,8 @@ class RenderedEditablePptxTest(unittest.TestCase):
             backgrounds = [read_png(deck_path / "build" / "review" / "pptx-layers" / f"background.{number:03}.png") for number in range(1, len(slides) + 1)]
         self.assertEqual(envelope["details"]["pptx"]["textKeptAsPicture"], ["잠정"])
         self.assertEqual(notes, ["표지 노트", None, "표 노트"])
+        self.assertEqual(table_cell_texts(slides[2]), ["지역", "3분기", "수도권", "₩25억"])
+        self.assertNotIn("수도권", "".join(text_box_texts(slides[2])))
         self.assert_boxes_are_shapes_and_left_the_picture(slides, backgrounds)
         narrow, = [lines for lines in paragraph_lines(slides[1]) if "".join(lines).startswith("연간물류비")]
         self.assertGreater(len(narrow), 1)
@@ -322,8 +328,8 @@ class RenderedEditablePptxTest(unittest.TestCase):
                 visible = without_whitespace(measured["visibleText"])
                 for picture_text in measured["pictureTexts"]:
                     visible = visible.replace(without_whitespace(picture_text), "", 1)
-                self.assertEqual(without_whitespace("".join(text_box_texts(slide))), visible)
-                measured_lines = [[without_whitespace(line["text"]) for line in paragraph["lines"]] for block in measured["blocks"] for paragraph in block["paragraphs"]]
+                self.assertEqual(without_whitespace("".join(text_box_texts(slide) + table_cell_texts(slide))), visible)
+                measured_lines = [[without_whitespace(line["text"]) for line in paragraph["lines"]] for block in measured["blocks"] if not block["cell"] for paragraph in block["paragraphs"]]
                 self.assertEqual(paragraph_lines(slide), measured_lines)
                 for properties in run_properties(slide):
                     self.assertTrue(properties.find("a:latin", NAMESPACES).get("typeface").startswith("Paperlogy "))

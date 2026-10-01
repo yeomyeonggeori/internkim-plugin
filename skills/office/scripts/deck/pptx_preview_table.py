@@ -12,6 +12,7 @@ BANDED_TINT = 0.8
 PLAIN_TINT = 0.9
 CELL_BORDER = "1px solid #FFFFFF"
 HEADER_TEXT_COLOR = "#FFFFFF"
+BORDER_SIDES = (("left", "a:lnL"), ("right", "a:lnR"), ("top", "a:lnT"), ("bottom", "a:lnB"))
 
 
 def table_html(context, frame_element, width: float, height: float, faces: set) -> str:
@@ -34,7 +35,7 @@ def table_html(context, frame_element, width: float, height: float, faces: set) 
                 sum(columns[column_index:column_index + spans[1]]) * width_scale,
                 sum(heights[row_index:row_index + spans[0]]) * height_scale,
             )
-            cells.append(cell_html(context, frame_element, cell, place, style, row_index, faces))
+            cells.append(cell_html(context, frame_element, cell, place, style, row_index, faces, width_scale))
     return "".join(cells)
 
 
@@ -57,7 +58,7 @@ def mixed_with_white(color: str, amount: float) -> str:
     return "#" + "".join(f"{round(channel + (255 - channel) * amount):02X}" for channel in channels)
 
 
-def cell_html(context, frame_element, cell, place: tuple, style: dict, row_index: int, faces: set) -> str:
+def cell_html(context, frame_element, cell, place: tuple, style: dict, row_index: int, faces: set, pixels_per_emu: float) -> str:
     properties = cell.find(qn("a:tcPr"))
     own_fill = next((child for child in properties if child.tag in FILL_TAGS), None) if properties is not None else None
     fill = paint_color(context, own_fill) if own_fill is not None else default_fill(style, row_index)
@@ -72,7 +73,22 @@ def cell_html(context, frame_element, cell, place: tuple, style: dict, row_index
         "width": f"{place[2]:.2f}px",
         "height": f"{place[3]:.2f}px",
         "box-sizing": "border-box",
-        "border": CELL_BORDER,
+        **cell_borders(context, properties, pixels_per_emu),
         "background-color": fill,
     }
     return element("div", box, content)
+
+
+def cell_borders(context, properties, pixels_per_emu: float) -> dict:
+    sides = {f"border-{side}": cell_border(context, properties.find(qn(tag)) if properties is not None else None, pixels_per_emu) for side, tag in BORDER_SIDES}
+    values = set(sides.values())
+    return {"border": values.pop()} if len(values) == 1 else sides
+
+
+def cell_border(context, line, pixels_per_emu: float) -> str:
+    if line is None:
+        return CELL_BORDER
+    fill = next((child for child in line if child.tag in FILL_TAGS), None)
+    if fill is None or fill.tag == qn("a:noFill"):
+        return "none"
+    return f"{max(1.0, int(line.get('w', '12700')) * pixels_per_emu):.2f}px solid {paint_color(context, fill)}"

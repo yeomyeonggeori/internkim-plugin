@@ -16,6 +16,7 @@ import { generatedContentStyle, materializeGeneratedContent } from "./generated_
 import { createInlineStyleFilter } from "./inline_styles.mjs";
 import { createLayout, documentFragmentHtml } from "./layout_shim.mjs";
 import { extractNativeCharts } from "./native_charts.mjs";
+import { extractNativeTables, hideNativeTables, nativeCellAttribute, nativeTableAttribute } from "./native_tables.mjs";
 import { measurePageGeometry } from "./page_geometry.mjs";
 import { analyzePagePixels } from "./page_pixels.mjs";
 import { exportedListAttribute, exportedTextAttribute, extractTextLayout, hideExportedText, insertMarkerProbes, markerProbeAttribute, markerProbeHostId } from "./text_layout.mjs";
@@ -24,8 +25,8 @@ const geometryThresholds = { pixelTolerance: 4, overlapRatioMinimum: 0.12, aspec
 const pageAttribute = "data-render-page";
 const pdfPageStyle = `[${pageAttribute}] { break-after: page; overflow: hidden; margin: 0 !important; } [${pageAttribute}="last"] { break-after: auto; }`;
 const resetStyle = "html, body { margin: 0 !important; padding: 0 !important; }";
-const textAttributes = { exportedTextAttribute, exportedListAttribute, markerProbeAttribute, markerProbeHostId };
-const boxAttributes = { exportedShapeAttribute, exportedBeforeShapeAttribute, exportedAfterShapeAttribute };
+const textAttributes = { exportedTextAttribute, exportedListAttribute, markerProbeAttribute, markerProbeHostId, nativeCellAttribute };
+const boxAttributes = { exportedShapeAttribute, exportedBeforeShapeAttribute, exportedAfterShapeAttribute, nativeTableAttribute };
 
 function createTimer() {
   const started = performance.now();
@@ -185,15 +186,17 @@ async function writePdf(pdfPath, layout, inlineStyles, pages, css, fonts, bytesO
 async function writeLayers(request, renderer, layout, inlineStyles, document, pages, bytesOf) {
   for (const page of pages) await layout.layOut(page);
   const chartLayouts = extractNativeCharts({ pages });
+  const tableLayouts = extractNativeTables({ pages });
   insertMarkerProbes({ ...textAttributes, pages });
   const probeHost = document.getElementById(markerProbeHostId);
   if (probeHost) await layout.layOut(probeHost);
   for (const page of pages) await layout.layOut(page);
   const textLayout = extractTextLayout({ ...textAttributes, pages });
   const boxLayouts = extractBoxLayout({ ...boxAttributes, pages });
-  const slides = textLayout.slides.map((slide, index) => ({ ...slide, ...boxLayouts[index], ...chartLayouts[index] }));
+  const slides = textLayout.slides.map((slide, index) => ({ ...slide, ...boxLayouts[index], ...chartLayouts[index], ...tableLayouts[index] }));
   hideExportedText(textAttributes);
   hideExportedBoxes(boxAttributes);
+  hideNativeTables();
   const css = collectStyles(document, request.excludeStyles);
   const backgrounds = await drawPages(renderer, layout, inlineStyles, pages, [...css, ...(request.extraCss || []), generatedContentStyle], bytesOf, false);
   await writeDrawnPages(backgrounds, (index) => path.join(request.layers, `background.${String(index + 1).padStart(3, "0")}.png`));

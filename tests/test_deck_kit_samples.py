@@ -95,6 +95,7 @@ class SampleDeckBuildTest(unittest.TestCase):
                 self.assertEqual(pdf_page_count(str(deck_path / "build" / f"{deck_path.name}.pdf")), count)
                 self.assert_review_measured_every_page(deck_path, count)
                 self.assert_pptx_keeps_the_layout(deck_path / "build" / f"{deck_path.name}.pptx")
+                self.assert_kit_tables_are_native_tables(deck_path)
 
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_a_donut_of_percentages_lists_each_share_once(self):
@@ -117,6 +118,18 @@ class SampleDeckBuildTest(unittest.TestCase):
         for amount in legend_amounts(pptx_path.parent.parent):
             self.assertIn(amount, texts)
         self.assert_pdf_and_pptx_agree_on_text_sizes(pptx_path.with_suffix(".pdf"), read)
+
+    def assert_kit_tables_are_native_tables(self, deck_path: Path):
+        from pptx import Presentation
+
+        source_rows = [table.count("<tr") for table in re.findall(r"<table>.*?</table>", (deck_path / "slides.html").read_text(encoding="utf-8"), re.DOTALL)]
+        presentation = Presentation(str(deck_path / "build" / f"{deck_path.name}.pptx"))
+        tables = [(slide, shape.table) for slide in presentation.slides for shape in slide.shapes if shape.has_table]
+        self.assertEqual([len(table.rows) for _, table in tables], source_rows)
+        for slide, table in tables:
+            cell_texts = {cell.text for row in table.rows for cell in row.cells} - {""}
+            loose_texts = {shape.text_frame.text for shape in slide.shapes if shape.has_text_frame}
+            self.assertEqual(cell_texts & loose_texts, set())
 
     def assert_pdf_and_pptx_agree_on_text_sizes(self, pdf_path: Path, read: dict):
         import pdfplumber
