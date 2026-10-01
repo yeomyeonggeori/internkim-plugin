@@ -20,10 +20,10 @@ from docx_markdown import DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, mar
 from docx_to_blocks import read_docx_blocks  # noqa: E402
 from export_document import export_pdf  # noqa: E402
 from html_to_blocks import read_html_blocks  # noqa: E402
-from office_render import convert_with_libreoffice  # noqa: E402
 from markdown_blocks import Image, parse_markdown  # noqa: E402
 from office_result import Issue, OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
 from pdf_to_blocks import read_pdf_blocks  # noqa: E402
+from spreadsheet_import import legacy_workbook_to_xlsx  # noqa: E402
 from table_conversions import DELIMITERS, delimited_to_workbook, workbook_to_delimited  # noqa: E402
 
 
@@ -167,12 +167,8 @@ def text_to_workbook(conversion: Conversion) -> None:
     conversion.issues.extend(delimited_to_workbook(conversion.input_path, conversion.output_path, delimiter))
 
 
-def through_libreoffice(conversion: Conversion) -> None:
-    target = normalized_extension(conversion.output_path.suffix)
-    with tempfile.TemporaryDirectory(prefix="office-convert-") as directory:
-        produced = convert_with_libreoffice(conversion.input_path, target, Path(directory))
-        produced.replace(conversion.output_path)
-    conversion.details["convertedBy"] = "LibreOffice"
+def legacy_workbook(conversion: Conversion) -> None:
+    conversion.issues.extend(legacy_workbook_to_xlsx(conversion.input_path, conversion.output_path))
 
 
 def write_docx(conversion: Conversion, blocks: list, source_directory: Path, save: bool = True):
@@ -242,7 +238,8 @@ CONVERTERS = {
     ("xlsx", "tsv"): workbook_to_text,
     ("csv", "xlsx"): text_to_workbook,
     ("tsv", "xlsx"): text_to_workbook,
-    **{(route.source, route.target): through_libreoffice for route in ROUTES if route.needs_libreoffice},
+    ("xls", "xlsx"): legacy_workbook,
+    ("ods", "xlsx"): legacy_workbook,
 }
 
 

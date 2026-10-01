@@ -117,6 +117,52 @@ class TableRouteTest(unittest.TestCase):
             self.assertEqual(sheet["range"]["values"][3], ["합계", 2700])
             self.assertEqual(sheet["sheets"][0]["frozenPanes"], "A2")
 
+    def test_an_ods_sheet_becomes_a_workbook_with_values_dates_and_merges(self):
+        with tempfile.TemporaryDirectory() as name:
+            directory = Path(name)
+            write_ods(directory / "예산.ods")
+            envelope = convert("예산.ods", "예산.xlsx", directory)
+            self.assertEqual([issue["code"] for issue in envelope["issues"]], ["CONVERSION_APPROXIMATED"])
+            sheet = run_office(["sheet", "read", "예산.xlsx"], directory)["details"]
+            self.assertEqual(sheet["sheets"][0]["name"], "예산")
+            self.assertEqual(sheet["sheets"][0]["mergedCells"], ["A1:B1"])
+            self.assertEqual(sheet["range"]["values"], [["2026년 예산", None], ["인건비", 1200], ["인건비", 1200], ["마감", "2026-10-01T00:00:00"], ["=수식 아님", 2400]])
+
+
+class LegacyWorkbookTest(unittest.TestCase):
+    def test_xls_cells_keep_their_types(self):
+        sys.path[0:0] = [str(SCRIPTS_PATH), str(SCRIPTS_PATH / "convert"), str(SCRIPTS_PATH / "sheet")]
+        import xlrd
+        from spreadsheet_import import xls_value
+
+        class Cell:
+            def __init__(self, ctype, value):
+                self.ctype, self.value = ctype, value
+
+        class Book:
+            datemode = 0
+
+        values = [xls_value(Book(), Cell(ctype, value)) for ctype, value in ((xlrd.XL_CELL_NUMBER, 3.0), (xlrd.XL_CELL_NUMBER, 2.5), (xlrd.XL_CELL_DATE, 46296.0), (xlrd.XL_CELL_BOOLEAN, 1), (xlrd.XL_CELL_TEXT, "영업"), (xlrd.XL_CELL_EMPTY, ""))]
+        self.assertEqual([str(value) for value in values], ["3", "2.5", "2026-10-01", "True", "영업", "None"])
+
+
+ODS_CONTENT = """<?xml version="1.0" encoding="UTF-8"?>
+<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" office:version="1.2">
+<office:body><office:spreadsheet><table:table table:name="예산">
+<table:table-row><table:table-cell table:number-columns-spanned="2" office:value-type="string"><text:p>2026년 예산</text:p></table:table-cell><table:covered-table-cell/></table:table-row>
+<table:table-row table:number-rows-repeated="2"><table:table-cell office:value-type="string"><text:p>인건비</text:p></table:table-cell><table:table-cell office:value-type="float" office:value="1200"/></table:table-row>
+<table:table-row><table:table-cell office:value-type="string"><text:p>마감</text:p></table:table-cell><table:table-cell office:value-type="date" office:date-value="2026-10-01"/></table:table-row>
+<table:table-row><table:table-cell office:value-type="string"><text:p>=수식 아님</text:p></table:table-cell><table:table-cell table:formula="of:=SUM([.B2:.B3])" office:value-type="float" office:value="2400"/><table:table-cell table:number-columns-repeated="1020"/></table:table-row>
+<table:table-row table:number-rows-repeated="1048570"><table:table-cell table:number-columns-repeated="1024"/></table:table-row>
+</table:table></office:spreadsheet></office:body></office:document-content>"""
+
+
+def write_ods(path):
+    import zipfile
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("mimetype", "application/vnd.oasis.opendocument.spreadsheet")
+        archive.writestr("content.xml", ODS_CONTENT)
+
 
 if __name__ == "__main__":
     unittest.main()

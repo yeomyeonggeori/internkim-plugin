@@ -9,3 +9,4 @@ pypdfium2
 python-docx
 python-pptx
 xlcalculator>=0.5
+xlrd>=2
