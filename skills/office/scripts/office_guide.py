@@ -5,7 +5,7 @@ from types import ModuleType
 
 from fonts.registry import FAMILIES, face_facts
 from core.office_commands import COMMANDS, FORMATS, Format
-from core.office_result import COMMAND_ISSUE_KINDS, UNKNOWN_COMMAND, IssueKind, OfficeFailure
+from core.office_result import COMMAND_ISSUE_KINDS, UNKNOWN_COMMAND, VALUE_FILL_IN, IssueKind, OfficeFailure
 from core.office_schema import Field, Record, Shape, Variant, closest_name
 
 
@@ -14,7 +14,7 @@ ENVELOPE_LINE = (
     "Every command prints one JSON result: {status: ok|warning|error, summary, outputPath, "
     "issues: [{code, severity, message, location, suggestion, fix}], details}. It exits 1 when status is error. "
     "suggestion is always text saying what to do; fix is a list of operations for the format's apply command that make that change, "
-    "empty when no operation does, and a value in angle brackets such as <value> is yours to fill in. "
+    f"empty when no operation does, and a value in angle brackets such as {VALUE_FILL_IN} is yours to fill in; apply refuses an operation that still holds one. "
     "A null field counts as absent. A cell is text, a number, true/false, or null."
 )
 

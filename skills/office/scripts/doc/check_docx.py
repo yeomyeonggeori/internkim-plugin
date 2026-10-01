@@ -15,7 +15,7 @@ from doc.docx_reference_operations import bookmark_names
 from doc.docx_revisions import collect_revisions, describe_pending
 from doc.docx_blocks import PARAGRAPH_TAG, body_block_elements, element_text, heading_level
 from core.office_inputs import office_file
-from core.office_result import Issue, OfficeArgumentParser, Result, run_command
+from core.office_result import VALUE_FILL_IN, Issue, OfficeArgumentParser, Result, run_command
 from core.text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
 from core.text_script import has_hangul
 
@@ -80,7 +80,7 @@ def placeholders_in(element, location: str, block_index: int | None) -> list[Iss
 
 
 def replacement(placeholder: str, block_index: int | None) -> dict:
-    operation = {"op": "replace_text", "find": placeholder, "replace": "<value>"}
+    operation = {"op": "replace_text", "find": placeholder, "replace": VALUE_FILL_IN}
     if block_index is not None:
         operation["block"] = block_index
     return operation

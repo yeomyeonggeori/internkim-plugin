@@ -87,6 +87,12 @@ class OfficeFailure(Exception):
 
 DOCUMENTS_FOLDER = "~/documents"
 
+VALUE_FILL_IN = "<value>"
+LABEL_FILL_IN = "<label>"
+SERIES_NAME_FILL_IN = "<series name>"
+NUMBER_FILL_IN = "<number>"
+FILL_INS = (VALUE_FILL_IN, LABEL_FILL_IN, SERIES_NAME_FILL_IN, NUMBER_FILL_IN)
+
 INVALID_ARGUMENTS = IssueKind("INVALID_ARGUMENTS", ERROR, "the command line does not match the command's arguments", "run the command with --help and pass the arguments it lists")
 UNKNOWN_COMMAND = IssueKind("UNKNOWN_COMMAND", ERROR, "no office command has this format and verb", "run office --help for the command list")
 INPUT_NOT_FOUND = IssueKind("INPUT_NOT_FOUND", ERROR, "an input file or directory does not exist", "check the path, or write the file first")

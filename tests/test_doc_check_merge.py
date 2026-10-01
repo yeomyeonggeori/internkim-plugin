@@ -38,6 +38,28 @@ class CheckTest(DocumentFixture):
         with zipfile.ZipFile(self.directory / "fixture.docx") as archive:
             self.assertIn(b'w:updateFields w:val="true"', archive.read("word/settings.xml"))
 
+    def test_draft_text_is_a_placeholder_left_like_template_syntax(self):
+        run_office_python("""
+            from docx import Document
+            document = Document("fixture.docx")
+            document.add_paragraph("납기: TBD")
+            document.add_paragraph("계약일: [insert date]")
+            document.add_paragraph("Lorem ipsum dolor sit amet")
+            document.save("fixture.docx")
+        """, self.directory)
+        envelope = run_office(["doc", "check", "fixture.docx"], self.directory)
+        found = sorted(operation["find"] for issue in envelope["issues"] if issue["code"] == "PLACEHOLDER_LEFT" for operation in issue["fix"])
+        self.assertEqual(found, ["Lorem ipsum", "TBD", "[insert date]", "{{ customer_name }}"])
+
+    def test_apply_refuses_a_fix_whose_fill_in_was_not_written(self):
+        envelope = run_office(["doc", "check", "fixture.docx"], self.directory)
+        fix = next(issue["fix"] for issue in envelope["issues"] if issue["code"] == "PLACEHOLDER_LEFT")
+        write_json(self.directory / "fixes.json", fix)
+        original = (self.directory / "fixture.docx").read_bytes()
+        refused = run_office(["doc", "apply", "fixture.docx", "fixes.json"], self.directory)
+        self.assertEqual([(issue["code"], issue["location"]) for issue in refused["issues"]], [("FILL_IN_LEFT", "ops[0].replace")])
+        self.assertEqual((self.directory / "fixture.docx").read_bytes(), original)
+
 
 class MergeTest(DocumentFixture):
     def test_a_missing_value_writes_nothing(self):

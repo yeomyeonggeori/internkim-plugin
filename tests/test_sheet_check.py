@@ -46,6 +46,15 @@ class SheetCheckTest(WorkbookFixture):
             ("PLACEHOLDER_LEFT", "Sales!D1"),
         })
 
+    def test_draft_text_in_a_cell_is_a_placeholder_left(self):
+        self.assertEqual(self.apply([{"op": "set_range", "sheet": "Sales", "cell": "F1", "values": [["TODO", "단가 XX원", "XXL"]]}], name="fixture.xlsx")["status"], "ok")
+        placeholders = sorted(location for code, location in self.findings() if code == "PLACEHOLDER_LEFT")
+        self.assertEqual(placeholders, ["Sales!D1", "Sales!F1", "Sales!G1"])
+
+    def test_apply_refuses_an_operation_holding_a_fill_in(self):
+        envelope = self.apply([{"op": "set_cell", "sheet": "Sales", "cell": "D1", "value": "<value> 님"}], name="fixture.xlsx")
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("FILL_IN_LEFT", "ops[0].value")])
+
     def test_the_computed_error_is_named(self):
         message = next(issue["message"] for issue in self.check()["issues"] if issue["code"] == "FORMULA_ERROR")
         self.assertIn("#DIV/0!", message)

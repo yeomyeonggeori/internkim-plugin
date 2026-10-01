@@ -44,7 +44,7 @@ from core.office_inputs import PPTX, require_kind
 from core.office_result import ERROR, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
 from core.office_schema import closest_name, listed_names, names_suggestion
 from deck.resource_inlining import resolve_resource_path
-from core.text_checks import DRAFT_PLACEHOLDER_PATTERN, PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
+from core.text_checks import PLACEHOLDER_PATTERN, PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
 
 
 DONUT_SLICE_MAXIMUM = 8
@@ -322,7 +322,7 @@ def image_problem(source: str, base_path: pathlib.Path) -> str:
 
 
 def placeholder_issues(slide: Slide) -> list[Issue]:
-    found = DRAFT_PLACEHOLDER_PATTERN.findall(slide.text())
+    found = PLACEHOLDER_PATTERN.findall(slide.text())
     if not found:
         return []
     return [PLACEHOLDER_LEFT.issue(f"{slide.location} still shows {', '.join(sorted(set(found)))}", slide.location, suggestion="replace it with the real value from the source, or write \"Not provided\" in the deck's language")]

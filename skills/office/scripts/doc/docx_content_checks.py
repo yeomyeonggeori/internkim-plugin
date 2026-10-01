@@ -10,7 +10,7 @@ from doc.doc_definitions import CHART_EMPTY, EMPTY_HEADING, FIELD_NOT_EVALUATED,
 from doc.docx_blocks import PARAGRAPH_TAG, element_text, heading_level
 from doc.docx_charts import CHART_NAMESPACE, cached_points, document_charts, is_number, read_specification
 from doc.docx_comments import describe_comment_threads
-from core.office_result import Issue
+from core.office_result import LABEL_FILL_IN, NUMBER_FILL_IN, SERIES_NAME_FILL_IN, Issue
 
 
 DRAWING_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/main"
@@ -67,9 +67,9 @@ def has_numbers(chart_part) -> bool:
 
 def chart_data_operation(chart) -> dict:
     specification = read_specification(chart.part)
-    categories = list(specification.categories) or ["<label>"]
-    names = [name for name, _values, _is_line in specification.series if name] or ["<series name>"]
-    return {"op": "edit_chart", "chart": chart.index, "categories": categories, "series": [{"name": name, "values": ["<number>"] * len(categories)} for name in names]}
+    categories = list(specification.categories) or [LABEL_FILL_IN]
+    names = [name for name, _values, _is_line in specification.series if name] or [SERIES_NAME_FILL_IN]
+    return {"op": "edit_chart", "chart": chart.index, "categories": categories, "series": [{"name": name, "values": [NUMBER_FILL_IN] * len(categories)} for name in names]}
 
 
 def heading_issues(document, elements: list) -> list[Issue]:

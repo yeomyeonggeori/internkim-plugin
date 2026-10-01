@@ -7,14 +7,15 @@ import tempfile
 from typing import Callable, Sequence
 
 from core.office_inputs import office_file
-from core.office_result import ERROR, Issue, IssueKind, OfficeArgumentParser, Result, read_json_file
-from core.office_schema import ListOf, Variant, require_valid
+from core.office_result import ERROR, FILL_INS, VALUE_FILL_IN, Issue, IssueKind, OfficeArgumentParser, OfficeFailure, Result, read_json_file
+from core.office_schema import ListOf, Variant, join_location, require_valid
 
 
 TARGET_NOT_FOUND = IssueKind("TARGET_NOT_FOUND", ERROR, "an operation names a block, cell, sheet, or slide the file does not have", "read the file again and use an index or name it reports")
 OPERATION_NOT_APPLICABLE = IssueKind("OPERATION_NOT_APPLICABLE", ERROR, "an operation cannot apply to the element it names", "pick an element of the kind the operation edits")
+FILL_IN_LEFT = IssueKind("FILL_IN_LEFT", ERROR, f"an operation copied from a fix still holds a value in angle brackets, such as {VALUE_FILL_IN}, that was left for you to fill in, so nothing was written", "write the real value from the source in its place")
 
-OPERATION_ISSUE_KINDS = (TARGET_NOT_FOUND, OPERATION_NOT_APPLICABLE)
+OPERATION_ISSUE_KINDS = (TARGET_NOT_FOUND, OPERATION_NOT_APPLICABLE, FILL_IN_LEFT)
 
 Change = Callable[[], str]
 
@@ -63,7 +64,19 @@ def apply_in_order(operation_set: OperationSet, editing: object, operations: lis
 def read_batch(operation_set: OperationSet, operations_path: str) -> list[dict]:
     operations = read_json_file(operations_path)
     require_valid(operation_set.batch, operations, "ops")
+    issues = fill_in_issues(operations, "ops")
+    if issues:
+        raise OfficeFailure(*issues)
     return operations
+
+
+def fill_in_issues(value: object, location: str) -> list[Issue]:
+    if isinstance(value, dict):
+        return [issue for name, item in value.items() for issue in fill_in_issues(item, join_location(location, name))]
+    if isinstance(value, list):
+        return [issue for index, item in enumerate(value) for issue in fill_in_issues(item, f"{location}[{index}]")]
+    left = [fill_in for fill_in in FILL_INS if isinstance(value, str) and fill_in in value]
+    return [FILL_IN_LEFT.issue(f"{location} still holds {', '.join(left)}, which a fix leaves for you to fill in", location)] if left else []
 
 
 def save_atomically(save: Callable[[str], Sequence[Issue] | None], output_path: str) -> Sequence[Issue]:
