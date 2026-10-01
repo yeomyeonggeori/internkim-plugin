@@ -6,8 +6,9 @@ import functools
 from fontTools.ttLib import TTFont
 
 from fonts.registry import SANS_BODY, default_family, resolved_face
-from office_preview import points_to_pixels
-from pptx_text_measure import FontFace, font_face, has_east_asian, is_east_asian, is_hangul, split_breakable, text_width_points
+from units import points_to_pixels
+from pptx_text_measure import FontFace, font_face, split_breakable, text_width_points
+from text_script import has_east_asian, is_ideograph
 
 
 DEFAULT_FAMILY = default_family(SANS_BODY).name
@@ -86,8 +87,8 @@ def breakable_pieces(text: str) -> list[str]:
     return split_breakable(text)
 
 
-def is_ideograph(piece: str) -> bool:
-    return len(piece) == 1 and is_east_asian(piece) and not is_hangul(piece)
+def is_ideograph_piece(piece: str) -> bool:
+    return len(piece) == 1 and is_ideograph(piece)
 
 
 def css_font_family(*families: str | None) -> str:

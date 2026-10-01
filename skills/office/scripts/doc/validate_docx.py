@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import re
 
 from docx.oxml.ns import qn
 
@@ -24,6 +23,7 @@ from docx_text import paragraph_text, visible_text
 from office_inputs import office_file
 from office_result import Issue, OfficeArgumentParser, Result, run_command
 from text_checks import text_presence_issues
+from text_script import has_hangul
 
 
 DENSE_CELL_CHARACTERS = 90
@@ -75,7 +75,7 @@ def collect_typography(document, visible_text: str) -> dict:
     normal_style = document.styles["Normal"] if "Normal" in document.styles else None
     paragraph_metrics = [metrics_for_paragraph(paragraph) for paragraph in document.paragraphs if paragraph_text(paragraph._p).strip()]
     return {
-        "hasKoreanText": bool(re.search(r"[가-힣]", visible_text)),
+        "hasKoreanText": has_hangul(visible_text),
         "fontNames": sorted({font_name for font_name in collect_font_names(document) if font_name}),
         "fontSizePoints": sorted({size for size in collect_font_sizes(document, normal_style) if size is not None}),
         "normalFontSizePoints": point_value(normal_style.font.size) if normal_style is not None else None,

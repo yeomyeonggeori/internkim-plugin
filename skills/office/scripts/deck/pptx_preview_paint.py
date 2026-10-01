@@ -7,11 +7,10 @@ from pptx.oxml.ns import qn
 
 from office_preview import data_uri
 from pptx_style import PERCENT_SCALE, resolve_color
+from units import EMU_PER_PIXEL, PIXELS_PER_EMU, PIXELS_PER_POINT
 
 
-PIXELS_PER_EMU = 96 / 914400
-PIXELS_PER_POINT = 96 / 72
-DEFAULT_LINE_WIDTH_EMU = 9525
+DEFAULT_LINE_WIDTH_EMU = EMU_PER_PIXEL
 FILL_TAGS = (qn("a:noFill"), qn("a:solidFill"), qn("a:gradFill"), qn("a:blipFill"), qn("a:pattFill"), qn("a:grpFill"))
 
 

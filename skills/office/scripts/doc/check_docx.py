@@ -17,7 +17,8 @@ from docx_styles import run_styles
 from docx_blocks import PARAGRAPH_TAG, body_block_elements, element_text, heading_level
 from office_inputs import office_file
 from office_result import Issue, OfficeArgumentParser, Result, run_command
-from text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN, contains_korean
+from text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
+from text_script import has_hangul
 
 
 FIELD_REFERENCE_PATTERN = re.compile(r"^\s*(?:REF|PAGEREF|NOTEREF)\s+(\S+)", re.IGNORECASE)
@@ -150,7 +151,7 @@ def normalized(text: str) -> str:
 
 
 def east_asia_language_issues(document) -> list[Issue]:
-    runs = [run for run in document.element.body.iter(qn("w:r")) if contains_korean(element_text(run))]
+    runs = [run for run in document.element.body.iter(qn("w:r")) if has_hangul(element_text(run))]
     mistagged = [run for run in runs if effective_east_asia_language(run, document) != KOREAN_LANGUAGE]
     if not mistagged:
         return []

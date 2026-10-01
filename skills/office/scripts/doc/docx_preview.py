@@ -18,7 +18,8 @@ from docx_preview_numbering import Numbering, readable_symbol
 from docx_preview_sections import document_sections, page_number_start, section_geometry
 from docx_preview_styles import StyleSheet, merged, paragraph_properties, run_properties
 from docx_preview_tables import TableLayers, table_block
-from office_preview import Preview, points_to_pixels, twips_to_pixels
+from office_preview import Preview
+from units import points_to_pixels, twips_to_pixels
 from office_theme import ACCENT_SLOTS
 from fonts.preview import DEFAULT_FAMILY, FontRequest, css_font_family
 

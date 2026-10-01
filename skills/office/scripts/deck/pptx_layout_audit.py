@@ -9,11 +9,12 @@ from pptx.oxml.ns import qn
 from deck_definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_OVERLAP, ReviewCheck
 from layout_thresholds import BACKGROUND_SHARE_OF_SLIDE, DISTORTION_TOLERANCE, OVERLAP_RATIO
 from office_result import Issue
-from pptx_geometry import EMU_PER_POINT, SLIDE_FRAME, Box, Frame, child_frame, local_box
+from pptx_geometry import SLIDE_FRAME, Box, Frame, child_frame, local_box
 from pptx_inheritance import slide_context
 from pptx_shape_kinds import shape_address, shape_kind, shape_reference
 from pptx_text_measure import TextFit, grown_box, grows_with_text, largest_text_size, measure_text, wraps
 from pptx_text_operations import apply_run_style, character_properties
+from units import EMU_PER_POINT
 
 
 EDGE_TOLERANCE = EMU_PER_POINT

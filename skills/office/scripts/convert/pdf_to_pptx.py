@@ -12,14 +12,15 @@ from pptx.oxml.ns import qn
 from pptx.util import Emu, Pt
 import pypdfium2
 
+from css_color import hex_of
 from fonts.registry import OFFICE_KOREAN_FAMILY
 from markdown_blocks import inline_segments, link_parts, strip_inline_markers
 from office_inputs import unlocked_pdf_bytes
 from pdf_to_blocks import MINIMUM_IMAGE_POINTS, Segment, crop, inside_any, page_image_bitmap, page_segments
 from pdf_tables import page_tables
+from units import EMU_PER_POINT
 
 
-EMU_PER_POINT = 12700
 SMALLEST_SLIDE_POINTS = 72
 LARGEST_SLIDE_POINTS = 4032
 LINE_X_TOLERANCE_POINTS = 4
@@ -285,7 +286,7 @@ def hex_color(color) -> str:
         values = [(1 - cyan) * (1 - black), (1 - magenta) * (1 - black), (1 - yellow) * (1 - black)]
     elif len(values) != 3:
         values = [values[0]] * 3
-    return "".join(f"{round(min(max(float(value), 0), 1) * 255):02X}" for value in values)
+    return hex_of(tuple(float(value) for value in values))
 
 
 def add_picture(slide, image, left: Emu, top: Emu, width: Emu, height: Emu) -> None:

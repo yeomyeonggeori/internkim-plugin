@@ -19,7 +19,3 @@ def text_presence_issues(visible_text: str, required_text: list[str], forbidden_
     missing = [REQUIRED_TEXT_MISSING.issue(f"required text is missing: {value}", location=value) for value in required_text if value not in visible_text]
     present = [FORBIDDEN_TEXT_PRESENT.issue(f"forbidden text is present: {value}", location=value) for value in forbidden_text if value in visible_text]
     return missing + present
-
-
-def contains_korean(text: str) -> bool:
-    return any("가" <= character <= "힣" for character in text)

@@ -11,6 +11,7 @@ from fonts.pptx_embedding import RunFont, run_font
 from pptx_notes import noted_slide_numbers, notes_relationship_xml, write_notes_parts
 from pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU, DeckFonts, slide_document, write_pptx_static_files, xml_document
 from slide_model import SlideModel
+from units import EMU_PER_PIXEL
 
 
 class NativeSlideCanvas:
@@ -56,7 +57,7 @@ def native_slide_relationship_xml(index: int, has_notes: bool) -> str:
 
 
 def rectangle_shape_xml(shape_id: int, x: int, y: int, width: int, height: int, fill: str, line: str = "", radius: bool = False) -> str:
-    line_xml = f'<a:ln w="9525"><a:solidFill><a:srgbClr val="{line}"/></a:solidFill></a:ln>' if line else '<a:ln><a:noFill/></a:ln>'
+    line_xml = f'<a:ln w="{EMU_PER_PIXEL}"><a:solidFill><a:srgbClr val="{line}"/></a:solidFill></a:ln>' if line else '<a:ln><a:noFill/></a:ln>'
     return (
         f'<p:sp><p:nvSpPr><p:cNvPr id="{shape_id}" name="Shape {shape_id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>'
         f'<p:spPr>{transform_xml(x, y, width, height)}'

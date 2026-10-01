@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 
 from docx.oxml.ns import qn
 
-from office_preview import PageGeometry, Preview, twips_to_pixels
+from office_preview import PageGeometry, Preview
+from units import twips_to_pixels
 
 
 A4_TWIPS = (11906, 16838)

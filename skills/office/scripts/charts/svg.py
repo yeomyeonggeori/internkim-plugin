@@ -7,6 +7,7 @@ from xml.sax.saxutils import escape
 from charts.kinds import ROUND_CHART_KINDS
 from charts.look import BELOW_POSITION, LEFT_POSITION, OUTSIDE_POSITION, PERCENT_FORMAT, ChartLook, PointLabel, TextLook
 from number_format import displayed
+from text_script import is_east_asian
 
 
 EDGE = 8
@@ -31,7 +32,6 @@ BAR_KINDS = ("column", "bar")
 LINE_KINDS = ("line", "area", "radar")
 LATIN_WIDTH_SHARE = 0.6
 WIDE_WIDTH_SHARE = 1.0
-WIDE_CHARACTER_START = 0x2E80
 
 
 @dataclass(frozen=True)
@@ -129,7 +129,7 @@ def text_svg(x: float, y: float, text: str, look: TextLook, anchor: str = "middl
 
 
 def text_width(text: str, look: TextLook) -> float:
-    return sum(look.size * (WIDE_WIDTH_SHARE if ord(character) >= WIDE_CHARACTER_START else LATIN_WIDTH_SHARE) for character in text)
+    return sum(look.size * (WIDE_WIDTH_SHARE if is_east_asian(character) else LATIN_WIDTH_SHARE) for character in text)
 
 
 def legend_entries(model: ChartModel, look: ChartLook) -> list[tuple[str, str]]:

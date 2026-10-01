@@ -5,10 +5,11 @@ import re
 
 from office_result import INVALID_VALUE, Issue, OfficeFailure
 from office_schema import Shape, Variant, wrong_type
+from units import EMU_PER_CENTIMETRE, EMU_PER_INCH, EMU_PER_MILLIMETRE, EMU_PER_PIXEL, EMU_PER_POINT
 
 
 LENGTH_PATTERN = re.compile(r"\s*(-?\d+(?:\.\d+)?)\s*(emu|in|cm|mm|pt|px|%)\s*", re.IGNORECASE)
-EMU_PER_UNIT = {"emu": 1, "in": 914400, "cm": 360000, "mm": 36000, "pt": 12700, "px": 9525}
+EMU_PER_UNIT = {"emu": 1, "in": EMU_PER_INCH, "cm": EMU_PER_CENTIMETRE, "mm": EMU_PER_MILLIMETRE, "pt": EMU_PER_POINT, "px": EMU_PER_PIXEL}
 LENGTH_EXAMPLES = '"2in", "1.5cm", "24pt", "10%"'
 
 

@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 from docx_preview_model import (
     BoxItem, CellBlock, ChartItem, FieldItem, ImageItem, LineBreakItem, NoteReferenceItem, PageBreakBlock, ParagraphBlock, TabItem, TableBlock, TextItem, TextStyle,
 )
-from office_preview import twips_to_pixels
-from fonts.preview import FontRegistry, breakable_pieces, is_ideograph
+from units import twips_to_pixels
+from fonts.preview import FontRegistry, breakable_pieces, is_ideograph_piece
 
 
 DEFAULT_TAB_PIXELS = 48
@@ -142,7 +142,7 @@ class Layout:
             text=piece,
             style=style,
             is_space=piece.isspace(),
-            is_ideograph=is_ideograph(piece),
+            is_ideograph=is_ideograph_piece(piece),
         )
 
     def label_fragment(self, block: ParagraphBlock) -> list[Fragment]:

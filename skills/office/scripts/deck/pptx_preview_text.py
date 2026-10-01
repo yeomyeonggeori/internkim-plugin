@@ -6,10 +6,13 @@ import html
 from pptx.oxml.ns import qn
 
 from pptx_preview_paint import element, pixels, point_pixels
-from pptx_style import is_east_asian, paragraph_chain, resolve_color, run_style
-from pptx_text_measure import DEFAULT_INSETS, autofit_scale, font_face, line_height_points, line_spacing, paragraph_spacing, paragraph_value
+from pptx_style import paragraph_chain, resolve_color, run_style
+from pptx_text_measure import autofit_scale, font_face, line_height_points, line_spacing, paragraph_spacing, paragraph_value
+from text_script import has_east_asian, is_east_asian
+from units import DEFAULT_TEXT_INSETS
 
 
+CELL_MARGINS = {"lIns": "marL", "rIns": "marR", "tIns": "marT", "bIns": "marB"}
 ALIGNMENTS = {"l": "left", "ctr": "center", "r": "right", "just": "justify", "dist": "justify"}
 ANCHORS = {"t": "flex-start", "ctr": "center", "b": "flex-end"}
 BULLET_TAGS = (qn("a:buNone"), qn("a:buChar"), qn("a:buAutoNum"), qn("a:buBlip"))
@@ -51,10 +54,10 @@ def body_layout(context, shape_element, body, inherited_bodies: list, cell_prope
 
     def attribute(name: str, default: str) -> str:
         return next((candidate.get(name) for candidate in candidates if candidate.get(name) is not None), default)
-    insets = {name: int(attribute(name, str(default))) for name, default in DEFAULT_INSETS.items()}
+    insets = {name: int(attribute(name, str(default))) for name, default in DEFAULT_TEXT_INSETS.items()}
     anchor = attribute("anchor", "t")
     if cell_properties is not None:
-        insets = {"lIns": int(cell_properties.get("marL", "91440")), "rIns": int(cell_properties.get("marR", "91440")), "tIns": int(cell_properties.get("marT", "45720")), "bIns": int(cell_properties.get("marB", "45720"))}
+        insets = {inset: int(cell_properties.get(margin, str(DEFAULT_TEXT_INSETS[inset]))) for inset, margin in CELL_MARGINS.items()}
         anchor = cell_properties.get("anchor", "t")
     font_scale, spacing_reduction = autofit_scale(candidates[0]) if candidates else (1.0, 0.0)
     return BodyLayout(insets, anchor, attribute("wrap", "square") != "none", font_scale, spacing_reduction)
@@ -139,7 +142,7 @@ def script_segments(text: str) -> list[str]:
 
 def segment_html(paint: TextPaint, text: str, style, run_properties, layout: BodyLayout, spacing: tuple[str, float]) -> str:
     bold = style.bold.value or paint.bold_by_default and (run_properties is None or run_properties.get("b") is None)
-    east_asian = any(is_east_asian(character) for character in text)
+    east_asian = has_east_asian(text)
     face = font_face(style.font_for(text).value, bold, east_asian)
     paint.faces.add((style.font_for(text).value, face))
     size = style.size.value * layout.font_scale

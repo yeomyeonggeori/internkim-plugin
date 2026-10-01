@@ -10,6 +10,7 @@ from markdown_charts import Chart, number_text
 from markdown_blocks import Equation, Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, has_link, inline_segments, link_parts, local_image_problem, strip_inline_markers
 from office_result import Issue
 from office_theme import HYPERLINK_COLOR
+from units import MILLIMETRES_PER_INCH
 
 
 HEADING_SIZES = {1: 20, 2: 15, 3: 12.5, 4: 11}
@@ -20,7 +21,6 @@ LINK_COLOR = tuple(bytes.fromhex(HYPERLINK_COLOR))
 TEXT_COLOR = (0, 0, 0)
 RULE_COLOR = (140, 149, 159)
 DEFAULT_IMAGE_DOTS_PER_INCH = 96
-MILLIMETERS_PER_INCH = 25.4
 
 
 class MarkdownPdf:
@@ -121,4 +121,4 @@ class MarkdownPdf:
 def image_width_millimeters(image_path: Path) -> float:
     with PillowImage.open(image_path) as image:
         dots_per_inch = image.info.get("dpi", (DEFAULT_IMAGE_DOTS_PER_INCH,))[0] or DEFAULT_IMAGE_DOTS_PER_INCH
-        return image.width / float(dots_per_inch) * MILLIMETERS_PER_INCH
+        return image.width / float(dots_per_inch) * MILLIMETRES_PER_INCH

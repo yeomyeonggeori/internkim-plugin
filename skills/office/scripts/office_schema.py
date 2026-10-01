@@ -5,6 +5,7 @@ import difflib
 import re
 from typing import Iterator
 
+from css_color import named_color_hex
 from office_result import INVALID_VALUE, MISSING_FIELD, UNKNOWN_FIELD, WRONG_TYPE, Issue, OfficeFailure
 
 
@@ -110,13 +111,6 @@ def color_problem(value: str, label: str, location: str) -> Issue:
     if named is None:
         return INVALID_VALUE.issue(f"{location}: {value!r} is not {label}", location)
     return INVALID_VALUE.issue(f"{location}: {value!r} is a color name, and this field takes {label}", location, f'use "{named}" for {value}')
-
-
-def named_color_hex(value: str) -> str | None:
-    from PIL import ImageColor
-
-    named = ImageColor.colormap.get(value.strip().casefold().replace(" ", ""))
-    return named.lstrip("#").upper() if named else None
 
 
 @dataclass(frozen=True)

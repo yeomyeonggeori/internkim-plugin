@@ -7,12 +7,12 @@ import re
 from css_color import Color, parse_css_color
 from fonts.pptx_embedding import RunFont, run_font
 from pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU
+from text_script import is_east_asian
+from units import EMU_PER_POINT
 
 
-EMU_PER_POINT = 12700
 LINE_WIDTH_SLACK_RATIO = 0.01
 AUTOSPACE_GAP_EM = 0.25
-CJK_CHARACTER = re.compile(r"[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af\u3040-\u30ff\u4e00-\u9fff]")
 INVALID_XML_CHARACTERS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 LANGUAGE_TAGS = {"ko": "ko-KR", "en": "en-US", "ja": "ja-JP", "zh": "zh-CN"}
 BASELINE_SHIFTS = {"super": "30000", "sub": "-25000"}
@@ -122,7 +122,7 @@ def line_width_needed(line: dict) -> float:
 
 
 def script_transitions(text: str) -> int:
-    is_cjk = [bool(CJK_CHARACTER.match(character)) for character in text if not character.isspace()]
+    is_cjk = [is_east_asian(character) for character in text if not character.isspace()]
     return sum(1 for current, following in zip(is_cjk, is_cjk[1:]) if current != following)
 
 

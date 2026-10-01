@@ -11,7 +11,8 @@ from docx_charts import read_specification
 from docx_page_operations import PICTURE_WATERMARK_PREFIX
 from docx_preview_model import BoxItem, ChartItem, ImageItem
 from docx_preview_tables import TableLayers
-from office_preview import data_uri, emu_to_pixels, inches_to_pixels, points_to_pixels
+from office_preview import data_uri
+from units import emu_to_pixels, inches_to_pixels, points_to_pixels
 
 
 NAMESPACES = {

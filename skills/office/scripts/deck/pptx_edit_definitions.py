@@ -9,6 +9,7 @@ from office_theme import THEME_SLOTS
 from office_schema import Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, wrong_type
 from pptx_connectors import ARROW_ENDS, CONNECTOR_KINDS, DEFAULT_ARROW, DEFAULT_WIDTH_POINTS, ELBOW_KIND, STRAIGHT_KIND
 from pptx_lengths import LENGTH_EXAMPLES, Length
+from units import EMU_PER_INCH, EMU_PER_POINT
 
 
 SHAPE_PATH_PATTERN = re.compile(r"\d+(\.\d+)*")
@@ -293,7 +294,7 @@ OPERATIONS = Variant(
     "operation",
     "one edit of deck apply; slide numbers, shape indexes and table rows refer to the deck as deck read showed it before the batch, "
     "operations run in order, and the batch applies whole or not at all; a slide added in the batch is edited in the next batch; "
-    f"a length is EMU (914400 per inch, 12700 per point) or text with a unit such as {LENGTH_EXAMPLES} of the slide",
+    f"a length is EMU ({EMU_PER_INCH} per inch, {EMU_PER_POINT} per point) or text with a unit such as {LENGTH_EXAMPLES} of the slide",
     "op",
     TEXT_OPERATIONS + ELEMENT_OPERATIONS + ARRANGE_OPERATIONS + INSERT_OPERATIONS + TABLE_AND_CHART_OPERATIONS + SLIDE_OPERATIONS + SECTION_OPERATIONS + DECK_OPERATIONS,
 )

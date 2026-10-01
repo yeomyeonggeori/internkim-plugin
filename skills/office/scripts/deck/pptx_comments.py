@@ -10,10 +10,11 @@ from pptx.oxml.ns import qn
 
 from office_operations import Change
 from pptx_targets import PptxEditing, resolve_slide
+from units import EMU_PER_INCH
 
 
 DEFAULT_AUTHOR = "InternKim"
-EMU_PER_COMMENT_UNIT = 914400 / 576
+EMU_PER_COMMENT_UNIT = EMU_PER_INCH / 576
 AUTHORS_PART_NAME = "/ppt/commentAuthors.xml"
 PRESENTATION_NAMESPACE = "http://schemas.openxmlformats.org/presentationml/2006/main"
 

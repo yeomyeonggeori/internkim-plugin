@@ -16,8 +16,8 @@ from pptx_preview_shapes import geometry_html
 from pptx_preview_table import table_html
 from pptx_preview_text import TextPaint, body_html, body_layout
 from pptx_shape_kinds import placeholder_of, shape_kind
-from pptx_style import has_east_asian
 from pptx_text_measure import font_face, grown_box, measure_text
+from text_script import has_east_asian
 
 
 DRAWABLE_IMAGE_TYPES = {"image/png", "image/jpeg", "image/gif", "image/bmp", "image/svg+xml"}

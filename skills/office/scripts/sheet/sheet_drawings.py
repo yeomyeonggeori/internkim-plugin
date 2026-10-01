@@ -13,11 +13,10 @@ from sheet_formatting import require_colors
 from workbook_access import parse_cell, sheet_of
 from workbook_fidelity import DRAWING_NAMESPACE, EditRecord, create_drawing, drawing_part, shift_anchor
 from workbook_package import Package, worksheet_parts
+from units import EMU_PER_CENTIMETRE, EMU_PER_PIXEL, PIXELS_PER_CENTIMETRE
 
 
 DRAWING_MAIN_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/main"
-EMU_PER_CENTIMETRE = 360000
-PIXELS_PER_CENTIMETRE = 96 / 2.54
 DEFAULT_IMAGE_WIDTH = 8
 DEFAULT_SHAPE_WIDTH = 6
 DEFAULT_SHAPE_HEIGHT = 2
@@ -99,7 +98,7 @@ def shape_element(operation: dict):
         etree.SubElement(geometry, main_drawing_tag("noFill"))
     else:
         solid_fill(geometry, operation.get("fill", DEFAULT_SHAPE_FILL))
-    line = etree.SubElement(geometry, main_drawing_tag("ln"), w="9525")
+    line = etree.SubElement(geometry, main_drawing_tag("ln"), w=str(EMU_PER_PIXEL))
     solid_fill(line, operation.get("lineColor", DEFAULT_SHAPE_LINE))
     shape.append(text_body(operation))
     return shape

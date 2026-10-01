@@ -14,6 +14,7 @@ from docx_format_operations import ALIGNMENTS, require_any
 from docx_tracking import mark_block_inserted
 from office_operations import TARGET_NOT_FOUND, Change
 from office_result import OfficeFailure
+from units import END_TEXT_INSET_EMU, SIDE_TEXT_INSET_EMU
 
 
 WRAP_ELEMENTS = {"square": '<wp:wrapSquare {namespaces} wrapText="bothSides"/>', "topAndBottom": "<wp:wrapTopAndBottom {namespaces}/>", "behindText": "<wp:wrapNone {namespaces}/>", "inFrontOfText": "<wp:wrapNone {namespaces}/>"}
@@ -170,6 +171,6 @@ def text_box_inline(lines: list[str], width: int, height: int, drawing_id: int, 
         f'<a:graphic><a:graphicData uri="{SHAPE_NAMESPACE}"><wps:wsp><wps:cNvSpPr txBox="1"/>'
         f'<wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{width}" cy="{height}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom>{fill}{line}</wps:spPr>'
         f'<wps:txbx><w:txbxContent>{paragraphs}</w:txbxContent></wps:txbx>'
-        '<wps:bodyPr rot="0" vert="horz" wrap="square" lIns="91440" tIns="45720" rIns="91440" bIns="45720" anchor="t"><a:spAutoFit/></wps:bodyPr>'
+        f'<wps:bodyPr rot="0" vert="horz" wrap="square" lIns="{SIDE_TEXT_INSET_EMU}" tIns="{END_TEXT_INSET_EMU}" rIns="{SIDE_TEXT_INSET_EMU}" bIns="{END_TEXT_INSET_EMU}" anchor="t"><a:spAutoFit/></wps:bodyPr>'
         "</wps:wsp></a:graphicData></a:graphic></wp:inline>"
     )

@@ -7,12 +7,13 @@ from PIL import ImageFont
 from pptx.oxml.ns import qn
 
 from fonts.registry import BOLD_WEIGHT, REGULAR_WEIGHT, resolved_face
-from pptx_geometry import EMU_PER_POINT, Box
-from pptx_style import DEFAULT_SIZE, PERCENT_SCALE, ParagraphLevel, has_east_asian, is_east_asian, paragraph_chain, run_style
+from pptx_geometry import Box
+from pptx_style import DEFAULT_SIZE, PERCENT_SCALE, ParagraphLevel, paragraph_chain, run_style
+from text_script import has_east_asian, is_east_asian, is_ideograph
+from units import DEFAULT_TEXT_INSETS, EMU_PER_POINT
 
 
 MEASURE_SIZE = 200
-DEFAULT_INSETS = {"lIns": 91440, "rIns": 91440, "tIns": 45720, "bIns": 45720}
 
 
 @dataclass(frozen=True)
@@ -77,7 +78,7 @@ def measure_text(context, shape_element, box: Box, size_factor: float = 1.0) -> 
     body_properties = body.find(qn("a:bodyPr"))
     if body_properties.get("vert", "horz") not in ("horz", ""):
         return None
-    insets = {name: int(body_properties.get(name, default)) for name, default in DEFAULT_INSETS.items()}
+    insets = {name: int(body_properties.get(name, default)) for name, default in DEFAULT_TEXT_INSETS.items()}
     font_scale, spacing_reduction = autofit_scale(body_properties)
     font_scale *= size_factor
     available_width = box.w - insets["lIns"] - insets["rIns"]
@@ -199,14 +200,14 @@ def run_atoms(context, shape_element, paragraph, run, font_scale: float, faces: 
         face = font_face(typeface, style.bold.value, has_east_asian(piece))
         faces.add((typeface, face))
         width = text_width_points(face, piece, size) + style.character_spacing.value * font_scale * len(piece)
-        atoms.append(Atom(piece, width, line_height_points(face, size), piece.isspace(), len(piece) == 1 and is_east_asian(piece) and not is_hangul(piece)))
+        atoms.append(Atom(piece, width, line_height_points(face, size), piece.isspace(), len(piece) == 1 and is_ideograph(piece)))
     return atoms
 
 
 def split_breakable(text: str) -> list[str]:
     pieces, current = [], ""
     for character in text:
-        if character.isspace() or is_east_asian(character) and not is_hangul(character):
+        if character.isspace() or is_ideograph(character):
             if current:
                 pieces.append(current)
             pieces.append(character)
@@ -219,11 +220,6 @@ def split_breakable(text: str) -> list[str]:
     if current:
         pieces.append(current)
     return pieces
-
-
-def is_hangul(character: str) -> bool:
-    code = ord(character)
-    return 0xAC00 <= code <= 0xD7AF or 0x1100 <= code <= 0x11FF or 0x3130 <= code <= 0x318F
 
 
 def break_lines(atoms: list[Atom], first_width: float, other_width: float, wraps: bool) -> list[list[Atom]]:

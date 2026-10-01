@@ -15,6 +15,7 @@ from fonts.registry import MONOSPACE, SANS_BODY, BundledFamily, default_family
 from office_result import BOLD_FONT_UNAVAILABLE, Issue, OfficeFailure
 from fonts.pdf_registration import bold_sibling
 from render.renderer import DocumentPdfRequest, FontFile, RenderFailed, RendererUnavailable, javascript_runtime, render_document_pdf as render_pdf
+from units import CSS_PIXELS_PER_INCH
 
 
 SCRIPTS_PATH = Path(__file__).resolve().parent
@@ -22,7 +23,6 @@ CHOSEN_FAMILY = "Document"
 CSS_PATH = SCRIPTS_PATH / "document_pdf.css"
 PAGE_SIZES_PIXELS = {"a4": (794, 1123)}
 SIDE_MARGIN_PIXELS = 64
-CSS_PIXELS_PER_INCH = 96
 DEFAULT_DOTS_PER_INCH = 96
 
 

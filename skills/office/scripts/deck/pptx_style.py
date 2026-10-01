@@ -7,6 +7,7 @@ from pptx.oxml.ns import qn
 
 from pptx_inheritance import SlideContext, master_text_style
 from pptx_shape_kinds import placeholder_of
+from text_script import has_east_asian
 
 
 DEFAULT_SIZE = 18.0
@@ -54,15 +55,6 @@ class RunStyle:
 class ParagraphLevel:
     origin: str
     paragraph_properties: object
-
-
-def has_east_asian(text: str) -> bool:
-    return any(is_east_asian(character) for character in text)
-
-
-def is_east_asian(character: str) -> bool:
-    code = ord(character)
-    return 0x1100 <= code <= 0x11FF or 0x2E80 <= code <= 0x9FFF or 0xAC00 <= code <= 0xD7AF or 0xF900 <= code <= 0xFAFF or 0xFF00 <= code <= 0xFFEF
 
 
 def paragraph_chain(context: SlideContext | None, shape_element, paragraph_element) -> list[ParagraphLevel]:

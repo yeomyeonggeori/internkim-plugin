@@ -24,12 +24,19 @@ def parse_css_color(text: str) -> Color:
         return hex_color(value[1:])
     match = FUNCTION_PATTERN.match(value)
     if not match:
-        return Color("000000", 1.0)
+        return Color(named_color_hex(value) or "000000", 1.0)
     name, arguments = match.groups()
     if name == "color":
         arguments = arguments.partition(" ")[2]
     components, alpha = color_arguments(arguments)
     return Color(hex_of(red_green_blue(name, components)), alpha)
+
+
+def named_color_hex(value: str) -> str | None:
+    from PIL import ImageColor
+
+    named = ImageColor.colormap.get(value.strip().casefold().replace(" ", ""))
+    return named.lstrip("#").upper() if named else None
 
 
 def hex_color(digits: str) -> Color:

@@ -5,7 +5,6 @@ from dataclasses import dataclass
 import io
 import json
 import pathlib
-import re
 import sys
 import urllib.parse
 import urllib.request
@@ -14,6 +13,7 @@ from PIL import Image, UnidentifiedImageError
 
 from deck_definitions import IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND
 from office_result import OfficeArgumentParser, OfficeFailure, Result, run_command
+from text_script import has_hangul
 
 OPENVERSE_ENDPOINT = "https://api.openverse.org/v1/images/"
 SAFE_LICENSES = "cc0,pdm"
@@ -24,7 +24,6 @@ RELAXED_FILTER_SETS = (STRICT_FILTERS, {"extension": "jpg"}, {})
 DEFAULT_CANDIDATE_COUNT = 3
 SMALLEST_USEFUL_WIDTH = 640
 SAVE_FORMATS = {".jpg": "JPEG", ".jpeg": "JPEG", ".png": "PNG", ".webp": "WEBP"}
-HANGUL_PATTERN = re.compile(r"[가-힣]")
 
 
 @dataclass(frozen=True)
@@ -149,7 +148,7 @@ def main() -> Result:
 
 
 def no_image_issue(query: str):
-    if HANGUL_PATTERN.search(query):
+    if has_hangul(query):
         return NO_IMAGE_FOUND.issue(f"nothing matched {query!r}; the photo index searches English titles and tags", suggestion="write the query as a concrete English scene, such as \"convenience store shelves\"")
     return NO_IMAGE_FOUND.issue(f"no usable cc0/public-domain image found for {query!r}")
 

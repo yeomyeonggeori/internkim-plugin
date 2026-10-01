@@ -9,10 +9,6 @@ from office_result import WARNING, Issue, IssueKind
 from render.renderer import RenderFailed, RendererUnavailable, RenderedPages, draw_preview
 
 
-CSS_PIXELS_PER_INCH = 96
-TWIPS_PER_INCH = 1440
-EMU_PER_INCH = 914400
-POINTS_PER_INCH = 72
 PREVIEW_FILE_NAME = "preview.html"
 PAGE_SELECTOR = "section[data-page]"
 
@@ -49,22 +45,6 @@ class Preview:
 
     def approximate(self, what: str, count: int = 1) -> None:
         self.approximations[what] = self.approximations.get(what, 0) + count
-
-
-def twips_to_pixels(twips: float) -> float:
-    return twips * CSS_PIXELS_PER_INCH / TWIPS_PER_INCH
-
-
-def emu_to_pixels(emu: float) -> float:
-    return emu * CSS_PIXELS_PER_INCH / EMU_PER_INCH
-
-
-def points_to_pixels(points: float) -> float:
-    return points * CSS_PIXELS_PER_INCH / POINTS_PER_INCH
-
-
-def inches_to_pixels(inches: float) -> float:
-    return inches * CSS_PIXELS_PER_INCH
 
 
 def style_attribute(declarations: dict[str, object]) -> str:

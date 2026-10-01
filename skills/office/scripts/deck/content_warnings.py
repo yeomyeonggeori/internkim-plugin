@@ -6,9 +6,9 @@ import re
 from deck_definitions import EMOJI_ICON, LANGUAGE_MISMATCH, MISSING_SPEAKER_NOTES, UNSOURCED_CURRENT_DATE
 from design_warnings import LABEL_ONLY_SLIDE_ROLES, append_deck_warning
 from slide_source import SPEAKER_NOTES_CLASS_ATTRIBUTE_PATTERN, split_slide_sources
+from text_script import hangul_count, has_hangul
 
 
-HANGUL_PATTERN = re.compile(r"[가-힣]")
 LATIN_LETTER_PATTERN = re.compile(r"[A-Za-z]")
 EMOJI_PATTERN = re.compile("[\U0001F000-\U0001FAFF✅❌❎❗❓⭐⚠⌚⏰️]")
 SPEAKER_NOTES_PATTERN = re.compile(
@@ -38,13 +38,13 @@ def apply_language_mismatch_warning(slides: list[dict[str, object]], slide_texts
 
 
 def deck_text_is_korean(text: str) -> bool:
-    hangul_count = len(HANGUL_PATTERN.findall(text))
+    hangul_total = hangul_count(text)
     latin_count = len(LATIN_LETTER_PATTERN.findall(text))
-    return hangul_count >= 40 and hangul_count * 3 >= latin_count
+    return hangul_total >= 40 and hangul_total * 3 >= latin_count
 
 
 def title_is_latin_only(title: str) -> bool:
-    return len(LATIN_LETTER_PATTERN.findall(title)) >= 4 and not HANGUL_PATTERN.search(title)
+    return len(LATIN_LETTER_PATTERN.findall(title)) >= 4 and not has_hangul(title)
 
 
 def apply_unsourced_current_date_warning(

@@ -8,7 +8,8 @@ from openpyxl.styles.fonts import DEFAULT_FONT
 from openpyxl.utils import get_column_letter, range_boundaries
 
 from number_format import Displayed, displayed
-from office_preview import PageGeometry, Preview, emu_to_pixels, escaped, inches_to_pixels, page_section, pixels, points_to_pixels, positioned, style_attribute
+from office_preview import PageGeometry, Preview, escaped, page_section, pixels, positioned, style_attribute
+from units import emu_to_pixels, inches_to_pixels, points_to_pixels
 from fonts.registry import OFFICE_KOREAN_FAMILY
 from fonts.preview import FontRegistry, FontRequest, css_font_family, draws_scripts_apart, script_font_family, script_runs
 from sheet_formatting import STACKED_ROTATION, rotation_degrees

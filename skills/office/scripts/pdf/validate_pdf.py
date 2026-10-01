@@ -18,7 +18,8 @@ from pdf_definitions import (
     TOO_FEW_PAGES,
     TOO_MANY_PAGES,
 )
-from text_checks import contains_korean, text_presence_issues
+from text_checks import text_presence_issues
+from text_script import has_hangul
 
 
 KOREAN_CHARACTER_COLLECTION = "Korea1"
@@ -51,7 +52,7 @@ def main() -> Result:
 
 def page_text(page, korean_fonts: list) -> str:
     def note_font(text, _matrix, _text_matrix, font, _size):
-        if font is not None and contains_korean(text) and not any(font is known for known in korean_fonts):
+        if font is not None and has_hangul(text) and not any(font is known for known in korean_fonts):
             korean_fonts.append(font)
 
     return page.extract_text(visitor_text=note_font) or ""

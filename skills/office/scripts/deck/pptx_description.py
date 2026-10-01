@@ -10,6 +10,7 @@ from pptx_inheritance import SlideContext, slide_context
 from pptx_section_operations import describe_sections
 from pptx_shape_kinds import non_visual_properties, placeholder_type, shape_address, shape_identifier, shape_kind, shape_reference
 from pptx_style import resolve_color, run_style
+from units import EMU_PER_POINT
 
 
 ALIGNMENT_NAMES = {"l": "left", "ctr": "center", "r": "right", "just": "justify", "dist": "distributed"}
@@ -22,7 +23,7 @@ def describe_presentation(presentation, numbers: list[int], detail: bool) -> dic
     width, height = presentation.slide_width, presentation.slide_height
     description = {
         "slideCount": len(slides),
-        "slideSize": {"w": width, "h": height, "unit": "EMU", "emuPerPoint": 12700},
+        "slideSize": {"w": width, "h": height, "unit": "EMU", "emuPerPoint": EMU_PER_POINT},
         "layouts": [layout.name for master in presentation.slide_masters for layout in master.slide_layouts],
     }
     sections = describe_sections(presentation)

@@ -7,7 +7,7 @@ from docx_blocks import element_text
 from docx_defaults import DOCUMENT_FONT, KOREAN_LANGUAGE, set_default_east_asia_language, set_theme_font_language
 from docx_styles import run_styles
 from office_result import Issue
-from text_checks import contains_korean
+from text_script import has_hangul
 
 
 DEFAULT_EAST_ASIA_FONT = DOCUMENT_FONT
@@ -39,7 +39,7 @@ def make_east_asia_language_korean(document) -> int:
 def east_asia_font_issues(document) -> list[Issue]:
     if default_east_asia_font_is_set(document):
         return []
-    runs = [run for run in document.element.body.iter(qn("w:r")) if contains_korean(element_text(run))]
+    runs = [run for run in document.element.body.iter(qn("w:r")) if has_hangul(element_text(run))]
     unfonted = [run for run in runs if not run_names_east_asia_font(run, document)]
     if not unfonted:
         return []

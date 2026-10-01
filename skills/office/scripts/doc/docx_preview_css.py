@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from office_preview import pixels, points_to_pixels
+from office_preview import pixels
+from units import points_to_pixels
 
 
 DEFAULT_FONT_SIZE_POINTS = 10

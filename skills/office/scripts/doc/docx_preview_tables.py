@@ -7,7 +7,7 @@ from docx.oxml.ns import qn
 from docx_preview_css import hex_color
 from docx_preview_model import CellBlock, RowBlock, TableBlock
 from docx_preview_styles import attribute, border_set, merged, number, paragraph_properties, run_properties
-from office_preview import twips_to_pixels
+from units import twips_to_pixels
 
 
 DEFAULT_CELL_MARGINS_TWIPS = {"top": 0, "left": 108, "bottom": 0, "right": 108}
