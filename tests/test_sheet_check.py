@@ -250,3 +250,19 @@ class TextValueTest(WorkbookFixture):
         issues = self.text_issues()
         self.assertEqual([(issue["location"], issue["suggestion"][0]["value"]) for issue in issues], [("S!A4", "2026-09-03")])
 
+    def test_a_date_written_by_row_csv_or_append_is_the_same_date(self):
+        (self.directory / "data.csv").write_text("일자,금액\n2026-01-06,200\n", encoding="utf-8")
+        created = run_office(["sheet", "create", "book.xlsx", "--title", "S", "--row", "일자,금액", "--row", "2026-01-05,100"], self.directory)
+        self.assertEqual(created["status"], "ok", created)
+        self.assertEqual(run_office(["sheet", "edit", "book.xlsx", "--row", "2026-01-07,300"], self.directory)["status"], "ok")
+        self.assertEqual(run_office(["convert", "data.csv", "csv.xlsx"], self.directory)["status"], "ok")
+        appended = load_workbook(self.directory / "book.xlsx")["S"]
+        converted = load_workbook(self.directory / "csv.xlsx").active
+        cells = [appended["A2"], appended["A3"], converted["A2"]]
+        self.assertEqual([(cell.value, cell.number_format) for cell in cells], [
+            (datetime.datetime(2026, 1, 5), "yyyy-mm-dd"),
+            (datetime.datetime(2026, 1, 7), "yyyy-mm-dd"),
+            (datetime.datetime(2026, 1, 6), "yyyy-mm-dd"),
+        ])
+        self.assertEqual(appended["B2"].value, 100)
+

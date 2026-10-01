@@ -12,11 +12,7 @@ DATE_FORMAT = "yyyy-mm-dd"
 
 
 def typed_cell_value(text):
-    if INTEGER_OR_DECIMAL.fullmatch(text):
-        return typed_number(text)
-    if ISO_DATE.fullmatch(text):
-        return typed_date(text)
-    return text
+    return typed_number(text) if INTEGER_OR_DECIMAL.fullmatch(text) else text
 
 
 def typed_number(text):

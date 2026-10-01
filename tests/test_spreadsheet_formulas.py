@@ -125,16 +125,14 @@ class CellValueGrammarTest(unittest.TestCase):
 
         self.typed_cell_value = typed_cell_value
 
-    def test_numbers_dates_and_text(self):
-        from datetime import date
-
+    def test_numbers_and_text_leaving_dates_to_the_write(self):
         expectations = {
             "12": 12,
             "-3": -3,
             "0": 0,
             "2.50": 2.5,
             "-0.75": -0.75,
-            "2026-09-30": date(2026, 9, 30),
+            "2026-09-30": "2026-09-30",
             "007": "007",
             "+82": "+82",
             "1,500": "1,500",
