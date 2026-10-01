@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-import re
 
-from openpyxl.styles import Alignment, Font, PatternFill
-from openpyxl.utils import column_index_from_string, get_column_letter
+from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
 
 from excel_functions import written_value
@@ -12,19 +10,23 @@ from formula_cache import save_workbook_with_values
 from formula_references import COLUMN_AXIS, ROW_AXIS, Shift
 from office_operations import Change, OperationSet
 from office_result import INVALID_VALUE, OfficeFailure
-from sheet_charts import build_chart, chart_anchor
+from sheet_charts import plan_add_chart, plan_delete_chart, plan_edit_chart
+from sheet_data import plan_find_replace, plan_sort_range
 from sheet_definitions import CONTENT_DROPPED, CONTENT_WOULD_BE_LOST, OPERATIONS
+from sheet_formatting import plan_format_range, plan_hide_columns, plan_hide_rows, plan_hide_sheet, plan_merge_cells, plan_set_row_height, plan_unmerge_cells
+from sheet_objects import plan_add_table, plan_set_comment, plan_set_hyperlink, plan_set_page_setup
+from sheet_pivots import plan_add_pivot_table
+from sheet_rules import plan_add_conditional_format, plan_add_data_validation, plan_clear_conditional_formats, plan_clear_data_validations
+from sheet_sparklines import plan_add_sparklines
+from sheet_styling import data_bounds, style_written_cells
+from workbook_access import column_index, open_workbook, parse_cell, parse_range, resolve_sheet, sheet_of
 from workbook_fidelity import EditRecord, preserve_source_content
 from workbook_package import Package, read_package, write_package
-from sheet_styling import data_bounds, style_written_cells
-from workbook_access import cell_rows, open_workbook, parse_cell, parse_range, resolve_sheet
 from workbook_structure import isolate_column, rename_sheet_references, shift_workbook
 
 
 MAXIMUM_SHEET_NAME_LENGTH = 31
 FORBIDDEN_SHEET_NAME_CHARACTERS = set("[]:*?/\\")
-COLOR_PATTERN = re.compile(r"^[0-9A-Fa-f]{6}$")
-MAXIMUM_COLUMN = 16384
 
 
 @dataclass
@@ -33,6 +35,8 @@ class SheetEditing:
     source: Package | None
     allows_loss: bool = False
     record: EditRecord = field(default_factory=EditRecord)
+    package_patches: list = field(default_factory=list)
+    reserved_names: set = field(default_factory=set)
 
 
 def load_editing(path: str, allows_loss: bool = False) -> SheetEditing:
@@ -42,10 +46,10 @@ def load_editing(path: str, allows_loss: bool = False) -> SheetEditing:
 
 def save_editing(editing: SheetEditing, path: str) -> list:
     issues = save_workbook_with_values(editing.workbook, path)
-    if editing.source is None:
-        return issues
     output = read_package(path)
-    lost = preserve_source_content(editing.source, output, editing.record)
+    for patch in editing.package_patches:
+        patch(output)
+    lost = preserve_source_content(editing.source, output, editing.record) if editing.source is not None else []
     if lost and not editing.allows_loss:
         raise OfficeFailure(CONTENT_WOULD_BE_LOST.issue(f"saving would drop what the editor cannot carry: {', '.join(lost)}", lost[0]))
     write_package(output, path)
@@ -54,17 +58,6 @@ def save_editing(editing: SheetEditing, path: str) -> list:
 
 def on_workbook(planner):
     return lambda editing, operation, location: planner(editing.workbook, operation, location)
-
-
-def sheet_of(workbook, operation: dict, location: str):
-    return resolve_sheet(workbook, operation.get("sheet"), f"{location}.sheet")
-
-
-def column_index(text: str, location: str) -> int:
-    letters = text.strip().upper()
-    if not letters.isalpha() or not letters.isascii() or len(letters) > 3 or column_index_from_string(letters) > MAXIMUM_COLUMN:
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: {text!r} is not a column letter such as C", location))
-    return column_index_from_string(letters)
 
 
 def validate_sheet_name(workbook, name: str, location: str, renaming: str | None = None) -> None:
@@ -115,56 +108,6 @@ def plan_set_range(workbook, operation: dict, location: str) -> Change:
         rows = len(operation["values"])
         return f"wrote {rows} rows from {worksheet.title}!{operation['cell'].upper()}"
     return change
-
-
-def require_color(operation: dict, name: str, location: str) -> None:
-    if name in operation and not COLOR_PATTERN.match(operation[name]):
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}.{name}: {operation[name]!r} is not six hex digits such as DCEAF7", f"{location}.{name}"))
-
-
-def plan_format_range(workbook, operation: dict, location: str) -> Change:
-    worksheet = sheet_of(workbook, operation, location)
-    bounds = parse_range(operation["range"], f"{location}.range")
-    require_color(operation, "fill", location)
-    require_color(operation, "fontColor", location)
-
-    def change() -> str:
-        cells = [cell for row in cell_rows(worksheet, bounds) for cell in row]
-        for cell in cells:
-            apply_format(cell, operation)
-        return f"formatted {len(cells)} cells in {worksheet.title}!{operation['range'].upper()}"
-    return change
-
-
-def apply_format(cell, operation: dict) -> None:
-    if "numberFormat" in operation:
-        cell.number_format = operation["numberFormat"]
-    if "bold" in operation or "fontColor" in operation:
-        cell.font = changed_font(cell.font, operation)
-    if "fill" in operation:
-        cell.fill = PatternFill("solid", fgColor=operation["fill"].upper())
-    if "alignment" in operation or "wrapText" in operation:
-        cell.alignment = changed_alignment(cell.alignment, operation)
-
-
-def changed_font(font, operation: dict) -> Font:
-    updated = Font(name=font.name, size=font.sz, bold=font.b, italic=font.i, underline=font.u, strike=font.strike, color=font.color, vertAlign=font.vertAlign, family=font.family, charset=font.charset, scheme=font.scheme)
-    if "bold" in operation:
-        updated.b = operation["bold"]
-    if "fontColor" in operation:
-        updated.color = operation["fontColor"].upper()
-    return updated
-
-
-def changed_alignment(alignment, operation: dict) -> Alignment:
-    return Alignment(
-        horizontal=operation.get("alignment", alignment.horizontal),
-        vertical=alignment.vertical,
-        wrap_text=operation.get("wrapText", alignment.wrap_text),
-        shrink_to_fit=alignment.shrink_to_fit,
-        indent=alignment.indent,
-        text_rotation=alignment.text_rotation,
-    )
 
 
 def plan_set_column_width(workbook, operation: dict, location: str) -> Change:
@@ -251,17 +194,6 @@ def plan_recalculate(workbook, operation: dict, location: str) -> Change:
     return change
 
 
-def plan_add_chart(workbook, operation: dict, location: str) -> Change:
-    worksheet = sheet_of(workbook, operation, location)
-    chart = build_chart(worksheet, operation, location)
-    anchor = chart_anchor(operation, location)
-
-    def change() -> str:
-        worksheet.add_chart(chart, anchor)
-        return f"added a {operation['type']} chart of {worksheet.title}!{operation['range'].upper()} at {anchor}"
-    return change
-
-
 SHEET_OPERATIONS = OperationSet(OPERATIONS, {
     "set_cell": on_workbook(plan_set_cell),
     "set_range": on_workbook(plan_set_range),
@@ -277,4 +209,24 @@ SHEET_OPERATIONS = OperationSet(OPERATIONS, {
     "delete_columns": plan_structure(COLUMN_AXIS, -1, "columns", "deleted"),
     "recalculate": on_workbook(plan_recalculate),
     "add_chart": on_workbook(plan_add_chart),
+    "edit_chart": on_workbook(plan_edit_chart),
+    "delete_chart": on_workbook(plan_delete_chart),
+    "merge_cells": on_workbook(plan_merge_cells),
+    "unmerge_cells": on_workbook(plan_unmerge_cells),
+    "set_row_height": on_workbook(plan_set_row_height),
+    "hide_rows": on_workbook(plan_hide_rows),
+    "hide_columns": on_workbook(plan_hide_columns),
+    "hide_sheet": on_workbook(plan_hide_sheet),
+    "sort_range": on_workbook(plan_sort_range),
+    "find_replace": on_workbook(plan_find_replace),
+    "add_conditional_format": on_workbook(plan_add_conditional_format),
+    "clear_conditional_formats": on_workbook(plan_clear_conditional_formats),
+    "add_data_validation": on_workbook(plan_add_data_validation),
+    "clear_data_validations": on_workbook(plan_clear_data_validations),
+    "add_table": on_workbook(plan_add_table),
+    "set_hyperlink": on_workbook(plan_set_hyperlink),
+    "set_comment": on_workbook(plan_set_comment),
+    "set_page_setup": on_workbook(plan_set_page_setup),
+    "add_sparklines": plan_add_sparklines,
+    "add_pivot_table": plan_add_pivot_table,
 }, sequential=True)

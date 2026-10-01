@@ -70,6 +70,12 @@ class EvaluatorCompatibilityTest(WorkbookFixture):
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["FORMULA_NOT_EVALUATED"])
         self.assertIsNone(self.cells()["C1"]["value"])
 
+    def test_a_workbook_with_notes_still_computes(self):
+        self.create_workbook([{"title": "Sheet", "rows": [[2, "=A1*3"]]}])
+        envelope = self.apply([{"op": "set_comment", "cell": "A1", "text": "checked"}, {"op": "set_cell", "cell": "A1", "value": 5}])
+        self.assertEqual(envelope["status"], "ok", envelope)
+        self.assertEqual(self.cells()["B1"]["value"], "15")
+
     def test_a_cell_depending_on_an_uncomputed_one_through_iferror_is_not_guessed(self):
         self.create_workbook([{"title": "Sheet", "rows": [["=BAHTTEXT(1)", "=IFERROR(A1,0)", "=Other!A1+1"]]}, {"title": "Other", "rows": [["=Sheet!B1"]]}])
         self.assertEqual([self.cells()[coordinate]["value"] for coordinate in ("A1", "B1", "C1")], [None, None, None])

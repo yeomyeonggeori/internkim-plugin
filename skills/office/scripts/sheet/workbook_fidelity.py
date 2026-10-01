@@ -6,19 +6,16 @@ import posixpath
 
 from lxml import etree
 
-from formula_references import COLUMN_AXIS, REFERENCE_ERROR, ROW_AXIS, Shift, rename_sheet_reference, rewrite_formula, shift_reference, shift_single
+from formula_references import REFERENCE_ERROR, ROW_AXIS, Shift, rename_sheet_reference, rewrite_formula, shift_reference, shift_single
 from workbook_package import (
     CONTENT_TYPES_NAMESPACE,
     CONTENT_TYPES_PART,
-    MAIN_NAMESPACE,
-    PACKAGE_RELATIONSHIP_NAMESPACE,
     RELATIONSHIP_NAMESPACE,
     Package,
     add_content_type_override,
     add_relationship,
     main_tag,
     relationships,
-    relationships_part,
     worksheet_parts,
 )
 

@@ -15,7 +15,7 @@ from excel_functions import is_dynamic_array_formula
 from formula_dependencies import DependencyReader, cell_position, propagate
 from formula_references import is_bare_name, join_parts, quote_sheet_name, reference_parts, rewrite_formula
 from ironcalc_compatibility import is_divergent_criteria, needs_criteria_probe, prepare
-from workbook_package import main_tag, read_package, worksheet_parts, write_package
+from workbook_package import main_tag, read_package, relationships_part, worksheet_parts, write_package
 
 
 NUMBER = "n"
@@ -163,6 +163,7 @@ def prepare_evaluation_package(path: str, dynamic: set) -> None:
     package = read_package(path)
     cell_metadata = dynamic_array_cell_metadata(package) if dynamic else None
     for part, sheet in worksheet_parts(package).items():
+        without_comment_relationships(package, part)
         root = package.xml(part)
         for cell in root.iter(main_tag("c")):
             if len(cell) == 0:
@@ -172,6 +173,20 @@ def prepare_evaluation_package(path: str, dynamic: set) -> None:
                 mark_array_formula(cell, cell.get("r"), cell_metadata)
         package.set_xml(part, root)
     write_package(package, path)
+
+
+def without_comment_relationships(package, part: str) -> None:
+    # IronCalc 0.8.3 resolves a comments target as relative even when it is absolute, as openpyxl writes it
+    # (xlsx/src/import/worksheets.rs load_sheet_rels), and then fails to load; notes never affect values
+    rels_part = relationships_part(part)
+    if rels_part not in package.entries:
+        return
+    root = package.xml(rels_part)
+    comments = [element for element in root if (element.get("Type") or "").endswith("/comments")]
+    for element in comments:
+        root.remove(element)
+    if comments:
+        package.set_xml(rels_part, root)
 
 
 def compute_with_ironcalc(path: str, cells: list[FormulaCell], plan: EvaluationPlan, directory: str):

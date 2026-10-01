@@ -5,6 +5,7 @@ import os
 from typing import Iterable
 
 from openpyxl import load_workbook
+from openpyxl.utils import column_index_from_string
 from openpyxl.utils.cell import coordinate_from_string, range_boundaries
 from openpyxl.utils.exceptions import CellCoordinatesException
 
@@ -32,6 +33,20 @@ def resolve_sheet(workbook, sheet_name: str | None, location: str):
         message = f"{location}: the workbook has no sheet named {sheet_name!r}{did_you_mean(sheet_name, workbook.sheetnames)}; it has {names}"
         raise OfficeFailure(TARGET_NOT_FOUND.issue(message, location, closest_suggestion(sheet_name, workbook.sheetnames, 'use "sheet": "{match}"')))
     return match
+
+
+MAXIMUM_COLUMN = 16384
+
+
+def sheet_of(workbook, operation: dict, location: str):
+    return resolve_sheet(workbook, operation.get("sheet"), f"{location}.sheet")
+
+
+def column_index(text: str, location: str) -> int:
+    letters = text.strip().upper()
+    if not letters.isalpha() or not letters.isascii() or len(letters) > 3 or column_index_from_string(letters) > MAXIMUM_COLUMN:
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: {text!r} is not a column letter such as C", location))
+    return column_index_from_string(letters)
 
 
 def parse_cell(text: str, location: str) -> tuple[int, int]:
