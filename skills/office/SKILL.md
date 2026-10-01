@@ -33,7 +33,7 @@ A standardized form belongs to paperwork even when it ships as .docx or PDF: its
 
 **File naming.** Documents, PDFs, and workbooks live at `~/documents/<title>.<ext>`, with any Markdown source beside them. Decks live in `artifacts/<deck-slug>/` and deliver from `artifacts/<deck-slug>/build/`. Company forms go to the storage directory their registration returns.
 
-**Results.** Every command prints one JSON result: `status` is ok, warning, or error, and each issue carries a stable `code`, a `location`, and a `suggestion`. `<skill>/scripts/office guide <format>` lists its operations and codes, `guide <format> <verb>` that command's fields, and `guide <format> <verb> <operation>` one operation's.
+**Results.** Every command prints one JSON result: `status` is ok, warning, or error, and each issue carries a stable `code`, a `location`, and a `suggestion`. `<skill>/scripts/office guide <format>` indexes its commands and codes, `guide <format> <verb>` gives that command's fields and one line per operation, and `guide <format> <verb> <operation>` that operation's fields.
 
 **Verify before attaching.** Run the final check the format's reference names and look at the pages it renders. Pass the source names, dates, totals, and key labels as `--required-text` where the command takes it. Read every warning, revise real problems, then attach only the accepted final output. Say what visual uncertainty remains.
 
@@ -41,6 +41,6 @@ A standardized form belongs to paperwork even when it ships as .docx or PDF: its
 
 **Dependencies.** The `office` command installs its packages into its own environment on first use. Never run pip or uv yourself, and keep dependency caches apart from source documents.
 
-**Tool server.** Only company forms (`company_info_*`, `company_document_*`) and reading an attached file (`read`) call InternKim's tool server. Every other command needs only a shell and Python.
+**Tool server.** Only company forms (`company_info_*`, `company_document_*`) and reading an attached file (`read`) call InternKim's tool server. Every other command runs locally.
 
 **Contracts.** A contract is a draft for review; say so when delivering it, without adding disclaimer text to the document.
