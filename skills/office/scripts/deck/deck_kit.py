@@ -20,8 +20,6 @@ THEME_BLOCK_PATTERN = re.compile(r"((?::root,\s*)?\[data-theme=\"([a-z]+)\"\])\s
 COLOR_TOKEN_PATTERN = re.compile(r"--([a-z0-9-]+)\s*:\s*(#[0-9A-Fa-f]{3,8})\s*;")
 CHART_RENDERERS_PATTERN = re.compile(r"const chartRenderers = \{(.*?)\n  \};", re.DOTALL)
 CHART_TYPE_PATTERN = re.compile(r"^\s{4}([a-z0-9]+):", re.MULTILINE)
-GROUPED_NUMBER_PATTERN = re.compile(r"^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$")
-SPACED_SEPARATOR_PATTERN = re.compile(r",\s")
 SLIDE_SIZE_PATTERN = re.compile(r"section\[data-layout\] \{[^}]*?\bwidth: (\d+)px;\s*height: (\d+)px;")
 
 
@@ -78,17 +76,3 @@ def chart_types() -> tuple[str, ...]:
     renderers = CHART_RENDERERS_PATTERN.search(KIT_SCRIPT_PATH.read_text(encoding="utf-8"))
     return tuple(CHART_TYPE_PATTERN.findall(renderers.group(1))) if renderers else ()
 
-
-def split_chart_list(text: str) -> list[str]:
-    separator = r",\s+" if SPACED_SEPARATOR_PATTERN.search(text) else ","
-    return [value.strip() for value in re.split(separator, text) if value.strip()]
-
-
-def chart_number(text: str) -> float | None:
-    compact = re.sub(r"\s", "", text).replace("−", "-")
-    if GROUPED_NUMBER_PATTERN.match(compact):
-        compact = compact.replace(",", "")
-    try:
-        return float(compact)
-    except ValueError:
-        return None

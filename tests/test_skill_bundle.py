@@ -74,6 +74,19 @@ class OfficeEntryTest(unittest.TestCase):
         self.assertEqual(command_names ^ listed_names, set())
 
 
+class PackageFreeCommandTest(unittest.TestCase):
+    def test_a_command_that_needs_no_packages_imports_without_them(self):
+        loader = "import importlib.util, sys; specification = importlib.util.spec_from_file_location('command', sys.argv[1]); sys.modules['command'] = importlib.util.module_from_spec(specification); specification.loader.exec_module(sys.modules['command'])"
+        for command in office_command_table():
+            if command.needs_packages:
+                continue
+            with self.subTest(command=command.name):
+                script = OFFICE_SCRIPTS_PATH / command.script
+                environment = {"PYTHONPATH": f"{OFFICE_SCRIPTS_PATH}:{script.parent}"}
+                completed = subprocess.run([sys.executable, "-S", "-c", loader, str(script)], capture_output=True, text=True, env=environment)
+                self.assertEqual(completed.returncode, 0, completed.stderr[-800:])
+
+
 class OldPythonTest(unittest.TestCase):
     def test_modern_annotations_are_never_evaluated_at_definition_time(self):
         offending_paths = [

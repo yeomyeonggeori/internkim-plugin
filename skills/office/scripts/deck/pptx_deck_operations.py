@@ -8,7 +8,7 @@ from pptx.util import Emu
 from office_operations import Change
 from office_result import INVALID_VALUE, OfficeFailure
 from office_schema import closest_suggestion
-from pptx_edit_definitions import THEME_COLOR_SLOTS
+from office_theme import THEME_SLOTS
 from pptx_element_operations import SHAPE_TAGS, write_local_box
 from pptx_geometry import Box, own_box
 from pptx_style import HANGUL_SCRIPT
@@ -26,10 +26,10 @@ def theme_parts(presentation) -> list:
 
 def plan_set_theme(editing: PptxEditing, operation: dict, location: str) -> Change:
     colors = operation.get("colors") or {}
-    unknown = [slot for slot in colors if slot not in THEME_COLOR_SLOTS]
+    unknown = [slot for slot in colors if slot not in THEME_SLOTS]
     if unknown:
-        fallback = "use " + ", ".join(THEME_COLOR_SLOTS)
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}.colors.{unknown[0]}: not a theme color slot", f"{location}.colors.{unknown[0]}", closest_suggestion(unknown[0], list(THEME_COLOR_SLOTS), "did you mean {match!r}?") or fallback))
+        fallback = "use " + ", ".join(THEME_SLOTS)
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}.colors.{unknown[0]}: not a theme color slot", f"{location}.colors.{unknown[0]}", closest_suggestion(unknown[0], list(THEME_SLOTS), "did you mean {match!r}?") or fallback))
     if not colors and all(operation.get(name) is None for name in ("headingFont", "bodyFont", "koreanFont")):
         raise OfficeFailure(INVALID_VALUE.issue(f"{location}: set_theme changes nothing", location, "give colors, headingFont, bodyFont or koreanFont"))
 

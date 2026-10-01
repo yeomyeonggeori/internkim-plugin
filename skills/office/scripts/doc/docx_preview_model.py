@@ -60,7 +60,7 @@ class NoteReferenceItem:
 @dataclass
 class ChartItem:
     model: object
-    palette: tuple
+    look: object
     width: float
     height: float
 

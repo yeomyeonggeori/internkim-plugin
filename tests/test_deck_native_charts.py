@@ -27,10 +27,10 @@ sys.path.insert(0, str(SCRIPTS_PATH / "deck"))
 from deck_kit import chart_types  # noqa: E402
 from editable_pptx import read_text_layers, write_editable_pptx  # noqa: E402
 from native_charts import NATIVE_CHART_TYPES  # noqa: E402
-from pptx_chart_look import chart_look  # noqa: E402
+from pptx_chart_look import chart_look, chart_model  # noqa: E402
 from pptx_description import chart_details  # noqa: E402
 from pptx_inheritance import slide_context  # noqa: E402
-from pptx_preview_chart import chart_svg  # noqa: E402
+from charts.svg import chart_svg  # noqa: E402
 
 
 ACCENT = "rgb(26, 86, 219)"
@@ -146,7 +146,7 @@ class NativeChartPackageTest(unittest.TestCase):
         _, presentation = self.write([highlighted])
         slide = presentation.slides[0]
         chart = chart_frame(slide).chart
-        svg = chart_svg(chart_details(chart), 600, 400, chart_look(chart, slide_context(presentation, slide)), "Paperlogy")
+        svg = chart_svg(chart_model(chart, chart_details(chart)), 600, 400, chart_look(chart, slide_context(presentation, slide)), "Paperlogy")
         self.assertEqual((svg.count('fill="#1A56DB"'), svg.count('fill="#C8D2E0"')), (1, 2))
         self.assertIn(">128억<", svg)
         self.assertNotIn(">96억<", svg)
@@ -177,7 +177,7 @@ class NativeChartPackageTest(unittest.TestCase):
         names = [label.findtext(f".//{qn('a:t')}") for label in chart._chartSpace.iter(qn("c:dLbl"))]
         self.assertEqual(names, stores)
         self.assertFalse(chart.has_legend)
-        svg = chart_svg(details, 600, 400, chart_look(chart, slide_context(presentation, slide)), "Paperlogy")
+        svg = chart_svg(chart_model(chart, details), 600, 400, chart_look(chart, slide_context(presentation, slide)), "Paperlogy")
         self.assertTrue(all(f">{store}<" in svg for store in stores))
         self.assertEqual(svg.count('fill="#C8D2E0"'), 2)
 

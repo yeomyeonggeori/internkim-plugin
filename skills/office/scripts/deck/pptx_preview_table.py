@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pptx.oxml.ns import qn
 
+from office_theme import OFFICE_THEME
 from pptx_preview_paint import FILL_TAGS, element, paint_color
 from pptx_preview_text import TextPaint, body_html, body_layout
 from pptx_style import theme_slot_color
@@ -40,7 +41,7 @@ def table_html(context, frame_element, width: float, height: float, faces: set) 
 
 
 def table_style(context, properties) -> dict:
-    accent = "#" + (theme_slot_color(context, "accent1") or "4472C4").lstrip("#")
+    accent = "#" + (theme_slot_color(context, "accent1") or OFFICE_THEME["accent1"]).lstrip("#")
     flags = {name: properties is not None and properties.get(name) in TRUE_VALUES for name in ("firstRow", "bandRow")}
     return {"accent": accent, **flags}
 

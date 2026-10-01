@@ -19,12 +19,12 @@ from markdown_charts import Chart
 from latex_math import OMML_NAMESPACE, LatexNotReadable, latex_omml
 from markdown_blocks import Equation, Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, inline_segments, link_parts, local_image_problem, math_latex
 from office_result import Issue
+from office_theme import HYPERLINK_COLOR
 
 
 DEFAULT_DOCUMENT_FONT = DOCUMENT_FONT
 DEFAULT_DOCUMENT_FONT_SIZE = 10.5
 MAXIMUM_IMAGE_WIDTH = Inches(6)
-LINK_COLOR = "0563C1"
 CHART_HEIGHT_RATIO = 0.56
 RULE_COLOR = "8C959F"
 RULE_EIGHTHS_OF_A_POINT = "6"
@@ -168,7 +168,7 @@ def add_hyperlink(paragraph, text: str, target: str) -> None:
     else:
         hyperlink.set(qn("r:id"), paragraph.part.relate_to(target, RELATIONSHIP_TYPE.HYPERLINK, is_external=True))
     run = paragraph.add_run(text)
-    run.font.color.rgb = RGBColor.from_string(LINK_COLOR)
+    run.font.color.rgb = RGBColor.from_string(HYPERLINK_COLOR)
     run.font.underline = True
     hyperlink.append(run._r)
     paragraph._p.append(hyperlink)

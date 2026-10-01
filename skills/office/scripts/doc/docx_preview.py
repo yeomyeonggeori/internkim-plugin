@@ -3,10 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from chart_svg import DEFAULT_PALETTE
 from docx.oxml.ns import qn
 from lxml import etree
 
+from charts.look import OFFICE_SERIES_COLORS
 from docx_package import open_document
 from docx_preview_css import DEFAULT_FONT_SIZE_POINTS, HIGHLIGHT_COLORS, hex_color, text_decoration
 from docx_preview_graphics import GRAPHIC_TAGS, graphic_items
@@ -19,10 +19,10 @@ from docx_preview_sections import document_sections, page_number_start, section_
 from docx_preview_styles import StyleSheet, merged, paragraph_properties, run_properties
 from docx_preview_tables import TableLayers, table_block
 from office_preview import Preview, points_to_pixels, twips_to_pixels
+from office_theme import ACCENT_SLOTS
 from fonts.preview import DEFAULT_FAMILY, FontRequest, css_font_family
 
 
-ACCENT_SLOTS = ("accent1", "accent2", "accent3", "accent4", "accent5", "accent6")
 DRAWING_MAIN = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 THEME_RELATIONSHIP = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
 MARKUP_COLORS = {"inserted": "#1d4ed8", "deleted": "#b42318"}
@@ -327,10 +327,10 @@ def split_at_page_breaks(items: list) -> list[list]:
 
 def theme_accents(theme_root) -> tuple[str, ...]:
     if theme_root is None:
-        return DEFAULT_PALETTE
+        return OFFICE_SERIES_COLORS
     colors = []
     for slot in ACCENT_SLOTS:
         element = theme_root.find(f".//{DRAWING_MAIN}{slot}")
         color = next((child.get("val") or child.get("lastClr") for child in element), None) if element is not None else None
         colors.append(f"#{color.lower()}" if color else None)
-    return tuple(color for color in colors if color) or DEFAULT_PALETTE
+    return tuple(color for color in colors if color) or OFFICE_SERIES_COLORS

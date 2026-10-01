@@ -7,7 +7,7 @@ import io
 import os
 import pathlib
 
-from fonts.truetype import ENGLISH_UNITED_STATES, FAMILY_NAME_ID, FULL_NAME_ID, SUBFAMILY_NAME_ID, UNICODE_BMP_ENCODING, WINDOWS_PLATFORM, has_korean_code_page, license_allows_embedding
+from fonts.truetype import ENGLISH_UNITED_STATES, FAMILY_NAME_ID, FULL_NAME_ID, SUBFAMILY_NAME_ID, TYPOGRAPHIC_FAMILY_NAME_ID, UNICODE_BMP_ENCODING, WINDOWS_PLATFORM, has_korean_code_page, license_allows_embedding
 from skill_runtime import skill_cache_path
 
 
@@ -65,6 +65,7 @@ class BundledFamily:
 @dataclass(frozen=True)
 class FaceFacts:
     family_names: tuple[str, ...]
+    matched_family: str
     style: str
     fs_type: int
     panose: str
@@ -90,6 +91,10 @@ class ResolvedFace:
     @property
     def typeface(self) -> str:
         return typeface(self.family, self.face)
+
+    @property
+    def matched_family(self) -> str:
+        return face_facts(self.family, self.face).matched_family
 
 
 FAMILIES = (
@@ -211,6 +216,7 @@ def face_facts(family: BundledFamily, face: BundledFace) -> FaceFacts:
         metrics = font["OS/2"]
         return FaceFacts(
             family_names=tuple(dict.fromkeys((english_name(names, FAMILY_NAME_ID), *(record.toUnicode() for record in names.names if record.nameID == FAMILY_NAME_ID)))),
+            matched_family=english_name(names, TYPOGRAPHIC_FAMILY_NAME_ID, FAMILY_NAME_ID),
             style=english_name(names, SUBFAMILY_NAME_ID),
             fs_type=metrics.fsType,
             panose=panose_hex(metrics.panose),
@@ -220,9 +226,12 @@ def face_facts(family: BundledFamily, face: BundledFace) -> FaceFacts:
         )
 
 
-def english_name(names, name_id: int) -> str:
-    record = names.getName(name_id, WINDOWS_PLATFORM, UNICODE_BMP_ENCODING, ENGLISH_UNITED_STATES) or next(record for record in names.names if record.nameID == name_id)
-    return record.toUnicode()
+def english_name(names, *name_ids: int) -> str:
+    for name_id in name_ids:
+        record = names.getName(name_id, WINDOWS_PLATFORM, UNICODE_BMP_ENCODING, ENGLISH_UNITED_STATES) or next((record for record in names.names if record.nameID == name_id), None)
+        if record is not None:
+            return record.toUnicode()
+    raise LookupError(f"the font names none of {name_ids}")
 
 
 def panose_hex(panose) -> str:

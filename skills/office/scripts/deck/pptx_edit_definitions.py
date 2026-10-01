@@ -3,16 +3,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
+from charts.kinds import OFFICE_CHART_KINDS
 from office_result import Issue
+from office_theme import THEME_SLOTS
 from office_schema import Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, wrong_type
 from pptx_connectors import ARROW_ENDS, CONNECTOR_KINDS, DEFAULT_ARROW, DEFAULT_WIDTH_POINTS, ELBOW_KIND, STRAIGHT_KIND
 from pptx_lengths import LENGTH_EXAMPLES, Length
 
 
 SHAPE_PATH_PATTERN = re.compile(r"\d+(\.\d+)*")
-THEME_COLOR_SLOTS = ("dk1", "lt1", "dk2", "lt2", "accent1", "accent2", "accent3", "accent4", "accent5", "accent6", "hlink", "folHlink")
 SHAPE_KINDS = ("rectangle", "rounded_rectangle", "oval", "triangle", "right_arrow", "chevron", "pentagon", "diamond")
-CHART_TYPES = ("column", "stacked_column", "bar", "stacked_bar", "line", "pie", "doughnut", "area")
 ALIGN_EDGES = ("left", "center", "right", "top", "middle", "bottom")
 ARRANGE_REFERENCES = ("selection", "slide")
 TRANSITION_KINDS = ("none", "cut", "fade", "push", "wipe", "split", "cover", "pull", "dissolve", "zoom", "random")
@@ -180,7 +180,7 @@ INSERT_OPERATIONS = (
         Field("rows", CELL_ROWS, "rows of cell values", required=True),
     ),
     operation("add_chart", "add a native chart with its own data workbook", SLIDE_FIELD, *BOX_FIELDS,
-        Field("type", Choice(CHART_TYPES), "chart kind", required=True),
+        Field("type", Choice(OFFICE_CHART_KINDS), "chart kind", required=True),
         Field("categories", ListOf(CellValue(), non_empty=True), "category labels along the axis", required=True),
         Field("series", ListOf(SERIES, non_empty=True), "data series; pie and doughnut take one", required=True),
         Field("title", Text(), "chart title"),
@@ -276,7 +276,7 @@ SECTION_OPERATIONS = (
 )
 DECK_OPERATIONS = (
     operation("set_theme", "change the theme every slide inherits its colors and fonts from",
-        Field("colors", MapOf(HexColor(), key="theme slot: " + ", ".join(THEME_COLOR_SLOTS)), "colors by slot"),
+        Field("colors", MapOf(HexColor(), key="theme slot: " + ", ".join(THEME_SLOTS)), "colors by slot"),
         Field("headingFont", Text(non_empty=True), "Latin typeface for titles"),
         Field("bodyFont", Text(non_empty=True), "Latin typeface for body text"),
         Field("koreanFont", Text(non_empty=True), "typeface for Korean text in titles and body"),

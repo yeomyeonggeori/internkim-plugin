@@ -9,7 +9,7 @@ import unittest
 from render_fixture import can_render, pdf_page_count, png_size
 from sheet_fixture import SCRIPTS_PATH, run_office, run_office_python
 
-sys.path[0:0] = [str(SCRIPTS_PATH / "sheet")]
+sys.path[0:0] = [str(SCRIPTS_PATH), str(SCRIPTS_PATH / "sheet")]
 
 from number_format import displayed  # noqa: E402
 

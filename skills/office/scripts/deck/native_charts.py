@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import zipfile
 
+from charts.kinds import is_round_kind
+from charts.look import PERCENT_FORMAT
 from chart_workbook import SHEET_NAME, cell_reference, chart_workbook_bytes, number_text
 from css_color import most_contrasting, parse_css_color
 from pptx_package import xml_document
@@ -19,8 +21,7 @@ PACKAGE_RELATIONSHIP_TYPE = "http://schemas.openxmlformats.org/officeDocument/20
 CHART_URI = "http://schemas.openxmlformats.org/drawingml/2006/chart"
 BAR_DIRECTIONS = {"column": "col", "stacked": "col", "stacked100": "col", "bar": "bar"}
 BAR_GROUPINGS = {"column": "clustered", "bar": "clustered", "stacked": "stacked", "stacked100": "percentStacked"}
-ROUND_CHART_TYPES = {"donut", "pie"}
-NATIVE_CHART_TYPES = (*BAR_DIRECTIONS, "line", "area", "combo", "scatter", *ROUND_CHART_TYPES)
+NATIVE_CHART_TYPES = (*BAR_DIRECTIONS, "line", "area", "combo", "scatter", "donut", "pie")
 LABEL_POSITIONS = {"column": "outEnd", "stacked": "ctr", "stacked100": "ctr", "bar": "outEnd", "line": "t", "area": "", "scatter": "r", "pie": "ctr"}
 GRIDDED_CHART_TYPES = {"line", "area"}
 GRID_INTERVALS = 2
@@ -31,7 +32,6 @@ SCATTER_MARKER_PIXELS = 22
 SLICE_GAP_PIXELS = 2
 AXIS_LINE_PIXELS = 2
 GRID_LINE_PIXELS = 1
-PERCENT_FORMAT = "0%"
 CATEGORY_AXIS_ID = 1001
 VALUE_AXIS_ID = 1002
 SECONDARY_CATEGORY_AXIS_ID = 1003
@@ -102,7 +102,7 @@ def graphic_frame_xml(shape_id: int, part: ChartPart, scale: SlideScale) -> str:
 
 
 def chart_space_xml(layout: dict, context: TextContext) -> str:
-    is_round = layout["type"] in ROUND_CHART_TYPES
+    is_round = is_round_kind(layout["type"])
     plot_layout = manual_layout_xml(0, 0, 1, 1, inner=True) if is_round else ""
     return xml_document(
         f'<c:chartSpace {CHART_NAMESPACES}><c:date1904 val="0"/><c:lang val="{context.language}"/><c:roundedCorners val="0"/>'
@@ -154,7 +154,7 @@ def line_plot_xml(layout: dict, indexes: list[int], axes: tuple[int, int], conte
 
 def series_xml(layout: dict, index: int, kind: str, context: TextContext) -> str:
     color = layout["colors"]["series"][index]
-    if kind in ROUND_CHART_TYPES:
+    if is_round_kind(kind):
         body = f"{round_points_xml(layout, context)}{round_labels_xml(layout, context)}"
     elif kind == "line":
         body = f"{line_properties_xml(color, context.scale)}{marker_xml(layout['colors']['background'], color, MARKER_PIXELS, context.scale)}{last_point_xml(layout, color, context.scale)}{point_labels_xml(layout, index, kind, context)}"
@@ -322,7 +322,7 @@ def contrasting_text(fill_color: str, layout: dict) -> str:
 
 def axes_xml(layout: dict, context: TextContext) -> str:
     kind = layout["type"]
-    if kind in ROUND_CHART_TYPES:
+    if is_round_kind(kind):
         return ""
     if kind == "scatter":
         return scatter_axis_xml(layout, 0, "b", context) + scatter_axis_xml(layout, 1, "l", context)
@@ -405,7 +405,7 @@ def gridlines_xml(layout: dict, scale: SlideScale) -> str:
 
 
 def legend_xml(layout: dict, context: TextContext) -> str:
-    if layout["type"] in ROUND_CHART_TYPES or layout["type"] == "scatter" or len(layout["series"]) < 2:
+    if is_round_kind(layout["type"]) or layout["type"] == "scatter" or len(layout["series"]) < 2:
         return ""
     return f'<c:legend><c:legendPos val="t"/><c:overlay val="0"/>{text_properties_xml(text_style(layout, "legend"), context)}</c:legend>'
 

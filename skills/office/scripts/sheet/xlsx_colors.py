@@ -5,11 +5,11 @@ import colorsys
 from lxml import etree
 from openpyxl.styles.colors import COLOR_INDEX
 
-from theme_colors import THEME_SLOTS
+from office_theme import OFFICE_THEME, THEME_SLOTS
 
 
 DRAWING_NAMESPACE = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
-DEFAULT_THEME = ("FFFFFF", "000000", "E7E6E6", "44546A", "4472C4", "ED7D31", "A5A5A5", "FFC000", "5B9BD5", "70AD47", "0563C1", "954F72")
+DEFAULT_THEME = tuple(OFFICE_THEME.values())
 
 
 def theme_palette(theme_bytes: bytes | None) -> tuple[str, ...]:

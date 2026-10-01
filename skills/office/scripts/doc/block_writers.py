@@ -5,7 +5,8 @@ import html
 import mimetypes
 
 from fonts.registry import MONOSPACE, SANS_BODY, default_family
-from chart_svg import chart_svg
+from charts.look import OFFICE_SERIES_COLORS
+from charts.svg import chart_svg
 from docx_charts import specification
 from markdown_charts import Chart
 from latex_math import LatexNotReadable, latex_html
@@ -121,7 +122,8 @@ def html_blocks(blocks: list, chart_font_family: str = CHART_FONT_FAMILY, headin
 
 
 def chart_html(chart: Chart, font_family: str) -> str:
-    svg = chart_svg(specification(chart.specification).model(), CHART_WIDTH_PIXELS, CHART_WIDTH_PIXELS * CHART_HEIGHT_RATIO, font_family)
+    chart_specification = specification(chart.specification)
+    svg = chart_svg(chart_specification.model(), CHART_WIDTH_PIXELS, CHART_WIDTH_PIXELS * CHART_HEIGHT_RATIO, chart_specification.look(OFFICE_SERIES_COLORS), font_family)
     return f'<figure class="chart" style="margin:12px 0">{svg}</figure>'
 
 

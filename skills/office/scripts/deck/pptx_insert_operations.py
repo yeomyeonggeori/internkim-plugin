@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from pptx.chart.data import CategoryChartData
-from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
+from pptx.enum.chart import XL_LEGEND_POSITION
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.util import Emu
 
+from charts.kinds import ROUND_CHART_KINDS, office_chart_type
 from office_operations import Change
 from office_result import INVALID_VALUE, OfficeFailure
 from pptx_backdrop import readable_text_color
@@ -25,17 +26,6 @@ SHAPE_GEOMETRIES = {
     "pentagon": MSO_SHAPE.PENTAGON,
     "diamond": MSO_SHAPE.DIAMOND,
 }
-CHART_TYPES = {
-    "column": XL_CHART_TYPE.COLUMN_CLUSTERED,
-    "stacked_column": XL_CHART_TYPE.COLUMN_STACKED,
-    "bar": XL_CHART_TYPE.BAR_CLUSTERED,
-    "stacked_bar": XL_CHART_TYPE.BAR_STACKED,
-    "line": XL_CHART_TYPE.LINE_MARKERS,
-    "pie": XL_CHART_TYPE.PIE,
-    "doughnut": XL_CHART_TYPE.DOUGHNUT,
-    "area": XL_CHART_TYPE.AREA,
-}
-SINGLE_SERIES_CHARTS = {"pie", "doughnut"}
 TABLE_ROW_HEIGHT_EMU = 365760
 
 
@@ -143,13 +133,13 @@ def chart_data(categories: list, series: list[dict], location: str, number_forma
 def plan_add_chart(editing: PptxEditing, operation: dict, location: str) -> Change:
     slide = resolve_slide(editing, operation["slide"], f"{location}.slide")
     data = chart_data(operation["categories"], operation["series"], location)
-    if operation["type"] in SINGLE_SERIES_CHARTS and len(operation["series"]) > 1:
+    if operation["type"] in ROUND_CHART_KINDS and len(operation["series"]) > 1:
         raise OfficeFailure(INVALID_VALUE.issue(f"{location}.series: a {operation['type']} chart shows one series", f"{location}.series", "give one series, or pick column or bar"))
 
     def change() -> str:
-        chart = slide.shapes.add_chart(CHART_TYPES[operation["type"]], *box_arguments(operation), data).chart
+        chart = slide.shapes.add_chart(office_chart_type(operation["type"]), *box_arguments(operation), data).chart
         legend = operation.get("legend")
-        chart.has_legend = legend if legend is not None else len(operation["series"]) > 1 or operation["type"] in SINGLE_SERIES_CHARTS
+        chart.has_legend = legend if legend is not None else len(operation["series"]) > 1 or operation["type"] in ROUND_CHART_KINDS
         if chart.has_legend:
             chart.legend.position = XL_LEGEND_POSITION.BOTTOM
             chart.legend.include_in_layout = False

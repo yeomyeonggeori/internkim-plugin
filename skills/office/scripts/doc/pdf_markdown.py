@@ -9,13 +9,14 @@ from doc_definitions import IMAGE_UNAVAILABLE
 from markdown_charts import Chart, number_text
 from markdown_blocks import Equation, Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, has_link, inline_segments, link_parts, local_image_problem, strip_inline_markers
 from office_result import Issue
+from office_theme import HYPERLINK_COLOR
 
 
 HEADING_SIZES = {1: 20, 2: 15, 3: 12.5, 4: 11}
 LIST_INDENT = 4
 NESTED_LIST_INDENT = 6
 QUOTE_INDENT = 8
-LINK_COLOR = (5, 99, 193)
+LINK_COLOR = tuple(bytes.fromhex(HYPERLINK_COLOR))
 TEXT_COLOR = (0, 0, 0)
 RULE_COLOR = (140, 149, 159)
 DEFAULT_IMAGE_DOTS_PER_INCH = 96

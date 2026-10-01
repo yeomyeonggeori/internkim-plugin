@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from charts.kinds import DOCUMENT_CHART_KINDS, ROUND_CHART_KINDS, kit_document_kind
+from charts.numbers import chart_number, split_chart_list
 from doc_definitions import CHART_BLOCK_INVALID
-from docx_charts import CHART_KINDS, ROUND_KINDS
 from office_result import OfficeFailure
 
 
-KIT_CHART_NAMES = {"stacked": "stacked_column", "donut": "doughnut"}
 CHART_KEYS = ("type", "title", "labels", "values", "series", "line", "legend")
 TRUE_WORDS = ("yes", "true", "on")
 FALSE_WORDS = ("no", "false", "off")
@@ -41,15 +41,15 @@ def parse_chart_fence(lines: list[str], line_number: int) -> Chart:
 
 
 def chart_specification(entries: dict[str, str]) -> tuple[dict, list[str]]:
-    kind = KIT_CHART_NAMES.get(entries.get("type", "").strip(), entries.get("type", "").strip())
-    if kind not in CHART_KINDS:
-        return {}, [f"type: {entries.get('type', '')!r} is not one of {', '.join(CHART_KINDS)}"]
-    categories = split_list(entries.get("labels", ""))
+    kind = kit_document_kind(entries.get("type", "").strip())
+    if kind not in DOCUMENT_CHART_KINDS:
+        return {}, [f"type: {entries.get('type', '')!r} is not one of {', '.join(DOCUMENT_CHART_KINDS)}"]
+    categories = split_chart_list(entries.get("labels", ""))
     series, problems = chart_series(entries)
     counts_are_meaningful = not problems
     if not categories:
         problems.append("labels: give the category labels, separated by commas")
-    lines = set(split_list(entries.get("line", "")))
+    lines = set(split_chart_list(entries.get("line", "")))
     unknown_lines = sorted(lines - {entry["name"] for entry in series})
     if unknown_lines:
         problems.append(f"line: {', '.join(unknown_lines)} is not a series name")
@@ -58,7 +58,7 @@ def chart_specification(entries: dict[str, str]) -> tuple[dict, list[str]]:
             entry["line"] = True
         if counts_are_meaningful and categories and len(entry["values"]) != len(categories):
             problems.append(f"{entry['name']} has {len(entry['values'])} numbers for {len(categories)} labels")
-    if kind in ROUND_KINDS and len(series) > 1:
+    if kind in ROUND_CHART_KINDS and len(series) > 1:
         problems.append(f"a {kind} chart takes one series in values:")
     specification = {"type": kind, "categories": categories, "series": series}
     if entries.get("title"):
@@ -74,30 +74,19 @@ def chart_series(entries: dict[str, str]) -> tuple[list[dict], list[str]]:
         parts = [part.strip() for part in entries["series"].split(";") if part.strip()]
         named = [part.partition(":") for part in parts]
         problems = [f'series: "{name}" has no "name:" before its numbers' for name, separator, _ in named if not separator]
-        series = [{"name": name.strip(), "values_text": split_list(values)} for name, separator, values in named if separator]
+        series = [{"name": name.strip(), "values_text": split_chart_list(values)} for name, separator, values in named if separator]
     elif entries.get("values"):
-        series, problems = [{"name": entries.get("title") or "값", "values_text": split_list(entries["values"])}], []
+        series, problems = [{"name": entries.get("title") or "값", "values_text": split_chart_list(entries["values"])}], []
     else:
         return [], ["give values: (one series) or series: name: 1, 2; other: 3, 4"]
     for entry in series:
         texts = entry.pop("values_text")
-        not_numbers = [text for text in texts if not is_plain_number(text)]
+        numbers = [chart_number(text) for text in texts]
+        not_numbers = [text for text, number in zip(texts, numbers) if number is None]
         if not_numbers:
             problems.append(f"{entry['name']} holds {', '.join(not_numbers[:3])}, which are not plain numbers; put the unit in title:")
-        entry["values"] = [float(text.replace("−", "-")) for text in texts if is_plain_number(text)]
+        entry["values"] = [number for number in numbers if number is not None]
     return series, problems
-
-
-def split_list(text: str) -> list[str]:
-    return [value.strip() for value in text.split(",") if value.strip()]
-
-
-def is_plain_number(text: str) -> bool:
-    try:
-        float(text.replace("−", "-"))
-        return True
-    except ValueError:
-        return False
 
 
 def chart_fence(specification: dict) -> str:

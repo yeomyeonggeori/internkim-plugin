@@ -1,16 +1,19 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from openpyxl.utils import range_boundaries
 
-from chart_svg import LABEL_FLAGS, ChartModel, ChartSeries, chart_svg
+from charts.kinds import PERCENT_GROUPING, STACKED_GROUPINGS, plot_kind
+from charts.look import LABEL_FLAGS, ChartLook, document_look
+from charts.svg import ChartModel, ChartSeries, chart_svg
 from fonts.preview import DEFAULT_FAMILY
 from office_preview import data_uri, emu_to_pixels, pixels, style_attribute
+from office_theme import ACCENT_SLOTS, THEME_SLOTS
 
 
-ACCENT_SLOTS = range(4, 10)
-ROUND_KINDS = {"PieChart": "pie", "PieChart3D": "pie", "ProjectedPieChart": "pie", "DoughnutChart": "doughnut"}
+ACCENT_POSITIONS = tuple(THEME_SLOTS.index(slot) for slot in ACCENT_SLOTS)
+DRAWN_PLOT_KINDS = ("column", "bar", "line", "area", "pie", "doughnut", "scatter")
 
 
 @dataclass(frozen=True)
@@ -68,8 +71,14 @@ def absolute(box: Box) -> dict:
 
 def chart_html(chart, box: Box, values_workbook, palette: tuple, preview) -> str:
     model = chart_model(chart, values_workbook, preview)
+    return f"<div{style_attribute(absolute(box))}>{chart_svg(model, box.width, box.height, chart_look(chart, model, palette), DEFAULT_FAMILY)}</div>"
+
+
+def chart_look(chart, model: ChartModel, palette: tuple) -> ChartLook:
     colors = point_colors(chart_items(chart), palette) if model.is_round else tuple(series_color(item, palette, index) for index, item in enumerate(chart_items(chart)))
-    return f"<div{style_attribute(absolute(box))}>{chart_svg(model, box.width, box.height, DEFAULT_FAMILY, colors or round_colors(palette))}</div>"
+    look = document_look(colors or round_colors(palette), len(model.series), model.is_round, model.stacked, chart.legend is not None, label_mode(chart_plots(chart)))
+    gap_width = next((plot.gapWidth for plot in chart_plots(chart) if getattr(plot, "gapWidth", None) is not None), None)
+    return replace(look, gap_width=gap_width) if gap_width is not None else look
 
 
 def chart_plots(chart) -> list:
@@ -81,20 +90,19 @@ def chart_items(chart) -> list:
 
 
 def series_kind(plot, preview) -> str:
-    kind = type(plot).__name__
-    if kind == "BarChart" or kind == "BarChart3D":
-        return "bar" if plot.barDir == "bar" else "column"
-    if kind in ROUND_KINDS:
-        return ROUND_KINDS[kind]
-    if kind in ("AreaChart", "AreaChart3D"):
-        return "area"
-    if kind not in ("LineChart", "LineChart3D"):
-        preview.approximate(f"{kind} drawn as lines over its categories")
+    kind = plot_series_kind(plot)
+    if kind in DRAWN_PLOT_KINDS:
+        return kind
+    preview.approximate(f"{plot.tagname} drawn as lines over its categories")
     return "line"
 
 
+def plot_series_kind(plot) -> str:
+    return plot_kind(plot.tagname, getattr(plot, "barDir", None)) or plot.tagname
+
+
 def is_stacked(plot) -> bool:
-    return getattr(plot, "grouping", None) in ("stacked", "percentStacked")
+    return getattr(plot, "grouping", None) in STACKED_GROUPINGS
 
 
 def axis_identifier(plot) -> int | None:
@@ -108,20 +116,22 @@ def chart_model(chart, values_workbook, preview) -> ChartModel:
     for plot in plots:
         kind = series_kind(plot, preview)
         for item in plot.series:
-            reference = item.val.numRef.f if item.val is not None and item.val.numRef is not None else None
-            values = tuple(float(value) if isinstance(value, (int, float)) else 0.0 for value in reference_values(reference, values_workbook))
-            series.append(ChartSeries(series_name(item, values_workbook, len(series)), values, kind))
-    secondary = len({axis_identifier(plot) for plot in plots}) > 1
+            values = numbers(getattr(item, "val", None) or getattr(item, "yVal", None), values_workbook)
+            across = numbers(getattr(item, "xVal", None), values_workbook)
+            series.append(ChartSeries(series_name(item, values_workbook, len(series)), values, kind, across))
     return ChartModel(
-        tuple(chart_categories(chart, values_workbook)),
-        tuple(series),
-        chart_title(chart),
-        any(is_stacked(plot) for plot in plots),
-        chart.legend is not None,
-        secondary,
-        any(getattr(plot, "grouping", None) == "percentStacked" for plot in plots),
-        label_mode(plots),
+        categories=tuple(chart_categories(chart, values_workbook)),
+        series=tuple(series),
+        title=chart_title(chart),
+        stacked=any(is_stacked(plot) for plot in plots),
+        percent_stacked=any(getattr(plot, "grouping", None) == PERCENT_GROUPING for plot in plots),
+        secondary_axis=len({axis_identifier(plot) for plot in plots}) > 1,
     )
+
+
+def numbers(source, values_workbook) -> tuple[float, ...]:
+    reference = source.numRef.f if source is not None and source.numRef is not None else None
+    return tuple(float(value) if isinstance(value, (int, float)) else 0.0 for value in reference_values(reference, values_workbook))
 
 
 def label_mode(plots: list) -> str:
@@ -155,7 +165,7 @@ def solid_color(properties) -> str | None:
 
 
 def round_colors(palette: tuple) -> tuple:
-    return tuple(f"#{palette[slot].lower()}" for slot in ACCENT_SLOTS)
+    return tuple(f"#{palette[slot].lower()}" for slot in ACCENT_POSITIONS)
 
 
 def reference_values(reference: str | None, values_workbook) -> list:
@@ -175,8 +185,7 @@ def series_color(item, palette: tuple, index: int) -> str:
     color = solid_color(properties) or solid_color(getattr(properties, "line", None))
     if color:
         return color
-    slots = list(ACCENT_SLOTS)
-    return f"#{palette[slots[index % len(slots)]].lower()}"
+    return f"#{palette[ACCENT_POSITIONS[index % len(ACCENT_POSITIONS)]].lower()}"
 
 
 def chart_categories(chart, values_workbook) -> list[str]:
@@ -192,14 +201,7 @@ def chart_categories(chart, values_workbook) -> list[str]:
 
 
 def chart_kind(chart) -> str:
-    return "+".join(dict.fromkeys(series_kind_name(plot) for plot in chart_plots(chart)))
-
-
-def series_kind_name(plot) -> str:
-    kind = type(plot).__name__
-    if kind.startswith("BarChart"):
-        return "bar" if plot.barDir == "bar" else "column"
-    return ROUND_KINDS.get(kind) or kind.removesuffix("3D").removesuffix("Chart").lower()
+    return "+".join(dict.fromkeys(plot_series_kind(plot) for plot in chart_plots(chart)))
 
 
 def chart_title(chart) -> str:

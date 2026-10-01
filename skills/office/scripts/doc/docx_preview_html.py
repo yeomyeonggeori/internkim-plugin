@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from chart_svg import chart_svg
+from charts.svg import chart_svg
 from docx_layout import BreakLayout, Fragment, Line, ParagraphLayout, TableLayout, trimmed
 from docx_pagination import NOTE_SEPARATOR_PIXELS, Page, ParagraphSlice, TableSlice
 from docx_preview_css import border_value
@@ -122,7 +122,7 @@ class PageWriter:
         if fragment.kind == "chart":
             item = fragment.item
             box = {"display": "inline-block", "width": pixels(fragment.width), "height": pixels(fragment.height), "vertical-align": "bottom"}
-            return f"<div{style_attribute(box)}>{chart_svg(item.model, fragment.width, fragment.height, fragment.text, item.palette)}</div>"
+            return f"<div{style_attribute(box)}>{chart_svg(item.model, fragment.width, fragment.height, item.look, fragment.text)}</div>"
         if fragment.kind == "box":
             box = {"display": "inline-block", "width": pixels(fragment.width), "height": pixels(fragment.height), "vertical-align": "bottom", "overflow": "hidden", "white-space": "normal"}
             return f"<div{style_attribute(box)}>{self.layouts_html(fragment.inner)}</div>"

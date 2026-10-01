@@ -8,7 +8,8 @@ from openpyxl.chart.shapes import GraphicalProperties
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.cell import range_boundaries
 
-from chart_svg import LABEL_FLAGS
+from charts.kinds import ROUND_CHART_KINDS, plot_kind
+from charts.look import LABEL_FLAGS
 from office_operations import OPERATION_NOT_APPLICABLE, Change, chart_indexes_suggestion
 from office_result import MISSING_FIELD, OfficeFailure
 from sheet_definitions import CHART_COLUMN_LEFT_OUT
@@ -26,10 +27,7 @@ SECONDARY_AXIS_ID = 200
 BAR_GAP_WIDTH = 80
 DOUGHNUT_HOLE = 55
 LEGEND_POSITIONS = {"bottom": "b", "right": "r", "top": "t"}
-ROUND_CHARTS = ("pie", "doughnut")
-ROUND_PLOTS = ("pieChart", "doughnutChart", "pie3DChart", "ofPieChart")
-LINE_PLOTS = ("lineChart", "line3DChart", "radarChart")
-SCATTER_PLOT = "scatterChart"
+LINE_PLOT_KINDS = ("line", "radar")
 GENERAL = "General"
 SHARE_FORMAT = "0%"
 SHOWN_LABEL_FLAGS = tuple(dict.fromkeys(flag for flags in LABEL_FLAGS.values() for flag in flags))
@@ -137,7 +135,7 @@ def range_text(bounds: tuple[int, int, int, int]) -> str:
 
 def build_chart(worksheet, operation: dict, location: str, chart_index: int):
     bounds = parse_range(operation["range"], f"{location}.range")
-    require_labels_fit(operation["type"] in ROUND_CHARTS, operation, location)
+    require_labels_fit(operation["type"] in ROUND_CHART_KINDS, operation, location)
     columns = drawn_columns(worksheet, bounds, operation, location)
     if operation["type"] == "scatter":
         chart = scatter_chart(worksheet, bounds, columns)
@@ -190,7 +188,7 @@ def new_chart(chart_type: str, operation: dict):
 def category_chart(worksheet, bounds, columns: list[int], operation: dict):
     chart_type = operation["type"]
     chart = new_chart(chart_type, operation)
-    add_columns(chart, worksheet, bounds, columns[:1] if chart_type in ROUND_CHARTS else columns)
+    add_columns(chart, worksheet, bounds, columns[:1] if chart_type in ROUND_CHART_KINDS else columns)
     chart.set_categories(categories(worksheet, bounds))
     return chart
 
@@ -267,12 +265,13 @@ def paint_series(chart, colors: list[str]) -> None:
             index += 1
 
 
-def paint_one(plot_kind: str, series, colors: list[str], index: int) -> None:
-    if plot_kind in ROUND_PLOTS:
+def paint_one(plot_tag: str, series, colors: list[str], index: int) -> None:
+    kind = plot_kind(plot_tag)
+    if kind in ROUND_CHART_KINDS:
         series.dPt = [point_with_color(point, series_color(colors, point)) for point in range(point_count(series))]
-    elif plot_kind in LINE_PLOTS:
+    elif kind in LINE_PLOT_KINDS:
         style_line(series, series_color(colors, index))
-    elif plot_kind == SCATTER_PLOT:
+    elif kind == "scatter":
         style_marker(series, series_color(colors, index))
     else:
         style_fill(series, series_color(colors, index))
@@ -384,7 +383,7 @@ def plan_edit_chart(editing, operation: dict, location: str) -> Change:
         raise OfficeFailure(MISSING_FIELD.issue(f"{location}.range: changing the chart type needs the data range", f"{location}.range"))
     replacement, left_out = build_chart(worksheet, {"type": "bar", **operation}, location, operation["chart"]) if operation.get("range") else (None, None)
     if replacement is None:
-        require_labels_fit(any(plot.tagname in ROUND_PLOTS for plot in chart._charts), operation, location)
+        require_labels_fit(any(plot_kind(plot.tagname) in ROUND_CHART_KINDS for plot in chart._charts), operation, location)
 
     def change() -> str:
         index = operation["chart"]

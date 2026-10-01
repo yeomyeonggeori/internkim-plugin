@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import re
 
+from office_theme import THEME_SLOTS
 
-THEME_SLOTS = ("lt1", "dk1", "lt2", "dk2", "accent1", "accent2", "accent3", "accent4", "accent5", "accent6", "hlink", "folHlink")
+
 THEME_COLOR = re.compile(r"(?P<slot>[A-Za-z]+[0-9]?)(?:\s*(?P<sign>[+-])\s*(?P<percent>[0-9]{1,3})%)?")
 
 

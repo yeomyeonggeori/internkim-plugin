@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 
-from chart_svg import LABEL_FLAGS
+from charts.kinds import SHEET_CHART_TYPES
+from charts.look import LABEL_FLAGS
 from fonts.registry import OFFICE_KOREAN_FAMILY
 from office_preview import PREVIEW_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
@@ -11,7 +12,8 @@ from template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
 from office_result import ERROR, INVALID_VALUE, WARNING, WRONG_TYPE, Issue, IssueKind
 from office_schema import HEX_COLOR_PATTERN, AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, closest_name, color_problem, wrong_type
 from text_checks import PLACEHOLDER_LEFT
-from theme_colors import THEME_COLOR, THEME_SLOTS, theme_reference
+from office_theme import THEME_SLOTS
+from theme_colors import THEME_COLOR, theme_reference
 
 
 SHOWN_ROW_LIMIT = 4
@@ -81,7 +83,6 @@ HIDDEN = Field("hidden", Boolean(), "true (default) hides, false shows again")
 CHART_INDEX = Field("chart", Number(minimum=0, integer=True), "chart index on the sheet, from sheet read", required=True)
 SHAPE_GEOMETRIES = {"rectangle": "rect", "rounded_rectangle": "roundRect", "ellipse": "ellipse", "arrow": "rightArrow", "callout": "wedgeRectCallout", "textbox": "rect"}
 COMPARISON_OPERATORS = ("between", "not_between", "equal", "not_equal", "greater_than", "less_than", "greater_or_equal", "less_or_equal")
-CHART_TYPES = ("bar", "line", "pie", "area", "doughnut", "scatter", "radar", "combo")
 CHART_TITLE_LIMIT = 255
 DATA_LABELS = tuple(LABEL_FLAGS)
 CHART_FIELDS = (
@@ -376,14 +377,14 @@ OPERATIONS = Variant(
         Record("recalculate", "store a freshly computed value for every formula the workbook can compute", ()),
         Record("add_chart", "add a chart of a block whose first column holds the categories and whose first row names the series; a column with no number is left out with a warning, and a block with none is refused; scatter uses the first column as x values", (
             SHEET_NAME,
-            Field("type", Choice(CHART_TYPES), "chart kind; combo draws the first series as bars and the last ones as lines", required=True),
+            Field("type", Choice(SHEET_CHART_TYPES), "chart kind; combo draws the first series as bars and the last ones as lines", required=True),
             Field("range", CELL_ADDRESS, "data block including its header row and category column, such as A1:C7", required=True),
             *CHART_FIELDS,
         )),
         Record("edit_chart", "change a chart; unnamed properties stay, and type needs range", (
             SHEET_NAME,
             CHART_INDEX,
-            Field("type", Choice(CHART_TYPES), "new chart kind"),
+            Field("type", Choice(SHEET_CHART_TYPES), "new chart kind"),
             Field("range", CELL_ADDRESS, "new data block"),
             *CHART_FIELDS,
         )),

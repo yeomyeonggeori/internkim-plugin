@@ -18,10 +18,10 @@ from docx_text import PARAGRAPH_TAG, live_runs, run_text, visible_text
 from docx_tracking import mark_block_inserted, runs_between, split_runs_at
 from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
 from office_result import INVALID_VALUE, MISSING_FIELD, OfficeFailure
+from office_theme import HYPERLINK_COLOR
 
 
 BOOKMARK_NAME_PATTERN = re.compile(r"^[^\W\d_]\w{0,39}$")
-LINK_COLOR = "0563C1"
 CONTENTS_INDENT_INCHES = 0.25
 NOTE_KINDS = {
     "footnote": ("footnotes", "/word/footnotes.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml", "FootnoteText", "FootnoteReference"),
@@ -148,7 +148,7 @@ def plan_insert_link(editing: DocxEditing, operation: dict, location: str) -> Ch
 def style_as_link(run) -> None:
     font = Run(run, None).font
     font.underline = True
-    font.color.rgb = RGBColor.from_string(LINK_COLOR)
+    font.color.rgb = RGBColor.from_string(HYPERLINK_COLOR)
 
 
 def anchored_runs(paragraph_element, find: str, operation: dict, location: str) -> list:

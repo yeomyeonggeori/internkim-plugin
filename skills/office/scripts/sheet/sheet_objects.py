@@ -13,12 +13,12 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 
 from office_operations import OPERATION_NOT_APPLICABLE, Change
 from office_result import INVALID_VALUE, OfficeFailure
+from office_theme import HYPERLINK_COLOR
 from workbook_access import column_index, parse_cell, parse_range, sheet_of
 
 
 TABLE_NAME = re.compile(r"^[A-Za-z_\u0080-￿][A-Za-z0-9_.\u0080-￿]*$")
 DEFAULT_TABLE_STYLE = "TableStyleMedium2"
-LINK_COLOR = "0563C1"
 EXTERNAL_LINK = re.compile(r"^(https?://|mailto:|file:)", re.IGNORECASE)
 COMMENT_WIDTH = 240
 COMMENT_HEIGHT = 90
@@ -115,7 +115,7 @@ def plan_set_hyperlink(workbook, operation: dict, location: str) -> Change:
             cell.hyperlink = Hyperlink(ref=cell.coordinate, target=url, tooltip=operation.get("tooltip"))
         if operation.get("text") or cell.value is None:
             cell.value = operation.get("text") or url.lstrip("#")
-        cell.font = Font(name=cell.font.name, size=cell.font.sz, bold=cell.font.b, color=LINK_COLOR, underline="single")
+        cell.font = Font(name=cell.font.name, size=cell.font.sz, bold=cell.font.b, color=HYPERLINK_COLOR, underline="single")
         return f"linked {worksheet.title}!{cell.coordinate} to {url}"
     return change
 

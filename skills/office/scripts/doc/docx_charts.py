@@ -10,28 +10,17 @@ from docx.oxml.ns import nsdecls, qn
 from lxml import etree
 from pptx.chart.chart import Chart
 from pptx.chart.data import CategoryChartData
-from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
+from pptx.enum.chart import XL_LEGEND_POSITION
 from pptx.oxml import parse_xml as parse_chart_xml
 
-from chart_svg import ChartModel, ChartSeries
+from charts.kinds import COMBO_CHART_KIND, OFFICE_CHART_KINDS, ROUND_CHART_KINDS, document_kind, drawn_kind, is_stacked_kind, office_chart_type, plot_kind
+from charts.look import ChartLook, document_look
+from charts.svg import ChartModel, ChartSeries
 
 
 CHART_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/chart"
 RELATIONSHIP_NAMESPACE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-CHART_KINDS = ("column", "stacked_column", "bar", "stacked_bar", "line", "area", "pie", "doughnut", "combo")
-NATIVE_TYPES = {
-    "column": XL_CHART_TYPE.COLUMN_CLUSTERED,
-    "stacked_column": XL_CHART_TYPE.COLUMN_STACKED,
-    "bar": XL_CHART_TYPE.BAR_CLUSTERED,
-    "stacked_bar": XL_CHART_TYPE.BAR_STACKED,
-    "line": XL_CHART_TYPE.LINE_MARKERS,
-    "area": XL_CHART_TYPE.AREA,
-    "pie": XL_CHART_TYPE.PIE,
-    "doughnut": XL_CHART_TYPE.DOUGHNUT,
-}
-SERIES_KINDS = {"column": "column", "stacked_column": "column", "bar": "bar", "stacked_bar": "bar", "line": "line", "area": "area", "pie": "pie", "doughnut": "doughnut"}
-ROUND_KINDS = ("pie", "doughnut")
-PLOT_TAGS = {"barChart", "bar3DChart", "lineChart", "line3DChart", "pieChart", "pie3DChart", "doughnutChart", "areaChart", "area3DChart"}
+DRAWN_KINDS = {drawn_kind(kind) for kind in OFFICE_CHART_KINDS}
 SECONDARY_AXIS_RATIO = 0.1
 SECONDARY_AXIS_IDENTIFIERS = ("50010", "50020")
 CHART_TEXT_SIZE = "1000"
@@ -48,7 +37,7 @@ class ChartSpecification:
 
     @property
     def uses_secondary_axis(self) -> bool:
-        if self.kind != "combo":
+        if self.kind != COMBO_CHART_KIND:
             return False
         if self.secondary_axis is not None:
             return self.secondary_axis
@@ -63,7 +52,7 @@ class ChartSpecification:
         dictionary = {
             "type": self.kind,
             "categories": list(self.categories),
-            "series": [{"name": name, "values": [plain_number(value) for value in values], **({"line": True} if is_line and self.kind == "combo" else {})} for name, values, is_line in self.series],
+            "series": [{"name": name, "values": [plain_number(value) for value in values], **({"line": True} if is_line and self.kind == COMBO_CHART_KIND else {})} for name, values, is_line in self.series],
         }
         if self.title:
             dictionary["title"] = self.title
@@ -71,17 +60,19 @@ class ChartSpecification:
 
     @property
     def shows_legend(self) -> bool:
-        return self.legend if self.legend is not None else len(self.series) > 1 or self.kind in ROUND_KINDS
+        return self.legend if self.legend is not None else len(self.series) > 1 or self.kind in ROUND_CHART_KINDS
 
     def model(self) -> ChartModel:
         return ChartModel(
             categories=self.categories,
             series=tuple(ChartSeries(name, values, series_kind(self.kind, is_line)) for name, values, is_line in self.series),
             title=self.title,
-            stacked=self.kind.startswith("stacked"),
-            legend=self.shows_legend,
+            stacked=is_stacked_kind(self.kind),
             secondary_axis=self.uses_secondary_axis,
         )
+
+    def look(self, colors: tuple[str, ...]) -> ChartLook:
+        return document_look(colors, len(self.series), self.kind in ROUND_CHART_KINDS, is_stacked_kind(self.kind), self.shows_legend, None)
 
 
 @dataclass
@@ -93,9 +84,9 @@ class DocumentChart:
 
 
 def series_kind(kind: str, is_line: bool) -> str:
-    if kind == "combo":
+    if kind == COMBO_CHART_KIND:
         return "line" if is_line else "column"
-    return SERIES_KINDS[kind]
+    return drawn_kind(kind)
 
 
 def specification(operation: dict) -> ChartSpecification:
@@ -118,8 +109,8 @@ def chart_data(categories: tuple[str, ...], series: list[tuple[str, tuple[float,
 
 
 def chart_space(specification: ChartSpecification):
-    if specification.kind != "combo":
-        root = parse_chart_xml(chart_data(specification.categories, list(specification.series)).xml_bytes(NATIVE_TYPES[specification.kind]))
+    if specification.kind != COMBO_CHART_KIND:
+        root = parse_chart_xml(chart_data(specification.categories, list(specification.series)).xml_bytes(office_chart_type(specification.kind)))
     else:
         root = combo_chart_space(specification)
     chart = Chart(root, None)
@@ -137,9 +128,9 @@ def chart_space(specification: ChartSpecification):
 
 def combo_chart_space(specification: ChartSpecification):
     all_series = list(specification.series)
-    root = parse_chart_xml(chart_data(specification.categories, all_series).xml_bytes(XL_CHART_TYPE.COLUMN_CLUSTERED))
+    root = parse_chart_xml(chart_data(specification.categories, all_series).xml_bytes(office_chart_type("column")))
     bar_chart = root.find(f".//{{{CHART_NAMESPACE}}}barChart")
-    line_source = parse_chart_xml(chart_data(specification.categories, all_series).xml_bytes(XL_CHART_TYPE.LINE_MARKERS))
+    line_source = parse_chart_xml(chart_data(specification.categories, all_series).xml_bytes(office_chart_type("line")))
     line_chart = line_source.find(f".//{{{CHART_NAMESPACE}}}lineChart")
     for bar_series_element, line_series_element, (_, _, is_line) in zip(bar_chart.findall(f"{{{CHART_NAMESPACE}}}ser"), line_chart.findall(f"{{{CHART_NAMESPACE}}}ser"), all_series):
         (bar_chart if is_line else line_chart).remove(bar_series_element if is_line else line_series_element)
@@ -245,31 +236,30 @@ def document_charts(document, blocks: list) -> list[DocumentChart]:
 
 def read_specification(chart_part) -> ChartSpecification:
     root = etree.fromstring(chart_part.blob)
-    plot_charts = [child for child in root.iter() if etree.QName(child).localname in PLOT_TAGS and etree.QName(child).namespace == CHART_NAMESPACE]
+    plot_charts = [child for child in root.iter() if etree.QName(child).namespace == CHART_NAMESPACE and plot_kind(etree.QName(child).localname) in DRAWN_KINDS]
     series, categories, kinds = [], (), []
     for plot_chart in plot_charts:
-        kind = plot_kind(plot_chart)
+        kind = plot_chart_kind(plot_chart)
         kinds.append(kind)
         for element in plot_chart.findall(f"{{{CHART_NAMESPACE}}}ser"):
             labels, values = cached_points(element, "cat"), cached_points(element, "val")
             categories = categories or tuple(labels)
             series.append((series_name(element), tuple(float(value) if is_number(value) else 0.0 for value in values), kind == "line"))
-    combined = "combo" if len(set(kinds)) > 1 else (kinds[0] if kinds else "column")
+    combined = COMBO_CHART_KIND if len(set(kinds)) > 1 else (kinds[0] if kinds else "column")
     title = "".join(text.text or "" for text in root.iterfind(f".//{{{CHART_NAMESPACE}}}title//{{http://schemas.openxmlformats.org/drawingml/2006/main}}t"))
     legend = root.find(f".//{{{CHART_NAMESPACE}}}legend") is not None
     secondary = len(root.findall(f".//{{{CHART_NAMESPACE}}}valAx")) > 1
-    return ChartSpecification(combined, categories, tuple(series), title, legend, secondary if combined == "combo" else None)
+    return ChartSpecification(combined, categories, tuple(series), title, legend, secondary if combined == COMBO_CHART_KIND else None)
 
 
-def plot_kind(plot_chart) -> str:
-    name = etree.QName(plot_chart).localname.replace("3D", "")
-    if name == "barChart":
-        direction = plot_chart.find(f"{{{CHART_NAMESPACE}}}barDir")
-        grouping = plot_chart.find(f"{{{CHART_NAMESPACE}}}grouping")
-        base = "bar" if direction is not None and direction.get("val") == "bar" else "column"
-        stacked = grouping is not None and grouping.get("val") in ("stacked", "percentStacked")
-        return f"stacked_{base}" if stacked else base
-    return {"lineChart": "line", "pieChart": "pie", "doughnutChart": "doughnut", "areaChart": "area"}.get(name, "column")
+def plot_chart_kind(plot_chart) -> str:
+    drawn = plot_kind(etree.QName(plot_chart).localname, child_value(plot_chart, "barDir"))
+    return document_kind(drawn, child_value(plot_chart, "grouping"))
+
+
+def child_value(element, tag: str) -> str | None:
+    child = element.find(f"{{{CHART_NAMESPACE}}}{tag}")
+    return child.get("val") if child is not None else None
 
 
 def cached_points(series_element, tag: str) -> list[str]:

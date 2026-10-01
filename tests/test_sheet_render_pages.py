@@ -25,7 +25,7 @@ class RenderedPagesTest(WorkbookFixture):
         svg = self.chart_svgs(preview)[0]
         self.assertEqual(svg.count("<rect x=") - 1 - 2, 4)
         self.assertEqual(svg.count("<polyline"), 1)
-        self.assertIn(">0.5<", svg)
+        self.assertRegex(svg, r'text-anchor="start" dominant-baseline="middle">0.3<')
         self.assertIn(">margin<", svg)
 
     def test_a_pie_is_drawn_in_the_slice_colors_it_was_given(self):

@@ -29,7 +29,9 @@ from deck_definitions import (
     kit_layout,
     part_label,
 )
-from deck_kit import DEFAULT_THEME, chart_number, chart_types, split_chart_list, theme_palettes, uses_deck_kit
+from charts.kinds import KIT_STACKED_CHARTS, is_round_kind
+from charts.numbers import chart_number, split_chart_list
+from deck_kit import DEFAULT_THEME, chart_types, theme_palettes, uses_deck_kit
 from deck_source import Element, find_all, normalized_text, parse_source, style_texts, visible_text
 from design_tokens import design_front_matter
 from office_inputs import PPTX, require_kind
@@ -46,7 +48,6 @@ CLOSING_SLIDE_MINIMUM = 3
 VARIETY_SLIDE_MINIMUM = 6
 VARIETY_LAYOUT_MINIMUM = 3
 DONUT_SLICE_MAXIMUM = 8
-STACKED_CHART_TYPES = ("stacked", "stacked100", "area")
 ALWAYS_ALLOWED_COLORS = {"FFFFFF", "000000"}
 COLOR_LITERAL_PATTERN = re.compile(r"#[0-9A-Fa-f]{3,8}\b|(?:rgba?|hsla?)\([^)]*\)")
 DECLARATION_PATTERN = re.compile(r"([-\w]+)\s*:\s*([^;{}]+)")
@@ -229,7 +230,7 @@ def chart_issues(slide: Slide) -> list[Issue]:
 
 
 def chart_problems(chart_type: str, attributes: dict[str, str]) -> list[str]:
-    labels = split_list(attributes.get("data-labels", ""))
+    labels = split_chart_list(attributes.get("data-labels", ""))
     if not labels:
         return ["data-labels is empty"]
     series = chart_series(attributes)
@@ -247,10 +248,10 @@ def chart_series(attributes: dict[str, str]) -> list[tuple[str, list[str]]] | st
             name, separator, values = part.partition(":")
             if not separator:
                 return f'data-series part "{part}" has no "name:" before its numbers'
-            series.append((name.strip(), split_list(values)))
+            series.append((name.strip(), split_chart_list(values)))
         return series
     if attributes.get("data-values", "").strip():
-        return [("data-values", split_list(attributes["data-values"]))]
+        return [("data-values", split_chart_list(attributes["data-values"]))]
     return "the chart has neither data-values nor data-series"
 
 
@@ -277,9 +278,9 @@ def shape_problems(chart_type: str, labels: list[str], series: list[tuple[str, l
         problems.append("a combo chart takes data-series with the column series first and the line series last")
     if chart_type == "scatter" and len(series) != 2:
         problems.append('a scatter chart takes exactly two series in data-series: the horizontal axis first, then the vertical, such as "매출: 12, 30; 이익률: 8, 11"')
-    if chart_type in STACKED_CHART_TYPES and any(value < 0 for _, values in series for value in numbers_in(values)):
+    if chart_type in KIT_STACKED_CHARTS and any(value < 0 for _, values in series for value in numbers_in(values)):
         problems.append(f"a {chart_type} chart stacks its series, so every value must be zero or more")
-    if chart_type not in ("donut", "pie"):
+    if not is_round_kind(chart_type):
         return problems
     values = numbers_in(series[0][1])
     if len(series) > 1:
@@ -293,10 +294,6 @@ def shape_problems(chart_type: str, labels: list[str], series: list[tuple[str, l
 
 def numbers_in(values: list[str]) -> list[float]:
     return [chart_number(value) for value in values if is_number(value)]
-
-
-def split_list(text: str) -> list[str]:
-    return split_chart_list(text)
 
 
 def is_number(text: str) -> bool:

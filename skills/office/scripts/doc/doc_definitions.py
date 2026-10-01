@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from charts.kinds import DOCUMENT_CHART_KINDS
 from fonts.registry import SANS_BODY, default_family
 from office_preview import PREVIEW_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
@@ -147,7 +148,6 @@ NOTE_KIND = Field("kind", Choice(("footnote", "endnote")), "which kind of note",
 NOTE_ID = Field("note", Number(minimum=1, integer=True), "note id from doc read", required=True)
 TO_BLOCK = Field("toBlock", BLOCK_INDEX, "last block of the range, default block")
 MARKDOWN = Field("markdown", Text(non_empty=True), "Markdown: # headings, paragraphs, - or 1. lists, | tables |, > quotes, ![alt](local path) pictures and ```chart blocks", required=True)
-CHART_KINDS = ("column", "stacked_column", "bar", "stacked_bar", "line", "area", "pie", "doughnut", "combo")
 CHART_SERIES = Record("series", "one data series", (
     Field("name", Text(non_empty=True), "series name shown in the legend", required=True),
     Field("values", ListOf(Number(), non_empty=True), "one plain number per category; the unit goes in the title", required=True),
@@ -355,7 +355,7 @@ OPERATIONS = Variant(
             INSERT_AFTER,
             INSERT_BEFORE,
             INSERT_AT,
-            Field("type", Choice(CHART_KINDS), "chart kind; combo draws columns with the series marked line as lines", required=True),
+            Field("type", Choice(DOCUMENT_CHART_KINDS), "chart kind; combo draws columns with the series marked line as lines", required=True),
             *(field if field.name not in ("categories", "series") else Field(field.name, field.shape, field.description, required=True) for field in CHART_DATA),
             Field("widthInches", Number(minimum=1), "width; default the text width"),
             Field("heightInches", Number(minimum=1), "height; default a little over half the width"),
@@ -363,7 +363,7 @@ OPERATIONS = Variant(
         )),
         Record("edit_chart", "change a chart's kind, data, title or legend; fields left out keep their current value", (
             CHART_INDEX,
-            Field("type", Choice(CHART_KINDS), "chart kind"),
+            Field("type", Choice(DOCUMENT_CHART_KINDS), "chart kind"),
             *CHART_DATA,
         )),
         Record("delete_chart", "delete a chart, and its paragraph when nothing else is in it", (CHART_INDEX,)),

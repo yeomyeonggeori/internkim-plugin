@@ -69,8 +69,8 @@ def chart_items(chart, part, builder, width: float, height: float) -> list:
     if part is None or relationship_id not in part.rels:
         builder.preview.approximate("charts whose data part is missing")
         return [BoxItem([], width, height)]
-    model = read_specification(part.rels[relationship_id].target_part).model()
-    return [ChartItem(model, builder.chart_palette, width, height)]
+    chart_specification = read_specification(part.rels[relationship_id].target_part)
+    return [ChartItem(chart_specification.model(), chart_specification.look(builder.chart_palette), width, height)]
 
 
 def vml_items(picture, part, builder) -> list:

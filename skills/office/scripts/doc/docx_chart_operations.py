@@ -6,7 +6,8 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches
 
-from docx_charts import ROUND_KINDS, ChartSpecification, add_chart_part, document_charts, drawing_run, next_drawing_id, read_specification, rewrite_chart_part, specification
+from charts.kinds import ROUND_CHART_KINDS
+from docx_charts import ChartSpecification, add_chart_part, document_charts, drawing_run, next_drawing_id, read_specification, rewrite_chart_part, specification
 from docx_editing import DocxEditing, placement
 from docx_tracking import mark_block_inserted
 from office_operations import TARGET_NOT_FOUND, Change, chart_indexes_suggestion
@@ -21,9 +22,9 @@ def require_consistent(spec: ChartSpecification, location: str) -> None:
     for index, (name, values, _) in enumerate(spec.series):
         if len(values) != len(spec.categories):
             raise OfficeFailure(INVALID_VALUE.issue(f"{location}.series[{index}]: {name!r} has {len(values)} values for {len(spec.categories)} categories", f"{location}.series[{index}].values", suggestion="give one number per category"))
-    if spec.kind in ROUND_KINDS and len(spec.series) != 1:
+    if spec.kind in ROUND_CHART_KINDS and len(spec.series) != 1:
         raise OfficeFailure(INVALID_VALUE.issue(f"{location}.series: a {spec.kind} chart shows one series, not {len(spec.series)}", f"{location}.series", suggestion="give one series, or use column or bar"))
-    if spec.kind in ROUND_KINDS and (any(value < 0 for value in spec.series[0][1]) or sum(spec.series[0][1]) <= 0):
+    if spec.kind in ROUND_CHART_KINDS and (any(value < 0 for value in spec.series[0][1]) or sum(spec.series[0][1]) <= 0):
         raise OfficeFailure(INVALID_VALUE.issue(f"{location}.series: a {spec.kind} chart needs positive shares", f"{location}.series"))
     lines = sum(1 for _, _, is_line in spec.series if is_line)
     if spec.kind == "combo" and not 0 < lines < len(spec.series):

@@ -5,11 +5,12 @@ import html
 
 from pptx.oxml.ns import qn
 
-from pptx_chart_look import chart_look
+from charts.svg import chart_svg
+from fonts.registry import resolved_face
+from pptx_chart_look import chart_look, chart_model
 from pptx_description import chart_details
 from pptx_geometry import SLIDE_FRAME, Box, Frame, child_frame, local_box, rotation_degrees
 from pptx_inheritance import SlideContext, slide_context
-from pptx_preview_chart import chart_svg
 from pptx_preview_paint import PIXELS_PER_EMU, background_color, css, data_uri, element, fill_color, outline, pixels, svg_uri
 from pptx_preview_shapes import geometry_html
 from pptx_preview_table import table_html
@@ -172,5 +173,5 @@ def chart_html(shape, box: Box, canvas: Canvas) -> str:
     face = font_face(requested, False, korean)
     canvas.faces.add((requested, face))
     width, height = box.w * PIXELS_PER_EMU, box.h * PIXELS_PER_EMU
-    svg = chart_svg(details, width, height, chart_look(shape.chart, canvas.context), face.family)
+    svg = chart_svg(chart_model(shape.chart, details), width, height, chart_look(shape.chart, canvas.context), resolved_face(requested).matched_family)
     return element("div", placed(box, shape._element), f'<img src="{svg_uri(svg)}" style="width:{width:.2f}px;height:{height:.2f}px"/>')
