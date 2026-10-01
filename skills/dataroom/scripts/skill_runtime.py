@@ -59,7 +59,7 @@ def ensure_requirements(skill_name):
         return False
     environment_path = dependency_environment_path(skill_name)
     python_path = environment_path / "bin" / "python"
-    if is_current_python(python_path):
+    if is_running_in(environment_path):
         return True
 
     try:
@@ -163,8 +163,8 @@ def cache_home_path(environment):
     return Path.home() / ".cache"
 
 
-def is_current_python(python_path):
-    return Path(sys.executable).absolute() == python_path.absolute()
+def is_running_in(environment_path):
+    return Path(sys.prefix).resolve() == environment_path.resolve()
 
 
 def safe_name(value):
