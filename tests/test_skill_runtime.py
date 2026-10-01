@@ -23,15 +23,24 @@ class DependencyBootstrapTests(unittest.TestCase):
 
     def test_the_dependency_environment_needs_no_further_setup(self):
         with mock.patch.object(skill_runtime.sys, "executable", str(self.environment_python)), \
-                mock.patch.object(skill_runtime, "python_satisfies_requirements") as satisfies:
+                mock.patch.object(skill_runtime, "create_dependency_environment") as create:
             self.assertTrue(skill_runtime.ensure_requirements("office"))
-        satisfies.assert_not_called()
+        create.assert_not_called()
 
     def test_a_child_on_another_python_moves_into_the_environment_whatever_it_inherited(self):
         inherited = {"INTERNKIM_SKILL_BOOTSTRAP_READY_OFFICE": "1"}
         with mock.patch.dict(os.environ, inherited), \
                 mock.patch.object(skill_runtime.sys, "executable", "/usr/bin/python3"), \
-                mock.patch.object(skill_runtime, "python_satisfies_requirements", return_value=False), \
+                mock.patch.object(skill_runtime, "create_dependency_environment"), \
+                mock.patch.object(skill_runtime, "install_requirements_if_needed"), \
+                mock.patch.object(skill_runtime, "reexecute_python") as reexecute:
+            self.assertFalse(skill_runtime.ensure_requirements("office"))
+        reexecute.assert_called_once_with(self.environment_python)
+
+    def test_a_python_that_already_imports_every_name_still_moves_into_the_environment(self):
+        every_name_importable = mock.Mock(returncode=0)
+        with mock.patch.object(skill_runtime.sys, "executable", "/usr/bin/python3"), \
+                mock.patch.object(skill_runtime.subprocess, "run", return_value=every_name_importable), \
                 mock.patch.object(skill_runtime, "create_dependency_environment"), \
                 mock.patch.object(skill_runtime, "install_requirements_if_needed"), \
                 mock.patch.object(skill_runtime, "reexecute_python") as reexecute:

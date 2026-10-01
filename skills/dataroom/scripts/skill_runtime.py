@@ -62,9 +62,6 @@ def ensure_requirements(skill_name):
     if is_current_python(python_path):
         return True
 
-    if python_satisfies_requirements(Path(sys.executable), requirements_path):
-        return True
-
     try:
         create_dependency_environment(python_path, environment_path)
         install_requirements_if_needed(python_path, requirements_path, environment_path)
@@ -74,34 +71,6 @@ def ensure_requirements(skill_name):
 
     reexecute_python(python_path)
     return False
-
-
-def python_satisfies_requirements(python_path, requirements_path):
-    code = """
-import importlib.metadata
-import re
-import sys
-from pathlib import Path
-
-for raw_requirement in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
-    requirement = raw_requirement.split("#", 1)[0].strip()
-    if requirement == "":
-        continue
-    package_name = re.split(r"\\s*(?:==|>=|<=|~=|!=|>|<|\\[|;)", requirement, 1)[0].strip()
-    if package_name == "":
-        continue
-    try:
-        importlib.metadata.distribution(package_name)
-    except importlib.metadata.PackageNotFoundError:
-        sys.exit(1)
-"""
-    result = subprocess.run(
-        [str(python_path), "-c", code, str(requirements_path)],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        check=False,
-    )
-    return result.returncode == 0
 
 
 def reexecute_python(python_path):
