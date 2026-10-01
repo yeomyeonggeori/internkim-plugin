@@ -147,11 +147,12 @@ class KitCollisionTest(unittest.TestCase):
         return envelope
 
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
-    def test_cards_that_cover_the_title_and_cross_the_footer_and_a_paragraph_long_title_are_defects(self):
-        acceptance = self.build(kit_deck(cards_slide(30), LONG_STATEMENT))["details"]["acceptance"]
+    def test_cards_whose_text_spills_past_their_box_and_a_paragraph_long_title_are_defects(self):
+        envelope = self.build(kit_deck(cards_slide(30), LONG_STATEMENT))
+        acceptance = envelope["details"]["acceptance"]
         self.assertFalse(acceptance["acceptable"])
         defects = {(defect["code"], defect["location"]) for defect in acceptance["defects"]}
-        self.assertTrue({("TEXT_COVERED", "slide 1"), ("FOOTER_CROSSED", "slide 1"), ("TITLE_TOO_LONG", "slide 2")} <= defects, defects)
+        self.assertTrue({("CONTENT_OVERFLOW", "slide 1"), ("OUT_OF_FRAME", "slide 1"), ("TITLE_TOO_LONG", "slide 2")} <= defects, defects)
 
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_the_kit_shrinks_cards_that_would_cover_the_title_until_they_fit(self):

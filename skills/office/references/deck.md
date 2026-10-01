@@ -40,7 +40,7 @@ Choose each slide's layout from its content. Three slides in a row never share a
 | one sentence to remember | `statement` |
 | one number that carries the point | `number` |
 | two to four metrics, one unit system | `kpi` |
-| two to four parallel points | `cards` |
+| two to four parallel points; four form a 2x2 | `cards` |
 | two options or before and after | `comparison` |
 | three to six steps or dates | `timeline` |
 | rows the audience must read | `table` |

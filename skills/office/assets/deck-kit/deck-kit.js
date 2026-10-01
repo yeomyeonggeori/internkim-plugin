@@ -3,6 +3,7 @@
   const overflowTolerance = 2;
   const footerlessLayouts = new Set(["cover", "section"]);
   const itemClasses = ["kpi", "card", "step", "column"];
+  const gridCardCount = 4;
   const numericCellPattern = /^[+\-−]?[₩$€£¥]?\s?[\d.,]+\s?(%|%p|[^\s\d]{0,4})?$/;
   const svgNamespace = "http://www.w3.org/2000/svg";
   const barScaleShare = 0.84;
@@ -78,10 +79,20 @@
     slides().forEach((slide) => {
       const itemCount = Math.max(...itemClasses.map((className) => directChildren(slide, className).length));
       if (itemCount > 1) slide.style.setProperty("--n", String(itemCount));
+      if (slide.getAttribute("data-layout") === "cards") arrangeCardGrid(slide);
       if (directChildren(slide, "insight").length) slide.classList.add("kit-with-insight");
       const hasBody = Array.from(slide.children).some((child) => child.classList.contains("card") || ["OL", "UL"].includes(child.tagName));
       if (!hasBody) slide.classList.add("kit-bare");
     });
+  }
+
+  function arrangeCardGrid(slide) {
+    const cards = directChildren(slide, "card");
+    if (cards.length !== gridCardCount) return;
+    slide.classList.add("kit-grid");
+    slide.style.setProperty("--n", String(gridCardCount / 2));
+    cards.slice(gridCardCount / 2).forEach((card) => card.classList.add("kit-second-row"));
+    cards.filter((card) => card.firstElementChild?.matches(".label, .value")).forEach((card) => card.classList.add("kit-keyed"));
   }
 
   function addListIndexes() {

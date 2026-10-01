@@ -159,7 +159,7 @@ KIT_LAYOUTS = (
     KitLayout("statement", "one sentence the audience must remember; <em> marks the words in the accent color", (TITLE,)),
     KitLayout("number", "one number that carries the slide, with its .label and the points that explain it", (TITLE, LayoutPart(".value"), LayoutPart(".label", 0))),
     KitLayout("kpi", "two to four metrics in one unit system, each a .kpi with .value, .label and a change line", (TITLE, LayoutPart(".kpi", 2, 4))),
-    KitLayout("cards", "two to four parallel points, each a .card with an optional .label or .value, an <h3> and a <p>", (TITLE, LayoutPart(".card", 2, 4))),
+    KitLayout("cards", "two to four parallel points, each a .card with an optional .label or .value, an <h3> and a <p>; two or three stand side by side, four form a 2x2", (TITLE, LayoutPart(".card", 2, 4))),
     KitLayout("comparison", "two options side by side, each a .column with .label, <h3> and <ul>; .pick marks the recommended one", (TITLE, LayoutPart(".column", 2, 2))),
     KitLayout("timeline", "a sequence of three to six .step blocks, each with a .label date, <h3> and <p>; .done fills the dot", (TITLE, LayoutPart(".step", 3, 6))),
     KitLayout("table", "rows and columns the audience must read; numeric cells align right by themselves, tr.pick highlights a row", (TITLE, LayoutPart("table"))),
