@@ -55,6 +55,7 @@ class SheetPreviewer:
         self.palette = palette
         self.fonts = fonts
         self.preview = preview
+        self.page_painted = False
 
     def sheet_pages(self, worksheet, sheet_values) -> list[tuple[PageGeometry, list[int], list[int], float, SheetFrame]]:
         frame = self.frame(worksheet, sheet_values)
@@ -123,6 +124,8 @@ class SheetPreviewer:
 
     def page_html(self, page_number: int, page_count: int, geometry: PageGeometry, columns: list[int], rows: list[int], scale: float, frame: SheetFrame) -> str:
         grid = self.grid_html(frame, columns, rows, scale)
+        if not self.page_painted:
+            self.preview.blank_pages.append(f"page {page_number} ({frame.worksheet.title})")
         grid_width = sum(frame.widths[column] for column in columns) * scale
         left = geometry.margin_left + max(0.0, (geometry.content_width - grid_width) / 2) if frame.worksheet.print_options.horizontalCentered else geometry.margin_left
         parts = [positioned(left, geometry.margin_top, grid_width, grid)]
@@ -153,6 +156,7 @@ class SheetPreviewer:
                 backgrounds.append(background)
                 texts.append(text)
         overlays = self.drawings_html(frame, columns, rows, scale)
+        self.page_painted = bool(overlays) or any(backgrounds) or any(texts) or drawing_reaches(frame.worksheet, columns, rows)
         declarations = {
             "position": "relative",
             "display": "grid",
@@ -241,7 +245,7 @@ class SheetPreviewer:
         for chart in getattr(frame.worksheet, "_charts", []):
             box = drawing_box(chart.anchor, frame, columns, rows, scale)
             if box is not None:
-                html.append(chart_html(chart, box, self.values, self.palette))
+                html.append(chart_html(chart, box, self.values, self.palette, self.preview))
         for image in getattr(frame.worksheet, "_images", []):
             box = drawing_box(image.anchor, frame, columns, rows, scale, image)
             if box is not None:
@@ -300,8 +304,8 @@ def print_bounds(worksheet, sheet_values) -> tuple[int, int, int, int] | None:
     return min(column for _, column in used), min(row for row, _ in used), max(column for _, column in used), max(row for row, _ in used)
 
 
-def drawing_corners(worksheet) -> list[tuple[int, int]]:
-    corners = []
+def drawing_spans(worksheet) -> list[tuple[int, int, int, int]]:
+    spans = []
     for drawing in [*getattr(worksheet, "_charts", []), *getattr(worksheet, "_images", [])]:
         start = getattr(drawing.anchor, "_from", None)
         if start is None:
@@ -309,12 +313,23 @@ def drawing_corners(worksheet) -> list[tuple[int, int]]:
         end = getattr(drawing.anchor, "to", None)
         extent = getattr(drawing.anchor, "ext", None)
         if end is not None:
-            corners += [(start.row + 1, start.col + 1), (end.row + 1, end.col + 1)]
+            spans.append((start.row + 1, start.col + 1, end.row + 1, end.col + 1))
         elif extent is not None:
             rows = int(emu_to_pixels(extent.height) // points_to_pixels(DEFAULT_ROW_POINTS)) + 1
             columns = int(emu_to_pixels(extent.width) // column_pixels(DEFAULT_COLUMN_CHARACTERS)) + 1
-            corners += [(start.row + 1, start.col + 1), (start.row + rows, start.col + columns)]
-    return corners
+            spans.append((start.row + 1, start.col + 1, start.row + rows, start.col + columns))
+    return spans
+
+
+def drawing_corners(worksheet) -> list[tuple[int, int]]:
+    return [corner for top, left, bottom, right in drawing_spans(worksheet) for corner in ((top, left), (bottom, right))]
+
+
+def drawing_reaches(worksheet, columns: list[int], rows: list[int]) -> bool:
+    return any(
+        any(left <= column <= right for column in columns) and any(top <= row <= bottom for row in rows)
+        for top, left, bottom, right in drawing_spans(worksheet)
+    )
 
 
 def column_dimension_map(worksheet) -> dict[int, dict]:

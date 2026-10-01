@@ -18,6 +18,8 @@ PAGE_SELECTOR = "section[data-page]"
 PREVIEW_APPROXIMATED = IssueKind("PREVIEW_APPROXIMATED", WARNING, "the preview leaves out or simplifies something the file has; the message names what", "check those parts in the file itself, or say they were not seen")
 PAGES_NOT_RENDERED = IssueKind("PAGES_NOT_RENDERED", WARNING, "only the preview HTML was written; the renderer could not draw page images from it", "install bun or node 18 and run again, or read preview.html for structure and say the pages were not seen")
 
+BLANK_PAGE = IssueKind("BLANK_PAGE", WARNING, "a printed page shows nothing but its header and footer; the message names each such page", "remove what pushes content onto it, or limit what prints to the content")
+
 PREVIEW_ISSUE_KINDS = (PREVIEW_APPROXIMATED, PAGES_NOT_RENDERED)
 
 
@@ -42,6 +44,7 @@ class Preview:
     title: str
     pages: list[str] = field(default_factory=list)
     approximations: dict[str, int] = field(default_factory=dict)
+    blank_pages: list[str] = field(default_factory=list)
 
     def approximate(self, what: str, count: int = 1) -> None:
         self.approximations[what] = self.approximations.get(what, 0) + count
@@ -115,6 +118,12 @@ def approximation_issues(preview: Preview, location: str) -> list:
         return []
     listed = ", ".join(f"{count} {what}" for what, count in sorted(preview.approximations.items()))
     return [PREVIEW_APPROXIMATED.issue(f"the preview simplifies {listed}", location)]
+
+
+def blank_page_issues(preview: Preview, location: str, suggestion: str | None = None) -> list:
+    if not preview.blank_pages:
+        return []
+    return [BLANK_PAGE.issue(f"{len(preview.blank_pages)} of {len(preview.pages)} printed pages show nothing: {', '.join(preview.blank_pages)}", location, suggestion)]
 
 
 def drawn_page_details(rendered: RenderedPages) -> dict:

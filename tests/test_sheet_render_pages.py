@@ -1,0 +1,53 @@
+import re
+import unittest
+
+from sheet_fixture import WorkbookFixture, run_office
+
+MONTHS = [["month", "sales", "margin"], ["Jan", 120, 0.21], ["Feb", 150, 0.24], ["Mar", 90, 0.18], ["Apr", 170, 0.27]]
+
+
+class RenderedPagesTest(WorkbookFixture):
+    def render(self):
+        envelope = run_office(["sheet", "render", "book.xlsx"], self.directory)
+        self.assertNotEqual(envelope["status"], "error", envelope)
+        return envelope, (self.directory / "book-preview" / "preview.html").read_text(encoding="utf-8")
+
+    def chart_svgs(self, preview):
+        return re.findall(r"<svg.*?</svg>", preview, flags=re.DOTALL)
+
+    def test_a_combo_chart_draws_its_bars_and_its_line_on_a_second_axis(self):
+        self.create_workbook([{"title": "Sales", "rows": MONTHS}])
+        self.apply([{"op": "add_chart", "type": "combo", "range": "A1:C5", "anchor": "E2", "title": "Sales and margin"}])
+        _, preview = self.render()
+        svg = self.chart_svgs(preview)[0]
+        self.assertEqual(svg.count("<rect x=") - 1 - 2, 4)
+        self.assertEqual(svg.count("<polyline"), 1)
+        self.assertIn(">0.5<", svg)
+        self.assertIn(">margin<", svg)
+
+    def test_horizontal_stacked_bars_stay_horizontal_and_stacked(self):
+        self.create_workbook([{"title": "Sales", "rows": [["team", "won", "lost"], ["North", 4, 2], ["South", 3, 5]]}])
+        self.apply([{"op": "add_chart", "type": "bar", "range": "A1:C3", "anchor": "E2", "horizontal": True, "stacked": True}])
+        _, preview = self.render()
+        bars = re.findall(r'<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)" fill="#', self.chart_svgs(preview)[0])
+        north_won, north_lost = bars[1], bars[3]
+        self.assertEqual(north_won[1], north_lost[1])
+        self.assertAlmostEqual(float(north_won[0]) + float(north_won[2]), float(north_lost[0]), delta=0.2)
+        self.assertGreater(float(north_won[2]), float(north_won[3]))
+
+    def test_a_page_with_nothing_on_it_is_reported_with_its_number(self):
+        self.create_workbook([{"title": "Sales", "rows": MONTHS}])
+        self.apply([{"op": "set_cell", "cell": "A200", "value": "note"}])
+        envelope, _ = self.render()
+        issue = next(issue for issue in envelope["issues"] if issue["code"] == "BLANK_PAGE")
+        self.assertIn("3 of 5 printed pages show nothing: page 2 (Sales), page 3 (Sales), page 4 (Sales)", issue["message"])
+        self.assertIn("print area", issue["suggestion"])
+
+    def test_a_full_sheet_reports_no_blank_page(self):
+        self.create_workbook([{"title": "Sales", "rows": MONTHS}])
+        envelope, _ = self.render()
+        self.assertNotIn("BLANK_PAGE", [issue["code"] for issue in envelope["issues"]])
+
+
+if __name__ == "__main__":
+    unittest.main()
