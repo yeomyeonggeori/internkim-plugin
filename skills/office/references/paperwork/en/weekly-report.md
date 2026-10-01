@@ -31,8 +31,7 @@ An internal status document summarizing one person's or team's work for a given 
     { "title": "3. Planned next week", "paragraphs": ["<plan for next week>"] },
     { "title": "4. Issues and requests", "paragraphs": ["<blockers, risks, or requests for help>"] }
   ],
-  "signature": { "date": "<Month D, YYYY>", "line": "<author name>", "stamp": false },
-  "footer": ""
+  "signature": { "date": "<Month D, YYYY>", "line": "<author name>", "stamp": false }
 }
 ```
 

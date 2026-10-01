@@ -212,7 +212,7 @@ def build_inline_block(kind: str, value: str) -> dict:
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = OfficeArgumentParser(description="Create a DOCX file from arguments or a JSON spec; office guide doc describes the spec.")
+    parser = OfficeArgumentParser()
     parser.add_argument("output_path", help="Path to the output .docx file")
     parser.add_argument("--title", metavar="TEXT", default="", help="Document title")
     parser.add_argument("--heading", action=AppendOrderedBlockAction, dest="ordered_arguments", default=[], metavar="TEXT", help="Add a level-1 heading (repeatable, position-sensitive)")

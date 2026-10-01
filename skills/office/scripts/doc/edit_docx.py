@@ -37,7 +37,7 @@ def load_blocks(blocks_path: str) -> list[dict]:
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = OfficeArgumentParser(description="Append content to an existing DOCX in place.")
+    parser = OfficeArgumentParser()
     parser.add_argument("document_path", nargs="?", type=office_file("docx"), help=f"Path to the .docx; defaults to the newest .docx in {DOCUMENTS_FOLDER}")
     parser.add_argument("--heading", action="append", default=[], metavar="TEXT", help="Append a level-1 heading")
     parser.add_argument("--paragraph", action="append", default=[], metavar="TEXT", help="Append a paragraph")

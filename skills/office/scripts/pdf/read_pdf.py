@@ -96,7 +96,7 @@ def limited(text: str) -> str:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Read a PDF's text page by page, with page sizes, whether each page has extractable text, and the rows of every table found on it, ruled or laid out in aligned columns.")
+    parser = OfficeArgumentParser()
     parser.add_argument("pdf_path", type=office_file("pdf"))
     parser.add_argument("--start", type=int, default=1, help="first page number to show, counting from 1")
     parser.add_argument("--limit", type=int, default=DEFAULT_PAGE_LIMIT, help=f"most pages to show, default {DEFAULT_PAGE_LIMIT}")

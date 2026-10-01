@@ -126,7 +126,12 @@ COMMAND_ISSUE_KINDS = (
 
 class OfficeArgumentParser(argparse.ArgumentParser):
     def __init__(self, **options):
-        options.setdefault("prog", os.environ.get("OFFICE_COMMAND") or None)
+        from office_commands import find_command
+
+        command_name = os.environ.get("OFFICE_COMMAND") or None
+        command = find_command(command_name.split()[1:]) if command_name else None
+        options.setdefault("prog", command_name)
+        options.setdefault("description", command.description if command else None)
         super().__init__(**options)
 
     def error(self, message):

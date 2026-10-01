@@ -140,7 +140,7 @@ def build_specification(arguments):
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Create an XLSX workbook from arguments or a JSON spec; office guide sheet describes the spec.")
+    parser = OfficeArgumentParser()
     parser.add_argument("output_path", help="Path to the output .xlsx file")
     parser.add_argument("--title", metavar="TEXT", default="", help="Workbook title (also used as sheet name when --sheet is absent)")
     parser.add_argument("--sheet", metavar="NAME", default=None, help="Sheet name (default: title or Sheet1)")

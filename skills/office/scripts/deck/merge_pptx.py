@@ -91,7 +91,7 @@ def drawing(tag: str) -> str:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Fill a .pptx template's {{ name }} placeholders from a JSON values file; a table row naming {{ items.field }} repeats once per item. Refuses to write when a placeholder has no value.")
+    parser = OfficeArgumentParser()
     parser.add_argument("template_path", type=office_file("pptx"), help="the .pptx template")
     parser.add_argument("values_path", help="JSON object mapping each placeholder name to its value")
     parser.add_argument("output_path", help="the filled .pptx to write")

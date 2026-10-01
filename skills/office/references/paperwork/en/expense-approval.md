@@ -36,8 +36,7 @@ An internal document requesting approval to reimburse or process an expense alre
     "totals": [{ "label": "Total", "value": "<amount> <currency>" }]
   },
   "notes": ["Receipts and tax invoices attached."],
-  "signature": { "date": "<Month D, YYYY>", "line": "<requester name>", "stamp": false },
-  "footer": ""
+  "signature": { "date": "<Month D, YYYY>", "line": "<requester name>", "stamp": false }
 }
 ```
 

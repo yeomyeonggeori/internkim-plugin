@@ -12,12 +12,7 @@ from pptx_targets import PptxEditing, load_editing
 
 
 def main() -> Result:
-    arguments = apply_parser(
-        "Apply a batch of edits to a .pptx: all of them or none. office guide deck lists the operations. "
-        "The result reports text that overflows its box, shapes off the slide and overlaps on every slide the batch changed, "
-        "each with an operation that fixes it.",
-        "pptx",
-    ).parse_args()
+    arguments = apply_parser("pptx").parse_args()
     operations = read_batch(PPTX_OPERATIONS, arguments.ops)
     editing = load_editing(arguments.path)
     operations = normalize_lengths(PPTX_OPERATIONS.shape, operations, (editing.presentation.slide_width, editing.presentation.slide_height))

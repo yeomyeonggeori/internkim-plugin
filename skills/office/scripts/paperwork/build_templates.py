@@ -66,7 +66,7 @@ def add_bottom_rule(paragraph):
     pPr = paragraph._p.get_or_add_pPr()
     pBdr = pPr.makeelement(qn("w:pBdr"), {})
     bottom = pPr.makeelement(qn("w:bottom"), {
-        qn("w:val"): "single", qn("w:sz"): "12", qn("w:space"): "8", qn("w:color"): "1C2430"})
+        qn("w:val"): "single", qn("w:sz"): "12", qn("w:space"): "8", qn("w:color"): "".join(f"{channel:02X}" for channel in INK)})
     pBdr.append(bottom)
     pPr.append(pBdr)
 

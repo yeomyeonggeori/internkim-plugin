@@ -79,7 +79,7 @@ def sheet_issues(summary: dict) -> list[Issue]:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Validate and summarize an XLSX workbook.")
+    parser = OfficeArgumentParser()
     parser.add_argument("workbook_path", type=office_file("xlsx"))
     return parser.parse_args()
 

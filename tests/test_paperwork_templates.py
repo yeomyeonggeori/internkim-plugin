@@ -11,18 +11,50 @@ from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, run_office
 
 sys.path.insert(0, str(SCRIPTS_PATH / "paperwork"))
 
+from amounts import VAT_RATE_PERCENT
 from template_context import DEFAULT_VALUES, DERIVED_VALUES, caller_fields, complete_context, scalar_fields
 from template_fields import template_fields, template_list_fields, template_names
 
 
 SPECIFICATIONS_PATH = SCRIPTS_PATH.parent / "references" / "paperwork" / "ko"
+ENGLISH_SPECIFICATIONS_PATH = SPECIFICATIONS_PATH.parent / "en"
 SKELETON_PATTERN = re.compile(r"## Context JSON skeleton\s+```json\n(.*?)\n```", re.DOTALL)
+DOCUMENT_SKELETON_PATTERN = re.compile(r"## Document JSON skeleton\s+```json\n(.*?)\n```", re.DOTALL)
+TAX_RATE_MENTION = re.compile(r"(?:부가세|VAT|Tax) ?\((\d+)%\)|(?:세액은 공급가액의|tax as) (\d+)%")
+PROFILE_PLACEHOLDER = re.compile(r"\{ \.\.\.[^}]*\.\.\. \}")
+TEMPLATE_BUILDER = """
+import json, sys, zipfile
+from pathlib import Path
+import build_templates
+from template_fields import TEMPLATES_PATH
+differences = {}
+for name, builder in build_templates.BUILDERS.items():
+    built_path = Path(sys.argv[1]) / f"{name}.docx"
+    builder(built_path)
+    with zipfile.ZipFile(built_path) as built, zipfile.ZipFile(TEMPLATES_PATH / f"{name}.docx") as committed:
+        parts = set(built.namelist()) | set(committed.namelist())
+        differences[name] = sorted(part for part in parts if part not in built.namelist() or part not in committed.namelist() or built.read(part) != committed.read(part))
+print(json.dumps(differences))
+"""
 DOCXTPL_READER = """
 import json, sys
 from docxtpl import DocxTemplate
 from template_fields import TEMPLATES_PATH, template_names
 print(json.dumps({name: sorted(DocxTemplate(str(TEMPLATES_PATH / f"{name}.docx")).get_undeclared_template_variables()) for name in template_names()}))
 """
+
+
+def document_skeleton_fields(path):
+    match = DOCUMENT_SKELETON_PATTERN.search(path.read_text(encoding="utf-8"))
+    return field_paths(json.loads(PROFILE_PLACEHOLDER.sub("{}", match.group(1)))) if match else None
+
+
+def field_paths(value, prefix=""):
+    if isinstance(value, dict):
+        return {path for key, child in value.items() for path in {prefix + key} | field_paths(child, f"{prefix}{key}.")}
+    if isinstance(value, list):
+        return {path for item in value for path in field_paths(item, f"{prefix}[].")}
+    return set()
 
 
 def documented_fields(template_name):
@@ -74,6 +106,32 @@ class TemplateGuardTest(unittest.TestCase):
         context = complete_context("service-agreement", {"totalAmount": "50,000,000"})
         self.assertEqual(context["totalAmountKorean"], "오천만")
         self.assertEqual(complete_context("service-agreement", {"totalAmount": "1", "totalAmountKorean": "직접"})["totalAmountKorean"], "직접")
+
+
+class TemplateSourceTest(unittest.TestCase):
+    def test_the_committed_templates_are_what_build_templates_writes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            completed = subprocess.run(
+                [sys.executable, str(OFFICE_ENTRY), "python", "-c", TEMPLATE_BUILDER, directory],
+                capture_output=True, text=True, check=True,
+                env={**__import__("os").environ, "PYTHONPATH": f"{SCRIPTS_PATH / 'paperwork'}:{SCRIPTS_PATH}"},
+            )
+        for name, differing_parts in json.loads(completed.stdout).items():
+            self.assertEqual(differing_parts, [], f"{name}.docx differs from build_templates; rerun it")
+
+    def test_english_and_korean_specs_describe_the_same_document_fields(self):
+        for korean in sorted(SPECIFICATIONS_PATH.glob("*.md")):
+            english = ENGLISH_SPECIFICATIONS_PATH / korean.name
+            self.assertTrue(english.exists(), korean.name)
+            korean_fields = document_skeleton_fields(korean)
+            if korean_fields is not None:
+                self.assertEqual(document_skeleton_fields(english), korean_fields, korean.name)
+
+
+    def test_every_tax_rate_a_spec_states_is_the_rate_paperwork_check_uses(self):
+        for specification in sorted(SPECIFICATIONS_PATH.parent.glob("*/*.md")):
+            for match in TAX_RATE_MENTION.finditer(specification.read_text(encoding="utf-8")):
+                self.assertEqual(int(match.group(1) or match.group(2)), VAT_RATE_PERCENT, f"{specification.parent.name}/{specification.name}: {match.group(0)}")
 
 
 class FillTest(unittest.TestCase):

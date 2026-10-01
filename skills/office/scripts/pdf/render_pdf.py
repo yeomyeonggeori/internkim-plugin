@@ -97,7 +97,7 @@ def thumbnail(image: Image.Image) -> Image.Image:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Render PDF pages to PNG files and one contact sheet with every page side by side.")
+    parser = OfficeArgumentParser()
     parser.add_argument("pdf_path", type=office_file("pdf"))
     parser.add_argument("--pages", default="", help=f"pages to render, such as 1,3-5; default the first {DEFAULT_PAGE_LIMIT}")
     parser.add_argument("--scale", type=float, default=DEFAULT_SCALE, help=f"pixels per point, default {DEFAULT_SCALE}; 1 is 72 dpi")

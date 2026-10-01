@@ -81,8 +81,8 @@ def save_atomically(save: Callable[[str], Sequence[Issue] | None], output_path: 
             os.unlink(temporary_path)
 
 
-def apply_parser(description: str, input_kind: str) -> OfficeArgumentParser:
-    parser = OfficeArgumentParser(description=description)
+def apply_parser(input_kind: str) -> OfficeArgumentParser:
+    parser = OfficeArgumentParser()
     parser.add_argument("path", type=office_file(input_kind), help="the file to edit")
     parser.add_argument("ops", help="JSON file with a list of operations")
     parser.add_argument("--output", help="write the result here instead of editing the file in place")

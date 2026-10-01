@@ -212,7 +212,7 @@ def table_issues(tables: list[dict]) -> list[Issue]:
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = OfficeArgumentParser(description="Validate and summarize a DOCX file.")
+    parser = OfficeArgumentParser()
     parser.add_argument("document_path", type=office_file("docx"))
     parser.add_argument("--required-text", action="append", default=[])
     parser.add_argument("--forbidden-text", action="append", default=[])

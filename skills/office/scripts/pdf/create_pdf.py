@@ -241,7 +241,7 @@ def resolve_font(specification):
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Create a PDF from arguments or a JSON spec; office guide pdf describes the spec.")
+    parser = OfficeArgumentParser()
     parser.add_argument("output_path", help="Path to the output .pdf file")
     parser.add_argument("--title", metavar="TEXT", default="", help="Document title")
     parser.add_argument("--subtitle", metavar="TEXT", default="", help="Document subtitle (optional)")

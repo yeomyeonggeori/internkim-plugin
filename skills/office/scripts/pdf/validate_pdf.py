@@ -177,7 +177,7 @@ def font_issues(font_summary: dict, required_font_substring: str) -> list[Issue]
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Validate a PDF document.")
+    parser = OfficeArgumentParser()
     parser.add_argument("pdf_path", type=office_file("pdf"))
     parser.add_argument("--min-pages", type=int, default=0)
     parser.add_argument("--max-pages", type=int, default=0)

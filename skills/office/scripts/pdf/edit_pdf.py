@@ -65,7 +65,7 @@ def merge_into_original(pdf_path: str, appended_page_bytes: bytes, password: str
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Append a new section page to an existing PDF in place.")
+    parser = OfficeArgumentParser()
     parser.add_argument("pdf_path", nargs="?", type=office_file("pdf"), help=f"Path to the .pdf; defaults to the newest .pdf in {DOCUMENTS_FOLDER}")
     parser.add_argument("--heading", metavar="TEXT", help="Section heading for the appended page")
     parser.add_argument("--paragraph", action="append", default=[], metavar="TEXT", help="Paragraph to add")

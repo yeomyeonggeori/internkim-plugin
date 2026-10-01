@@ -503,7 +503,7 @@ def append_docx_block(word_document, block):
 
 
 def main():
-    parser = OfficeArgumentParser(description="Render a paperwork document JSON to a letterhead PDF or a DOCX contract; office guide paperwork describes both.")
+    parser = OfficeArgumentParser()
     parser.add_argument("document_path", help="Path to the document JSON file")
     parser.add_argument("output_path", help="Path to the output .pdf or .docx file")
     arguments = parser.parse_args()

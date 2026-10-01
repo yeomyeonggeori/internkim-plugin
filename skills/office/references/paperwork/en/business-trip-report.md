@@ -29,8 +29,8 @@ An internal document reporting the outcomes of a completed business trip, submit
   ],
   "sections": [
     { "title": "1. Summary", "paragraphs": ["<trip summary>"] },
-    { "title": "2. Key outcomes", "paragraphs": ["<outcomes achieved>"] },
-    { "title": "3. Follow-ups", "paragraphs": ["<follow-up actions or open items>"] }
+    { "title": "2. Key outcomes", "bullets": ["<outcome 1>", "<outcome 2>"] },
+    { "title": "3. Follow-ups", "bullets": ["<follow-up 1>"] }
   ],
   "items": {
     "headers": ["Description", "Amount"],
@@ -38,8 +38,7 @@ An internal document reporting the outcomes of a completed business trip, submit
     "rows": [["<expense description>", "<amount>"]],
     "totals": [{ "label": "Total", "value": "<amount> <currency>" }]
   },
-  "signature": { "date": "<Month D, YYYY>", "line": "<traveler name>", "stamp": false },
-  "footer": ""
+  "signature": { "date": "<Month D, YYYY>", "line": "<traveler name>", "stamp": false }
 }
 ```
 

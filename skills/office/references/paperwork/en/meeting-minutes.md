@@ -37,8 +37,7 @@ An internal record of what was discussed and decided in a meeting, kept so atten
     "aligns": ["L", "L", "L"],
     "rows": [["<action item>", "<owner>", "<YYYY-MM-DD>"]]
   },
-  "signature": { "date": "<Month D, YYYY>", "line": "Recorded by <name>", "stamp": false },
-  "footer": ""
+  "signature": { "date": "<Month D, YYYY>", "line": "Recorded by <name>", "stamp": false }
 }
 ```
 

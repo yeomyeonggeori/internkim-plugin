@@ -44,7 +44,7 @@ def main() -> Result:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Lay out a .docx page by page as preview HTML, then draw each page as a PNG, contact sheets and a PDF: page size and margins, styles, numbering, tables, pictures, headers, footers and footnotes.")
+    parser = OfficeArgumentParser()
     parser.add_argument("source_path", type=office_file("docx"), help="the .docx to lay out")
     parser.add_argument("--output-directory", help="where preview.html, the page images and the PDF go; default <name>-preview beside the file")
     return parser.parse_args()

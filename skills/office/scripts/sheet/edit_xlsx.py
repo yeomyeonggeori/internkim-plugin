@@ -46,7 +46,7 @@ def resolve_worksheet(workbook, sheet_name: str | None):
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Append rows to an existing XLSX workbook in place.")
+    parser = OfficeArgumentParser()
     parser.add_argument("workbook_path", nargs="?", type=office_file("xlsx"), help=f"Path to the .xlsx; defaults to the newest .xlsx in {DOCUMENTS_FOLDER}")
     parser.add_argument("--sheet", default=None, metavar="NAME", help="Sheet name (default: active sheet; created if missing)")
     parser.add_argument("--row", action="append", default=[], metavar="CELLS", help="Append one row; comma-separated cell values (repeatable)")

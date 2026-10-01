@@ -9,7 +9,7 @@ from office_result import Result, run_command
 
 
 def main() -> Result:
-    parser = apply_parser("Apply a batch of edits to a .docx: all of them or none. office guide doc lists the operations.", "docx")
+    parser = apply_parser("docx")
     parser.add_argument("--track", action="store_true", help="write text, paragraph, row and block edits as tracked changes others can accept or reject")
     parser.add_argument("--author", default=DEFAULT_TRACKING_AUTHOR, help=f"author of tracked changes, default {DEFAULT_TRACKING_AUTHOR!r}")
     arguments = parser.parse_args()

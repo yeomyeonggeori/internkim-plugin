@@ -408,7 +408,7 @@ CONVERTERS = {
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Convert an office file to another format; the input and output extensions pick the route. office guide convert lists every route.")
+    parser = OfficeArgumentParser()
     parser.add_argument("input_path", help="the file to convert")
     parser.add_argument("output_path", help="the file to write; its extension names the target format")
     parser.add_argument("--sheet", help="xlsx to csv, tsv or pdf: convert only this sheet; default every sheet, one file each for csv and tsv")

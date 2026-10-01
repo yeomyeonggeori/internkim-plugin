@@ -170,7 +170,7 @@ def placeholder_issues(workbook) -> list[Issue]:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Find stored formula values that differ from the computed ones, computed formula errors, missing sheets, unknown functions, broken names, numbers too wide for their column, numbers, dates and formulas stored as text, charts reading missing or empty ranges, pivots with empty values and template placeholders in an .xlsx.")
+    parser = OfficeArgumentParser()
     parser.add_argument("workbook_path", type=office_file("xlsx"))
     return parser.parse_args()
 

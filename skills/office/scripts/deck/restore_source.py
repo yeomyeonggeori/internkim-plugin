@@ -23,7 +23,7 @@ def main() -> Result:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Recover the authored slides.html from a delivered deck HTML: the kit, viewer and vendored fonts removed, and inlined images and fonts pointed back at their files.")
+    parser = OfficeArgumentParser()
     parser.add_argument("delivered_path", help="the delivered deck .html")
     parser.add_argument("source_path", help="where to write slides.html")
     return parser.parse_args()

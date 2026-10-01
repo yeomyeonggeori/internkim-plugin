@@ -166,7 +166,7 @@ def tracked_change_issues(document, elements: list) -> list[Issue]:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Check a .docx for placeholders left, broken internal references, a stale table of contents, missing East Asian fonts, a wrong East Asian language, tracked changes, missing pictures, empty charts, empty or skipped headings, open comments and fields without a result. Issues suggest a doc apply operation where one fixes them.")
+    parser = OfficeArgumentParser()
     parser.add_argument("document_path", type=office_file("docx"))
     return parser.parse_args()
 

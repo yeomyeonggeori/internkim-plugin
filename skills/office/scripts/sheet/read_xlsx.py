@@ -124,7 +124,7 @@ def grid(worksheet, bounds: tuple[int, int, int, int]) -> list:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Read a workbook: every sheet's dimensions, panes, filter, tables, charts, merged cells and feature counts, the defined names, and one range's values and formulas.")
+    parser = OfficeArgumentParser()
     parser.add_argument("workbook_path", type=office_file("xlsx"))
     parser.add_argument("--sheet", metavar="NAME", help="sheet to read the range from, default the first sheet")
     parser.add_argument("--range", metavar="RANGE", help="range such as A1:F40, default the whole sheet")

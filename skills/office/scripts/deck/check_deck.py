@@ -426,11 +426,7 @@ def check_details(root: Element, slides: list[Slide]) -> dict:
 
 
 def parse_arguments(arguments: list[str] | None = None):
-    parser = OfficeArgumentParser(description=(
-        "Check a deck. For slides.html (the default, or its directory): layouts, parts, charts, images, placeholders, required text, slide count and palette, "
-        "without rendering; deck build runs this first. For a .pptx: text measured with the deck's fonts that overflows its box, shapes off the slide, "
-        "overlapping text and stretched pictures, each with an operation deck apply accepts, then an HTML preview of the slides drawn from the same geometry, styles and fonts."
-    ))
+    parser = OfficeArgumentParser()
     parser.add_argument("target", nargs="?", default="slides.html", help="slides.html, the directory holding it, or a .pptx (default slides.html)")
     add_check_arguments(parser)
     parser.add_argument("--slides", default="", help=".pptx: slides to check, such as 2,4-6; default every slide")

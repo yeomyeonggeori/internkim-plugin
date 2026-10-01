@@ -67,7 +67,7 @@ def missing_value_problems(template_name: str, context: dict, hint: str) -> list
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Fill a bundled standard-form DOCX template with a context JSON; office guide paperwork lists each template's fields.")
+    parser = OfficeArgumentParser()
     parser.add_argument("template_name", choices=template_names(), help="Template name")
     parser.add_argument("context_path", help="Path to the context JSON file")
     parser.add_argument("output_path", help="Path to the output .docx file")

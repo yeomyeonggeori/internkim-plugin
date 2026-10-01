@@ -13,9 +13,7 @@ DEFAULT_FORMAT = "pdf"
 
 
 def parse_arguments(arguments: list[str]):
-    parser = OfficeArgumentParser(
-        description="Check slides.html, then draw it without a browser into build/<name>.pdf (or .pptx, .html) with review images, geometry and an acceptance verdict.",
-    )
+    parser = OfficeArgumentParser()
     parser.add_argument("--format", help=f"what to write: {', '.join(sorted(ALLOWED_FORMATS - {'review', 'notes'}))} or all, comma-separated; default {DEFAULT_FORMAT}")
     parser.add_argument("--source", default="slides.html", help="the deck source (default slides.html)")
     parser.add_argument("--name", help="the output file name without extension (default this directory's name)")

@@ -94,7 +94,7 @@ def save_as(data: bytes, output_path: pathlib.Path) -> tuple[int, int, int] | No
 
 
 def parse_arguments(arguments: list[str]) -> tuple[str, str, int]:
-    parser = OfficeArgumentParser(description="Download up to three public-domain (CC0 or PDM) photos that match an English search query, saved as <output>, <output stem>-2 and -3 in the output's format, and report each one's size, ratio, licence, creator and source page.")
+    parser = OfficeArgumentParser()
     parser.add_argument("query", help="a concrete English scene, such as \"harbor cranes at dawn\"; one or two words find more")
     parser.add_argument("output", nargs="?", help="where to save the photo, such as images/harbor.jpg")
     parser.add_argument("--output", "-o", dest="output_option", help="the same as the second argument")

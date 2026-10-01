@@ -78,7 +78,7 @@ def register_document_fonts(pdf, font_path: Path | None, text: str) -> list[Issu
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Render a Markdown source of truth into a .docx or .pdf deliverable, keeping links, local images, and nested lists.")
+    parser = OfficeArgumentParser()
     parser.add_argument("markdown_path", help="path to content.md")
     parser.add_argument("--output", help="the file to write; its extension, .docx or .pdf, picks the format; default <markdown name>.docx beside the markdown")
     parser.add_argument("--font", default=DEFAULT_DOCUMENT_FONT, help="base font family name for docx")

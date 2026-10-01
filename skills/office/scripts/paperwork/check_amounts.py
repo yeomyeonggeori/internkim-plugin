@@ -202,7 +202,7 @@ def unreadable_issue(location: str) -> Issue:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Report amount facts of a paperwork document JSON or contract context: row amounts, supply total, VAT, grand total and the Korean amount in words. Never rewrites the input; office guide paperwork lists the rules.")
+    parser = OfficeArgumentParser()
     parser.add_argument("input_path", help="the document JSON of paperwork render, or the context JSON of paperwork fill")
     return parser.parse_args()
 

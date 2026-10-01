@@ -220,7 +220,7 @@ def serialize(element) -> bytes:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Fill an .xlsx template's {{ name }} placeholders from a JSON values file; a cell that is one placeholder takes the value's type, and a row that names {{ items.field }} for a list repeats once per item with the rows below moved down and ranges ending on it grown, and an empty list leaves it blank. Refuses to write when a placeholder has no value.")
+    parser = OfficeArgumentParser()
     parser.add_argument("template_path", type=office_file("xlsx"), help="the .xlsx template")
     parser.add_argument("values_path", help="JSON object mapping each placeholder name to its value")
     parser.add_argument("output_path", help="the filled .xlsx to write")

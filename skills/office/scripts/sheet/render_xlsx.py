@@ -59,7 +59,7 @@ def main() -> Result:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Lay out each visible sheet as printed pages of preview HTML, then draw each page as a PNG, contact sheets and a PDF: print area, page setup and scaling, column widths, row heights, merges, number formats as displayed, fonts, fills, borders, conditional colors, charts and pictures.")
+    parser = OfficeArgumentParser()
     parser.add_argument("source_path", type=office_file("xlsx"), help="the .xlsx to lay out")
     parser.add_argument("--sheet", help="lay out only this sheet")
     parser.add_argument("--output-directory", help="where preview.html, the page images and the PDF go; default <name>-preview beside the file")

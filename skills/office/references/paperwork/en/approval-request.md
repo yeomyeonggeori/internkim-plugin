@@ -39,8 +39,7 @@ An internal document requesting management sign-off on a proposed action, purcha
     "totals": [{ "label": "Total", "value": "<amount> <currency>" }]
   },
   "notes": ["Submitted for your approval."],
-  "signature": { "date": "<Month D, YYYY>", "line": "<requester name>", "stamp": false },
-  "footer": ""
+  "signature": { "date": "<Month D, YYYY>", "line": "<requester name>", "stamp": false }
 }
 ```
 
