@@ -19,10 +19,11 @@ from doc_definitions import (
     TABLE_EMPTY_CELLS,
     TABLE_TOO_WIDE,
 )
+from docx_language import east_asia_font_issues
 from docx_text import paragraph_text, visible_text
 from office_inputs import office_file
 from office_result import Issue, OfficeArgumentParser, Result, run_command
-from text_checks import korean_font_issues, text_presence_issues
+from text_checks import text_presence_issues
 
 
 DENSE_CELL_CHARACTERS = 90
@@ -40,7 +41,7 @@ def main() -> Result:
     issues = (
         paragraph_issues(paragraphs)
         + text_presence_issues(document_text, arguments.required_text, arguments.forbidden_text)
-        + korean_font_issues(document_text, typography["fontNames"])
+        + east_asia_font_issues(document)
         + typography_issues(typography)
         + table_issues(tables)
     )

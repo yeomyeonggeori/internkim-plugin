@@ -5,7 +5,7 @@ from office_operations import OPERATION_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
 from office_schema import AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Text, Variant
 from template_merge import MERGE_VALUES, TEMPLATE_SYNTAX_ERROR, UNRESOLVED_PLACEHOLDER, UNUSED_VALUE
-from text_checks import PLACEHOLDER_LEFT, TEXT_CHECK_ISSUE_KINDS
+from text_checks import FORBIDDEN_TEXT_PRESENT, PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
 
 
 REVISION_TYPES = ("insertion", "deletion", "move", "formatting")
@@ -80,7 +80,8 @@ TABLE_DENSE_CELLS = IssueKind("TABLE_DENSE_CELLS", WARNING, "a table has cells o
 VALIDATE_ISSUE_KINDS = (
     DOCUMENT_EMPTY,
     DOCUMENT_SPARSE,
-    *TEXT_CHECK_ISSUE_KINDS,
+    REQUIRED_TEXT_MISSING,
+    FORBIDDEN_TEXT_PRESENT,
     BODY_SIZE_UNUSUAL,
     LINE_SPACING_UNUSUAL,
     MARGIN_TOO_NARROW,
@@ -391,7 +392,7 @@ GUIDE_INPUTS = (
 )
 GUIDE_ISSUES = (
     ("doc export", EXPORT_ISSUE_KINDS),
-    ("doc validate", VALIDATE_ISSUE_KINDS),
+    ("doc validate", VALIDATE_ISSUE_KINDS + (EAST_ASIA_FONT_MISSING,)),
     ("doc check", CHECK_ISSUE_KINDS),
     ("doc apply", OPERATION_ISSUE_KINDS),
     ("doc merge", MERGE_ISSUE_KINDS),
