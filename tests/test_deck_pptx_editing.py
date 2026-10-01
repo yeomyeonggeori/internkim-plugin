@@ -9,6 +9,7 @@ import tempfile
 import unittest
 
 import lxml.html
+from PIL import Image
 from pptx import Presentation
 
 from deck_fixture import OFFICE_ENTRY, SCRIPTS_PATH
@@ -424,6 +425,14 @@ class PreviewTest(KoreanDeckFixture):
         svg = base64.b64decode(chart.get("src").split(",", 1)[1]).decode("utf-8")
         self.assertEqual(svg.count("<rect") - svg.count('width="10" height="10"'), 6)
         self.assertIn("3분기", svg)
+
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+    def test_a_chart_page_stays_clear_around_the_bars(self):
+        envelope, _ = self.check_preview()
+        page = Image.open(self.directory / envelope["details"]["pages"][2]).convert("RGB")
+        scale = page.width / Presentation(str(self.directory / "deck.pptx")).slide_width
+        corner = (round((609600 + 60000) * scale), round((1524000 + 60000) * scale))
+        self.assertGreater(min(page.getpixel(corner)), 200)
 
     def test_the_preview_uses_only_inline_css_a_renderer_without_selectors_draws(self):
         _, document = self.check_preview()

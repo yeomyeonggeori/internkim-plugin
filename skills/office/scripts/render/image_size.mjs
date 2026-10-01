@@ -43,8 +43,16 @@ function svgSize(bytes) {
   return viewBox ? { width: parseFloat(viewBox[1]), height: parseFloat(viewBox[2]) } : null;
 }
 
+function rasterSize(bytes) {
+  return pngSize(bytes) || jpegSize(bytes) || gifSize(bytes) || webpSize(bytes);
+}
+
 export function imageSize(bytes) {
-  return pngSize(bytes) || jpegSize(bytes) || gifSize(bytes) || webpSize(bytes) || svgSize(bytes);
+  return rasterSize(bytes) || svgSize(bytes);
+}
+
+export function isVectorImage(bytes) {
+  return !rasterSize(bytes) && bytes.toString("utf8", 0, Math.min(bytes.length, 4096)).includes("<svg");
 }
 
 export function dataURIBytes(uri) {
