@@ -8,7 +8,6 @@ OFFICE_SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" 
 sys.path.insert(0, str(OFFICE_SCRIPTS_PATH))
 
 from fonts.registry import CSS_GENERIC_FAMILIES, DECK, FAMILIES, FONT_DIRECTORY, ROLE_GENERIC_FAMILIES, default_family, renderer_fonts, resolved_face  # noqa: E402
-from deck.native_preview import preview_font_path  # noqa: E402
 
 HANGUL_SYLLABLES = range(0xAC00, 0xD7A4)
 DECK_KIT_STYLE = OFFICE_SCRIPTS_PATH.parent / "assets" / "deck-kit" / "deck-kit.css"
@@ -74,13 +73,6 @@ class FontNamesOutsidePythonTest(unittest.TestCase):
     def test_the_page_layout_script_knows_the_same_generic_families(self):
         listed = re.search(r"genericFamilies = new Set\(\[([^\]]*)\]\)", TEXT_LAYOUT_SCRIPT.read_text(encoding="utf-8")).group(1)
         self.assertEqual(set(re.findall(r'"([^"]+)"', listed)), CSS_GENERIC_FAMILIES)
-
-
-class NativeReviewImageFontTest(unittest.TestCase):
-    def test_native_review_images_draw_with_the_deck_family(self):
-        deck = default_family(DECK)
-        self.assertEqual(preview_font_path(False), deck.path(deck.face(400)))
-        self.assertEqual(preview_font_path(True), deck.path(deck.face(700)))
 
 
 if __name__ == "__main__":

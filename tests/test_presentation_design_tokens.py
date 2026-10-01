@@ -6,7 +6,7 @@ import unittest
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"
 sys.path.insert(0, str(SCRIPTS_PATH.parent))
 
-from deck import html_export, render_review  # noqa: E402
+from deck import render_review  # noqa: E402
 
 
 DESIGN_DOCUMENT = """---
@@ -21,9 +21,6 @@ The visual system.
 
 
 class DesignTokenTest(unittest.TestCase):
-    def test_export_and_review_read_tokens_the_same_way(self):
-        self.assertIs(html_export.read_design_tokens, render_review.read_design_tokens)
-
     def test_single_and_double_quotes_are_both_stripped(self):
         self.assertEqual(
             render_review.read_design_tokens(DESIGN_DOCUMENT),

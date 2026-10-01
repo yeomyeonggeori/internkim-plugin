@@ -51,8 +51,6 @@ class MeasuredAdviceTest(unittest.TestCase):
             deck_path = Path(directory) / "crowded"
             deck_path.mkdir()
             crowded = build(deck_path, crowded_deck(30, 50))
-            if crowded["details"]["review"]["renderSource"] != "layout":
-                self.skipTest("the renderer could not run on this host")
             table_advice = suggestions_on(crowded, "slide 2")
             card_advice = suggestions_on(crowded, "slide 3")
             self.assertTrue(set(table_advice) & OVERFLOW_CODES, crowded["issues"])

@@ -16,8 +16,6 @@ from core.image_formats import PICTURE_FORMATS_TEXT
 
 
 DECK_LOCATION = "deck"
-LAYOUT_RENDER_SOURCE = "layout"
-NATIVE_RENDER_SOURCE = "nativeFallback"
 
 
 @dataclass(frozen=True)
@@ -44,8 +42,6 @@ FOOTER_CROSSED = review_check("FOOTER_CROSSED", "slide content reaches into the 
 TITLE_TOO_LONG = review_check("TITLE_TOO_LONG", f"a slide title runs past {TITLE_LINE_MAXIMUM} lines", "state the conclusion in one short sentence and move the detail into the body or the speaker notes")
 TINY_TEXT = review_check("TINY_TEXT", f"rendered text is smaller than {SMALLEST_TEXT_SHARE_OF_WIDTH * slide_size()[0]:g}px on a {slide_size()[0]}px slide ({SMALLEST_TEXT_SHARE_OF_WIDTH:.2%} of its width)", "shorten the slide so the kit does not shrink its type; the suggestion says how much fits at full size")
 IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "put the photo in a cover or image slide, which crops it to its frame, or give its box the image's own ratio")
-GEOMETRY_NOT_MEASURED = review_check("GEOMETRY_NOT_MEASURED", "no renderer measured element geometry, so overflow, overlap and stretched images were not checked", "install bun or node 18 and build again, or say the layout was not measured")
-UNRELIABLE_VISUAL_EVIDENCE = review_check("UNRELIABLE_VISUAL_EVIDENCE", "review images were not drawn from the deck's layout", "treat the previews as approximate and say so when delivering")
 
 TOPIC_TITLE = review_check("TOPIC_TITLE", "the title is a topic label, not a claim", "write the title as the slide's conclusion")
 LANGUAGE_MISMATCH = review_check("LANGUAGE_MISMATCH", "slide titles are Latin-only in a Korean deck", "write the titles in the request language")
@@ -54,7 +50,7 @@ VERTICAL_DEAD_ZONE = review_check("VERTICAL_DEAD_ZONE", "an empty band spans muc
 EMOJI_ICON = review_check("EMOJI_ICON", "a slide uses emoji glyphs", "write a .label word instead; the kit draws list markers and numbers itself")
 MISSING_SPEAKER_NOTES = review_check("MISSING_SPEAKER_NOTES", "a slide has no speaker notes", 'add an <aside class="notes"> script to every slide')
 
-SLIDE_RENDER_CHECKS = (SLIDE_BLANK, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, TEXT_COVERED, FOOTER_CROSSED, TITLE_TOO_LONG, IMAGE_DISTORTED, TINY_TEXT, GEOMETRY_NOT_MEASURED, UNRELIABLE_VISUAL_EVIDENCE)
+SLIDE_RENDER_CHECKS = (SLIDE_BLANK, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, TEXT_COVERED, FOOTER_CROSSED, TITLE_TOO_LONG, IMAGE_DISTORTED, TINY_TEXT)
 DESIGN_CHECKS = (
     TOPIC_TITLE,
     LANGUAGE_MISMATCH,
@@ -68,7 +64,6 @@ REVIEW_ISSUE_KINDS = tuple(check.kind for check in SLIDE_RENDER_CHECKS + DESIGN_
 SOURCE_NOT_HTML = IssueKind("SOURCE_NOT_HTML", ERROR, "the deck source is not an .html file", "write slides.html, or pass --source with an .html file")
 NO_SLIDE_SECTIONS = IssueKind("NO_SLIDE_SECTIONS", ERROR, "the HTML has no <section> slides", "put each slide in its own <section>")
 UNKNOWN_FORMAT = IssueKind("UNKNOWN_FORMAT", ERROR, "--format names a format the build cannot write", "use pdf, pptx, html, or all")
-PPTX_WITHOUT_DESIGN = IssueKind("PPTX_WITHOUT_DESIGN", WARNING, "no renderer drew the deck, so the PPTX re-lays the slide text into stock layouts", "say the PPTX does not carry the deck's design, or install bun or node 18 and build again")
 FONT_NOT_EMBEDDED = IssueKind("FONT_NOT_EMBEDDED", WARNING, "the PPTX names a font it could not embed, so the recipient sees a substitute unless that font is installed", f"use {default_family(DECK).name}, or tell the recipient which font to install")
 TEXT_KEPT_AS_PICTURE = IssueKind("TEXT_KEPT_AS_PICTURE", WARNING, "some slide text is drawn into the slide picture, so the recipient cannot edit it", "name that text when delivering; rotated, skewed, filtered, gradient-clipped and SVG text stays a picture")
 
@@ -115,7 +110,6 @@ SOURCE_CHECK_ISSUE_KINDS = (
 BUILD_ISSUE_KINDS = (
     UNKNOWN_FORMAT,
     *RENDER_ISSUE_KINDS,
-    PPTX_WITHOUT_DESIGN,
     FONT_NOT_EMBEDDED,
     TEXT_KEPT_AS_PICTURE,
 )

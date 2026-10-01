@@ -5,27 +5,24 @@ import pathlib
 
 from deck.acceptance import judge_build
 from deck.check_deck import CheckRequest, check_deck
-from deck.deck_definitions import FONT_NOT_EMBEDDED, LAYOUT_RENDER_SOURCE, NATIVE_RENDER_SOURCE, PPTX_WITHOUT_DESIGN, TEXT_KEPT_AS_PICTURE, UNKNOWN_FORMAT
+from deck.deck_definitions import FONT_NOT_EMBEDDED, TEXT_KEPT_AS_PICTURE, UNKNOWN_FORMAT
 from deck.deck_kit import KIT_MARKER, inject_deck_kit, slide_size
-from deck.design_tokens import read_design_tokens
 from deck.editable_pptx import EditablePptx, read_text_layers, text_layers_path, write_editable_pptx
 from deck.geometry_checks import GEOMETRY_FILE_NAME
 from deck.layout_thresholds import renderer_thresholds
-from deck.native_pptx import write_native_text_pptx
-from deck.native_preview import write_native_review_images
 from core.office_result import Issue, OfficeFailure, Result
 from render.renderer import PIXELS_FILE_NAME, RENDER_FAILED, RENDERER_UNAVAILABLE, RenderFailed, RendererUnavailable, RenderRequest, render_html, render_issues
-from deck.render_evidence import clear_stale_render_evidence, write_render_source
+from deck.render_evidence import clear_stale_render_evidence
 from deck.render_review import review_deck
 from deck.resource_inlining import VENDORED_FONTS_MARKER, inject_vendored_paperlogy_fallback, inline_local_fonts, inline_local_images
-from deck.slide_model import SlideModel, create_slide_models, extract_notes
-from deck.slide_source import SPEAKER_NOTES_CLASS, read_optional_text
+from deck.slide_source import SPEAKER_NOTES_CLASS
+from deck.slide_structure import extract_notes
 from deck.slide_viewer import SLIDE_VIEWER_MARKER, inject_screen_slide_viewer
 from deck.source_preflight import read_checked_source
 
 
 ALLOWED_FORMATS = {"html", "pdf", "pptx", "notes", "review"}
-BUILD_REVIEW_FACTS = ("renderSource", "slideCount", "renderedSlideCount", "geometryMeasured", "visualEvidenceReliable")
+BUILD_REVIEW_FACTS = ("slideCount", "renderedSlideCount")
 SPEAKER_NOTES_HIDDEN_STYLE = f"section .{SPEAKER_NOTES_CLASS} {{ display: none !important; }}"
 
 
@@ -49,7 +46,7 @@ class ExportRequest:
 class DerivedOutputs:
     issues: list[Issue]
     pptx: dict | None
-    review: Result | None
+    review: Result
 
 
 def export_deck(request: ExportRequest) -> Result:
@@ -62,7 +59,7 @@ def export_deck(request: ExportRequest) -> Result:
     html_output_path.write_text(deck_html_text(request.source_path), encoding="utf-8")
     derived = write_derived_outputs(request, html_output_path, slide_sources)
     issues = list(check.issues) + derived.issues
-    acceptance = judge_build(request.build_path, source_text, issues, deliverable_path(request), render_was_measured(derived))
+    acceptance = judge_build(request.build_path, source_text, issues, deliverable_path(request))
     return Result(
         summary=f"{acceptance.verdict}. {build_summary(request, derived)}",
         output_path=deliverable_path(request),
@@ -84,19 +81,11 @@ def deliverable_path(request: ExportRequest) -> str:
     return str(request.output_path(".html"))
 
 
-def render_was_measured(derived: DerivedOutputs) -> bool:
-    if derived.review is None:
-        return False
-    return derived.review.details.get("renderSource") == LAYOUT_RENDER_SOURCE and bool(derived.review.details.get("geometryMeasured"))
-
-
 def write_derived_outputs(request: ExportRequest, html_output_path: pathlib.Path, slide_sources: list[str]) -> DerivedOutputs:
-    design = read_design_tokens(read_optional_text(request.source_path.with_name("DESIGN.md")))
-    slide_models = create_slide_models(slide_sources)
-    issues = render_deck(request, html_output_path, slide_models, design)
+    issues = render_deck(request, html_output_path)
     pptx_details = None
     if "pptx" in request.formats:
-        pptx_details, pptx_issues = write_pptx(request, slide_models, design)
+        pptx_details, pptx_issues = write_pptx(request, [extract_notes(slide_source) for slide_source in slide_sources])
         issues.extend(pptx_issues)
     if "notes" in request.formats:
         write_notes(slide_sources, request.output_path("-notes.txt"))
@@ -146,39 +135,31 @@ def deck_render_request(request: ExportRequest, html_output_path: pathlib.Path) 
     )
 
 
-def render_deck(request: ExportRequest, html_output_path: pathlib.Path, slide_models: list[SlideModel], design: dict[str, str]) -> list[Issue]:
+def render_deck(request: ExportRequest, html_output_path: pathlib.Path) -> list[Issue]:
     clear_stale_render_evidence(request.review_path, request.deck_name)
     try:
         rendered = render_html(deck_render_request(request, html_output_path))
     except RendererUnavailable as reason:
-        write_native_fallback_review_images(slide_models, design, request)
-        return [RENDERER_UNAVAILABLE.issue(f"{reason}; the slide text was laid out without the deck's design")]
+        html_output_path.unlink()
+        raise OfficeFailure(RENDERER_UNAVAILABLE.issue(f"{request.deck_name} was not built: {reason}", str(request.source_path)))
     except RenderFailed as reason:
         clear_stale_render_evidence(request.review_path, request.deck_name)
-        write_native_fallback_review_images(slide_models, design, request)
-        return [RENDER_FAILED.issue(str(reason), str(html_output_path))]
-    write_render_source(request.review_path, LAYOUT_RENDER_SOURCE)
+        raise OfficeFailure(RENDER_FAILED.issue(f"{request.deck_name} was not built: {reason}", str(html_output_path)))
     return list(render_issues(rendered, str(html_output_path)))
 
 
-def write_native_fallback_review_images(slide_models: list[SlideModel], design: dict[str, str], request: ExportRequest) -> None:
-    if write_native_review_images(slide_models, design, request.review_path, request.deck_name):
-        write_render_source(request.review_path, NATIVE_RENDER_SOURCE)
-
-
-def write_pptx(request: ExportRequest, slide_models: list[SlideModel], design: dict[str, str]) -> tuple[dict, list[Issue]]:
+def write_pptx(request: ExportRequest, notes: list[str]) -> tuple[dict, list[Issue]]:
     pptx_path = request.output_path(".pptx")
-    layers = read_text_layers(request.review_path, len(slide_models))
+    layers_path = text_layers_path(request.review_path)
+    layers = read_text_layers(request.review_path, len(notes))
     if layers is None:
-        write_native_text_pptx(slide_models, design, pptx_path)
-        return {"source": "slideText"}, [PPTX_WITHOUT_DESIGN.issue("no renderer drew the deck; the PPTX holds the slide text in stock layouts", str(pptx_path))]
-    written = write_editable_pptx(layers, [model.notes for model in slide_models], pptx_path)
-    return editable_pptx_details(written, text_layers_path(request.review_path)), editable_pptx_issues(written, pptx_path)
+        raise OfficeFailure(RENDER_FAILED.issue(f"{pptx_path.name} was not written: the renderer left no editable layer for each of the {len(notes)} slides", str(layers_path)))
+    written = write_editable_pptx(layers, notes, pptx_path)
+    return editable_pptx_details(written, layers_path), editable_pptx_issues(written, pptx_path)
 
 
 def editable_pptx_details(written: EditablePptx, layers_path: pathlib.Path) -> dict:
     return {
-        "source": LAYOUT_RENDER_SOURCE,
         "textBoxes": written.text_box_count,
         "shapes": written.shape_count,
         "connectors": written.connector_count,
@@ -212,17 +193,12 @@ def write_notes(slide_sources: list[str], notes_path: pathlib.Path) -> None:
 
 def build_summary(request: ExportRequest, derived: DerivedOutputs) -> str:
     written = [name for name, path in output_paths(request, derived).items() if path]
-    summary = f"built {', '.join(written)} into {request.build_path}"
-    if derived.review is None:
-        return summary
-    return f"{summary}; {derived.review.summary}"
+    return f"built {', '.join(written)} into {request.build_path}; {derived.review.summary}"
 
 
 def build_details(request: ExportRequest, derived: DerivedOutputs) -> dict:
-    details = {"outputs": output_paths(request, derived), "pptx": derived.pptx}
-    if derived.review is not None:
-        details["review"] = {field: derived.review.details[field] for field in BUILD_REVIEW_FACTS}
-    return details
+    review = {field: derived.review.details[field] for field in BUILD_REVIEW_FACTS}
+    return {"outputs": output_paths(request, derived), "pptx": derived.pptx, "review": review}
 
 
 def output_paths(request: ExportRequest, derived: DerivedOutputs) -> dict[str, str | None]:

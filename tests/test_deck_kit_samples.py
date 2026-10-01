@@ -98,8 +98,6 @@ class SampleDeckBuildTest(unittest.TestCase):
                     cwd=deck_path,
                 )
                 envelope = json.loads(completed.stdout)
-                if envelope["details"]["review"]["renderSource"] != "layout":
-                    self.skipTest("the renderer could not run on this host")
                 self.assertEqual({issue["code"] for issue in envelope["issues"]} & LAYOUT_DEFECT_CODES, set())
                 self.assertTrue(envelope["details"]["acceptance"]["acceptable"], envelope["summary"])
                 self.assertEqual(pdf_page_count(str(deck_path / "build" / f"{deck_path.name}.pdf")), count)

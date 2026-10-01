@@ -52,7 +52,6 @@ It writes `build/<deck-slug>.pdf`; add `--format pptx` for PowerPoint or `--form
    - `ACCEPTABLE`: deliver the file it names. Other issues are advice; do not redesign a slide that is clean.
    - `FIX ROUND 1 OF 2` or `2 OF 2`: fix only the listed defects by shortening, splitting or filling, then build again.
    - `STOP FIXING`: deliver and name the defects that remain.
-   - `NOT MEASURED`: neither bun nor node 18 could draw the slides, so there is no PDF and a requested PPTX holds only the slide text in stock layouts; deliver the file the verdict names and say the layout was not checked.
 3. Before attaching, open `build/review/contact-sheet-01.png` once and confirm the slides read as intended.
 
 ## Images

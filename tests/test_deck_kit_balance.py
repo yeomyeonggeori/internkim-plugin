@@ -133,9 +133,7 @@ def inside(block: dict, box: dict) -> bool:
 class IndentedMarkupTest(unittest.TestCase):
     def test_indentation_between_flex_items_does_not_change_which_selectors_match(self):
         with tempfile.TemporaryDirectory() as directory:
-            envelope = build(Path(directory), INDENTED_DECK, "pdf")
-            if envelope["details"]["review"]["renderSource"] != "layout":
-                self.skipTest("the renderer could not run on this host")
+            build(Path(directory), INDENTED_DECK, "pdf")
             pdf_path = Path(directory) / "build" / f"{Path(directory).name}.pdf"
             self.assertAlmostEqual(drawn_sizes(pdf_path, "첫째줄", 0)[0], 40, delta=0.5)
             self.assertAlmostEqual(drawn_sizes(pdf_path, "둘째줄", 0)[0], 30, delta=0.5)
@@ -148,9 +146,7 @@ class CoverTitleTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             deck_path = Path(directory) / "cover"
             deck_path.mkdir()
-            envelope = build(deck_path, COVER_DECK, "pptx")
-            if envelope["details"]["review"]["renderSource"] != "layout":
-                self.skipTest("the renderer could not run on this host")
+            build(deck_path, COVER_DECK, "pptx")
             layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
         title = next(block for block in layout["slides"][0]["blocks"] if "41.3" in "".join(run["text"] for paragraph in block["paragraphs"] for run in paragraph["runs"]))
         lines = [line["text"] for paragraph in title["paragraphs"] for line in paragraph["lines"]]
@@ -166,16 +162,11 @@ class BalancedKitTest(unittest.TestCase):
         cls.deck_path = Path(cls.directory.name) / "balance"
         cls.deck_path.mkdir()
         cls.envelope = build(cls.deck_path, BALANCED_DECK, "all")
-        layers = cls.deck_path / "build" / "review" / "pptx-layers" / "layout.json"
-        cls.layout = json.loads(layers.read_text(encoding="utf-8")) if layers.exists() else None
+        cls.layout = json.loads((cls.deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
 
     @classmethod
     def tearDownClass(cls):
         cls.directory.cleanup()
-
-    def setUp(self):
-        if self.envelope["details"]["review"]["renderSource"] != "layout":
-            self.skipTest("the renderer could not run on this host")
 
     def test_the_deck_is_acceptable(self):
         self.assertTrue(self.envelope["details"]["acceptance"]["acceptable"], self.envelope["summary"])
@@ -223,8 +214,6 @@ class HollowBoxTest(unittest.TestCase):
     def test_a_tall_box_around_one_line_is_a_dead_zone_and_text_under_the_kit_floor_is_tiny(self):
         with tempfile.TemporaryDirectory() as directory:
             envelope = build(Path(directory), HOLLOW_BOX_DECK, "pdf")
-        if envelope["details"]["review"]["renderSource"] != "layout":
-            self.skipTest("the renderer could not run on this host")
         messages = {issue["code"]: issue["message"] for issue in envelope["issues"] if issue["location"] == "slide 1"}
         self.assertIn("mostly empty inside", messages.get("VERTICAL_DEAD_ZONE", ""), messages)
         self.assertIn("div.panel", messages["VERTICAL_DEAD_ZONE"])

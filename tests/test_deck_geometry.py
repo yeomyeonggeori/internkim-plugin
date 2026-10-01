@@ -56,8 +56,7 @@ def write_review_fixture(deck_path: Path, geometry_slides) -> Path:
     review_path.mkdir()
     for number in (1, 2):
         write_png(review_path / f"deck.{number:03d}.png", 32, 18, [[(255, 255, 255, 255)] * 32 for _ in range(18)])
-    if geometry_slides is not None:
-        (review_path / "geometry.json").write_text(json.dumps({"viewport": {"width": 1600, "height": 900}, "slides": geometry_slides}), encoding="utf-8")
+    (review_path / "geometry.json").write_text(json.dumps({"viewport": {"width": 1600, "height": 900}, "slides": geometry_slides}), encoding="utf-8")
     return source_path
 
 
@@ -74,19 +73,11 @@ class GeometryReviewTest(unittest.TestCase):
 
     def test_measured_findings_are_reported_on_their_own_slide_only(self):
         report, issues = self.review(MEASURED_SLIDES)
-        self.assertTrue(report["geometryMeasured"])
         self.assertEqual(slide_codes(report, issues, 1) & GEOMETRY_CODES, set())
         self.assertEqual(slide_codes(report, issues, 2) & GEOMETRY_CODES, GEOMETRY_CODES)
         overflow = next(issue for issue in issues if issue.kind.code == "CONTENT_OVERFLOW")
         self.assertIn("div.clipped", overflow.message)
         self.assertIn("273", overflow.message)
-
-    def test_a_missing_geometry_file_is_reported_not_guessed(self):
-        report, issues = self.review(None)
-        self.assertFalse(report["geometryMeasured"])
-        codes = {issue.kind.code for issue in issues}
-        self.assertIn("GEOMETRY_NOT_MEASURED", codes)
-        self.assertEqual(codes & GEOMETRY_CODES, set())
 
     def test_a_body_that_stops_high_above_its_footer_is_a_dead_zone_the_empty_band_check_missed(self):
         report, issues = self.review([measured_slide(1, TIMELINE_BANDS_ENDING_AT_62_PERCENT), measured_slide(2, RISK_TABLE_BANDS_ENDING_AT_72_PERCENT)])
@@ -110,8 +101,6 @@ class RenderedGeometryTest(unittest.TestCase):
             (deck_path / "slides.html").write_text(FIXTURE_SOURCE, encoding="utf-8")
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build"], capture_output=True, text=True, cwd=deck_path)
             envelope = json.loads(completed.stdout)
-            if envelope["details"]["review"]["renderSource"] != "layout":
-                self.skipTest("the renderer could not run on this host")
             geometry = json.loads((deck_path / "build" / "review" / "geometry.json").read_text(encoding="utf-8"))
         clean, clipped = geometry["slides"]
         self.assertEqual(clean["overflow"], [])
@@ -140,10 +129,7 @@ class KitCollisionTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / "slides.html").write_text(source, encoding="utf-8")
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build"], capture_output=True, text=True, cwd=directory)
-        envelope = json.loads(completed.stdout)
-        if envelope["details"]["review"]["renderSource"] != "layout":
-            self.skipTest("the renderer could not run on this host")
-        return envelope
+        return json.loads(completed.stdout)
 
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_cards_whose_text_spills_past_their_box_and_a_paragraph_long_title_are_defects(self):

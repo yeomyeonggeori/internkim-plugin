@@ -49,12 +49,9 @@ class Acceptance:
     defects: tuple[Issue, ...]
     fix_round: int
     deliverable: str
-    measured: bool
 
     @property
     def verdict(self) -> str:
-        if not self.measured:
-            return f"NOT MEASURED: the renderer did not draw the deck, so there is no PDF and no layout check; deliver {self.deliverable} and say so"
         if self.acceptable:
             return f"ACCEPTABLE: deliver {self.deliverable}; the other issues are advice, so do not redesign clean slides"
         listed = "; ".join(f"{issue.kind.code} on {issue.location}" for issue in self.defects)
@@ -73,11 +70,11 @@ class Acceptance:
         }
 
 
-def judge_build(build_path: pathlib.Path, source_text: str, issues: list[Issue], deliverable: str, measured: bool) -> Acceptance:
+def judge_build(build_path: pathlib.Path, source_text: str, issues: list[Issue], deliverable: str) -> Acceptance:
     defects = tuple(issue for issue in issues if issue.kind.code in OBJECTIVE_DEFECT_CODES)
-    acceptable = measured and not defects
+    acceptable = not defects
     fix_round = record_build(build_path / HISTORY_FILE_NAME, source_digest(source_text), acceptable)
-    return Acceptance(acceptable, defects, fix_round, deliverable, measured)
+    return Acceptance(acceptable, defects, fix_round, deliverable)
 
 
 def source_digest(source_text: str) -> str:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from deck.deck_definitions import LAYOUT_RENDER_SOURCE, TOPIC_TITLE, UNRELIABLE_VISUAL_EVIDENCE
+from deck.deck_definitions import TOPIC_TITLE
 from core.office_result import Issue
 
 
@@ -36,11 +36,6 @@ def title_reads_as_topic_label(title: str) -> bool:
 
 def strip_parenthetical(title: str) -> str:
     return re.sub(r"\s*[(（][^)）]*[)）]\s*", " ", title).strip()
-
-
-def apply_render_source_warning(slides: list[dict[str, object]], render_source: str) -> None:
-    if render_source != LAYOUT_RENDER_SOURCE:
-        append_deck_warning(slides, UNRELIABLE_VISUAL_EVIDENCE.deck_issue("review images were not drawn from the deck's layout"))
 
 
 def append_deck_warning(slides: list[dict[str, object]], warning: Issue) -> None:

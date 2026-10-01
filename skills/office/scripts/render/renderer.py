@@ -25,7 +25,9 @@ DEFAULT_VIEWPORT = (1600, 900)
 PIXELS_FILE_NAME = "pixels.json"
 CONTACT_SHEETS_FILE_NAME = "contact-sheets.json"
 
-RENDERER_UNAVAILABLE = IssueKind("RENDERER_UNAVAILABLE", WARNING, "neither bun nor node 18 is installed, or the renderer's packages could not be installed, so no page was drawn", "install bun, or node 18 or newer, and run again")
+RUNTIME_REQUIREMENT = f"bun, or node {NODE_MAJOR_VERSION_MINIMUM} or newer"
+RUNTIME_MISSING = f"neither bun nor node {NODE_MAJOR_VERSION_MINIMUM} or newer is installed"
+RENDERER_UNAVAILABLE = IssueKind("RENDERER_UNAVAILABLE", ERROR, f"{RUNTIME_MISSING}, or the renderer's packages could not be installed, so nothing was drawn or written", f"install {RUNTIME_REQUIREMENT}, and run again")
 RENDER_FAILED = IssueKind("RENDER_FAILED", ERROR, "the renderer stopped before drawing every page", "read the message for the page or element that stopped it")
 LAYOUT_NOT_MAPPED = IssueKind("LAYOUT_NOT_MAPPED", WARNING, "part of a page's layout could not be matched to its HTML, so its boxes were not measured", "report the element the message names; the page images are still drawn")
 STYLE_NOT_DRAWN = IssueKind("STYLE_NOT_DRAWN", WARNING, "an inline style declaration the renderer cannot read was left out, as a browser leaves out an invalid one", "remove the style attribute: the kit styles every part, data-accent on <body> sets a brand color, and theme tokens go in a <style> on :root")
@@ -130,7 +132,7 @@ def javascript_runtime() -> list[str]:
     node_path = shutil.which("node")
     if node_path and node_major_version(node_path) >= NODE_MAJOR_VERSION_MINIMUM:
         return [node_path]
-    raise RendererUnavailable("neither bun nor node 18 or newer is installed")
+    raise RendererUnavailable(RUNTIME_MISSING)
 
 
 def node_major_version(node_path: str) -> int:

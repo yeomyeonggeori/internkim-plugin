@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 import re
 
-from deck.slide_source import normalize_structure_text, remove_invisible_markup, slide_layout, slide_role, slide_title, split_slide_sources
+from deck.slide_source import SPEAKER_NOTES_BLOCK_PATTERN, normalize_structure_text, remove_invisible_markup, slide_layout, slide_role, slide_title, split_slide_sources
 
 
 PREVIEW_CHARACTER_LIMIT = 180
@@ -34,6 +34,11 @@ def visible_slide_text(slide_source: str) -> str:
     text = remove_invisible_markup(slide_source)
     text = convert_html_markup_to_text(text)
     return normalize_visible_text(html.unescape(text))
+
+
+def extract_notes(slide_source: str) -> str:
+    notes = re.findall(SPEAKER_NOTES_BLOCK_PATTERN, slide_source, flags=re.IGNORECASE | re.DOTALL)
+    return "\n".join(text for text in map(visible_slide_text, notes) if text)
 
 
 def convert_html_markup_to_text(text: str) -> str:

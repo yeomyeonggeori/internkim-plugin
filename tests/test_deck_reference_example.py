@@ -65,8 +65,6 @@ class ReferenceExampleTest(unittest.TestCase):
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *arguments], capture_output=True, text=True, cwd=deck_path)
             envelope = json.loads(completed.stdout)
             check = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "check", str(deck_path / "build" / "reference.pptx")], capture_output=True, text=True).stdout)
-        if envelope["details"]["review"]["renderSource"] != "layout":
-            self.skipTest("the renderer could not run on this host")
         self.assertTrue(envelope["details"]["acceptance"]["acceptable"], envelope["summary"])
         self.assertEqual([issue["code"] for issue in check["issues"]], [])
 
@@ -93,8 +91,6 @@ class CardGridTest(unittest.TestCase):
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path)
             envelope = json.loads(completed.stdout)
             read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "read", str(deck_path / "build" / "grid.pptx"), "--slides", "2"], capture_output=True, text=True).stdout)
-        if envelope["details"]["review"]["renderSource"] != "layout":
-            self.skipTest("the renderer could not run on this host")
         self.assertTrue(envelope["details"]["acceptance"]["acceptable"], envelope["summary"])
         boxes = sorted((shape["box"] for shape in read["details"]["slides"][0]["shapes"] if shape["kind"] == "shape"), key=lambda box: box["w"] * box["h"], reverse=True)[:4]
         self.assertEqual(len({box["x"] for box in boxes}), 2, boxes)

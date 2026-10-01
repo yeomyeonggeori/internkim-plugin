@@ -20,8 +20,8 @@ NO_NOTES = MISSING_SPEAKER_NOTES.issue("slide 8 has no speaker notes", "slide 8"
 
 
 class AcceptanceTest(unittest.TestCase):
-    def judge(self, build_path: Path, source: str, issues: list, measured: bool = True):
-        return judge_build(build_path, source, issues, str(build_path / "deck.pdf"), measured)
+    def judge(self, build_path: Path, source: str, issues: list):
+        return judge_build(build_path, source, issues, str(build_path / "deck.pdf"))
 
     def test_advice_alone_is_acceptable_and_says_not_to_redesign(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -64,13 +64,8 @@ class AcceptanceTest(unittest.TestCase):
             next_request = self.judge(build_path, "<section>the user's next change</section>", [OVERLAP])
         self.assertEqual(next_request.fix_round, 0)
 
-    def test_an_unmeasured_build_is_never_called_acceptable(self):
-        with tempfile.TemporaryDirectory() as directory:
-            acceptance = self.judge(Path(directory), "<section>a</section>", [], measured=False)
-        self.assertFalse(acceptance.acceptable)
-        self.assertTrue(acceptance.verdict.startswith("NOT MEASURED"))
 
-
+KIT_DECK = '<body data-theme="editorial"><section data-layout="statement"><h2>배송이 빨라집니다</h2><aside class="notes">배송 기간이 줄었습니다</aside></section></body>'
 FREE_HTML_DECK = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>자유 형식</title>
 <style>section{width:1600px;height:900px;padding:80px;box-sizing:border-box;font-family:sans-serif;background:#fff} h1{font-size:64px} td{font-size:12px}</style></head><body>
 <section><h1>지역별 매출이 늘었습니다</h1><table><tr><td>수도권</td><td>58억</td></tr><tr><td>영남</td><td>31억</td></tr></table></section>
@@ -105,12 +100,9 @@ class BuildHelpTest(unittest.TestCase):
                 self.assertIn("usage:", completed.stdout)
                 self.assertEqual(list(Path(directory).iterdir()), [])
 
-    def test_build_help_names_only_its_flags_and_the_reference_states_not_measured_once(self):
+    def test_build_help_names_only_its_flags(self):
         completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--help"], capture_output=True, text=True)
         self.assertNotIn("FORMATS", completed.stdout)
-        reference = (SCRIPTS_PATH.parent / "references" / "deck.md").read_text(encoding="utf-8")
-        self.assertEqual(reference.count("NOT MEASURED"), 1)
-        self.assertNotIn("Without bun", reference)
 
     def test_an_unknown_format_is_refused_before_anything_renders(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -120,6 +112,28 @@ class BuildHelpTest(unittest.TestCase):
             self.assertEqual(completed.returncode, 1)
             self.assertIn("UNKNOWN_FORMAT", {issue["code"] for issue in envelope["issues"]})
             self.assertFalse((Path(directory) / "build").exists())
+
+
+class WithoutRendererTest(unittest.TestCase):
+    def run_without_renderer(self, directory: str, *arguments: str) -> subprocess.CompletedProcess:
+        environment = {"HOME": directory, "PATH": f"{Path(sys.executable).parent}:/usr/bin:/bin"}
+        return subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", *arguments], capture_output=True, text=True, cwd=directory, env=environment)
+
+    def test_the_build_refuses_and_names_what_to_install_while_the_check_still_runs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory) / "slides.html").write_text(KIT_DECK, encoding="utf-8")
+            built = self.run_without_renderer(directory, "build", "--format", "pptx")
+            checked = self.run_without_renderer(directory, "check")
+            written = sorted(path.name for path in Path(directory).rglob("*") if path.suffix in {".pdf", ".pptx", ".html"} and path.name != "slides.html")
+        envelope = json.loads(built.stdout)
+        self.assertEqual(built.returncode, 1)
+        self.assertEqual(built.stderr, "")
+        self.assertEqual(envelope["status"], "error")
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["RENDERER_UNAVAILABLE"])
+        self.assertIn("node 18 or newer", envelope["summary"])
+        self.assertIn("install bun, or node 18 or newer", envelope["issues"][0]["suggestion"])
+        self.assertEqual(written, [])
+        self.assertNotEqual(json.loads(checked.stdout)["status"], "error", checked.stdout)
 
 
 if __name__ == "__main__":

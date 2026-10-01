@@ -30,11 +30,9 @@ def report_summary_lines(report: dict[str, object]) -> list[str]:
     return [
         "# Slide Render Review",
         "",
-        f"- Visual evidence reliable: {report['visualEvidenceReliable']}",
-        f"- Render source: {report['renderSource']}",
         f"- Slide count: {report['slideCount']}",
         f"- Rendered slide count: {report['renderedSlideCount']}",
-        f"- Geometry: {geometry_line(report)}",
+        "- Geometry: measured by the renderer (review/geometry.json)",
         f"- Contact sheets: {', '.join(sheet['filename'] for sheet in report['contactSheets'])}",
         f"- Fit reviews: {', '.join(review['filename'] for review in report['fitReviews'])}",
         "",
@@ -43,12 +41,6 @@ def report_summary_lines(report: dict[str, object]) -> list[str]:
         FIT_REVIEW_PROMPT,
         "",
     ]
-
-
-def geometry_line(report: dict[str, object]) -> str:
-    if report["geometryMeasured"]:
-        return "measured by the renderer (review/geometry.json)"
-    return "not measured, so overflow, overlap and stretched images were not checked"
 
 
 def slide_summary_lines(slide: dict[str, object]) -> list[str]:

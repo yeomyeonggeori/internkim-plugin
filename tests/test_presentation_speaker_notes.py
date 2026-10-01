@@ -7,8 +7,7 @@ SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scri
 sys.path.insert(0, str(SCRIPTS_PATH.parent))
 
 from deck.content_warnings import apply_missing_speaker_notes_warning  # noqa: E402
-from deck.slide_model import create_slide_models, extract_notes  # noqa: E402
-from deck.slide_structure import visible_slide_text  # noqa: E402
+from deck.slide_structure import extract_notes, visible_slide_text  # noqa: E402
 
 
 FOOTNOTE_SLIDE = '<section><h2>매출이 늘었습니다</h2><p>본문</p><div class="footnotes">출처 내부 자료</div></section>'
@@ -18,7 +17,6 @@ NOTES_SLIDE = '<section><h2>비용이 줄었습니다</h2><p>본문</p><aside cl
 
 class SpeakerNotesTest(unittest.TestCase):
     def test_a_footnote_stays_visible_text(self):
-        self.assertIn("출처 내부 자료", create_slide_models([FOOTNOTE_SLIDE])[0].lines)
         self.assertIn("출처 내부 자료", visible_slide_text(FOOTNOTE_SLIDE))
         self.assertEqual(extract_notes(FOOTNOTE_SLIDE), "")
 
