@@ -24,7 +24,6 @@ declares. Each names the tools it calls in its own `tool-references`.
 | `messages` | Reads, posts, edits and removes conversation messages |
 | `mail` | Connects a mailbox, then reads, searches and sends mail |
 | `office` | Creates, edits and validates `.docx`, PDF, `.xlsx` and decks, and fills company forms on letterhead; only the forms and reading attachments need the server |
-| `website` | Scaffolds, builds, previews and publishes a site |
 | `company-data` | Reads and records company profile, metrics and records |
 | `web-search` | Searches the public web and fetches pages |
 
@@ -53,8 +52,8 @@ works and what to do in a client that cannot.
 Python 3 and [uv](https://docs.astral.sh/uv/) on `PATH`. A skill that bundles
 scripts declares its own dependencies in `scripts/requirements.txt` and installs
 them into an environment it creates on first use, so nothing has to be prepared
-in advance. `website` also needs [Bun](https://bun.sh), and `office` needs Bun
-and a browser that speaks the Chrome DevTools Protocol to render decks.
+in advance. `office` needs [Bun](https://bun.sh) and a browser that speaks the
+Chrome DevTools Protocol to render decks.
 
 `office` runs every command through one entry, `scripts/office <format>
 <verb>`, which prepares that environment first; `scripts/office --help` lists

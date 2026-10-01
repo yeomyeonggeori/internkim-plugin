@@ -63,34 +63,11 @@ def parse_arguments(argv: list) -> tuple:
     return query, output_value
 
 
-def anchor_site_output(output_value: str) -> pathlib.Path:
-    output_path = pathlib.Path(output_value)
-    as_posix = output_path.as_posix()
-    if "app/public/" not in as_posix:
-        return output_path
-    suffix = as_posix.split("app/public/", 1)[-1]
-    probe = pathlib.Path.cwd()
-    for _ in range(6):
-        if probe.name == "app" and (probe / "public").is_dir():
-            return probe / "public" / suffix
-        if (probe / "app" / "public").is_dir():
-            return probe / "app" / "public" / suffix
-        probe = probe.parent
-    return output_path
-
-
-def reference_path(output_path: pathlib.Path) -> str:
-    as_posix = output_path.as_posix()
-    if "public/" in as_posix:
-        return "/" + as_posix.split("public/", 1)[-1]
-    return output_path.name
-
-
 def main() -> Result:
     query, output_value = parse_arguments(sys.argv[1:])
     if not query or not output_value:
         raise OfficeFailure(INVALID_ARGUMENTS.issue("usage: office deck image <search query> <output path>   (also accepts --output <path>)"))
-    output_path = anchor_site_output(output_value)
+    output_path = pathlib.Path(output_value)
     try:
         results = search_openverse(query)
     except (OSError, ValueError) as error:
@@ -116,9 +93,9 @@ def try_download(result: dict, output_path: pathlib.Path) -> Result | None:
     creator = result.get("creator") or "unknown"
     license_name = str(result.get("license", "?")).upper()
     return Result(
-        summary=f"saved {output_path} ({written // 1024}KB), \"{title}\" by {creator}, license {license_name} (no attribution required); reference it as {reference_path(output_path)}",
+        summary=f"saved {output_path} ({written // 1024}KB), \"{title}\" by {creator}, license {license_name} (no attribution required); reference it as {output_path.name}",
         output_path=str(output_path),
-        details={"title": title, "creator": creator, "license": license_name, "referencePath": reference_path(output_path), "bytes": written},
+        details={"title": title, "creator": creator, "license": license_name, "referencePath": output_path.name, "bytes": written},
     )
 
 
