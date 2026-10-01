@@ -6,6 +6,7 @@ from pathlib import Path
 import tempfile
 from typing import Callable, Sequence
 
+from office_inputs import office_file
 from office_result import ERROR, Issue, IssueKind, OfficeArgumentParser, Result, read_json_file
 from office_schema import ListOf, Variant, require_valid
 
@@ -72,9 +73,9 @@ def save_atomically(save: Callable[[str], Sequence[Issue] | None], output_path: 
             os.unlink(temporary_path)
 
 
-def apply_parser(description: str) -> OfficeArgumentParser:
+def apply_parser(description: str, input_kind: str) -> OfficeArgumentParser:
     parser = OfficeArgumentParser(description=description)
-    parser.add_argument("path", help="the file to edit")
+    parser.add_argument("path", type=office_file(input_kind), help="the file to edit")
     parser.add_argument("ops", help="JSON file with a list of operations")
     parser.add_argument("--output", help="write the result here instead of editing the file in place")
     parser.add_argument("--dry-run", action="store_true", help="check and plan every operation, report the changes, and write nothing")

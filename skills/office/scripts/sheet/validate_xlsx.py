@@ -4,6 +4,7 @@ from __future__ import annotations
 from openpyxl import load_workbook
 from openpyxl.utils.cell import range_boundaries
 
+from office_inputs import office_file
 from office_result import Issue, OfficeArgumentParser, Result, run_command
 from sheet_definitions import AUTO_FILTER_MISSING, BLANK_HEADER_CELLS, HEADER_NOT_FROZEN
 from sheet_styling import MINIMUM_DATA_ROWS, MINIMUM_TABLE_COLUMNS, header_row_index, is_filled, non_blank_count
@@ -79,7 +80,7 @@ def sheet_issues(summary: dict) -> list[Issue]:
 
 def parse_arguments():
     parser = OfficeArgumentParser(description="Validate and summarize an XLSX workbook.")
-    parser.add_argument("workbook_path")
+    parser.add_argument("workbook_path", type=office_file("xlsx"))
     return parser.parse_args()
 
 

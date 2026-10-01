@@ -29,6 +29,7 @@ from deck_definitions import (
 from deck_kit import DEFAULT_THEME, chart_types, theme_palettes, uses_deck_kit
 from deck_source import Element, find_all, normalized_text, parse_source, style_texts, visible_text
 from design_tokens import design_front_matter
+from office_inputs import PPTX, require_kind
 from office_result import ERROR, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
 from office_schema import closest_name
 from resource_inlining import resolve_resource_path
@@ -395,8 +396,9 @@ def deck_source_path(target: str) -> pathlib.Path:
 
 def main() -> Result:
     parsed = parse_arguments()
-    if parsed.target.lower().endswith(".pptx"):
+    if pathlib.Path(parsed.target).suffix.casefold() not in ("", ".html"):
         from check_pptx import check_presentation
+        require_kind(parsed.target, PPTX)
         return check_presentation(pathlib.Path(parsed.target).expanduser(), parsed.slides, parsed.output_directory, not parsed.no_preview)
     return check_deck(check_request(deck_source_path(parsed.target), parsed))
 

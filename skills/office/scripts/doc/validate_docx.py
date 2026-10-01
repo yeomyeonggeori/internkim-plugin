@@ -20,6 +20,7 @@ from doc_definitions import (
     TABLE_TOO_WIDE,
 )
 from docx_text import paragraph_text, visible_text
+from office_inputs import office_file
 from office_result import Issue, OfficeArgumentParser, Result, run_command
 from text_checks import korean_font_issues, text_presence_issues
 
@@ -211,7 +212,7 @@ def table_issues(tables: list[dict]) -> list[Issue]:
 
 def parse_arguments() -> argparse.Namespace:
     parser = OfficeArgumentParser(description="Validate and summarize a DOCX file.")
-    parser.add_argument("document_path")
+    parser.add_argument("document_path", type=office_file("docx"))
     parser.add_argument("--required-text", action="append", default=[])
     parser.add_argument("--forbidden-text", action="append", default=[])
     return parser.parse_args()

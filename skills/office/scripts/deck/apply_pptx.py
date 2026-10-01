@@ -14,7 +14,8 @@ def main() -> Result:
     arguments = apply_parser(
         "Apply a batch of edits to a .pptx: all of them or none. office guide deck lists the operations. "
         "The result reports text that overflows its box, shapes off the slide and overlaps on every slide the batch changed, "
-        "each with an operation that fixes it."
+        "each with an operation that fixes it.",
+        "pptx",
     ).parse_args()
     operations = read_batch(PPTX_OPERATIONS, arguments.ops)
     editing = load_editing(arguments.path)

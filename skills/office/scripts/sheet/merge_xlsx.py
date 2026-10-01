@@ -7,6 +7,7 @@ from lxml import etree
 
 from formula_cache import cache_formula_values
 from office_operations import save_atomically
+from office_inputs import office_file
 from office_result import OfficeArgumentParser, Result, read_json_file, run_command
 from office_schema import require_valid
 from template_merge import MERGE_VALUES, MISSING, MergeReport, fill_text_nodes, whole_placeholder, write_package
@@ -133,7 +134,7 @@ def serialize(element) -> bytes:
 
 def parse_arguments():
     parser = OfficeArgumentParser(description="Fill an .xlsx template's {{ name }} placeholders from a JSON values file; a cell that is one placeholder takes the value's type. Refuses to write when a placeholder has no value.")
-    parser.add_argument("template_path", help="the .xlsx template")
+    parser.add_argument("template_path", type=office_file("xlsx"), help="the .xlsx template")
     parser.add_argument("values_path", help="JSON object mapping each placeholder name to its value")
     parser.add_argument("output_path", help="the filled .xlsx to write")
     return parser.parse_args()

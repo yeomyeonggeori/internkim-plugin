@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pypdf import PdfReader
 
+from office_inputs import office_file
 from office_result import OfficeArgumentParser, Result, run_command
 
 
@@ -47,7 +48,7 @@ def limited(text: str) -> str:
 
 def parse_arguments():
     parser = OfficeArgumentParser(description="Read a PDF's text page by page, with page sizes and whether each page has extractable text.")
-    parser.add_argument("pdf_path")
+    parser.add_argument("pdf_path", type=office_file("pdf"))
     parser.add_argument("--start", type=int, default=1, help="first page number to show, counting from 1")
     parser.add_argument("--limit", type=int, default=DEFAULT_PAGE_LIMIT, help=f"most pages to show, default {DEFAULT_PAGE_LIMIT}")
     return parser.parse_args()

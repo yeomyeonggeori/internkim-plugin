@@ -10,6 +10,7 @@ from docx_comments import describe_comment_threads
 from docx_reference_operations import bookmark_names, describe_notes
 from docx_revisions import collect_revisions
 from docx_text import visible_text
+from office_inputs import office_file
 from office_result import OfficeArgumentParser, Result, run_command
 
 
@@ -116,7 +117,7 @@ def limited(text: str) -> str:
 
 def parse_arguments():
     parser = OfficeArgumentParser(description="Read a .docx as indexed blocks, section headers and footers, comment threads, and tracked changes. Block indexes, comment ids and revision ids are what doc apply takes. Block text is the text as if every tracked change were accepted.")
-    parser.add_argument("document_path")
+    parser.add_argument("document_path", type=office_file("docx"))
     parser.add_argument("--start", type=int, default=0, help="first block index to show")
     parser.add_argument("--revisions", action="store_true", help="list every tracked change with its id, type, author, date, block and text")
     parser.add_argument("--limit", type=int, default=DEFAULT_BLOCK_LIMIT, help=f"most blocks to show, default {DEFAULT_BLOCK_LIMIT}")

@@ -7,6 +7,7 @@ from docxtpl import DocxTemplate
 from jinja2 import Environment, StrictUndefined, TemplateSyntaxError, UndefinedError
 
 from office_operations import save_atomically
+from office_inputs import office_file
 from office_result import Issue, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
 from template_merge import MERGE_VALUES, TEMPLATE_SYNTAX_ERROR, UNRESOLVED_PLACEHOLDER, UNUSED_VALUE
@@ -58,7 +59,7 @@ def syntax_issue(error: TemplateSyntaxError) -> Issue:
 
 def parse_arguments():
     parser = OfficeArgumentParser(description="Fill a .docx template's {{ name }} placeholders and {% %} tags from a JSON values file. Refuses to write when a placeholder has no value.")
-    parser.add_argument("template_path", help="the .docx template")
+    parser.add_argument("template_path", type=office_file("docx"), help="the .docx template")
     parser.add_argument("values_path", help="JSON object mapping each placeholder name to its value")
     parser.add_argument("output_path", help="the filled .docx to write")
     return parser.parse_args()

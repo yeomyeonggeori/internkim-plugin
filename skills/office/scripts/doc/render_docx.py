@@ -12,6 +12,7 @@ from docx_pagination import Paginator  # noqa: E402
 from docx_preview import DocxModelBuilder  # noqa: E402
 from docx_preview_html import PageWriter  # noqa: E402
 from office_preview import Preview, approximation_issues, draw_pages, write_preview  # noqa: E402
+from office_inputs import office_file
 from office_result import OfficeArgumentParser, Result, run_command  # noqa: E402
 from preview_fonts import FontRegistry  # noqa: E402
 
@@ -42,7 +43,7 @@ def main() -> Result:
 
 def parse_arguments():
     parser = OfficeArgumentParser(description="Lay out a .docx page by page as preview HTML, then draw each page as a PNG, contact sheets and a PDF: page size and margins, styles, numbering, tables, pictures, headers, footers and footnotes.")
-    parser.add_argument("source_path", help="the .docx to lay out")
+    parser.add_argument("source_path", type=office_file("docx"), help="the .docx to lay out")
     parser.add_argument("--output-directory", help="where preview.html, the page images and the PDF go; default <name>-preview beside the file")
     return parser.parse_args()
 

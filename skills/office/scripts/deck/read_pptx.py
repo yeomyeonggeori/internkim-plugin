@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pptx import Presentation
 
+from office_inputs import office_file
 from office_result import OfficeArgumentParser, Result, run_command
 from pptx_description import describe_presentation
 from pptx_slide_selection import select_slides
@@ -22,7 +23,7 @@ def parse_arguments():
         "its id, name, kind, placeholder type, box in EMU and in percent of the slide, and its text with the effective font, size, bold and color. "
         "Shapes are listed back to front. Tables give their rows, charts their type, categories and series."
     ))
-    parser.add_argument("presentation_path")
+    parser.add_argument("presentation_path", type=office_file("pptx"))
     parser.add_argument("--slides", default="", help="slides to read, such as 2,4-6; default every slide")
     parser.add_argument("--detail", action="store_true", help="add each paragraph's runs with where every style value comes from (run, shape, layout, master, theme), fills, outlines, crops and animated shape ids")
     return parser.parse_args()

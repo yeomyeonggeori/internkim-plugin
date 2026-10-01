@@ -8,6 +8,7 @@ from pypdf import PdfReader, PdfWriter
 
 import create_pdf as pdf_helper
 from documents_folder import resolve_document_path
+from office_inputs import office_file
 from office_result import OfficeArgumentParser, Result, read_json_file, run_command
 from office_schema import require_valid
 from pdf_definitions import SECTION
@@ -61,7 +62,7 @@ def merge_into_original(pdf_path: str, appended_page_bytes: bytes) -> None:
 
 def parse_arguments():
     parser = OfficeArgumentParser(description="Append a new section page to an existing PDF in place.")
-    parser.add_argument("pdf_path", nargs="?", help="Path to the .pdf; defaults to the newest .pdf in ~/documents")
+    parser.add_argument("pdf_path", nargs="?", type=office_file("pdf"), help="Path to the .pdf; defaults to the newest .pdf in ~/documents")
     parser.add_argument("--heading", metavar="TEXT", help="Section heading for the appended page")
     parser.add_argument("--paragraph", action="append", default=[], metavar="TEXT", help="Paragraph to add")
     parser.add_argument("--bullet", action="append", default=[], metavar="TEXT", help="Bullet item to add")

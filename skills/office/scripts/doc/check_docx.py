@@ -14,6 +14,7 @@ from docx_reference_operations import bookmark_names
 from docx_revisions import collect_revisions, describe_pending
 from docx_styles import run_styles
 from docx_blocks import PARAGRAPH_TAG, body_block_elements, element_text, heading_level
+from office_inputs import office_file
 from office_result import Issue, OfficeArgumentParser, Result, run_command
 from text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN, contains_korean
 
@@ -191,7 +192,7 @@ def tracked_change_issues(document, elements: list) -> list[Issue]:
 
 def parse_arguments():
     parser = OfficeArgumentParser(description="Check a .docx for placeholders left, broken internal references, a stale table of contents, missing East Asian fonts, a wrong East Asian language, and tracked changes. Issues suggest a doc apply operation where one fixes them.")
-    parser.add_argument("document_path")
+    parser.add_argument("document_path", type=office_file("docx"))
     return parser.parse_args()
 
 

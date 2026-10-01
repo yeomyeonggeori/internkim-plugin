@@ -13,6 +13,7 @@ from deck_definitions import (
     THEME_FONT_INHERITED,
     TOO_MANY_SHAPES,
 )
+from office_inputs import office_file
 from office_result import Issue, OfficeArgumentParser, Result, run_command
 
 
@@ -145,7 +146,7 @@ def slide_issues(location, title, text_entries, content_shape_count, explicit_de
 
 def parse_arguments():
     parser = OfficeArgumentParser(description="Validate and summarize a PPTX deck.")
-    parser.add_argument("presentation_path")
+    parser.add_argument("presentation_path", type=office_file("pptx"))
     return parser.parse_args()
 
 

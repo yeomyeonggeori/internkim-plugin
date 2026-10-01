@@ -5,6 +5,7 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
+from office_inputs import office_file
 from office_result import Issue, OfficeArgumentParser, Result, run_command
 from pdf_definitions import (
     KOREAN_FONT_NOT_EMBEDDED,
@@ -141,7 +142,7 @@ def font_issues(font_summary: dict, extracted_text: str, required_font_substring
 
 def parse_arguments():
     parser = OfficeArgumentParser(description="Validate a PDF document.")
-    parser.add_argument("pdf_path")
+    parser.add_argument("pdf_path", type=office_file("pdf"))
     parser.add_argument("--min-pages", type=int, default=0)
     parser.add_argument("--max-pages", type=int, default=0)
     parser.add_argument("--minimum-text-length", type=int, default=0)

@@ -9,6 +9,7 @@ import zipfile
 from lxml import etree
 
 from office_operations import save_atomically
+from office_inputs import office_file
 from office_result import OfficeArgumentParser, Result, read_json_file, run_command
 from office_schema import require_valid
 from template_merge import MERGE_VALUES, MergeReport, fill_text_nodes, placeholder_paths, write_package
@@ -100,7 +101,7 @@ def drawing(tag: str) -> str:
 
 def parse_arguments():
     parser = OfficeArgumentParser(description="Fill a .pptx template's {{ name }} placeholders from a JSON values file; a table row naming {{ items.field }} repeats once per item. Refuses to write when a placeholder has no value.")
-    parser.add_argument("template_path", help="the .pptx template")
+    parser.add_argument("template_path", type=office_file("pptx"), help="the .pptx template")
     parser.add_argument("values_path", help="JSON object mapping each placeholder name to its value")
     parser.add_argument("output_path", help="the filled .pptx to write")
     return parser.parse_args()

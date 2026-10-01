@@ -22,6 +22,7 @@ from export_document import export_pdf  # noqa: E402
 from html_to_blocks import read_html_blocks  # noqa: E402
 from office_preview import PAGE_SELECTOR, Preview, write_preview  # noqa: E402
 from markdown_blocks import Image, parse_markdown  # noqa: E402
+from office_inputs import KINDS_BY_NAME, office_file
 from office_result import Issue, OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
 from pdf_to_blocks import read_pdf_blocks  # noqa: E402
 from pptx import Presentation  # noqa: E402
@@ -55,12 +56,19 @@ def main() -> Result:
     if not input_path.is_file():
         raise FileNotFoundError(2, "no such file", str(input_path))
     route = require_route(input_path, output_path)
+    require_readable_source(arguments.input_path, route.source)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     conversion = Conversion(input_path, output_path, arguments.sheet)
     CONVERTERS[(route.source, route.target)](conversion)
     written = conversion.written or [str(output_path)]
     details = {"route": f"{route.source} -> {route.target}", "files": written, **conversion.details}
     return Result(summary=f"converted {input_path.name} to {', '.join(Path(path).name for path in written)}", output_path=written[0], issues=tuple(conversion.issues), details=details)
+
+
+def require_readable_source(input_path: str, source: str) -> None:
+    if source not in KINDS_BY_NAME:
+        return
+    office_file(source)(input_path)
 
 
 def require_route(input_path: Path, output_path: Path) -> Route:

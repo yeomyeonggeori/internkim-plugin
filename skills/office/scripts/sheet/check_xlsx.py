@@ -7,6 +7,7 @@ from collections import defaultdict
 from formula_cache import not_evaluated_issues
 from formula_references import formula_references, referenced_sheet_names
 from number_display import displayed_number_width
+from office_inputs import office_file
 from office_result import Issue, OfficeArgumentParser, Result, run_command
 from sheet_chart_references import chart_reference_issues
 from stale_values import stale_cached_value_issues
@@ -163,7 +164,7 @@ def placeholder_issues(workbook) -> list[Issue]:
 
 def parse_arguments():
     parser = OfficeArgumentParser(description="Find stored formula values that differ from the computed ones, computed formula errors, missing sheets, broken names, numbers too wide for their column, charts reading missing or empty ranges and template placeholders in an .xlsx.")
-    parser.add_argument("workbook_path")
+    parser.add_argument("workbook_path", type=office_file("xlsx"))
     return parser.parse_args()
 
 

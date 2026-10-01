@@ -81,6 +81,8 @@ class OfficeFailure(Exception):
 INVALID_ARGUMENTS = IssueKind("INVALID_ARGUMENTS", ERROR, "the command line does not match the command's arguments", "run the command with --help and pass the arguments it lists")
 UNKNOWN_COMMAND = IssueKind("UNKNOWN_COMMAND", ERROR, "no office command has this format and verb", "run office --help for the command list")
 INPUT_NOT_FOUND = IssueKind("INPUT_NOT_FOUND", ERROR, "an input file or directory does not exist", "check the path, or write the file first")
+WRONG_INPUT_FORMAT = IssueKind("WRONG_INPUT_FORMAT", ERROR, "the input file is not the kind this command reads", "run the command the suggestion names for this kind of file")
+PDF_PASSWORD_REQUIRED = IssueKind("PDF_PASSWORD_REQUIRED", ERROR, "the PDF needs a password to open", "ask the user for a copy of the PDF without a password")
 NO_FILE_FOUND = IssueKind("NO_FILE_FOUND", ERROR, "no path was given and ~/documents holds no file of this kind", "pass the file path explicitly")
 INVALID_JSON = IssueKind("INVALID_JSON", ERROR, "an input file is not valid JSON", "fix the JSON syntax at the reported line and column")
 PERMISSION_DENIED = IssueKind("PERMISSION_DENIED", ERROR, "the command may not read or write this path", "write the output under ~/documents instead")
@@ -96,6 +98,8 @@ COMMAND_ISSUE_KINDS = (
     INVALID_ARGUMENTS,
     UNKNOWN_COMMAND,
     INPUT_NOT_FOUND,
+    WRONG_INPUT_FORMAT,
+    PDF_PASSWORD_REQUIRED,
     NO_FILE_FOUND,
     INVALID_JSON,
     PERMISSION_DENIED,

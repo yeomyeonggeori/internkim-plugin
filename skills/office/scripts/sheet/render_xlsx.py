@@ -13,6 +13,7 @@ from openpyxl import load_workbook  # noqa: E402
 
 from formula_cache import cache_formula_values  # noqa: E402
 from office_preview import Preview, approximation_issues, draw_pages, write_preview  # noqa: E402
+from office_inputs import office_file
 from office_result import INVALID_VALUE, OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
 from preview_fonts import FontRegistry  # noqa: E402
 from xlsx_colors import theme_palette  # noqa: E402
@@ -57,7 +58,7 @@ def main() -> Result:
 
 def parse_arguments():
     parser = OfficeArgumentParser(description="Lay out each visible sheet as printed pages of preview HTML, then draw each page as a PNG, contact sheets and a PDF: print area, page setup and scaling, column widths, row heights, merges, number formats as displayed, fonts, fills, borders, conditional colors, charts and pictures.")
-    parser.add_argument("source_path", help="the .xlsx to lay out")
+    parser.add_argument("source_path", type=office_file("xlsx"), help="the .xlsx to lay out")
     parser.add_argument("--sheet", help="lay out only this sheet")
     parser.add_argument("--output-directory", help="where preview.html, the page images and the PDF go; default <name>-preview beside the file")
     return parser.parse_args()

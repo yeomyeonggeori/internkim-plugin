@@ -6,6 +6,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 import pypdfium2
 
+from office_inputs import office_file
 from office_result import INVALID_VALUE, OfficeArgumentParser, OfficeFailure, Result, run_command
 from pdf_pages import select_pages
 
@@ -96,7 +97,7 @@ def thumbnail(image: Image.Image) -> Image.Image:
 
 def parse_arguments():
     parser = OfficeArgumentParser(description="Render PDF pages to PNG files and one contact sheet with every page side by side.")
-    parser.add_argument("pdf_path")
+    parser.add_argument("pdf_path", type=office_file("pdf"))
     parser.add_argument("--pages", default="", help=f"pages to render, such as 1,3-5; default the first {DEFAULT_PAGE_LIMIT}")
     parser.add_argument("--scale", type=float, default=DEFAULT_SCALE, help=f"pixels per point, default {DEFAULT_SCALE}; 1 is 72 dpi")
     parser.add_argument("--output-directory", default="", help="where the PNG files go, default <pdf name>-pages beside the PDF")
