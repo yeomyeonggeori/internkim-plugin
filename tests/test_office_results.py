@@ -84,8 +84,12 @@ class ResultEnvelopeTest(unittest.TestCase):
 
 
 class GuideTest(unittest.TestCase):
-    def guide(self, format_name):
-        return subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", format_name], capture_output=True, text=True, check=True).stdout
+    def guide(self, format_name, *verbs):
+        return subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", format_name, *verbs], capture_output=True, text=True, check=True).stdout
+
+    def guide_with_requested_detail(self, office_format):
+        requested = getattr(load_definitions(office_format), "GUIDE_INPUTS_ON_REQUEST", ())
+        return "\n".join([self.guide(office_format.name), *(self.guide(*command.split()) for command in requested)])
 
     def test_the_guide_lists_every_code_its_format_defines(self):
         for office_format in FORMATS:
@@ -97,7 +101,7 @@ class GuideTest(unittest.TestCase):
     def test_the_guide_lists_every_field_the_validators_accept(self):
         for office_format in FORMATS:
             with self.subTest(format=office_format.name):
-                guide_text = self.guide(office_format.name)
+                guide_text = self.guide_with_requested_detail(office_format)
                 for _, shape in load_definitions(office_format).GUIDE_INPUTS:
                     for structure in shape.structures():
                         records = structure.records if isinstance(structure, Variant) else (structure,)

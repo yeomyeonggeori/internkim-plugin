@@ -27,7 +27,7 @@ FORMATS = (
     Format("doc", "Word documents (.docx), and PDFs exported from Markdown", "doc/doc_definitions.py"),
     Format("pdf", "PDF files", "pdf/pdf_definitions.py"),
     Format("sheet", "workbooks (.xlsx)", "sheet/sheet_definitions.py"),
-    Format("deck", "slide decks built from slides.html", "deck/deck_definitions.py"),
+    Format("deck", "slide decks built from slides.html, and .pptx files to read and edit", "deck/deck_definitions.py"),
     Format("paperwork", "Korean company forms and contracts on letterhead", "paperwork/paperwork_definitions.py"),
 )
 
