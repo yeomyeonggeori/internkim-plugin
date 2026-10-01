@@ -107,10 +107,11 @@ class DeckCheckTest(unittest.TestCase):
         codes = self.codes(kit_deck(COVER, STATEMENT, STATEMENT, STATEMENT))
         self.assertIn(("LAYOUT_REPEATED", "slide 3"), codes)
 
-    def test_charts_of_different_kinds_in_a_row_are_not_a_repeat(self):
+    def test_three_chart_slides_in_a_row_are_a_repeat_whatever_their_chart_kinds(self):
         line = CHART.replace('data-chart="column"', 'data-chart="line"')
         bar = CHART.replace('data-chart="column"', 'data-chart="bar"')
-        self.assertNotIn("LAYOUT_REPEATED", [code for code, _ in self.codes(kit_deck(COVER, CHART, line, bar))])
+        self.assertIn(("LAYOUT_REPEATED", "slide 3"), self.codes(kit_deck(COVER, CHART, line, bar)))
+        self.assertNotIn("LAYOUT_REPEATED", [code for code, _ in self.codes(kit_deck(COVER, CHART, line, STATEMENT, bar))])
 
     def test_a_long_deck_needs_three_layouts(self):
         codes = self.codes(kit_deck(STATEMENT, KPI, STATEMENT, KPI, STATEMENT, KPI))

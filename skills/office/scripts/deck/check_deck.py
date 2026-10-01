@@ -90,10 +90,6 @@ class Slide:
     def text(self) -> str:
         return normalized_text(visible_text(self.element))
 
-    def composition(self) -> str:
-        charts = [figure.attributes.get("data-chart", "") for figure in find_all(self.element, "figure") if "data-chart" in figure.attributes]
-        return f"{self.intended_layout}:{charts[0]}" if self.intended_layout == "chart" and charts else self.intended_layout
-
 
 def check_deck(request: CheckRequest) -> Result:
     if request.source_path.suffix.casefold() != ".html":
@@ -156,9 +152,9 @@ def part_issues(slide: Slide, layout: KitLayout) -> list[Issue]:
 
 def sequence_issues(slides: list[Slide]) -> list[Issue]:
     issues = []
-    compositions = [slide.composition() for slide in slides]
+    layouts_in_order = [slide.intended_layout for slide in slides]
     for start in range(len(slides) - REPEAT_LIMIT + 1):
-        window = compositions[start:start + REPEAT_LIMIT]
+        window = layouts_in_order[start:start + REPEAT_LIMIT]
         if window[0] and len(set(window)) == 1:
             issues.append(LAYOUT_REPEATED.issue(f"slides {start + 1}-{start + REPEAT_LIMIT} all use {window[0]}", f"slide {start + 2}"))
     layouts = {slide.intended_layout for slide in slides if slide.layout}
