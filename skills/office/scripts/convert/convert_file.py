@@ -128,7 +128,19 @@ def docx_to_pdf(conversion: Conversion) -> None:
 
 
 def workbook_to_pdf(conversion: Conversion) -> None:
-    preview, fonts, _ = xlsx_preview(conversion.input_path, conversion.sheet)
+    draw_workbook_pdf(conversion, conversion.input_path, conversion.sheet)
+
+
+def delimited_to_pdf(conversion: Conversion) -> None:
+    delimiter = DELIMITERS[normalized_extension(conversion.input_path.suffix)]
+    with tempfile.TemporaryDirectory(prefix="office-convert-") as directory:
+        workbook_path = Path(directory) / f"{conversion.input_path.stem}.xlsx"
+        conversion.issues.extend(delimited_to_workbook(conversion.input_path, workbook_path, delimiter))
+        draw_workbook_pdf(conversion, workbook_path, None)
+
+
+def draw_workbook_pdf(conversion: Conversion, workbook_path: Path, sheet: str | None) -> None:
+    preview, fonts, _ = xlsx_preview(workbook_path, sheet)
     report_simplified(conversion, preview)
     with tempfile.TemporaryDirectory(prefix="office-convert-") as directory:
         draw_pdf(conversion, write_preview(preview, Path(directory)), PAGE_SELECTOR, fonts)
@@ -176,8 +188,18 @@ def docx_to_html(conversion: Conversion) -> None:
 
 def html_to_docx(conversion: Conversion) -> None:
     with tempfile.TemporaryDirectory(prefix="office-convert-") as media_directory:
-        blocks = [decoded(block, Path(media_directory)) for block in read_html_blocks(read_text(conversion.input_path))]
-        write_docx(conversion, blocks, conversion.input_path.parent)
+        write_docx(conversion, html_blocks(read_text(conversion.input_path), Path(media_directory)), conversion.input_path.parent)
+
+
+def html_to_pdf(conversion: Conversion) -> None:
+    html = read_text(conversion.input_path)
+    with tempfile.TemporaryDirectory(prefix="office-convert-") as media_directory:
+        blocks = html_blocks(html, Path(media_directory))
+        conversion.issues.extend(export_pdf(blocks, html, conversion.output_path, conversion.input_path.parent, "", DEFAULT_DOCUMENT_FONT_SIZE))
+
+
+def html_blocks(html: str, media_directory: Path) -> list:
+    return [decoded(block, media_directory) for block in read_html_blocks(html)]
 
 
 def html_to_markdown(conversion: Conversion) -> None:
@@ -368,6 +390,7 @@ CONVERTERS = {
     ("docx", "html"): docx_to_html,
     ("html", "docx"): html_to_docx,
     ("html", "md"): html_to_markdown,
+    ("html", "pdf"): html_to_pdf,
     ("pdf", "docx"): pdf_to_docx,
     ("pdf", "md"): pdf_to_markdown,
     ("pdf", "pptx"): pdf_to_presentation,
@@ -375,6 +398,8 @@ CONVERTERS = {
     ("xlsx", "tsv"): workbook_to_text,
     ("csv", "xlsx"): text_to_workbook,
     ("tsv", "xlsx"): text_to_workbook,
+    ("csv", "pdf"): delimited_to_pdf,
+    ("tsv", "pdf"): delimited_to_pdf,
     ("xls", "xlsx"): legacy_workbook,
     ("ods", "xlsx"): legacy_workbook,
     ("xlsb", "xlsx"): legacy_workbook,

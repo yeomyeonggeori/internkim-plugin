@@ -220,6 +220,31 @@ class PdfRouteTest(unittest.TestCase):
         self.assertEqual(envelope["status"], "ok", envelope["issues"])
         self.assert_pdf("deck.pdf", 5, "분기별 매출 추이")
 
+    def test_a_csv_or_tsv_becomes_the_printed_pages_of_its_workbook(self):
+        (self.directory / "실적.csv").write_text("지역,매출\n서울,1200\n부산,950\n", encoding="utf-8")
+        (self.directory / "실적.tsv").write_text("지역\t매출\n대구\t870\n", encoding="utf-8")
+        for source, required_text in (("실적.csv", "부산"), ("실적.tsv", "대구")):
+            with self.subTest(source=source):
+                target = source.replace(".", "-") + ".pdf"
+                envelope = convert(source, target, self.directory)
+                self.assertEqual(envelope["status"], "ok", envelope["issues"])
+                self.assertEqual(envelope["details"]["route"], f"{source.split('.')[1]} -> pdf")
+                self.assert_pdf(target, 1, required_text)
+
+    def test_an_html_page_becomes_a_laid_out_pdf_with_its_headings_tables_and_pictures(self):
+        (self.directory / "보고서.md").write_text(REPORT_MARKDOWN, encoding="utf-8")
+        run_office_python(CHART_IMAGE, self.directory)
+        convert("보고서.md", "보고서.html", self.directory)
+        envelope = convert("보고서.html", "웹.pdf", self.directory)
+        self.assertEqual(envelope["status"], "ok", envelope["issues"])
+        self.assertEqual(envelope["details"]["route"], "html -> pdf")
+        read = run_office(["pdf", "read", "웹.pdf"], self.directory)
+        text = " ".join(page["text"] for page in read["details"]["pages"])
+        for expected in ("2. 주요 지표", "4,230", "대형 고객 3곳 다년 계약 전환"):
+            self.assertIn(expected, text)
+        self.assert_pdf("웹.pdf", read["details"]["pageCount"], "42억 3,000만 원")
+        self.assertRegex((self.directory / "웹.pdf").read_bytes(), rb"/Subtype\s*/Image")
+
 
 class LegacyWorkbookTest(unittest.TestCase):
     def test_xls_cells_keep_their_types(self):
