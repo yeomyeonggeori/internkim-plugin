@@ -1,6 +1,7 @@
 (() => {
   const fitSteps = [1, 0.95, 0.9, 0.86, 0.82, 0.78];
   const overflowTolerance = 2;
+  const balanceSteps = 7;
   const footerlessLayouts = new Set(["cover", "section"]);
   const itemClasses = ["kpi", "card", "step", "column"];
   const gridCardCount = 4;
@@ -22,6 +23,10 @@
   const matrixAxisInset = { left: 4, bottom: 9 };
   const matrixGapShare = 2;
   const capacityPartNames = [["h1, h2", "title"], [".lead", "lead"], [".eyebrow", "eyebrow"], [".takeaway", "takeaway"], [".card", "card"], [".kpi", "kpi"], [".column", "column"], [".step", "step"], [".kit-steps", "steps"], [".insight", "insight"], ["ol, ul", "list"], ["table", "table"], ["figure", "chart"], ["blockquote", "quote"], [".kit-diagram", "diagram"]];
+  const hangulPattern = /[\u1100-\u11FF\u3130-\u318F\uAC00-\uD7AF]/;
+  const keptInlineSelector = "em, strong, b, i, mark, small, span, a";
+  const phrasingSelector = "em, strong, b, i, mark, a, span, code, sub, sup";
+  const unkeptSelector = "aside, figure, table, svg, script, style, .kit-keep";
   const numericCellPattern = /^[+\-−]?[₩$€£¥]?\s?[\d.,]+\s?(%|%p|[^\s\d]{0,4})?$/;
   const svgNamespace = "http://www.w3.org/2000/svg";
   const barScaleShare = 0.84;
@@ -134,6 +139,7 @@
       node.appendChild(number);
     }
     Array.from(item.childNodes).filter((child) => !["OL", "UL"].includes(child.tagName)).forEach((child) => node.appendChild(child.cloneNode(true)));
+    groupPhrasing(node);
     return node;
   }
 
@@ -336,6 +342,7 @@
         const index = element("span", "kit-index");
         index.textContent = String(position + 1).padStart(2, "0");
         item.insertBefore(index, item.firstChild);
+        groupPhrasing(item);
       });
     });
   }
@@ -361,6 +368,79 @@
     document.querySelectorAll("section[data-layout='quote'] > blockquote").forEach((quote) => {
       if (quote.firstElementChild?.classList.contains("kit-quote-mark")) return;
       quote.insertBefore(element("span", "kit-quote-mark"), quote.firstChild);
+    });
+  }
+
+  function isPhrasing(node) {
+    return node.nodeType === 3 || (node.nodeType === 1 && node.matches(phrasingSelector) && !isKitPart(node));
+  }
+
+  function groupPhrasing(container) {
+    let run = [];
+    const close = (before) => {
+      if (run.some((node) => node.textContent.trim())) {
+        const text = element("span", "kit-text");
+        container.insertBefore(text, before);
+        run.forEach((node) => text.appendChild(node));
+      }
+      run = [];
+    };
+    Array.from(container.childNodes).forEach((node) => {
+      if (isPhrasing(node)) run.push(node);
+      else close(node);
+    });
+    close(null);
+  }
+
+  function isMixedWord(word) {
+    return hangulPattern.test(word) && Array.from(word).some((character) => !/\s/.test(character) && !hangulPattern.test(character));
+  }
+
+  function keptWord(...nodes) {
+    const kept = element("span", "kit-keep");
+    nodes.forEach((node) => kept.appendChild(node));
+    return kept;
+  }
+
+  function textNodesIn(node, skipped = unkeptSelector) {
+    if (node.nodeType === 3) return [node];
+    if (node.nodeType !== 1 || (skipped && node.matches(skipped))) return [];
+    return Array.from(node.childNodes).flatMap((child) => textNodesIn(child, skipped));
+  }
+
+  function inlineWordsIn(slide) {
+    return Array.from(slide.querySelectorAll(keptInlineSelector)).filter((inline) => !inline.closest(unkeptSelector) && !isKitPart(inline) && !/\s/.test(inline.textContent.trim()));
+  }
+
+  function isKitPart(element) {
+    return Array.from(element.classList).some((name) => name.startsWith("kit-"));
+  }
+
+  function keepWordAfterInline(inline) {
+    const next = inline.nextSibling;
+    if (!next || next.nodeType !== 3) return;
+    const attached = next.textContent.match(/^\S+/);
+    if (!attached || !isMixedWord(inline.textContent + attached[0]) || isWholeText(inline.parentElement, inline.textContent + attached[0])) return;
+    next.textContent = next.textContent.slice(attached[0].length);
+    const kept = element("span", "kit-keep");
+    inline.replaceWith(kept);
+    kept.append(inline, document.createTextNode(attached[0]));
+  }
+
+  function isWholeText(parent, text) {
+    return parent.textContent.trim() === text.trim();
+  }
+
+  function keepWordsInText(textNode) {
+    const pieces = textNode.textContent.split(/(\s+)/).filter(Boolean);
+    if (!pieces.some(isMixedWord) || (pieces.length === 1 && isWholeText(textNode.parentElement, pieces[0]))) return;
+    textNode.replaceWith(...pieces.map((piece) => (isMixedWord(piece) ? keptWord(document.createTextNode(piece)) : document.createTextNode(piece))));
+  }
+
+  function keepMixedWords() {
+    slides().forEach((slide) => {
+      inlineWordsIn(slide).forEach(keepWordAfterInline);
+      textNodesIn(slide).forEach(keepWordsInText);
     });
   }
 
@@ -404,6 +484,41 @@
   function partsCollide(slide) {
     const parts = placedParts(slide);
     return parts.some((part, index) => parts.slice(index + 1).some((other) => rectanglesCollide(part, other)));
+  }
+
+  function characterTop(node, offset) {
+    const range = document.createRange();
+    range.setStart(node, offset);
+    range.setEnd(node, offset + 1);
+    return range.getBoundingClientRect().top;
+  }
+
+  function spansLines(title) {
+    const nodes = textNodesIn(title, null).filter((node) => node.textContent.trim());
+    if (!nodes.length) return false;
+    const first = nodes[0];
+    const last = nodes[nodes.length - 1];
+    return characterTop(last, last.textContent.trimEnd().length - 1) > characterTop(first, first.textContent.search(/\S/)) + overflowTolerance;
+  }
+
+  async function balanceTitle(title, slide, layOut) {
+    if (!spansLines(title)) return;
+    const height = title.getBoundingClientRect().height;
+    let fits = title.getBoundingClientRect().width;
+    let wraps = fits / 2;
+    for (let step = 0; step < balanceSteps; step += 1) {
+      const width = (fits + wraps) / 2;
+      title.style.setProperty("max-width", `${width}px`);
+      if (layOut) await layOut(slide);
+      if (title.getBoundingClientRect().height > height + overflowTolerance) wraps = width;
+      else fits = width;
+    }
+    title.style.setProperty("max-width", `${Math.ceil(fits)}px`);
+    if (layOut) await layOut(slide);
+  }
+
+  async function balanceTitles(slide, layOut) {
+    for (const title of Array.from(slide.children).filter((child) => ["H1", "H2"].includes(child.tagName))) await balanceTitle(title, slide, layOut);
   }
 
   async function fitSlide(slide, layOut) {
@@ -987,6 +1102,7 @@
     addCoverRings();
     addQuoteMarks();
     markNumericCells();
+    keepMixedWords();
     document.querySelectorAll("section[data-layout] figure[data-chart]").forEach(renderChart);
   }
 
@@ -994,6 +1110,7 @@
     prepare();
     for (const slide of slides()) {
       await fitSlide(slide, layOut);
+      await balanceTitles(slide, layOut);
       drawConnectors(slide);
     }
   }

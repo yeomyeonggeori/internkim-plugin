@@ -14,6 +14,7 @@ from charts.numbers import GROUPED_NUMBER_PATTERN  # noqa: E402
 from deck.deck_definitions import KIT_LAYOUT_NAMES, KIT_LAYOUTS, kit_layout  # noqa: E402
 from deck.deck_kit import chart_types  # noqa: E402
 from deck.kit_fixes import DEAD_ZONE_ADVICE, LIST_ADVICE, PART_LABELS  # noqa: E402
+from core.text_script import HANGUL_RANGES  # noqa: E402
 from deck.slide_render_checks import CENTERED_KIT_LAYOUTS  # noqa: E402
 
 
@@ -46,6 +47,10 @@ class KitConformanceTest(unittest.TestCase):
     def test_the_kit_script_names_only_layouts_the_checker_knows(self):
         named = set(re.findall(r"data-layout='(\w+)'", KIT_SCRIPT)) | set(re.findall(r'"(\w+)"', constant(KIT_SCRIPT, "footerlessLayouts")))
         self.assertLessEqual(named, set(KIT_LAYOUT_NAMES))
+
+    def test_the_kit_reads_hangul_as_text_script_does(self):
+        ranges = re.findall(r"\\u([0-9A-F]{4})-\\u([0-9A-F]{4})", constant(KIT_SCRIPT, "hangulPattern"))
+        self.assertEqual([(int(low, 16), int(high, 16)) for low, high in ranges], list(HANGUL_RANGES))
 
     def test_the_render_checks_name_only_layouts_the_kit_has(self):
         self.assertLessEqual(CENTERED_KIT_LAYOUTS, set(KIT_LAYOUT_NAMES))
