@@ -42,6 +42,18 @@ whole = (directory / "report.pdf").read_bytes()
 (directory / "truncated.pdf").write_bytes(whole[:len(whole) // 2])
 writer = PdfWriter(clone_from=str(directory / "report.pdf")); writer.encrypt(user_password="", owner_password="owner", permissions_flag=0, algorithm="RC4-128"); writer.write(directory / "owner-locked.pdf")
 (directory / "notes.txt").write_text("이샘플의 메모", encoding="utf-8")
+for name in ("plain.docx", "plain.xlsx", "plain.pptx"):
+    whole = (directory / name).read_bytes()
+    (directory / ("cut-" + name)).write_bytes(whole[:len(whole) // 2])
+import zipfile
+with zipfile.ZipFile(directory / "plain.docx") as source, zipfile.ZipFile(directory / "broken-part.docx", "w") as target:
+    for item in source.infolist():
+        data = source.read(item.filename)
+        target.writestr(item, data[:len(data) // 2] if item.filename == "word/document.xml" else data)
+(directory / "보고서.md").write_bytes("# 분기 보고서\\n\\n이샘플 작성\\n".encode("cp949"))
+(directory / "실적.csv").write_bytes("지역,매출\\n서울,120\\n".encode("cp949"))
+(directory / "utf16.md").write_bytes("# 제목\\n".encode("utf-16"))
+(directory / "pdf-named.md").write_bytes((directory / "report.pdf").read_bytes())
 (directory / "legacy.xls").write_bytes(bytes.fromhex("d0cf11e0a1b11ae1") + bytes(504))
 """
     subprocess.run([str(OFFICE_ENTRY), "python", "-c", script, str(directory)], check=True, capture_output=True, timeout=300)
@@ -110,12 +122,12 @@ class InputBoundaryTest(unittest.TestCase):
     def test_a_truncated_pdf_is_refused_as_damaged_by_every_reader_and_convert(self):
         for command in (*READERS["pdf"], "pdf edit"):
             with self.subTest(command=command):
-                self.assertIn("ask the user", self.assert_refused(command, "truncated.pdf", "PDF_DAMAGED")["suggestion"])
+                self.assertIn("ask the user", self.assert_refused(command, "truncated.pdf", "FILE_DAMAGED")["suggestion"])
         for target in ("truncated.md", "truncated.docx", "truncated.xlsx", "truncated.pptx"):
             with self.subTest(target=target):
                 envelope, stderr = run_office(["convert", "truncated.pdf", target], self.directory)
                 self.assertNotIn("Traceback", stderr)
-                self.assertEqual([issue["code"] for issue in envelope["issues"]], ["PDF_DAMAGED"])
+                self.assertEqual([issue["code"] for issue in envelope["issues"]], ["FILE_DAMAGED"])
 
     def test_an_owner_locked_pdf_converts_without_a_password(self):
         for target in ("owner-locked.md", "owner-locked.docx", "owner-locked.pptx"):
@@ -124,6 +136,33 @@ class InputBoundaryTest(unittest.TestCase):
                 self.assertNotIn("Traceback", stderr)
                 self.assertNotEqual(envelope["status"], "error", envelope["issues"])
         self.assertIn("Sample line 39 for the owner locked report", (self.directory / "owner-locked.md").read_text(encoding="utf-8"))
+
+    def test_a_cut_short_or_broken_office_file_is_refused_as_damaged(self):
+        for kind, commands in READERS.items():
+            if kind == "pdf":
+                continue
+            for command in commands:
+                with self.subTest(command=command):
+                    self.assert_refused(command, f"cut-plain.{kind}", "FILE_DAMAGED")
+        self.assertIn("unclosed token", self.assert_refused("doc read", "broken-part.docx", "FILE_DAMAGED")["message"])
+        envelope, stderr = run_office(["convert", "broken-part.docx", "broken.md"], self.directory)
+        self.assertNotIn("Traceback", stderr)
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["FILE_DAMAGED"])
+
+    def test_text_inputs_are_read_as_utf8_or_cp949_and_anything_else_is_named(self):
+        envelope, _ = run_office(["doc", "export", "보고서.md", "--output", "보고서.docx"], self.directory)
+        self.assertEqual(envelope["status"], "ok", envelope["issues"])
+        envelope, _ = run_office(["convert", "실적.csv", "실적.xlsx"], self.directory)
+        self.assertEqual(envelope["status"], "ok", envelope["issues"])
+        rows, _ = run_office(["sheet", "read", "실적.xlsx"], self.directory)
+        self.assertIn("서울", json.dumps(rows, ensure_ascii=False))
+        for command in (["doc", "export", "utf16.md", "--output", "x.docx"], ["convert", "utf16.md", "x.html"]):
+            with self.subTest(command=command):
+                envelope, stderr = run_office(command, self.directory)
+                self.assertNotIn("Traceback", stderr)
+                self.assertEqual([issue["code"] for issue in envelope["issues"]], ["WRONG_INPUT_FORMAT"])
+        issue = self.assert_refused("doc export", "pdf-named.md", "WRONG_INPUT_FORMAT")
+        self.assertIn("office pdf read", issue["suggestion"])
 
     def test_a_wrong_password_is_refused_as_wrong(self):
         envelope, _ = run_office(["pdf", "read", "locked.pdf", "--password", "guess"], self.directory)

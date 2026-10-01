@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import csv
+import io
 import os
 from pathlib import Path
 
 from cell_values import typed_cell_value
 from excel_functions import written_value
+from office_inputs import read_text_input
 from office_operations import apply_batch
 from office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
@@ -90,8 +92,7 @@ def read_delimited_rows(sheet_specification):
     delimiter = sheet_specification.get("delimiter") or ","
     if delimiter == "\\t":
         delimiter = "\t"
-    with open(csv_path, newline="", encoding="utf-8-sig") as delimited_file:
-        return [[typed_cell_value(text) for text in row] for row in csv.reader(delimited_file, delimiter=delimiter)]
+    return [[typed_cell_value(text) for text in row] for row in csv.reader(io.StringIO(read_text_input(csv_path), newline=""), delimiter=delimiter)]
 
 
 def apply_default_formatting(worksheet, sheet_specification):

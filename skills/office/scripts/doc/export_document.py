@@ -10,6 +10,7 @@ from document_pdf import can_render, render_document_pdf
 from latex_math import math_issues
 from markdown_blocks import Heading, parse_markdown
 from markdown_charts import require_valid_charts
+from office_inputs import read_text_input
 from office_result import INVALID_VALUE, KOREAN_FONT_UNAVAILABLE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
 from pdf_fonts import register_regular_and_bold
 from pdf_markdown import MarkdownPdf
@@ -26,7 +27,7 @@ def main() -> Result:
     markdown_path = Path(arguments.markdown_path)
     output_path = Path(arguments.output) if arguments.output else markdown_path.with_suffix(".docx")
     output_format = require_export_format(output_path)
-    markdown_text = markdown_path.read_text(encoding="utf-8")
+    markdown_text = read_text_input(arguments.markdown_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     blocks = parse_markdown(markdown_text)
     require_valid_charts(blocks, markdown_path.name)

@@ -26,7 +26,7 @@ from markdown_blocks import Image, parse_markdown  # noqa: E402
 from markdown_charts import require_valid_charts  # noqa: E402
 from office_inputs import KINDS_BY_NAME, PDF, add_password_argument, office_file, require_unlocked_pdf
 from office_result import INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
-from office_inputs import unlocked_pdf_bytes  # noqa: E402
+from office_inputs import read_text_input, unlocked_pdf_bytes  # noqa: E402
 from pdf.pdf_definitions import OCR_UNAVAILABLE, PAGE_READ_BY_OCR, page_reading_suggestion  # noqa: E402
 from pdf_ocr import OcrUnavailable, pages_without_words, read_pages_by_ocr  # noqa: E402
 from pdf_to_blocks import read_pdf_blocks  # noqa: E402
@@ -313,7 +313,7 @@ def write_docx(conversion: Conversion, blocks: list, source_directory: Path, sav
 
 
 def read_text(path: Path) -> str:
-    return path.read_text(encoding="utf-8-sig")
+    return read_text_input(str(path))
 
 
 def save_media(media: dict, directory: Path, conversion: Conversion) -> None:
