@@ -8,30 +8,30 @@ from doc_fixture import SCRIPTS_PATH, ContractFixture, run_office
 
 sys.path.insert(0, str(SCRIPTS_PATH))
 
-import libreoffice  # noqa: E402
+import office_render  # noqa: E402
 from office_result import OfficeFailure  # noqa: E402
 
 
 class LibreOfficeCommandTest(unittest.TestCase):
     def test_conversion_runs_headless_with_its_own_profile(self):
         profile = Path(tempfile.gettempdir()).resolve() / "profile"
-        command = libreoffice.conversion_command("soffice", profile, "pdf", Path("out"), Path("보고서.docx"))
+        command = office_render.conversion_command("soffice", profile, "pdf", Path("out"), Path("보고서.docx"))
         self.assertEqual(command, ["soffice", f"-env:UserInstallation={profile.as_uri()}", "--headless", "--norestore", "--convert-to", "pdf", "--outdir", "out", "보고서.docx"])
 
     def test_the_profile_carries_an_installed_korean_font(self):
         with tempfile.TemporaryDirectory() as profile, tempfile.NamedTemporaryFile(suffix=".ttf") as font:
-            with mock.patch.object(libreoffice, "HANGUL_FONT_PATHS", [font.name, "/missing/NanumGothic.ttf"]):
-                libreoffice.prepare_profile(Path(profile))
-            self.assertEqual([path.name for path in (Path(profile) / "user" / "fonts").iterdir()], [Path(font.name).name])
+            with mock.patch.object(office_render, "HANGUL_FONT_PATHS", [font.name, "/missing/NanumGothic.ttf"]):
+                office_render.prepare_profile(Path(profile), office_render.korean_font_paths())
+            self.assertEqual([path.name for path in (Path(profile) / "user" / "fonts").iterdir()], [f"000-{Path(font.name).name}"])
 
     def test_a_missing_libreoffice_is_a_named_error(self):
-        with mock.patch.object(libreoffice.shutil, "which", return_value=None), mock.patch.object(libreoffice, "APPLICATION_PATHS", ("/missing/soffice",)):
+        with mock.patch.object(office_render.shutil, "which", return_value=None), mock.patch.object(office_render, "MACOS_SOFFICE", Path("/missing/soffice")):
             with self.assertRaises(OfficeFailure) as raised:
-                libreoffice.convert_with_libreoffice(Path("report.docx"), "pdf", Path(tempfile.gettempdir()))
+                office_render.convert_with_libreoffice(Path("report.docx"), "pdf", Path(tempfile.gettempdir()))
         self.assertEqual(raised.exception.issues[0].kind.code, "LIBREOFFICE_UNAVAILABLE")
 
 
-@unittest.skipUnless(libreoffice.find_soffice(), "LibreOffice is not installed")
+@unittest.skipUnless(office_render.soffice_command(), "LibreOffice is not installed")
 class RenderTest(ContractFixture):
     def test_a_document_renders_to_pages_and_a_contact_sheet(self):
         envelope = run_office(["doc", "render", "contract.docx", "--scale", "0.5"], self.directory)

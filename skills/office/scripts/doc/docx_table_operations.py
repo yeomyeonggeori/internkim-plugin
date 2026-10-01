@@ -7,7 +7,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
 from docx_editing import DocxEditing, resolve_table
-from docx_format_operations import ALIGNMENTS, require_any, require_color
+from docx_format_operations import ALIGNMENTS, require_any
 from docx_text import PARAGRAPH_TAG, live_runs
 from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
 from office_result import OfficeFailure
@@ -148,7 +148,6 @@ def plan_merge_cells(editing: DocxEditing, operation: dict, location: str) -> Ch
 
 def plan_format_cells(editing: DocxEditing, operation: dict, location: str) -> Change:
     require_any(operation, CELL_PROPERTIES, location)
-    require_color({"color": operation.get("fill")}, location)
     table = resolve_table(editing, operation["block"], f"{location}.block")
     positions = cell_range(table, operation, location)
 

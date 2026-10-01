@@ -20,7 +20,7 @@ from docx_markdown import DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, mar
 from docx_to_blocks import read_docx_blocks  # noqa: E402
 from export_document import export_pdf  # noqa: E402
 from html_to_blocks import read_html_blocks  # noqa: E402
-from libreoffice import convert_with_libreoffice  # noqa: E402
+from office_render import convert_with_libreoffice  # noqa: E402
 from markdown_blocks import Image, parse_markdown  # noqa: E402
 from office_result import Issue, OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
 from pdf_to_blocks import read_pdf_blocks  # noqa: E402

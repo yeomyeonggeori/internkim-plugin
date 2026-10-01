@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import html
 import mimetypes
 
-from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, inline_segments, link_parts
+from markdown_blocks import Heading, Image, ListItem, Quote, Table, inline_segments, link_parts
 
 
 LIST_INDENT = "   "

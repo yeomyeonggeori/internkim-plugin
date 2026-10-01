@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from libreoffice import convert_with_libreoffice
+from office_render import convert_with_libreoffice
 from office_result import OfficeArgumentParser, Result, run_command
 from render_pdf import DEFAULT_PAGE_LIMIT, DEFAULT_SCALE, render_pages
 

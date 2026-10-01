@@ -12,7 +12,7 @@ from docx.shared import Emu, Inches, Mm
 from docx.text.paragraph import Paragraph
 
 from docx_editing import DocxEditing, placement, resolve_block
-from docx_format_operations import ALIGNMENTS, require_color
+from docx_format_operations import ALIGNMENTS
 from docx_text import PARAGRAPH_TAG
 from docx_tracking import mark_block_inserted
 from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
@@ -196,7 +196,6 @@ def is_watermark(element) -> bool:
 
 
 def plan_set_watermark(editing: DocxEditing, operation: dict, location: str) -> Change:
-    require_color(operation, location)
     sections = require_section(editing, operation, location)
 
     def change() -> str:

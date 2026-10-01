@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from libreoffice import LIBREOFFICE_ISSUE_KINDS
+from office_render import LIBREOFFICE_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
 
 

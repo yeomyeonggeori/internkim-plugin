@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from libreoffice import LIBREOFFICE_ISSUE_KINDS
+from office_render import LIBREOFFICE_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
 from office_schema import Boolean, CellValue, Choice, Field, ListOf, MapOf, Number, Record, Text, Variant

@@ -20,7 +20,7 @@ from docx_table_operations import plan_delete_table_column, plan_format_cells, p
 from docx_comments import plan_add_comment, plan_delete_comment, plan_reply_comment, plan_resolve_comment
 from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, paragraph_runs
 from docx_settings import request_field_update
-from docx_editing import DocxEditing, load_editing, placement, require_style, resolve_block, resolve_paragraph, resolve_table, save_editing
+from docx_editing import DocxEditing, placement, require_style, resolve_block, resolve_paragraph, resolve_table
 from docx_revision_operations import plan_accept_revisions, plan_reject_revisions
 from docx_text import REMOVED_RUN_CONTAINER_TAGS
 from docx_tracking import (

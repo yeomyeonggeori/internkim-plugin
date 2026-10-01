@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-import difflib
 
 from docx import Document
 from docx.table import Table
@@ -11,6 +10,7 @@ from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, body_block_elements
 from docx_tracking import Tracking, start_tracking
 from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND
 from office_result import INVALID_VALUE, OfficeFailure
+from office_schema import closest_name_suggestion
 
 
 
@@ -75,11 +75,9 @@ def index_range_suggestion(noun: str, count: int) -> str:
 
 
 def closest_suggestion(given: str, available: list[str]) -> str:
-    closest = difflib.get_close_matches(given, available, n=3, cutoff=0.5)
-    listed = ", ".join(repr(name) for name in available[:40])
-    if closest:
-        return f"did you mean {', '.join(repr(name) for name in closest)}? available: {listed}"
-    return f"available: {listed}"
+    listed = f"available: {', '.join(repr(name) for name in available[:40])}"
+    closest = closest_name_suggestion(given, available, None)
+    return f"{closest} {listed}" if closest else listed
 
 
 def placement(editing: DocxEditing, operation: dict, location: str):

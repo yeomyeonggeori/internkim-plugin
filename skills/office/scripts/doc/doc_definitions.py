@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from libreoffice import LIBREOFFICE_ISSUE_KINDS
+from office_render import LIBREOFFICE_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
-from office_schema import AnyOf, Boolean, CellValue, Choice, Field, ListOf, MapOf, Number, Record, Text, Variant
+from office_schema import AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Text, Variant
 from text_checks import PLACEHOLDER_LEFT, TEXT_CHECK_ISSUE_KINDS
 
 
@@ -111,7 +111,7 @@ CHARACTER_FORMAT = (
     Field("bold", Boolean(), "bold"),
     Field("italic", Boolean(), "italic"),
     Field("underline", Boolean(), "underline"),
-    Field("color", Text(non_empty=True), "text color #RRGGBB"),
+    Field("color", HexColor(), "text color"),
     Field("size", Number(1, 400), "size in points"),
     Field("font", Text(non_empty=True), "font name for Latin and Korean text"),
 )
@@ -211,7 +211,7 @@ OPERATIONS = Variant(
         )),
         Record("merge_cells", "merge a rectangle of cells into one, keeping each cell's text", CELL_RANGE),
         Record("format_cells", "shade, bold or align a rectangle of cells", CELL_RANGE + (
-            Field("fill", Text(non_empty=True), "background color #RRGGBB"),
+            Field("fill", HexColor(), "background color"),
             Field("bold", Boolean(), "bold text"),
             Field("align", ALIGNMENT, "horizontal alignment"),
             Field("verticalAlign", Choice(("top", "center", "bottom")), "vertical alignment"),
@@ -292,7 +292,7 @@ OPERATIONS = Variant(
         )),
         Record("set_watermark", "put large diagonal text such as 대외비 or DRAFT behind every page", (
             Field("text", Text(), "watermark text; empty removes the watermark", required=True),
-            Field("color", Text(non_empty=True), "color #RRGGBB, default light gray"),
+            Field("color", HexColor(), "default light gray"),
             Field("section", Number(minimum=0, integer=True), "section index; default every section"),
         )),
         Record("add_comment", "start a comment thread on a paragraph, or on exact text inside it; the document text is untouched", (

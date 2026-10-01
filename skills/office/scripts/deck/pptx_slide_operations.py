@@ -10,7 +10,7 @@ from pptx.parts.slide import SlidePart
 
 from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
 from office_result import INVALID_VALUE, OfficeFailure
-from pptx_edit_definitions import closest_name_suggestion
+from office_schema import closest_name_suggestion
 from pptx_element_operations import rgb
 from pptx_relationships import NOT_COPIED_RELATIONSHIP_TYPES, carry_relationships
 from pptx_sections import remember_section, remove_from_custom_shows

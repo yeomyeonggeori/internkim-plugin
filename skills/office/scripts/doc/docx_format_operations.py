@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import re
-
 from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_COLOR_INDEX
 from docx.oxml.ns import qn
@@ -15,7 +13,6 @@ from office_operations import TARGET_NOT_FOUND, Change
 from office_result import INVALID_VALUE, MISSING_FIELD, OfficeFailure
 
 
-COLOR_PATTERN = re.compile(r"^#?[0-9A-Fa-f]{6}$")
 ALIGNMENTS = {"left": WD_ALIGN_PARAGRAPH.LEFT, "center": WD_ALIGN_PARAGRAPH.CENTER, "right": WD_ALIGN_PARAGRAPH.RIGHT, "justify": WD_ALIGN_PARAGRAPH.JUSTIFY}
 HIGHLIGHTS = {
     "yellow": WD_COLOR_INDEX.YELLOW, "green": WD_COLOR_INDEX.BRIGHT_GREEN, "cyan": WD_COLOR_INDEX.TURQUOISE,
@@ -31,15 +28,8 @@ def require_any(operation: dict, names: tuple[str, ...], location: str) -> None:
         raise OfficeFailure(MISSING_FIELD.issue(f"{location}: give at least one of {', '.join(names)}", location))
 
 
-def require_color(operation: dict, location: str) -> None:
-    color = operation.get("color")
-    if color is not None and not COLOR_PATTERN.match(color):
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}.color: {color!r} is not a hex color", f"{location}.color", suggestion="write the color as #RRGGBB, such as #C00000"))
-
-
 def plan_format_text(editing: DocxEditing, operation: dict, location: str) -> Change:
     require_any(operation, TEXT_PROPERTIES, location)
-    require_color(operation, location)
     if operation.get("block") is None and not operation.get("find"):
         raise OfficeFailure(MISSING_FIELD.issue(f"{location}: give block, find, or both", location))
     paragraphs = scoped_paragraph_elements(editing, operation, location)
@@ -137,7 +127,6 @@ def format_paragraph(paragraph_format, operation: dict) -> None:
 
 
 def plan_define_style(editing: DocxEditing, operation: dict, location: str) -> Change:
-    require_color(operation, location)
     style_type = STYLE_TYPES[operation.get("type") or "paragraph"]
     if operation.get("basedOn"):
         require_style(editing, operation["basedOn"], (style_type,), f"{location}.basedOn")

@@ -8,7 +8,8 @@ from pptx import Presentation
 from office_result import OfficeArgumentParser, Result, run_command
 from deck_definitions import PPTX_NOT_RENDERED, PPTX_RENDER_FAILED
 from pptx_layout_audit import audit_presentation, substitutions
-from pptx_render import RenderFailure, render_presentation, soffice_command
+from office_render import RenderFailure, soffice_command
+from pptx_render import render_presentation
 from pptx_slide_selection import select_slides
 
 
