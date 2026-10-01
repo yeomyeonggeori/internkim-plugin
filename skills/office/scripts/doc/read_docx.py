@@ -6,6 +6,7 @@ from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml.ns import qn
 
 from docx_blocks import block_kind, body_block_elements, element_text, has_page_break, heading_level, table_cell_texts, wrap_block
+from docx_text import visible_text
 from office_result import OfficeArgumentParser, Result, run_command
 
 
@@ -44,7 +45,7 @@ def describe_block(element, document, index: int) -> dict:
         return describe_table(block, index)
     if kind == "contentControl":
         return {"index": index, "kind": kind, "text": limited(element_text(element))}
-    description = {"index": index, "kind": kind, "style": block.style.name if block.style is not None else "", "text": limited(block.text)}
+    description = {"index": index, "kind": kind, "style": block.style.name if block.style is not None else "", "text": limited(element_text(element))}
     if kind == "heading":
         description["level"] = heading_level(block)
     if has_page_break(block):
@@ -84,9 +85,7 @@ def describe_section(section, index: int) -> dict:
 
 
 def part_text(header_or_footer) -> str:
-    paragraphs = [paragraph.text for paragraph in header_or_footer.paragraphs if paragraph.text.strip()]
-    cells = [cell.text for table in header_or_footer.tables for row in table.rows for cell in row.cells if cell.text.strip()]
-    return "\n".join(paragraphs + cells)
+    return "\n".join(line for line in visible_text(header_or_footer._element).split("\n") if line.strip())
 
 
 def describe_comments(document, elements: list) -> list[dict]:

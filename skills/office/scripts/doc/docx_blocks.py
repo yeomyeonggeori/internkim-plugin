@@ -7,6 +7,8 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
 
+from docx_text import live_runs, visible_text
+
 
 PARAGRAPH_TAG = qn("w:p")
 TABLE_TAG = qn("w:tbl")
@@ -53,15 +55,15 @@ def is_list_item(paragraph: Paragraph) -> bool:
 
 
 def element_text(element) -> str:
-    return "".join(node.text or "" for node in element.iter(qn("w:t")))
+    return visible_text(element)
 
 
 def paragraph_runs(paragraph: Paragraph) -> list[Run]:
-    return [Run(run_element, paragraph) for run_element in paragraph._p.xpath("./w:r | ./w:hyperlink/w:r")]
+    return [Run(run_element, paragraph) for run_element in live_runs(paragraph._p)]
 
 
 def table_cell_texts(table: Table) -> list[list[str]]:
-    return [[cell.text for cell in row.cells] for row in table.rows]
+    return [[visible_text(cell._tc) for cell in row.cells] for row in table.rows]
 
 
 def has_page_break(paragraph: Paragraph) -> bool:
