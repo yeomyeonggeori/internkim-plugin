@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 
 from docx import Document
 from docx.table import Table
+from docx.oxml.ns import qn
 from docx.text.paragraph import Paragraph
 
 from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, body_block_elements
@@ -81,14 +82,16 @@ def available_names_suggestion(given: str, available: list[str]) -> str:
 
 
 def placement(editing: DocxEditing, operation: dict, location: str):
-    after, before = operation.get("after"), operation.get("before")
-    if (after is None) == (before is None):
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: give exactly one of after and before", location))
+    after, before, at = operation.get("after"), operation.get("before"), operation.get("at")
+    if sum(value is not None for value in (after, before, at)) != 1:
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: give exactly one of after, before and at", location, suggestion='after or before take a block index from doc read; at takes "start" or "end"'))
     if before is not None:
         anchor = resolve_block(editing, before, f"{location}.before")
         return lambda element: anchor.addprevious(element)
-    if after == -1:
+    if at == "start":
         return start_placement(editing)
+    if at == "end":
+        return end_placement(editing)
     anchor = resolve_block(editing, after, f"{location}.after")
     return cursor_placement(editing, anchor)
 
@@ -101,6 +104,18 @@ def start_placement(editing: DocxEditing):
         elif editing.elements:
             editing.elements[0].addprevious(element)
         editing.cursors["start"] = element
+    return place
+
+
+def end_placement(editing: DocxEditing):
+    body = editing.document.element.body
+    section_properties = body.find(qn("w:sectPr"))
+
+    def place(element):
+        if section_properties is not None:
+            section_properties.addprevious(element)
+        else:
+            body.append(element)
     return place
 
 

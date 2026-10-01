@@ -92,8 +92,9 @@ VALIDATE_ISSUE_KINDS = (
 )
 
 BLOCK_INDEX = Number(minimum=0, integer=True)
-INSERT_AFTER = Field("after", Number(minimum=-1, integer=True), "insert after this block index from doc read; -1 inserts at the start")
-INSERT_BEFORE = Field("before", BLOCK_INDEX, "insert before this block index; give after or before, not both")
+INSERT_AFTER = Field("after", BLOCK_INDEX, "insert after this block index from doc read")
+INSERT_BEFORE = Field("before", BLOCK_INDEX, "insert before this block index")
+INSERT_AT = Field("at", Choice(("start", "end")), "insert at the start or the end of the body; give one of after, before and at")
 TARGET_BLOCK = Field("block", BLOCK_INDEX, "block index from doc read", required=True)
 TABLE_BLOCK = Field("block", BLOCK_INDEX, "index of a table block from doc read", required=True)
 ROW_INDEX = Number(minimum=0, integer=True)
@@ -173,24 +174,28 @@ OPERATIONS = Variant(
         Record("insert_paragraph", "insert a paragraph", (
             INSERT_AFTER,
             INSERT_BEFORE,
+            INSERT_AT,
             Field("text", Text(), "paragraph text", required=True),
             Field("style", Text(non_empty=True), "paragraph style name, default Normal"),
         )),
         Record("insert_heading", "insert a heading", (
             INSERT_AFTER,
             INSERT_BEFORE,
+            INSERT_AT,
             Field("text", Text(), "heading text", required=True),
             Field("level", Number(1, 9, integer=True), "heading depth, default 1"),
         )),
         Record("insert_list", "insert list items", (
             INSERT_AFTER,
             INSERT_BEFORE,
+            INSERT_AT,
             Field("items", ListOf(Text(non_empty=True), non_empty=True), "one entry per item", required=True),
             Field("numbered", Boolean(), "numbered instead of bulleted"),
         )),
         Record("insert_table", "insert a table", (
             INSERT_AFTER,
             INSERT_BEFORE,
+            INSERT_AT,
             Field("rows", TABLE_ROWS, "every row the same width, header row first", required=True),
             Field("style", Text(non_empty=True), "table style name, default Table Grid"),
         )),
@@ -217,7 +222,8 @@ OPERATIONS = Variant(
         )),
         Record("insert_table_column", "insert a column copying the formatting of the column it follows; the table keeps its width", (
             TABLE_BLOCK,
-            Field("after", Number(minimum=-1, integer=True), "insert after this column index; -1 inserts first", required=True),
+            Field("after", ROW_INDEX, "insert after this column index"),
+            Field("at", Choice(("start", "end")), "insert as the first or the last column; give after or at"),
             Field("cells", ListOf(CellValue()), "one value per row, header first; missing cells stay empty"),
         )),
         Record("delete_table_column", "delete a column; the others widen to keep the table's width", (
@@ -257,6 +263,7 @@ OPERATIONS = Variant(
         Record("insert_image", "insert a picture as its own paragraph, scaled down to the text width unless a size is given", (
             INSERT_AFTER,
             INSERT_BEFORE,
+            INSERT_AT,
             Field("path", Text(non_empty=True), "PNG, JPEG, GIF, BMP or TIFF file", required=True),
             Field("widthInches", Number(minimum=0.1), "width; the height keeps the aspect ratio unless also given"),
             Field("heightInches", Number(minimum=0.1), "height"),
@@ -266,6 +273,7 @@ OPERATIONS = Variant(
         Record("insert_chart", "insert a native Word chart with its own data workbook as its own paragraph, as wide as the text unless a size is given", (
             INSERT_AFTER,
             INSERT_BEFORE,
+            INSERT_AT,
             Field("type", Choice(CHART_KINDS), "chart kind; combo draws columns with the series marked line as lines", required=True),
             *(field if field.name not in ("categories", "series") else Field(field.name, field.shape, field.description, required=True) for field in CHART_DATA),
             Field("widthInches", Number(minimum=1), "width; default the text width"),
@@ -281,6 +289,7 @@ OPERATIONS = Variant(
         Record("insert_table_of_contents", "insert a table of contents field listing the headings now in the document; Word fills in page numbers when the file opens", (
             INSERT_AFTER,
             INSERT_BEFORE,
+            INSERT_AT,
             Field("levels", Number(1, 9, integer=True), "deepest heading level listed, default 3"),
             Field("title", Text(), "title paragraph above the list"),
         )),

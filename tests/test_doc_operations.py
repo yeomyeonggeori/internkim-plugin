@@ -94,6 +94,20 @@ class ContentOperationTest(RichDocumentFixture):
         self.assertIn('<w:color w:val="C00000"/>', document_xml)
         self.assertIn('<w:jc w:val="both"/>', document_xml)
 
+    def test_paragraphs_insert_at_the_start_and_the_end_by_name(self):
+        self.apply([
+            {"op": "insert_paragraph", "at": "end", "text": "끝 하나"},
+            {"op": "insert_paragraph", "at": "start", "text": "처음"},
+            {"op": "insert_paragraph", "at": "end", "text": "끝 둘"},
+            {"op": "insert_table_column", "block": 8, "at": "start", "cells": ["번호", "1", "2"]},
+        ])
+        texts = [text for _, text in block_texts(self.directory, "edited.docx")]
+        self.assertEqual((texts[0], texts[-2], texts[-1]), ("처음", "끝 하나", "끝 둘"))
+        self.assertEqual(read_details(self.directory, "edited.docx")["blocks"][9]["cells"][0][0], "번호")
+        write_json(self.directory / "ops.json", [{"op": "insert_paragraph", "after": -1, "text": "x"}])
+        refused = run_office(["doc", "apply", "contract.docx", "ops.json"], self.directory)
+        self.assertEqual(refused["status"], "error")
+
     def test_notes_bookmarks_and_cross_references_read_back(self):
         self.apply([
             {"op": "insert_footnote", "block": 5, "text": "부가가치세는 세금계산서 발행일에 청구한다.", "afterText": "별도로 한다."},

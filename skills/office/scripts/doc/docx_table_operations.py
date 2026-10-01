@@ -10,7 +10,7 @@ from docx_editing import DocxEditing, resolve_table
 from docx_format_operations import ALIGNMENTS, require_any
 from docx_text import PARAGRAPH_TAG, live_runs
 from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
-from office_result import OfficeFailure
+from office_result import INVALID_VALUE, OfficeFailure
 
 
 VERTICAL_ALIGNMENTS = {"top": WD_CELL_VERTICAL_ALIGNMENT.TOP, "center": WD_CELL_VERTICAL_ALIGNMENT.CENTER, "bottom": WD_CELL_VERTICAL_ALIGNMENT.BOTTOM}
@@ -37,9 +37,7 @@ def require_column(table, column: int, location: str) -> None:
 def plan_insert_table_column(editing: DocxEditing, operation: dict, location: str) -> Change:
     table = resolve_table(editing, operation["block"], f"{location}.block")
     require_unmerged(table, location)
-    after = operation["after"]
-    if after >= 0:
-        require_column(table, after, f"{location}.after")
+    after = column_to_follow(table, operation, location)
     cells = operation.get("cells") or []
     if len(cells) > len(table.rows):
         raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}.cells: the table has {len(table.rows)} rows", f"{location}.cells"))
@@ -56,6 +54,17 @@ def plan_insert_table_column(editing: DocxEditing, operation: dict, location: st
         scale_widths(table, total_width)
         return f"inserted a column {'at the start' if after < 0 else f'after column {after}'} of block {operation['block']}"
     return change
+
+
+def column_to_follow(table, operation: dict, location: str) -> int:
+    if (operation.get("after") is None) == (operation.get("at") is None):
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: give exactly one of after and at", location, suggestion='after takes a column index; at takes "start" or "end"'))
+    if operation.get("at") == "start":
+        return -1
+    if operation.get("at") == "end":
+        return column_count(table) - 1
+    require_column(table, operation["after"], f"{location}.after")
+    return operation["after"]
 
 
 def insert_copy(element, after: int):
