@@ -45,6 +45,7 @@ CLOSING_SLIDE_MINIMUM = 3
 VARIETY_SLIDE_MINIMUM = 6
 VARIETY_LAYOUT_MINIMUM = 3
 DONUT_SLICE_MAXIMUM = 8
+STACKED_CHART_TYPES = ("stacked", "stacked100", "area")
 ALWAYS_ALLOWED_COLORS = {"FFFFFF", "000000"}
 COLOR_LITERAL_PATTERN = re.compile(r"#[0-9A-Fa-f]{3,8}\b|(?:rgba?|hsla?)\([^)]*\)")
 DECLARATION_PATTERN = re.compile(r"([-\w]+)\s*:\s*([^;{}]+)")
@@ -245,9 +246,15 @@ def shape_problems(chart_type: str, labels: list[str], series: list[tuple[str, l
     problems = []
     if highlight is not None and highlight.strip() not in labels:
         problems.append(f'data-highlight="{highlight}" is not one of the labels')
+    if chart_type == "combo" and len(series) < 2:
+        problems.append("a combo chart takes data-series with the column series first and the line series last")
+    if chart_type == "scatter" and len(series) != 2:
+        problems.append('a scatter chart takes exactly two series in data-series: the horizontal axis first, then the vertical, such as "매출: 12, 30; 이익률: 8, 11"')
+    if chart_type in STACKED_CHART_TYPES and any(value < 0 for _, values in series for value in numbers_in(values)):
+        problems.append(f"a {chart_type} chart stacks its series, so every value must be zero or more")
     if chart_type not in ("donut", "pie"):
         return problems
-    values = [chart_number(value) for value in series[0][1] if is_number(value)]
+    values = numbers_in(series[0][1])
     if len(series) > 1:
         problems.append(f"a {chart_type} chart takes one series in data-values")
     if any(value < 0 for value in values) or sum(values) <= 0:
@@ -255,6 +262,10 @@ def shape_problems(chart_type: str, labels: list[str], series: list[tuple[str, l
     if len(labels) > DONUT_SLICE_MAXIMUM:
         problems.append(f"{len(labels)} slices are too many to read; group the smallest into one")
     return problems
+
+
+def numbers_in(values: list[str]) -> list[float]:
+    return [chart_number(value) for value in values if is_number(value)]
 
 
 def split_list(text: str) -> list[str]:

@@ -38,7 +38,7 @@ export function extractNativeCharts({ pages }) {
     Array.from(chart.querySelectorAll("[data-series][data-point]")).map((label) => ({
       series: Number(label.getAttribute("data-series")),
       point: Number(label.getAttribute("data-point")),
-      below: label.hasAttribute("data-below"),
+      position: label.getAttribute("data-position") || "",
       text: textStyleOf(label),
     }));
 

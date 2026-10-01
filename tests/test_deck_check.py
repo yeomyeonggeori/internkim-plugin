@@ -156,6 +156,20 @@ class DeckCheckTest(unittest.TestCase):
         self.assertIn("positive shares", " ".join(messages["slide 5"]))
         self.assertIn("data-highlight", " ".join(messages["slide 5"]))
 
+    def test_two_axis_and_stacking_charts_need_their_own_data_shape(self):
+        shaped = (
+            '<section data-layout="chart"><h2>콤보는 두 계열이 필요합니다</h2><figure data-chart="combo" data-labels="1Q, 2Q" data-values="1, 2"></figure></section>',
+            '<section data-layout="chart"><h2>산점도는 두 축이 필요합니다</h2><figure data-chart="scatter" data-labels="가, 나" data-series="x: 1, 2; y: 3, 4; z: 5, 6"></figure></section>',
+            '<section data-layout="chart"><h2>쌓는 차트는 음수를 받지 않습니다</h2><figure data-chart="area" data-labels="1Q, 2Q" data-series="가: 1, -2; 나: 3, 4"></figure></section>',
+            '<section data-layout="chart"><h2>제대로 된 산점도입니다</h2><figure data-chart="scatter" data-labels="가, 나" data-series="매출: 1, 2; 이익률: 3, 4" data-unit="억, %"></figure></section>',
+        )
+        result = self.check(kit_deck(COVER, *shaped))
+        messages = {issue.location: issue.message for issue in result.issues if issue.kind.code == "CHART_DATA_INVALID"}
+        self.assertIn("column series first and the line series last", messages["slide 2"])
+        self.assertIn("exactly two series", messages["slide 3"])
+        self.assertIn("zero or more", messages["slide 4"])
+        self.assertNotIn("slide 5", messages)
+
     def test_grouped_thousands_are_one_number_when_values_are_comma_space_separated(self):
         grouped = '<section data-layout="chart"><h2>매출이 늘었습니다</h2><figure data-chart="column" data-labels="1월, 2월" data-values="1,200, 1,350" data-unit="만원"></figure></section>'
         self.assertNotIn("CHART_DATA_INVALID", [code for code, _ in self.codes(kit_deck(COVER, grouped))])

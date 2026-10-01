@@ -18,7 +18,7 @@ THEME_ATTRIBUTE_PATTERN = re.compile(r"<body\b[^>]*\bdata-theme\s*=", re.IGNOREC
 THEME_BLOCK_PATTERN = re.compile(r"((?::root,\s*)?\[data-theme=\"([a-z]+)\"\])\s*\{([^}]*)\}")
 COLOR_TOKEN_PATTERN = re.compile(r"--([a-z0-9-]+)\s*:\s*(#[0-9A-Fa-f]{3,8})\s*;")
 CHART_RENDERERS_PATTERN = re.compile(r"const chartRenderers = \{(.*?)\n  \};", re.DOTALL)
-CHART_TYPE_PATTERN = re.compile(r"^\s{4}([a-z]+):", re.MULTILINE)
+CHART_TYPE_PATTERN = re.compile(r"^\s{4}([a-z0-9]+):", re.MULTILINE)
 GROUPED_NUMBER_PATTERN = re.compile(r"^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$")
 SPACED_SEPARATOR_PATTERN = re.compile(r",\s")
 

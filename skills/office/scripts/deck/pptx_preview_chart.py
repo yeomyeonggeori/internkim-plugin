@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import html
 import math
 
-from pptx_chart_look import ChartLook, LabelLook, TextLook, formatted
+from pptx_chart_look import ChartLook, LabelLook, PointLabel, TextLook, formatted
 
 
 TITLE_HEIGHT = 28
@@ -50,6 +50,8 @@ def chart_svg(details: dict, width: float, height: float, look: ChartLook, font_
     parts = [title_svg(details.get("title"), width, font_family)]
     if round_chart:
         parts.append(pie_svg(series[0] if series else {"values": []}, plot, look, "doughnut" in kind, font_family))
+    elif "scatter" in kind:
+        parts.append(scatter_svg(series, plot, look, font_family))
     else:
         parts.append(axis_chart_svg(kind, details["categories"], series, plot, look, font_family))
     if legend is not None:
@@ -85,10 +87,12 @@ def nice_step(span: float) -> float:
     return next(step * magnitude for step in (1, 2, 5, 10) if step * magnitude >= raw)
 
 
-def value_scale(kind: str, series: list[dict], look: ChartLook) -> Scale:
-    fixed_low, fixed_high = look.value_limits
+def value_scale(kind: str, series: list[dict], look: ChartLook, limits: tuple[float | None, float | None] | None = None) -> Scale:
+    fixed_low, fixed_high = limits or look.value_limits
     if fixed_low is not None and fixed_high is not None and fixed_high > fixed_low:
         return Scale(fixed_low, fixed_high, look.major_unit or nice_step(fixed_high - fixed_low))
+    if "100" in kind:
+        return Scale(0.0, 1.0, 0.5)
     if "stacked" in kind:
         values = [sum(entry["values"][index] or 0 for entry in series) for index in range(len(series[0]["values"]))]
     else:
@@ -112,13 +116,22 @@ def axis_chart_svg(kind: str, categories: list, series: list[dict], plot: Plot, 
     bottom_labels = CATEGORY_LABEL_HEIGHT if not horizontal or look.value_axis_shown else 0
     area = Plot(plot.left + value_labels_width + category_width, plot.top, plot.width - value_labels_width - category_width, plot.height - bottom_labels)
     order = category_order(len(categories), horizontal, look)
-    scale = value_scale(kind, series, look)
+    plotted = [(position, entry) for position, entry in enumerate(series) if plot_of(entry, kind).startswith(("column", "bar"))]
+    lines = [(position, entry) for position, entry in enumerate(series) if not plot_of(entry, kind).startswith(("column", "bar"))]
+    scale = value_scale(kind, [entry for _, entry in plotted] or series, look)
     parts = [grid_svg(area, scale, horizontal, look, font_family), category_labels_svg([categories[index] for index in order], area, horizontal, look.text, font_family), axis_line_svg(area, scale, horizontal, look.axis_line)]
-    if "line" in kind or "area" in kind:
-        parts.extend(line_svg(entry, position, order, area, scale, look, "area" in kind, font_family) for position, entry in enumerate(series))
+    if plotted:
+        parts.append(bars_svg(plot_of(plotted[0][1], kind), plotted, order, area, scale, look, horizontal, font_family))
+    line_scale = value_scale("line", [entry for _, entry in lines], look, look.secondary_limits) if plotted and lines else scale
+    if "area" in kind and "stacked" in kind:
+        parts.append(stacked_area_svg(lines, order, area, scale, look))
     else:
-        parts.append(bars_svg(kind, series, order, area, scale, look, horizontal, font_family))
+        parts.extend(line_svg(entry, position, order, area, line_scale, look, "area" in kind, font_family) for position, entry in lines)
     return "".join(parts)
+
+
+def plot_of(entry: dict, kind: str) -> str:
+    return entry.get("plot", kind)
 
 
 def scaled(number: float, scale: Scale, length: float) -> float:
@@ -166,7 +179,7 @@ def category_labels_svg(categories: list, area: Plot, horizontal: bool, text: Te
     return "".join(parts)
 
 
-def bars_svg(kind: str, series: list[dict], order: list[int], area: Plot, scale: Scale, look: ChartLook, horizontal: bool, font_family: str) -> str:
+def bars_svg(kind: str, series: list[tuple[int, dict]], order: list[int], area: Plot, scale: Scale, look: ChartLook, horizontal: bool, font_family: str) -> str:
     band = (area.height if horizontal else area.width) / max(len(order), 1)
     stacked = "stacked" in kind
     share = 1 / (1 + look.gap_width / 100)
@@ -175,14 +188,16 @@ def bars_svg(kind: str, series: list[dict], order: list[int], area: Plot, scale:
     bars, labels = [], []
     for slot, index in enumerate(order):
         offset = 0.0
-        for position, entry in enumerate(series):
+        total = sum(entry["values"][index] or 0 for _, entry in series) if "100" in kind else 1.0
+        for column, (position, entry) in enumerate(series):
             number = entry["values"][index] or 0
+            length = number / total if total else 0.0
             start = scaled(offset if stacked else max(scale.low, 0), scale, length_axis)
-            end = scaled((offset if stacked else 0) + number, scale, length_axis)
-            across = band * slot + band * (1 - share) / 2 + (0 if stacked else thickness * position)
+            end = scaled((offset if stacked else 0) + length, scale, length_axis)
+            across = band * slot + band * (1 - share) / 2 + (0 if stacked else thickness * column)
             bars.append(bar_rectangle(area, horizontal, across, thickness, min(start, end), abs(end - start), look.color_of(position, index)))
             labels.append(bar_label_svg(look.labels[position], index, number, area, horizontal, (across + thickness / 2, start, end), font_family))
-            offset += number if stacked else 0
+            offset += length if stacked else 0
     return "".join(bars + labels)
 
 
@@ -217,6 +232,55 @@ def line_svg(entry: dict, position: int, order: list[int], area: Plot, scale: Sc
     markers = "".join(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3" fill="{color}"/>' for x, y in points)
     labels = "".join(line_label_svg(look.labels[position], index, entry["values"][index] or 0, x, y, font_family) for (x, y), index in zip(points, order))
     return f'<polyline points="{path}" fill="none" stroke="{color}" stroke-width="2.25"/>{markers}{labels}'
+
+
+def stacked_area_svg(series: list[tuple[int, dict]], order: list[int], area: Plot, scale: Scale, look: ChartLook) -> str:
+    count = max(len(order), 1)
+    xs = [area.left + area.width * (slot + 0.5) / count for slot in range(len(order))]
+    floor = [0.0] * len(order)
+    shapes = []
+    for position, entry in series:
+        ceiling = [below + (entry["values"][index] or 0) for below, index in zip(floor, order)]
+        upper = [f"{x:.1f},{area.top + area.height - scaled(value, scale, area.height):.1f}" for x, value in zip(xs, ceiling)]
+        lower = [f"{x:.1f},{area.top + area.height - scaled(value, scale, area.height):.1f}" for x, value in zip(xs, floor)]
+        shapes.append(f'<polygon points="{" ".join(upper + lower[::-1])}" fill="{look.series_colors[position]}"/>')
+        floor = ceiling
+    return "".join(shapes)
+
+
+def scatter_svg(series: list[dict], plot: Plot, look: ChartLook, font_family: str) -> str:
+    if not series:
+        return ""
+    entry = series[0]
+    xs = [number or 0 for number in entry.get("x") or range(1, len(entry["values"]) + 1)]
+    ys = [number or 0 for number in entry["values"]]
+    area = Plot(plot.left + AXIS_LABEL_WIDTH, plot.top, plot.width - AXIS_LABEL_WIDTH, plot.height - CATEGORY_LABEL_HEIGHT)
+    horizontal = limited_scale(xs, look.horizontal_limits)
+    vertical = limited_scale(ys, look.value_limits)
+    parts = [grid_svg(area, vertical, False, look, font_family), grid_svg(area, horizontal, True, look, font_family)]
+    label = look.labels[0] if look.labels else None
+    for index, (x, y) in enumerate(zip(xs, ys)):
+        center = (area.left + scaled(x, horizontal, area.width), area.top + area.height - scaled(y, vertical, area.height))
+        parts.append(f'<circle cx="{center[0]:.1f}" cy="{center[1]:.1f}" r="5" fill="{look.color_of(0, index)}"/>')
+        parts.append(point_name_svg(label.at(index) if label is not None else None, center, font_family))
+    return "".join(parts)
+
+
+def limited_scale(values: list[float], limits: tuple[float | None, float | None]) -> Scale:
+    low, high = limits
+    if low is not None and high is not None and high > low:
+        return Scale(low, high, (high - low) / 2)
+    low, high = min(values), max(values)
+    step = nice_step(high - low)
+    return Scale(math.floor(low / step) * step, max(math.ceil(high / step) * step, math.floor(low / step) * step + step), step)
+
+
+def point_name_svg(label: PointLabel | None, center: tuple[float, float], font_family: str) -> str:
+    if label is None or not label.shown or not label.custom_text:
+        return ""
+    on_left = label.position == "l"
+    x = center[0] - LABEL_GAP * 2 if on_left else center[0] + LABEL_GAP * 2
+    return text_svg(x, center[1], label.custom_text, font_family, label.text, "end" if on_left else "start")
 
 
 def line_label_svg(labels: LabelLook | None, index: int, number: float, x: float, y: float, font_family: str) -> str:

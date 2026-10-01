@@ -17,14 +17,17 @@ CHART_NAMESPACES = (
 CHART_RELATIONSHIP_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart"
 PACKAGE_RELATIONSHIP_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/package"
 CHART_URI = "http://schemas.openxmlformats.org/drawingml/2006/chart"
-BAR_DIRECTIONS = {"column": "col", "stacked": "col", "bar": "bar"}
+BAR_DIRECTIONS = {"column": "col", "stacked": "col", "stacked100": "col", "bar": "bar"}
+BAR_GROUPINGS = {"column": "clustered", "bar": "clustered", "stacked": "stacked", "stacked100": "percentStacked"}
 ROUND_CHART_TYPES = {"donut", "pie"}
-NATIVE_CHART_TYPES = (*BAR_DIRECTIONS, "line", *ROUND_CHART_TYPES)
-LABEL_POSITIONS = {"column": "outEnd", "stacked": "ctr", "bar": "outEnd", "line": "t", "pie": "ctr"}
-LINE_GRID_INTERVALS = 2
+NATIVE_CHART_TYPES = (*BAR_DIRECTIONS, "line", "area", "combo", "scatter", *ROUND_CHART_TYPES)
+LABEL_POSITIONS = {"column": "outEnd", "stacked": "ctr", "stacked100": "ctr", "bar": "outEnd", "line": "t", "area": "", "scatter": "r", "pie": "ctr"}
+GRIDDED_CHART_TYPES = {"line", "area"}
+GRID_INTERVALS = 2
 DONUT_HOLE_PERCENT = 60
 LINE_WIDTH_PIXELS = 5
 MARKER_PIXELS = 16
+SCATTER_MARKER_PIXELS = 22
 SLICE_GAP_PIXELS = 2
 AXIS_LINE_PIXELS = 2
 GRID_LINE_PIXELS = 1
@@ -32,6 +35,8 @@ LIGHT_LUMINANCE = 0.6
 PERCENT_FORMAT = "0%"
 CATEGORY_AXIS_ID = 1001
 VALUE_AXIS_ID = 1002
+SECONDARY_CATEGORY_AXIS_ID = 1003
+SECONDARY_VALUE_AXIS_ID = 1004
 NO_FILL = "<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>"
 
 
@@ -82,12 +87,7 @@ def write_chart_parts(archive: zipfile.ZipFile, parts: list[ChartPart], context:
 
 
 def chart_frames_xml(parts: list[ChartPart], first_shape_id: int, context: TextContext) -> str:
-    frames = []
-    shape_id = first_shape_id
-    for part in parts:
-        frames.append(graphic_frame_xml(shape_id, part, context.scale))
-        shape_id += 1
-    return "".join(frames)
+    return "".join(graphic_frame_xml(shape_id, part, context.scale) for shape_id, part in enumerate(parts, start=first_shape_id))
 
 
 def graphic_frame_xml(shape_id: int, part: ChartPart, scale: SlideScale) -> str:
@@ -105,10 +105,9 @@ def graphic_frame_xml(shape_id: int, part: ChartPart, scale: SlideScale) -> str:
 def chart_space_xml(layout: dict, context: TextContext) -> str:
     is_round = layout["type"] in ROUND_CHART_TYPES
     plot_layout = manual_layout_xml(0, 0, 1, 1, inner=True) if is_round else ""
-    axes = "" if is_round else axes_xml(layout, context)
     return xml_document(
         f'<c:chartSpace {CHART_NAMESPACES}><c:date1904 val="0"/><c:lang val="{context.language}"/><c:roundedCorners val="0"/>'
-        f'<c:chart><c:autoTitleDeleted val="1"/><c:plotArea>{plot_layout}{plot_xml(layout, context)}{axes}{NO_FILL}</c:plotArea>'
+        f'<c:chart><c:autoTitleDeleted val="1"/><c:plotArea>{plot_layout}{plot_xml(layout, context)}{axes_xml(layout, context)}{NO_FILL}</c:plotArea>'
         f'{legend_xml(layout, context)}<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart>'
         f'{NO_FILL}{text_properties_xml(text_style(layout, "category"), context)}'
         '<c:externalData r:id="rId1"><c:autoUpdate val="0"/></c:externalData></c:chartSpace>'
@@ -117,34 +116,71 @@ def chart_space_xml(layout: dict, context: TextContext) -> str:
 
 def plot_xml(layout: dict, context: TextContext) -> str:
     kind = layout["type"]
-    series = "".join(series_xml(layout, index, context) for index in range(len(layout["series"])))
+    indexes = list(range(len(layout["series"])))
+    primary_axes = (CATEGORY_AXIS_ID, VALUE_AXIS_ID)
     if kind in BAR_DIRECTIONS:
-        grouping = "stacked" if kind == "stacked" else "clustered"
-        overlap = '<c:overlap val="100"/>' if kind == "stacked" else ""
-        return (
-            f'<c:barChart><c:barDir val="{BAR_DIRECTIONS[kind]}"/><c:grouping val="{grouping}"/><c:varyColors val="0"/>{series}'
-            f'<c:gapWidth val="{layout["gapWidth"]}"/>{overlap}<c:axId val="{CATEGORY_AXIS_ID}"/><c:axId val="{VALUE_AXIS_ID}"/></c:barChart>'
-        )
+        return bar_plot_xml(layout, kind, indexes, primary_axes, context)
     if kind == "line":
-        return f'<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>{series}<c:marker val="1"/><c:axId val="{CATEGORY_AXIS_ID}"/><c:axId val="{VALUE_AXIS_ID}"/></c:lineChart>'
+        return line_plot_xml(layout, indexes, primary_axes, context)
+    if kind == "combo":
+        return bar_plot_xml(layout, "column", indexes[:-1], primary_axes, context) + line_plot_xml(layout, indexes[-1:], (SECONDARY_CATEGORY_AXIS_ID, SECONDARY_VALUE_AXIS_ID), context)
+    if kind == "area":
+        series = "".join(series_xml(layout, index, "area", context) for index in indexes)
+        return f'<c:areaChart><c:grouping val="stacked"/><c:varyColors val="0"/>{series}{axis_ids_xml(primary_axes)}</c:areaChart>'
+    if kind == "scatter":
+        return f'<c:scatterChart><c:scatterStyle val="lineMarker"/><c:varyColors val="0"/>{scatter_series_xml(layout, context)}{axis_ids_xml(primary_axes)}</c:scatterChart>'
+    series = series_xml(layout, 0, kind, context)
     if kind == "donut":
         return f'<c:doughnutChart><c:varyColors val="1"/>{series}<c:firstSliceAng val="0"/><c:holeSize val="{DONUT_HOLE_PERCENT}"/></c:doughnutChart>'
     return f'<c:pieChart><c:varyColors val="1"/>{series}<c:firstSliceAng val="0"/></c:pieChart>'
 
 
-def series_xml(layout: dict, index: int, context: TextContext) -> str:
-    kind = layout["type"]
+def axis_ids_xml(axes: tuple[int, int]) -> str:
+    return "".join(f'<c:axId val="{axis}"/>' for axis in axes)
+
+
+def bar_plot_xml(layout: dict, kind: str, indexes: list[int], axes: tuple[int, int], context: TextContext) -> str:
+    series = "".join(series_xml(layout, index, kind, context) for index in indexes)
+    overlap = '<c:overlap val="100"/>' if BAR_GROUPINGS[kind] != "clustered" else ""
+    return (
+        f'<c:barChart><c:barDir val="{BAR_DIRECTIONS[kind]}"/><c:grouping val="{BAR_GROUPINGS[kind]}"/><c:varyColors val="0"/>{series}'
+        f'<c:gapWidth val="{layout["gapWidth"]}"/>{overlap}{axis_ids_xml(axes)}</c:barChart>'
+    )
+
+
+def line_plot_xml(layout: dict, indexes: list[int], axes: tuple[int, int], context: TextContext) -> str:
+    series = "".join(series_xml(layout, index, "line", context) for index in indexes)
+    return f'<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>{series}<c:marker val="1"/>{axis_ids_xml(axes)}</c:lineChart>'
+
+
+def series_xml(layout: dict, index: int, kind: str, context: TextContext) -> str:
     color = layout["colors"]["series"][index]
     if kind in ROUND_CHART_TYPES:
         body = f"{round_points_xml(layout, context)}{round_labels_xml(layout, context)}"
     elif kind == "line":
-        body = f"{line_properties_xml(color, context.scale)}{marker_xml(layout['colors']['background'], color, context.scale)}{last_point_xml(layout, color, context.scale)}{point_labels_xml(layout, index, context)}"
+        body = f"{line_properties_xml(color, context.scale)}{marker_xml(layout['colors']['background'], color, MARKER_PIXELS, context.scale)}{last_point_xml(layout, color, context.scale)}{point_labels_xml(layout, index, kind, context)}"
+    elif kind == "area":
+        body = f'<c:spPr>{solid_fill_xml(color)}<a:ln><a:noFill/></a:ln></c:spPr>{point_labels_xml(layout, index, kind, context)}'
     else:
-        body = f'<c:spPr>{solid_fill_xml(color)}</c:spPr><c:invertIfNegative val="0"/>{recolored_points_xml(layout, index)}{point_labels_xml(layout, index, context)}'
+        body = f'<c:spPr>{solid_fill_xml(color)}</c:spPr><c:invertIfNegative val="0"/>{recolored_points_xml(layout, index)}{point_labels_xml(layout, index, kind, context)}'
     smooth = '<c:smooth val="0"/>' if kind == "line" else ""
     return (
         f'<c:ser><c:idx val="{index}"/><c:order val="{index}"/>{series_name_xml(layout, index)}{body}'
-        f"{categories_xml(layout)}{values_xml(layout, index)}{smooth}</c:ser>"
+        f"{categories_xml(layout)}{values_xml(layout, index, 'c:val')}{smooth}</c:ser>"
+    )
+
+
+def scatter_series_xml(layout: dict, context: TextContext) -> str:
+    fill = layout["colors"]["series"][0]
+    points = "".join(
+        f'<c:dPt><c:idx val="{point}"/>{marker_xml(color, color, SCATTER_MARKER_PIXELS, context.scale)}<c:bubble3D val="0"/></c:dPt>'
+        for point, color in enumerate(layout["colors"]["points"][0])
+        if color != fill
+    )
+    return (
+        f'<c:ser><c:idx val="0"/><c:order val="0"/>{series_name_xml(layout, 1)}<c:spPr><a:ln><a:noFill/></a:ln></c:spPr>'
+        f"{marker_xml(fill, fill, SCATTER_MARKER_PIXELS, context.scale)}{points}{named_point_labels_xml(layout, context)}"
+        f'{values_xml(layout, 0, "c:xVal")}{values_xml(layout, 1, "c:yVal")}<c:smooth val="0"/></c:ser>'
     )
 
 
@@ -165,18 +201,19 @@ def categories_xml(layout: dict) -> str:
     )
 
 
-def values_xml(layout: dict, index: int) -> str:
+def values_xml(layout: dict, index: int, tag: str) -> str:
     values = layout["series"][index]["values"]
     points = "".join(f'<c:pt idx="{point}"><c:v>{number_text(value)}</c:v></c:pt>' for point, value in enumerate(values))
     return (
-        f'<c:val><c:numRef><c:f>{SHEET_NAME}!{cell_reference(index + 1, 1, absolute=True)}:{cell_reference(index + 1, len(values), absolute=True)}</c:f>'
-        f'<c:numCache><c:formatCode>{attribute(number_format(layout))}</c:formatCode><c:ptCount val="{len(values)}"/>{points}</c:numCache></c:numRef></c:val>'
+        f'<{tag}><c:numRef><c:f>{SHEET_NAME}!{cell_reference(index + 1, 1, absolute=True)}:{cell_reference(index + 1, len(values), absolute=True)}</c:f>'
+        f'<c:numCache><c:formatCode>{attribute(number_format(layout, index))}</c:formatCode><c:ptCount val="{len(values)}"/>{points}</c:numCache></c:numRef></{tag}>'
     )
 
 
-def number_format(layout: dict) -> str:
-    fraction = "." + "0" * layout["decimals"] if layout["decimals"] else ""
-    literal = layout["unit"].replace('"', "")
+def number_format(layout: dict, index: int) -> str:
+    decimals = layout["decimals"][index]
+    fraction = "." + "0" * decimals if decimals else ""
+    literal = layout["units"][index].replace('"', "")
     return f'#,##0{fraction}"{literal}"' if literal else f"#,##0{fraction}"
 
 
@@ -192,14 +229,14 @@ def line_properties_xml(color: str, scale: SlideScale) -> str:
     return f"<c:spPr>{line_xml(color, LINE_WIDTH_PIXELS, scale)}</c:spPr>"
 
 
-def marker_xml(fill: str, line: str, scale: SlideScale) -> str:
-    size = max(2, min(72, round(scale.hundredths_of_point(MARKER_PIXELS) / 100)))
+def marker_xml(fill: str, line: str, pixels: float, scale: SlideScale) -> str:
+    size = max(2, min(72, round(scale.hundredths_of_point(pixels) / 100)))
     return f'<c:marker><c:symbol val="circle"/><c:size val="{size}"/><c:spPr>{solid_fill_xml(fill)}{line_xml(line, LINE_WIDTH_PIXELS / 2, scale)}</c:spPr></c:marker>'
 
 
 def last_point_xml(layout: dict, color: str, scale: SlideScale) -> str:
     last = len(layout["labels"]) - 1
-    return f'<c:dPt><c:idx val="{last}"/>{marker_xml(color, color, scale)}<c:bubble3D val="0"/></c:dPt>'
+    return f'<c:dPt><c:idx val="{last}"/>{marker_xml(color, color, MARKER_PIXELS, scale)}<c:bubble3D val="0"/></c:dPt>'
 
 
 def recolored_points_xml(layout: dict, index: int) -> str:
@@ -226,22 +263,40 @@ def label_body_xml(format_code: str, style: dict, position: str, show_percent: b
     )
 
 
-def point_labels_xml(layout: dict, index: int, context: TextContext) -> str:
-    labels = sorted((label for label in layout["pointLabels"] if label["series"] == index), key=lambda label: label["point"])
+def series_labels(layout: dict, index: int) -> list[dict]:
+    return sorted((label for label in layout["pointLabels"] if label["series"] == index), key=lambda label: label["point"])
+
+
+def point_labels_xml(layout: dict, index: int, kind: str, context: TextContext) -> str:
+    labels = series_labels(layout, index)
     if not labels:
         return ""
     shown = "".join(
-        f'<c:dLbl><c:idx val="{label["point"]}"/>{label_body_xml(number_format(layout), label["text"], label_position(layout["type"], label), False, context)}</c:dLbl>'
+        f'<c:dLbl><c:idx val="{label["point"]}"/>{label_body_xml(number_format(layout, index), label["text"], label_position(kind, label), False, context)}</c:dLbl>'
         for label in labels
     )
-    hidden = label_flags_xml(False, False)
-    return f"<c:dLbls>{shown}{hidden}</c:dLbls>"
+    return f"<c:dLbls>{shown}{label_flags_xml(False, False)}</c:dLbls>"
+
+
+def named_point_labels_xml(layout: dict, context: TextContext) -> str:
+    labels = series_labels(layout, 0)
+    if not labels:
+        return ""
+    shown = "".join(
+        f'<c:dLbl><c:idx val="{label["point"]}"/>{rich_text_xml(layout["labels"][label["point"]], label["text"], context)}'
+        f'<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr><c:dLblPos val="{label_position("scatter", label)}"/>{label_flags_xml(True, False)}</c:dLbl>'
+        for label in labels
+    )
+    return f"<c:dLbls>{shown}{label_flags_xml(False, False)}</c:dLbls>"
+
+
+def rich_text_xml(text: str, style: dict, context: TextContext) -> str:
+    run = run_properties_xml(styled_run(style), context, "a:rPr", with_link=False)
+    return f"<c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:r>{run}<a:t>{text_content(text)}</a:t></a:r></a:p></c:rich></c:tx>"
 
 
 def label_position(kind: str, label: dict) -> str:
-    if kind == "line" and label["below"]:
-        return "b"
-    return LABEL_POSITIONS[kind]
+    return label.get("position") or LABEL_POSITIONS[kind]
 
 
 def round_points_xml(layout: dict, context: TextContext) -> str:
@@ -271,47 +326,90 @@ def contrasting_text(fill_color: str, layout: dict) -> str:
 
 def axes_xml(layout: dict, context: TextContext) -> str:
     kind = layout["type"]
+    if kind in ROUND_CHART_TYPES:
+        return ""
+    if kind == "scatter":
+        return scatter_axis_xml(layout, 0, "b", context) + scatter_axis_xml(layout, 1, "l", context)
+    primary = category_axis_xml(layout, context) + value_axis_xml(layout, context)
+    return primary + secondary_axes_xml(layout) if kind == "combo" else primary
+
+
+def category_axis_xml(layout: dict, context: TextContext) -> str:
+    kind = layout["type"]
     horizontal = kind == "bar"
     orientation = "maxMin" if horizontal else "minMax"
-    axis_line = layout["colors"]["grid"] if kind == "line" else text_style(layout, "base")["color"]
-    category_axis = (
+    axis_line = layout["colors"]["grid"] if kind in GRIDDED_CHART_TYPES else text_style(layout, "base")["color"]
+    return (
         f'<c:catAx><c:axId val="{CATEGORY_AXIS_ID}"/><c:scaling><c:orientation val="{orientation}"/></c:scaling><c:delete val="0"/>'
         f'<c:axPos val="{"l" if horizontal else "b"}"/><c:numFmt formatCode="General" sourceLinked="1"/>'
         '<c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>'
         f"<c:spPr>{line_xml(axis_line, AXIS_LINE_PIXELS, context.scale)}</c:spPr>{text_properties_xml(text_style(layout, 'category'), context)}"
         f'<c:crossAx val="{VALUE_AXIS_ID}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>'
     )
-    value_axis = (
-        f'<c:valAx><c:axId val="{VALUE_AXIS_ID}"/><c:scaling><c:orientation val="minMax"/>{value_limits_xml(layout)}</c:scaling><c:delete val="1"/>'
-        f'<c:axPos val="{"b" if horizontal else "l"}"/>{gridlines_xml(layout, context.scale)}<c:numFmt formatCode="{attribute(number_format(layout))}" sourceLinked="0"/>'
-        '<c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>'
-        f'<c:crossAx val="{CATEGORY_AXIS_ID}"/><c:crosses val="autoZero"/><c:crossBetween val="between"/>{major_unit_xml(layout)}</c:valAx>'
-    )
-    return category_axis + value_axis
 
 
-def value_limits_xml(layout: dict) -> str:
+def value_axis_xml(layout: dict, context: TextContext) -> str:
+    horizontal = layout["type"] == "bar"
+    gridded = layout["type"] in GRIDDED_CHART_TYPES
     value_range = layout.get("valueRange")
+    return (
+        f'<c:valAx><c:axId val="{VALUE_AXIS_ID}"/><c:scaling><c:orientation val="minMax"/>{limits_xml(value_range)}</c:scaling><c:delete val="1"/>'
+        f'<c:axPos val="{"b" if horizontal else "l"}"/>{gridlines_xml(layout, context.scale) if gridded else ""}<c:numFmt formatCode="{attribute(number_format(layout, 0))}" sourceLinked="0"/>'
+        '<c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>'
+        f'<c:crossAx val="{CATEGORY_AXIS_ID}"/><c:crosses val="autoZero"/><c:crossBetween val="between"/>{major_unit_xml(value_range) if gridded else ""}</c:valAx>'
+    )
+
+
+def secondary_axes_xml(layout: dict) -> str:
+    line_index = len(layout["series"]) - 1
+    return (
+        f'<c:catAx><c:axId val="{SECONDARY_CATEGORY_AXIS_ID}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="1"/>'
+        '<c:axPos val="b"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>'
+        f'<c:crossAx val="{SECONDARY_VALUE_AXIS_ID}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>'
+        f'<c:valAx><c:axId val="{SECONDARY_VALUE_AXIS_ID}"/><c:scaling><c:orientation val="minMax"/>{limits_xml(layout.get("secondaryRange"))}</c:scaling><c:delete val="1"/>'
+        f'<c:axPos val="r"/><c:numFmt formatCode="{attribute(number_format(layout, line_index))}" sourceLinked="0"/>'
+        '<c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>'
+        f'<c:crossAx val="{SECONDARY_CATEGORY_AXIS_ID}"/><c:crosses val="max"/><c:crossBetween val="between"/></c:valAx>'
+    )
+
+
+def scatter_axis_xml(layout: dict, index: int, position: str, context: TextContext) -> str:
+    axis_id, cross_axis_id = (CATEGORY_AXIS_ID, VALUE_AXIS_ID) if index == 0 else (VALUE_AXIS_ID, CATEGORY_AXIS_ID)
+    value_range = layout["valueRange"] if index == 0 else layout["secondaryRange"]
+    return (
+        f'<c:valAx><c:axId val="{axis_id}"/><c:scaling><c:orientation val="minMax"/>{limits_xml(value_range)}</c:scaling><c:delete val="0"/>'
+        f'<c:axPos val="{position}"/>{gridlines_xml(layout, context.scale)}{axis_title_xml(layout["series"][index]["name"], text_style(layout, "axisTitle"), context)}'
+        f'<c:numFmt formatCode="{attribute(number_format(layout, index))}" sourceLinked="0"/>'
+        '<c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="low"/>'
+        f'<c:spPr><a:ln><a:noFill/></a:ln></c:spPr>{text_properties_xml(text_style(layout, "category"), context)}'
+        f'<c:crossAx val="{cross_axis_id}"/><c:crosses val="min"/><c:crossBetween val="midCat"/>{major_unit_xml(value_range)}</c:valAx>'
+    )
+
+
+def axis_title_xml(name: str, style: dict, context: TextContext) -> str:
+    if not name:
+        return ""
+    return f'<c:title>{rich_text_xml(name, style, context)}<c:overlay val="0"/></c:title>'
+
+
+def limits_xml(value_range: dict | None) -> str:
     if not value_range:
         return ""
     return f'<c:max val="{number_text(value_range["maximum"])}"/><c:min val="{number_text(value_range["minimum"])}"/>'
 
 
-def major_unit_xml(layout: dict) -> str:
-    value_range = layout.get("valueRange")
+def major_unit_xml(value_range: dict | None) -> str:
     if not value_range:
         return ""
-    return f'<c:majorUnit val="{number_text((value_range["maximum"] - value_range["minimum"]) / LINE_GRID_INTERVALS)}"/>'
+    return f'<c:majorUnit val="{number_text((value_range["maximum"] - value_range["minimum"]) / GRID_INTERVALS)}"/>'
 
 
 def gridlines_xml(layout: dict, scale: SlideScale) -> str:
-    if layout["type"] != "line":
-        return ""
     return f'<c:majorGridlines><c:spPr>{line_xml(layout["colors"]["grid"], GRID_LINE_PIXELS, scale)}</c:spPr></c:majorGridlines>'
 
 
 def legend_xml(layout: dict, context: TextContext) -> str:
-    if layout["type"] in ROUND_CHART_TYPES or len(layout["series"]) < 2:
+    if layout["type"] in ROUND_CHART_TYPES or layout["type"] == "scatter" or len(layout["series"]) < 2:
         return ""
     return f'<c:legend><c:legendPos val="t"/><c:overlay val="0"/>{text_properties_xml(text_style(layout, "legend"), context)}</c:legend>'
 

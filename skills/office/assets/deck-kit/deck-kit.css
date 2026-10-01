@@ -365,3 +365,13 @@ section[data-layout="image"] > :where(:not(img, aside, .eyebrow, h2, .lead, .tak
 .kit-donut-legend .kit-swatch { width: 22px; height: 22px; }
 .kit-donut-legend b { font-weight: 700; color: var(--ink); text-align: right; }
 .kit-donut-legend .kit-share { min-width: 72px; text-align: right; font-weight: 600; color: var(--muted); }
+.kit-gridline.kit-vertical { top: 0; bottom: 0; left: auto; right: auto; width: 1px; height: auto; }
+.kit-scatter-area { margin: 12px 0 0; }
+.kit-axis-title { flex: none; font-size: calc(var(--size-small) * var(--fit)); font-weight: 700; color: var(--muted); }
+.kit-axis-title.kit-axis-x { align-self: flex-end; }
+.kit-tick { position: absolute; left: 6px; transform: translateY(-100%); padding-bottom: 4px; white-space: nowrap; font-size: calc(var(--size-small) * var(--fit)); color: var(--muted); }
+.kit-data-label.kit-point-name { font-weight: 600; }
+.kit-tick.kit-under { transform: none; padding: 4px 0 0; }
+.kit-category.kit-from-start { transform: none; }
+.kit-category.kit-from-end { transform: translateX(-100%); }
+.kit-data-label.kit-inside.kit-before { transform: translate(-100%, -50%); padding: 0 14px 0 0; }
