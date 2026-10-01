@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from office_render import LIBREOFFICE_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
+from template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
 from office_schema import Boolean, CellValue, Choice, Field, ListOf, MapOf, Number, Record, Text, Variant
 from text_checks import PLACEHOLDER_LEFT
@@ -141,6 +142,7 @@ GUIDE_INPUTS = (
     ("sheet create --spec <file>", WORKBOOK_SPECIFICATION),
     ("sheet edit --rows <file>", ROWS),
     ("sheet apply <file.xlsx> <ops.json>", OPERATION_BATCH),
+    ("sheet merge <template.xlsx> <values.json> <output.xlsx>: values", MERGE_VALUES),
 )
 WRITE_ISSUE_KINDS = (FORMULA_NOT_EVALUATED,)
-GUIDE_ISSUES = (("sheet create, sheet edit and sheet apply", WRITE_ISSUE_KINDS), ("sheet check", CHECK_ISSUE_KINDS), ("sheet validate", VALIDATE_ISSUE_KINDS), ("sheet apply", OPERATION_ISSUE_KINDS), ("sheet render", LIBREOFFICE_ISSUE_KINDS))
+GUIDE_ISSUES = (("sheet create, sheet edit and sheet apply", WRITE_ISSUE_KINDS), ("sheet check", CHECK_ISSUE_KINDS), ("sheet validate", VALIDATE_ISSUE_KINDS), ("sheet apply", OPERATION_ISSUE_KINDS), ("sheet render", LIBREOFFICE_ISSUE_KINDS), ("sheet merge", PACKAGE_MERGE_ISSUE_KINDS + WRITE_ISSUE_KINDS))

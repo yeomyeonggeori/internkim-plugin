@@ -52,6 +52,20 @@ class MergeTest(DocumentFixture):
         self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("UNUSED_VALUE", "values.custmer")])
         self.assertIn(("paragraph", "첫 문단 박예시 입니다."), block_texts(self.directory, "merged.docx"))
 
+    def test_a_placeholder_split_across_runs_and_an_item_path_fill(self):
+        run_office_python("""
+            from docx import Document
+            document = Document("fixture.docx")
+            paragraph = document.add_paragraph()
+            for text, bold in (("계약자: {{ cus", False), ("tomer.na", True), ("me }}, 첫 품목: {{ items.0.name }}", False)):
+                paragraph.add_run(text).bold = bold
+            document.save("fixture.docx")
+        """, self.directory)
+        write_json(self.directory / "values.json", {"customer_name": "박예시", "customer": {"name": "이샘플"}, "items": [{"name": "연간 유지보수"}]})
+        envelope = run_office(["doc", "merge", "fixture.docx", "values.json", "merged.docx"], self.directory)
+        self.assertEqual(envelope["status"], "ok")
+        self.assertIn(("paragraph", "계약자: 이샘플, 첫 품목: 연간 유지보수"), block_texts(self.directory, "merged.docx"))
+
 
 if __name__ == "__main__":
     unittest.main()

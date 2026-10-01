@@ -4,6 +4,7 @@ from office_render import LIBREOFFICE_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
 from office_result import ERROR, WARNING, IssueKind
 from office_schema import AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Text, Variant
+from template_merge import MERGE_VALUES, TEMPLATE_SYNTAX_ERROR, UNRESOLVED_PLACEHOLDER, UNUSED_VALUE
 from text_checks import PLACEHOLDER_LEFT, TEXT_CHECK_ISSUE_KINDS
 
 
@@ -323,8 +324,6 @@ OPERATIONS = Variant(
 )
 OPERATION_BATCH = ListOf(OPERATIONS, non_empty=True)
 
-MERGE_VALUES = MapOf(AnyOf((CellValue(), ListOf(CellValue()), MapOf(CellValue(), key="name"), ListOf(MapOf(CellValue(), key="name"))), name="a cell, a list, an object, or a list of objects"), key="placeholder name")
-
 BROKEN_INTERNAL_REFERENCE = IssueKind("BROKEN_INTERNAL_REFERENCE", ERROR, "a link or cross-reference points at a bookmark the document does not have", "point it at an existing heading or bookmark, or remove it")
 STALE_TABLE_OF_CONTENTS = IssueKind("STALE_TABLE_OF_CONTENTS", WARNING, "the table of contents does not list the headings the document has", "apply update_fields_on_open so Word refreshes it")
 EAST_ASIA_FONT_MISSING = IssueKind("EAST_ASIA_FONT_MISSING", WARNING, "Korean text has no East Asian font at any level, so each reader substitutes its own", "apply set_east_asia_font")
@@ -332,10 +331,6 @@ EAST_ASIA_LANGUAGE_NOT_KOREAN = IssueKind("EAST_ASIA_LANGUAGE_NOT_KOREAN", WARNI
 TRACKED_CHANGES_PRESENT = IssueKind("TRACKED_CHANGES_PRESENT", WARNING, "the document holds tracked changes nobody has accepted or rejected", "doc read --revisions lists them; settle them with accept_revisions or reject_revisions unless the reader should see the redline")
 
 CHECK_ISSUE_KINDS = (PLACEHOLDER_LEFT, BROKEN_INTERNAL_REFERENCE, STALE_TABLE_OF_CONTENTS, EAST_ASIA_FONT_MISSING, EAST_ASIA_LANGUAGE_NOT_KOREAN, TRACKED_CHANGES_PRESENT)
-
-UNRESOLVED_PLACEHOLDER = IssueKind("UNRESOLVED_PLACEHOLDER", ERROR, "the template uses a placeholder the values file does not give", "add the value to the values file")
-UNUSED_VALUE = IssueKind("UNUSED_VALUE", WARNING, "the values file gives a name the template never uses", "check the name's spelling against the template")
-TEMPLATE_SYNTAX_ERROR = IssueKind("TEMPLATE_SYNTAX_ERROR", ERROR, "the template's placeholder syntax does not parse", "fix the {{ }} or {% %} tag the message names")
 
 MERGE_ISSUE_KINDS = (UNRESOLVED_PLACEHOLDER, UNUSED_VALUE, TEMPLATE_SYNTAX_ERROR)
 

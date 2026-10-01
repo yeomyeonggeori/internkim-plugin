@@ -16,8 +16,8 @@ One command, `<skill>/scripts/office <format> <verb> [arguments]`, writes and ch
 | --- | --- | --- |
 | Word document, report, memo, letter, template; a PDF whose words matter more than their placement | `doc export`, `doc create`, `doc edit`, `doc read`, `doc apply`, `doc merge`, `doc render`, `doc check`, `doc validate` | `references/doc.md` |
 | Existing PDF to read, look at, extract, split, merge, or append to; a PDF whose placement is the point | `pdf read`, `pdf render`, `pdf create`, `pdf edit`, `pdf validate` | `references/pdf.md` |
-| Workbook, CSV or TSV cleanup, formulas, charts | `sheet create`, `sheet edit`, `sheet read`, `sheet apply`, `sheet check`, `sheet render`, `sheet validate` | `references/sheet.md` |
-| Deck, presentation, PPTX, or checking an existing .pptx | `deck build`, `deck validate`, `deck read`, `deck apply`, `deck check`, `deck restore`, `deck accept`, `deck image` | `references/deck.md` |
+| Workbook, CSV or TSV cleanup, formulas, charts | `sheet create`, `sheet edit`, `sheet read`, `sheet apply`, `sheet merge`, `sheet check`, `sheet render`, `sheet validate` | `references/sheet.md` |
+| Deck, presentation, PPTX, or checking an existing .pptx | `deck build`, `deck validate`, `deck read`, `deck apply`, `deck merge`, `deck check`, `deck restore`, `deck accept`, `deck image` | `references/deck.md` |
 | Converting a file to another format: docx, md, html, pdf to docx, xlsx to csv, csv to xlsx, xls or ods to xlsx, pptx to pdf | `convert` | `office guide convert` |
 | Standardized company form or contract on letterhead (견적서, 품의서, 증명서, 계약서, NDA, MOU) | `paperwork check`, `paperwork render`, `paperwork fill` | `references/paperwork.md` |
 
