@@ -341,7 +341,7 @@ class LayoutAuditTest(KoreanDeckFixture):
         ])
         by_code = {issue["code"]: issue for issue in envelope["issues"]}
         self.assertEqual(by_code["OUT_OF_FRAME"]["suggestion"], {"op": "set_transform", "slide": 3, "shape": 1, "y": 6858000 - 4572000})
-        self.assertIn("TEXT_OVERLAP", by_code)
+        self.assertEqual(by_code["TEXT_OVERLAP"]["suggestion"]["op"], "set_transform")
         self.assertEqual(by_code["IMAGE_DISTORTED"]["suggestion"]["op"], "set_transform")
 
     def test_text_that_grows_past_its_card_is_found(self):
@@ -351,6 +351,17 @@ class LayoutAuditTest(KoreanDeckFixture):
         ])
         spill = [issue for issue in envelope["issues"] if "grows with its text past shape 1" in issue["message"]]
         self.assertEqual(spill[0]["suggestion"]["shape"], 1)
+
+    def test_text_that_grows_past_the_slide_bottom_gets_an_operation_not_prose(self):
+        long_text = "이 문장은 상자에 비해 훨씬 길어서 슬라이드 아래로 넘칠 것입니다. " * 30
+        envelope = self.apply([{"op": "set_text", "slide": 2, "shape": 3, "text": long_text}, {"op": "set_text_frame", "slide": 2, "shape": 3, "autofit": "resize", "wrap": True}])
+        off_slide = [issue for issue in envelope["issues"] if issue["code"] == "OUT_OF_FRAME" and issue["location"] == "slide 2 shape 3"]
+        self.assertEqual(len(off_slide), 1)
+        suggestion = off_slide[0]["suggestion"]
+        self.assertIsInstance(suggestion, dict)
+        fixed = self.apply([suggestion])
+        self.assertNotIn("slide 2 shape 3", [issue["location"] for issue in fixed["issues"] if issue["code"] == "OUT_OF_FRAME"])
+        self.assertTrue(all(isinstance(issue["suggestion"], dict) for issue in fixed["issues"] if issue["code"] in ("OUT_OF_FRAME", "CONTENT_OVERFLOW")))
 
     def test_check_without_a_preview_reports_the_same_findings(self):
         self.apply([{"op": "set_transform", "slide": 3, "shape": 1, "y": 3600000}])

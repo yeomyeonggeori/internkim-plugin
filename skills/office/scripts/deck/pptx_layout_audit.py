@@ -151,7 +151,7 @@ def frame_issues(entry: Entry, area: SlideArea) -> list[Issue]:
         return []
     whole = box.right < 0 or box.bottom < 0 or box.x > area.width or box.y > area.height
     text = f"{label(entry, area)} lies {'wholly outside the slide' if whole else 'partly outside the slide'}: {', '.join(past)}"
-    fix = growth_fix(entry, area) or changed_transform(entry, area, inside(entry.box, area)) or OUT_OF_FRAME.kind.suggestion
+    fix = growth_fix(entry, area) or changed_transform(entry, area, inside(entry.box, area))
     return [Issue(OUT_OF_FRAME.kind, text, location(entry, area), fix)]
 
 
@@ -162,6 +162,8 @@ def growth_fix(entry: Entry, area: SlideArea) -> dict | None:
         return {"op": "set_text_frame", "slide": area.number, "shape": shape_reference(entry.address), "wrap": True}
     if entry.visible_box.bottom > area.height and entry.visible_box.h <= area.height:
         return {"op": "set_transform", "slide": area.number, "shape": shape_reference(entry.address), "y": area.height - entry.visible_box.h}
+    if entry.visible_box.bottom > area.height:
+        return smaller_text(entry, area, lambda fit: entry.box.y + fit.needed_height + entry.box.h - fit.available_height <= area.height)
     return None
 
 
@@ -212,7 +214,7 @@ def is_content(entry: Entry) -> bool:
     return entry.has_text or entry.kind in MEDIA_KINDS or entry.kind == "shape"
 
 
-def smaller_text(entry: Entry, area: SlideArea, fits) -> dict | str:
+def smaller_text(entry: Entry, area: SlideArea, fits) -> dict:
     largest = largest_text_size(entry.context, entry.element)
     for step in range(1, SHRINK_STEPS + 1):
         size = math.floor(largest * (1 - step * SHRINK_STEP))
@@ -220,7 +222,7 @@ def smaller_text(entry: Entry, area: SlideArea, fits) -> dict | str:
             break
         if fits(measure_text(entry.context, entry.element, entry.box, size / largest)):
             return {"op": "set_text_style", "slide": area.number, "shape": shape_reference(entry.address), "size": size}
-    return f"the text does not fit even at {SMALLEST_SUGGESTED_SIZE}pt; cut it or split it across slides"
+    return {"op": "set_text_style", "slide": area.number, "shape": shape_reference(entry.address), "size": SMALLEST_SUGGESTED_SIZE}
 
 
 def distortion_issues(entry: Entry, area: SlideArea) -> list[Issue]:
@@ -269,9 +271,33 @@ def overlap_issues(entries: list[Entry], area: SlideArea) -> list[Issue]:
             if shared is None or shared.area < OVERLAP_RATIO * min(first.visible_box.area, second.visible_box.area):
                 continue
             text = f"{label(first, area)} and shape {second.address} {second.name!r} overlap by {points(shared.w)}x{points(shared.h)}pt"
-            fix = growth_fix(first, area) or growth_fix(second, area) or "move one of them with set_transform, or shorten the text that spills"
+            fix = growth_fix(first, area) or growth_fix(second, area) or separation_fix(first, second, area, content)
             issues.append(Issue(TEXT_OVERLAP.kind, text, location(first, area), fix))
     return issues
+
+
+def separation_fix(first: Entry, second: Entry, area: SlideArea, content: list[Entry]) -> dict:
+    for moving, staying in ((second, first), (first, second)):
+        for box in clear_positions(moving, staying):
+            if fits_on_slide(box, area) and not any(other is not moving and box.intersection(other.visible_box) for other in content):
+                return transform_suggestion(moving, area, box)
+    text_entry = first if first.has_text else second
+    return smaller_text(text_entry, area, lambda fit: fit.height_overflow <= 0 and fit.width_overflow <= 0)
+
+
+def clear_positions(moving: Entry, staying: Entry) -> list[Box]:
+    box, other = moving.box, staying.visible_box
+    grown_height = moving.visible_box.h - box.h
+    return [
+        Box(box.x, other.bottom + SUGGESTION_SLACK, box.w, box.h),
+        Box(other.right + SUGGESTION_SLACK, box.y, box.w, box.h),
+        Box(box.x, other.y - SUGGESTION_SLACK - box.h - grown_height, box.w, box.h),
+        Box(other.x - SUGGESTION_SLACK - box.w, box.y, box.w, box.h),
+    ]
+
+
+def fits_on_slide(box: Box, area: SlideArea) -> bool:
+    return box.x >= 0 and box.y >= 0 and box.right <= area.width and box.bottom <= area.height
 
 
 def substitutions(faces: frozenset) -> dict[str, str]:
