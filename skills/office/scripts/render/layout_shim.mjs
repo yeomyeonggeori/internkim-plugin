@@ -4,6 +4,7 @@ import { createStyleEngine } from "./css_cascade.mjs";
 const atomicTags = new Set(["img", "svg", "canvas", "video", "iframe", "object", "embed", "input", "button", "select", "textarea", "math", "audio", "picture"]);
 const flexOrGrid = new Set(["flex", "inline-flex", "grid", "inline-grid"]);
 const inlineBoxDisplays = new Set(["inline-block", "inline-flex", "inline-grid", "inline-table"]);
+const boxOnlyDisplays = new Set(["flex", "inline-flex", "grid", "inline-grid", "table", "inline-table", "table-row-group", "table-header-group", "table-footer-group", "table-row"]);
 const resetStyle = "html, body { margin: 0 !important; padding: 0 !important; }";
 const emptyRect = { left: 0, top: 0, right: 0, bottom: 0 };
 
@@ -115,6 +116,7 @@ export function createLayout({ window, document, renderer, styleTexts, viewport,
   async function layOut(node) {
     const root = rootOf(node);
     if (!root) return null;
+    dropCollapsibleWhitespace(root);
     const stamp = currentVersion();
     const existing = layouts.get(root);
     if (existing && existing.version === stamp) return existing;
@@ -126,6 +128,28 @@ export function createLayout({ window, document, renderer, styleTexts, viewport,
     mapDocument(measured, root, layout);
     layout.version = currentVersion();
     return layout;
+  }
+
+  function isCollapsibleWhitespace(node) {
+    if (node.nodeType !== 3 || node.textContent.trim() !== "") return false;
+    const parent = node.parentElement;
+    if (!parent || styles.getComputedStyle(parent).whiteSpace.startsWith("pre")) return false;
+    if (boxOnlyDisplays.has(displayOf(parent))) return textRunOf(node).every((text) => text.textContent.trim() === "");
+    return Array.from(parent.childNodes).every((sibling) => (sibling.nodeType === 3 ? sibling.textContent.trim() === "" : sibling.nodeType !== 1 || isBlockLevel(sibling)));
+  }
+
+  function textRunOf(node) {
+    const run = [node];
+    for (let before = node.previousSibling; before && before.nodeType === 3; before = before.previousSibling) run.push(before);
+    for (let after = node.nextSibling; after && after.nodeType === 3; after = after.nextSibling) run.push(after);
+    return run;
+  }
+
+  function dropCollapsibleWhitespace(element) {
+    for (const child of Array.from(element.childNodes)) {
+      if (isCollapsibleWhitespace(child)) child.remove();
+      else if (child.nodeType === 1 && child.localName !== "svg") dropCollapsibleWhitespace(child);
+    }
   }
 
   function mapDocument(measured, root, layout) {
