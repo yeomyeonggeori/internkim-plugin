@@ -1,5 +1,6 @@
 import re
 import unittest
+import zipfile
 
 from openpyxl import load_workbook
 
@@ -82,6 +83,44 @@ class RenderedPagesTest(WorkbookFixture):
         self.create_workbook([{"title": "Sales", "rows": MONTHS}])
         envelope, _ = self.render()
         self.assertNotIn("BLANK_PAGE", [issue["code"] for issue in envelope["issues"]])
+
+
+SHARES = [["분기", "국내", "해외"], ["1분기", 30, 10], ["2분기", 20, 20], ["3분기", 45, 5]]
+
+
+class PercentChartTest(WorkbookFixture):
+    def chart_xml(self, number):
+        with zipfile.ZipFile(self.directory / "book.xlsx") as archive:
+            return archive.read(f"xl/charts/chart{number}.xml").decode()
+
+    def test_percent_stacked_columns_and_percent_slices_are_written_and_drawn(self):
+        self.create_workbook([{"title": "매출", "rows": SHARES}])
+        envelope = self.apply([
+            {"op": "add_chart", "type": "bar", "range": "A1:C4", "stacked": "percent", "dataLabels": "value", "anchor": "E2"},
+            {"op": "add_chart", "type": "pie", "range": "A1:B4", "dataLabels": "category_percent", "anchor": "E20"},
+            {"op": "add_chart", "type": "area", "range": "A1:C4", "stacked": "percent", "anchor": "E38"},
+        ])
+        self.assertEqual(envelope["status"], "ok", envelope)
+        columns = self.chart_xml(1)
+        self.assertIn('<grouping val="percentStacked"/>', columns)
+        self.assertIn('formatCode="0%"', columns)
+        self.assertIn('<showVal val="1"/>', columns)
+        self.assertIn('<showCatName val="1"/><showSerName val="0"/><showPercent val="1"/>', self.chart_xml(2))
+        self.assertIn('<grouping val="percentStacked"/>', self.chart_xml(3))
+        run_office(["sheet", "render", "book.xlsx"], self.directory)
+        svgs = re.findall(r"<svg.*?</svg>", (self.directory / "book-preview" / "preview.html").read_text(encoding="utf-8"), flags=re.DOTALL)
+        heights = [float(height) for height in re.findall(r'<rect x="[\d.]+" y="[\d.]+" width="[\d.]+" height="([\d.]+)" fill="#', svgs[0])[1:]]
+        self.assertAlmostEqual(heights[0] + heights[3], heights[1] + heights[4], delta=0.2)
+        self.assertIn(">100%<", svgs[0])
+        self.assertIn(">30<", svgs[0])
+        self.assertIn(">1분기 32%<", svgs[1])
+        self.assertIn(">100%<", svgs[2])
+
+    def test_percent_labels_on_a_chart_without_slices_are_refused(self):
+        self.create_workbook([{"title": "매출", "rows": SHARES}])
+        issue = self.apply([{"op": "add_chart", "type": "bar", "range": "A1:C4", "dataLabels": "percent"}])["issues"][0]
+        self.assertEqual((issue["code"], issue["location"]), ("OPERATION_NOT_APPLICABLE", "ops[0].dataLabels"))
+        self.assertIn('"stacked": "percent"', issue["suggestion"])
 
 
 if __name__ == "__main__":

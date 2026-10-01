@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 
+from chart_svg import LABEL_FLAGS
 from office_preview import PREVIEW_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
 from template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
@@ -60,17 +61,18 @@ SHAPE_GEOMETRIES = {"rectangle": "rect", "rounded_rectangle": "roundRect", "elli
 COMPARISON_OPERATORS = ("between", "not_between", "equal", "not_equal", "greater_than", "less_than", "greater_or_equal", "less_or_equal")
 CHART_TYPES = ("bar", "line", "pie", "area", "doughnut", "scatter", "radar", "combo")
 CHART_TITLE_LIMIT = 255
+DATA_LABELS = tuple(LABEL_FLAGS)
 CHART_FIELDS = (
     Field("title", Text(maximum_length=CHART_TITLE_LIMIT), "chart title; Excel keeps at most 255 characters in a chart or axis title"),
     Field("anchor", CELL_ADDRESS, "cell the chart's top-left corner sits on, default two columns right of the data"),
     Field("horizontal", Boolean(), "bar and combo: bars run sideways"),
-    Field("stacked", Boolean(), "bar, area and line: stack the series"),
+    Field("stacked", AnyOf((Boolean(), Choice(("percent",))), name='true, false or "percent"'), "bar, area and line: stack the series; percent stacks each category to 100%"),
     Field("lineSeries", Number(minimum=1, integer=True), "combo: how many of the last series are lines, default 1"),
     Field("secondaryAxis", Boolean(), "combo: lines use a right-hand axis, default true"),
     Field("xTitle", Text(maximum_length=CHART_TITLE_LIMIT), "category axis title"),
     Field("yTitle", Text(maximum_length=CHART_TITLE_LIMIT), "value axis title"),
     Field("legend", Choice(("bottom", "right", "top", "none")), "legend position, default bottom; none hides it"),
-    Field("dataLabels", Boolean(), "show each point's value"),
+    Field("dataLabels", AnyOf((Boolean(), Choice(DATA_LABELS)), name="true, false or " + ", ".join(DATA_LABELS)), "label each point with its value (true), its category, or on a pie or doughnut its percent of the whole or category_percent for both; false or none removes them"),
     Field("colors", ListOf(HexColor()), "one color per series in order, or per slice of a pie or doughnut, such as [\"1F4E79\", \"F59E0B\"]; series past the list take the default palette"),
     Field("width", Number(minimum=4, maximum=60), "width in centimetres, default 16"),
     Field("height", Number(minimum=3, maximum=40), "height in centimetres, default 8"),

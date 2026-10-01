@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from openpyxl.utils import range_boundaries
 
-from chart_svg import ChartModel, ChartSeries, chart_svg
+from chart_svg import LABEL_FLAGS, ChartModel, ChartSeries, chart_svg
 from office_preview import emu_to_pixels, pixels, style_attribute
 from preview_fonts import KOREAN_FALLBACK_FAMILY
 
@@ -113,7 +113,23 @@ def chart_model(chart, values_workbook, preview) -> ChartModel:
             values = tuple(float(value) if isinstance(value, (int, float)) else 0.0 for value in reference_values(reference, values_workbook))
             series.append(ChartSeries(series_name(item, values_workbook, len(series)), values, kind))
     secondary = len({axis_identifier(plot) for plot in plots}) > 1
-    return ChartModel(tuple(chart_categories(chart, values_workbook)), tuple(series), chart_title(chart), any(is_stacked(plot) for plot in plots), chart.legend is not None, secondary)
+    return ChartModel(
+        tuple(chart_categories(chart, values_workbook)),
+        tuple(series),
+        chart_title(chart),
+        any(is_stacked(plot) for plot in plots),
+        chart.legend is not None,
+        secondary,
+        any(getattr(plot, "grouping", None) == "percentStacked" for plot in plots),
+        label_mode(plots),
+    )
+
+
+def label_mode(plots: list) -> str:
+    labels = next((plot.dLbls for plot in plots if getattr(plot, "dLbls", None) is not None), None)
+    shown = {flag for flags in LABEL_FLAGS.values() for flag in flags if labels is not None and getattr(labels, flag)}
+    exact = next((mode for mode, flags in LABEL_FLAGS.items() if set(flags) == shown), None)
+    return exact or ("value" if "showVal" in shown else "none")
 
 
 def series_name(item, values_workbook, index: int) -> str:

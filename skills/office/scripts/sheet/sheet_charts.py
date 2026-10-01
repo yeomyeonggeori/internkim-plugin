@@ -8,6 +8,7 @@ from openpyxl.chart.shapes import GraphicalProperties
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.cell import range_boundaries
 
+from chart_svg import LABEL_FLAGS
 from office_operations import OPERATION_NOT_APPLICABLE, Change
 from office_result import MISSING_FIELD, OfficeFailure
 from sheet_definitions import CHART_COLUMN_LEFT_OUT
@@ -30,6 +31,8 @@ ROUND_PLOTS = ("pieChart", "doughnutChart", "pie3DChart", "ofPieChart")
 LINE_PLOTS = ("lineChart", "line3DChart", "radarChart")
 SCATTER_PLOT = "scatterChart"
 GENERAL = "General"
+SHARE_FORMAT = "0%"
+SHOWN_LABEL_FLAGS = tuple(dict.fromkeys(flag for flags in LABEL_FLAGS.values() for flag in flags))
 
 
 def require_block(worksheet, bounds: tuple[int, int, int, int], location: str) -> None:
@@ -134,6 +137,7 @@ def range_text(bounds: tuple[int, int, int, int]) -> str:
 
 def build_chart(worksheet, operation: dict, location: str, chart_index: int):
     bounds = parse_range(operation["range"], f"{location}.range")
+    require_labels_fit(operation["type"] in ROUND_CHARTS, operation, location)
     columns = drawn_columns(worksheet, bounds, operation, location)
     if operation["type"] == "scatter":
         chart = scatter_chart(worksheet, bounds, columns)
@@ -177,7 +181,7 @@ def new_chart(chart_type: str, operation: dict):
     else:
         chart = PieChart()
     if operation.get("stacked") and chart_type in ("bar", "line", "area"):
-        chart.grouping = "stacked"
+        chart.grouping = "percentStacked" if operation["stacked"] == "percent" else "stacked"
         if chart_type == "bar":
             chart.overlap = 100
     return chart
@@ -286,7 +290,7 @@ def format_value_axes(chart, worksheet, bounds, columns: list[int]) -> None:
         if y_axis is None:
             continue
         column = columns[-1] if sub_chart is not chart else columns[0]
-        number_format = worksheet.cell(row=bounds[0] + 1, column=column).number_format
+        number_format = SHARE_FORMAT if getattr(sub_chart, "grouping", None) == "percentStacked" else worksheet.cell(row=bounds[0] + 1, column=column).number_format
         if number_format != GENERAL:
             y_axis.number_format = number_format
             y_axis.numFmt.sourceLinked = False
@@ -305,11 +309,29 @@ def apply_labels(chart, operation: dict) -> None:
         chart.legend = chart.legend or Legend()
         chart.legend.position = LEGEND_POSITIONS[operation["legend"]]
     if operation.get("dataLabels") is not None:
-        chart.dataLabels = value_labels() if operation["dataLabels"] else None
+        mode = label_mode(operation["dataLabels"])
+        chart.dataLabels = point_labels(mode) if mode != "none" else None
 
 
-def value_labels() -> DataLabelList:
-    return DataLabelList(showVal=True, showLegendKey=False, showCatName=False, showSerName=False, showPercent=False, showBubbleSize=False)
+def label_mode(written: bool | str) -> str:
+    if isinstance(written, bool):
+        return "value" if written else "none"
+    return written
+
+
+def point_labels(mode: str) -> DataLabelList:
+    shown = {flag: flag in LABEL_FLAGS[mode] for flag in SHOWN_LABEL_FLAGS}
+    return DataLabelList(showLegendKey=False, showSerName=False, showBubbleSize=False, **shown)
+
+
+def require_labels_fit(is_round: bool, operation: dict, location: str) -> None:
+    mode = label_mode(operation["dataLabels"]) if operation.get("dataLabels") is not None else "none"
+    if "showPercent" in LABEL_FLAGS[mode] and not is_round:
+        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(
+            f"{location}.dataLabels: {mode} labels show each slice's share of a pie or doughnut, and Excel draws none on other charts",
+            f"{location}.dataLabels",
+            'on this chart use "dataLabels": "value", with "stacked": "percent" to draw each category as shares of 100%',
+        ))
 
 
 def show_axes(chart) -> None:
@@ -361,6 +383,8 @@ def plan_edit_chart(editing, operation: dict, location: str) -> Change:
     if operation.get("type") and not operation.get("range"):
         raise OfficeFailure(MISSING_FIELD.issue(f"{location}.range: changing the chart type needs the data range", f"{location}.range"))
     replacement, left_out = build_chart(worksheet, {"type": "bar", **operation}, location, operation["chart"]) if operation.get("range") else (None, None)
+    if replacement is None:
+        require_labels_fit(any(plot.tagname in ROUND_PLOTS for plot in chart._charts), operation, location)
 
     def change() -> str:
         index = operation["chart"]
