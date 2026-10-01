@@ -33,7 +33,7 @@ A standardized form belongs to paperwork even when it ships as .docx or PDF: its
 
 **File naming.** Documents, PDFs, and workbooks live at `~/documents/<title>.<ext>`, with any Markdown source beside them. Decks live in `artifacts/<deck-slug>/` and deliver from `artifacts/<deck-slug>/build/`. Company forms go to the storage directory their registration returns.
 
-**Results.** Every command prints one JSON result: `status` is ok, warning, or error, and each issue carries a stable `code`, a `location`, and a `suggestion`. `<skill>/scripts/office guide <format>` indexes its commands and codes, `guide <format> <verb>` gives that command's fields and one line per operation, and `guide <format> <verb> <operation>` that operation's fields.
+**Results.** Every command prints one JSON result: `status` is ok, warning, or error, and each issue carries a stable `code`, a `location`, a `suggestion` sentence, and `fix`: operations to pass as they are to that format's `apply` once any `<value>` is filled in. `<skill>/scripts/office guide <format>` indexes its commands and codes, `guide <format> <verb>` gives that command's fields and one line per operation, and `guide <format> <verb> <operation>` that operation's fields.
 
 **Verify before attaching.** Run the final check the format's reference names and look at the pages it renders. Pass the source names, dates, totals, and key labels as `--required-text` where the command takes it. Read every warning, revise real problems, then attach only the accepted final output. Say what visual uncertainty remains.
 
