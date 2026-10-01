@@ -25,7 +25,9 @@ from markdown_blocks import Image, parse_markdown  # noqa: E402
 from markdown_charts import require_valid_charts  # noqa: E402
 from office_inputs import KINDS_BY_NAME, PDF, add_password_argument, office_file, require_unlocked_pdf
 from office_result import Issue, OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
+from pdf.pdf_definitions import page_reading_suggestion  # noqa: E402
 from pdf_to_blocks import read_pdf_blocks  # noqa: E402
+from pdf_to_pptx import NO_TEXT_LAYER_REASON, write_pdf_slides  # noqa: E402
 from pptx import Presentation  # noqa: E402
 from pptx_preview import preview_document  # noqa: E402
 from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE, RenderFailed, RendererUnavailable, draw_preview  # noqa: E402
@@ -187,12 +189,31 @@ def pdf_to_markdown(conversion: Conversion) -> None:
         media_directory.rmdir()
 
 
+def pdf_to_presentation(conversion: Conversion) -> None:
+    reports = write_pdf_slides(conversion.input_path, conversion.output_path, conversion.password).reports
+    conversion.details["pages"] = [report.to_json() for report in reports]
+    scanned = [report.page for report in reports if report.reason == NO_TEXT_LAYER_REASON]
+    if scanned:
+        conversion.issues.append(page_without_text_issue(conversion, scanned, "became pictures"))
+    approximations = ["each line keeps its position and size in a text box, but not the PDF's own font"]
+    drawn = [f"{report.page} ({report.reason})" for report in reports if report.kind == "picture" and report.page not in scanned]
+    if drawn:
+        approximations.append(f"pages {', '.join(drawn)} became one picture each, with their text in the slide notes")
+    conversion.details["approximations"] = approximations
+    conversion.issues.append(CONVERSION_APPROXIMATED.issue("; ".join(approximations), conversion.input_path.name))
+
+
+def page_without_text_issue(conversion: Conversion, pages: list[int], outcome: str) -> Issue:
+    listed = ",".join(map(str, pages))
+    return PAGE_WITHOUT_TEXT.issue(f"pages {listed} have no text layer and {outcome}", f"pages {listed}", suggestion=page_reading_suggestion(conversion.input_path, listed))
+
+
 def read_pdf_reading(conversion: Conversion, media_directory: Path, media_prefix: str):
     reading = read_pdf_blocks(conversion.input_path, media_directory, media_prefix, conversion.password)
     conversion.details["pages"] = [report.to_json() for report in reading.reports]
     pictures = [report.page for report in reading.reports if not report.has_text]
     if pictures:
-        conversion.issues.append(PAGE_WITHOUT_TEXT.issue(f"pages {', '.join(map(str, pictures))} have no text layer and were kept as pictures", f"pages {', '.join(map(str, pictures))}"))
+        conversion.issues.append(page_without_text_issue(conversion, pictures, "were kept as pictures"))
     approximations = ["text is reflowed into paragraphs, so line breaks and exact positions are not kept", "headings are inferred from font size and bold", "page breaks of the PDF are not kept"]
     if any(report.columns > 1 for report in reading.reports):
         approximations.append("two-column pages are read left column first, then right, into one column")
@@ -301,6 +322,7 @@ CONVERTERS = {
     ("html", "md"): html_to_markdown,
     ("pdf", "docx"): pdf_to_docx,
     ("pdf", "md"): pdf_to_markdown,
+    ("pdf", "pptx"): pdf_to_presentation,
     ("xlsx", "csv"): workbook_to_text,
     ("xlsx", "tsv"): workbook_to_text,
     ("csv", "xlsx"): text_to_workbook,

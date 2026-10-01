@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -78,7 +79,7 @@ class DocumentRouteTest(ConversionFixture):
         self.assertIn("<ol><li>수도권 영업 인력 2명 충원</li>", (self.directory / "웹.html").read_text(encoding="utf-8"))
 
 
-class PdfRouteTest(unittest.TestCase):
+class PdfSourceRouteTest(unittest.TestCase):
     def setUp(self):
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.directory = Path(self.temporary_directory.name)
@@ -100,6 +101,41 @@ class PdfRouteTest(unittest.TestCase):
         self.assertNotIn("주식회사 예시상사 사내 소식", texts)
         self.assertTrue(read_has_picture(self.directory, "newsletter.docx"))
 
+
+    def test_each_page_becomes_a_slide_of_text_boxes_or_one_picture(self):
+        run_office_python("""
+            from fpdf import FPDF
+            pdf = FPDF(format="A4")
+            pdf.add_font("Korean", "", "{font}")
+            pdf.add_page()
+            pdf.set_font("Korean", "", 12)
+            pdf.set_xy(20, 20)
+            pdf.cell(100, 8, "원형 도식 설명")
+            pdf.ellipse(60, 60, 80, 80, style="F")
+            pdf.output("circle.pdf")
+        """.replace("{font}", str(FONT_DIRECTORY / "Paperlogy-4Regular.ttf")), self.directory)
+        envelope = convert("newsletter.pdf", "newsletter.pptx", self.directory)
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["PAGE_WITHOUT_TEXT", "CONVERSION_APPROXIMATED"])
+        self.assertIn("pdf render newsletter.pdf --pages 3 --scale 2", envelope["issues"][0]["suggestion"])
+        self.assertEqual([(page["slide"], page["tables"]) for page in envelope["details"]["pages"]], [("editable", 0), ("editable", 1), ("picture", 0)])
+        slides = slide_texts(self.directory, "newsletter.pptx")
+        self.assertIn("2026년 하반기 교육 안내", slides[0])
+        self.assertIn("리더십 과정은 팀장급을 대상으로 하며 외부 강사를", slides[0])
+        self.assertIn("10월 14일", slides[1])
+        drawn = convert("circle.pdf", "circle.pptx", self.directory)
+        self.assertEqual([(page["slide"], page.get("reason")) for page in drawn["details"]["pages"]], [("picture", "curved shapes or drawings")])
+        self.assertIn("pages 1 (curved shapes or drawings) became one picture each", drawn["issues"][-1]["message"])
+
+
+def slide_texts(directory, name):
+    code = (
+        "import json\n"
+        "from pptx import Presentation\n"
+        f"presentation = Presentation({name!r})\n"
+        "print(json.dumps([' '.join(cell.text for shape in slide.shapes if shape.has_table for row in shape.table.rows for cell in row.cells) + ' ' + ' '.join(shape.text_frame.text for shape in slide.shapes if shape.has_text_frame) for slide in presentation.slides], ensure_ascii=False))\n"
+    )
+    completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", code], capture_output=True, text=True, cwd=directory, check=True)
+    return json.loads(completed.stdout)
 
 def read_has_picture(directory, name):
     return any(block.get("picture") for block in run_office(["doc", "read", name], directory)["details"]["blocks"])

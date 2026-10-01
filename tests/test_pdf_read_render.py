@@ -38,6 +38,8 @@ class ReadTest(PdfFixture):
         self.assertEqual(details["pageCount"], 3)
         self.assertFalse(details["truncated"])
         self.assertEqual([page["hasText"] for page in details["pages"]], [True, True, False])
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("PAGE_WITHOUT_TEXT", "pages 3")])
+        self.assertIn("pdf render fixture.pdf --pages 3 --scale 2", envelope["issues"][0]["suggestion"])
         self.assertIn("Quarterly summary page one", details["pages"][0]["text"])
         self.assertEqual((details["pages"][0]["widthPoints"], details["pages"][0]["heightPoints"]), (595.28, 841.89))
         self.assertEqual((details["pages"][1]["widthPoints"], details["pages"][1]["heightPoints"]), (612.0, 792.0))
