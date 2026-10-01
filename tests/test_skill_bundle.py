@@ -1,5 +1,6 @@
 import ast
 import hashlib
+import json
 import re
 import runpy
 from pathlib import Path
@@ -8,9 +9,14 @@ import sys
 import unittest
 
 
-SKILLS_PATH = Path(__file__).resolve().parents[1] / "skills"
+REPOSITORY_PATH = Path(__file__).resolve().parents[1]
+SKILLS_PATH = REPOSITORY_PATH / "skills"
 OFFICE_SCRIPTS_PATH = SKILLS_PATH / "office" / "scripts"
 RUNTIME_SKILL_NAMES = ("office", "dataroom")
+MARKETPLACE_PATHS = (
+    REPOSITORY_PATH / ".claude-plugin" / "marketplace.json",
+    REPOSITORY_PATH / ".agents" / "plugins" / "marketplace.json",
+)
 
 sys.path.insert(0, str(OFFICE_SCRIPTS_PATH))
 
@@ -110,6 +116,25 @@ class HostNeutralEnvironmentTest(unittest.TestCase):
             if b"BLUECLAW_" in path.read_bytes()
         ]
         self.assertEqual(offending_paths, [], "skills must read environment variables no host owns")
+
+
+def read_json(path):
+    return json.loads(path.read_text())
+
+
+class MarketplaceCatalogTest(unittest.TestCase):
+    def test_every_catalog_lists_only_this_plugin(self):
+        plugin_name = read_json(REPOSITORY_PATH / "plugin.json")["name"]
+        for path in MARKETPLACE_PATHS:
+            listed_names = [entry["name"] for entry in read_json(path)["plugins"]]
+            self.assertEqual(listed_names, [plugin_name], f"{path.relative_to(REPOSITORY_PATH)} lists {listed_names}")
+
+    def test_a_copied_description_matches_the_manifest(self):
+        manifest_description = read_json(REPOSITORY_PATH / "plugin.json")["description"]
+        for path in MARKETPLACE_PATHS:
+            for entry in read_json(path)["plugins"]:
+                if "description" in entry:
+                    self.assertEqual(entry["description"], manifest_description, f"{path.relative_to(REPOSITORY_PATH)} description drifted")
 
 
 if __name__ == "__main__":
