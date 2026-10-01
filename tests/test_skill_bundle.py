@@ -134,6 +134,26 @@ class PackageFreeCommandTest(unittest.TestCase):
                     self.assertEqual(json.loads(completed.stdout)["status"], "ok", completed.stdout)
 
 
+OWNED_LITERALS = {
+    "1048576": "core/excel_limits.py",
+    "16384": "core/excel_limits.py",
+    "12700": "core/units.py",
+    "914400": "core/units.py",
+}
+
+
+class OwnedLiteralTest(unittest.TestCase):
+    def test_excel_limits_and_emu_sizes_are_written_only_where_they_are_owned(self):
+        scripts = sorted((SKILLS_PATH / "office" / "scripts").rglob("*.py"))
+        written_elsewhere = sorted(
+            (literal, str(path.relative_to(OFFICE_SCRIPTS_PATH)))
+            for path in scripts
+            for literal, owner in OWNED_LITERALS.items()
+            if str(path.relative_to(OFFICE_SCRIPTS_PATH)) != owner and re.search(rf"(?<![0-9.]){literal}(?![0-9])", path.read_text(encoding="utf-8"))
+        )
+        self.assertEqual(written_elsewhere, [])
+
+
 class OldPythonTest(unittest.TestCase):
     def test_modern_annotations_are_never_evaluated_at_definition_time(self):
         offending_paths = [
