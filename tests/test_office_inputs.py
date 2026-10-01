@@ -34,6 +34,13 @@ openpyxl.Workbook().save(directory / "plain.xlsx")
 pptx.Presentation().save(directory / "plain.pptx")
 writer = PdfWriter(); writer.add_blank_page(200, 200); writer.write(directory / "plain.pdf")
 writer = PdfWriter(); writer.add_blank_page(200, 200); writer.encrypt("sample-password"); writer.write(directory / "locked.pdf")
+from fpdf import FPDF
+document = FPDF(); document.add_page(); document.set_font("Helvetica", size=12)
+for line in range(40): document.cell(text=f"Sample line {line} for the owner locked report", new_x="LMARGIN", new_y="NEXT")
+document.output(str(directory / "report.pdf"))
+whole = (directory / "report.pdf").read_bytes()
+(directory / "truncated.pdf").write_bytes(whole[:len(whole) // 2])
+writer = PdfWriter(clone_from=str(directory / "report.pdf")); writer.encrypt(user_password="", owner_password="owner", permissions_flag=0, algorithm="RC4-128"); writer.write(directory / "owner-locked.pdf")
 (directory / "notes.txt").write_text("이샘플의 메모", encoding="utf-8")
 (directory / "legacy.xls").write_bytes(bytes.fromhex("d0cf11e0a1b11ae1") + bytes(504))
 """
@@ -99,6 +106,24 @@ class InputBoundaryTest(unittest.TestCase):
         envelope, _ = run_office(["convert", "locked.pdf", "opened.md", "--password", "sample-password"], self.directory)
         self.assertNotIn("PDF_PASSWORD_REQUIRED", [issue["code"] for issue in envelope["issues"]])
         self.assertTrue((self.directory / "opened.md").exists())
+
+    def test_a_truncated_pdf_is_refused_as_damaged_by_every_reader_and_convert(self):
+        for command in (*READERS["pdf"], "pdf edit"):
+            with self.subTest(command=command):
+                self.assertIn("ask the user", self.assert_refused(command, "truncated.pdf", "PDF_DAMAGED")["suggestion"])
+        for target in ("truncated.md", "truncated.docx", "truncated.xlsx", "truncated.pptx"):
+            with self.subTest(target=target):
+                envelope, stderr = run_office(["convert", "truncated.pdf", target], self.directory)
+                self.assertNotIn("Traceback", stderr)
+                self.assertEqual([issue["code"] for issue in envelope["issues"]], ["PDF_DAMAGED"])
+
+    def test_an_owner_locked_pdf_converts_without_a_password(self):
+        for target in ("owner-locked.md", "owner-locked.docx", "owner-locked.pptx"):
+            with self.subTest(target=target):
+                envelope, stderr = run_office(["convert", "owner-locked.pdf", target], self.directory)
+                self.assertNotIn("Traceback", stderr)
+                self.assertNotEqual(envelope["status"], "error", envelope["issues"])
+        self.assertIn("Sample line 39 for the owner locked report", (self.directory / "owner-locked.md").read_text(encoding="utf-8"))
 
     def test_a_wrong_password_is_refused_as_wrong(self):
         envelope, _ = run_office(["pdf", "read", "locked.pdf", "--password", "guess"], self.directory)

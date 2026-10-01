@@ -13,6 +13,7 @@ from pptx.util import Emu, Pt
 import pypdfium2
 
 from markdown_blocks import inline_segments, link_parts, strip_inline_markers
+from office_inputs import unlocked_pdf_bytes
 from pdf_to_blocks import MINIMUM_IMAGE_POINTS, Segment, crop, inside_any, page_image_bitmap, page_segments, page_tables
 
 
@@ -52,9 +53,10 @@ class PdfSlides:
 
 def write_pdf_slides(input_path: Path, output_path: Path, password: str | None) -> PdfSlides:
     slides = PdfSlides()
-    rendered = pypdfium2.PdfDocument(str(input_path), password=password)
+    data = unlocked_pdf_bytes(str(input_path), password)
+    rendered = pypdfium2.PdfDocument(data)
     try:
-        with pdfplumber.open(str(input_path), password=password or "") as pdf:
+        with pdfplumber.open(io.BytesIO(data)) as pdf:
             presentation = Presentation()
             presentation.slide_width, presentation.slide_height = slide_size(pdf.pages[0])
             for number, page in enumerate(pdf.pages, start=1):

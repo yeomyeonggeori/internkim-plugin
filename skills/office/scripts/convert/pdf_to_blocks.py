@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
+import io
 from pathlib import Path
 import re
 import statistics
@@ -10,6 +11,7 @@ import pdfplumber
 import pypdfium2
 
 from markdown_blocks import Heading, Image, ListItem, Paragraph, Table
+from office_inputs import unlocked_pdf_bytes
 
 
 RENDER_SCALE = 2.0
@@ -93,9 +95,10 @@ class PdfReading:
 
 def read_pdf_blocks(path: Path, media_directory: Path, media_prefix: str, password: str | None) -> PdfReading:
     reading = PdfReading()
-    rendered = pypdfium2.PdfDocument(str(path), password=password)
+    data = unlocked_pdf_bytes(str(path), password)
+    rendered = pypdfium2.PdfDocument(data)
     try:
-        with pdfplumber.open(str(path), password=password or "") as pdf:
+        with pdfplumber.open(io.BytesIO(data)) as pdf:
             pages = [page_segments(page) for page in pdf.pages]
             repeated = repeated_furniture(pages, pdf.pages)
             body_size = dominant_size([segment for segments in pages for segment in segments])

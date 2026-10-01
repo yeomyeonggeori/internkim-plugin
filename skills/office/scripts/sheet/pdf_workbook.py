@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import datetime
+import io
 from pathlib import Path
 import re
 
 import pdfplumber
 
 from create_xlsx import create_workbook
+from office_inputs import unlocked_pdf_bytes
 from pdf_to_blocks import page_tables
 
 
@@ -85,7 +87,7 @@ def continues(previous: PdfTable, rows: list[list[str]]) -> bool:
 
 def read_pdf_tables(path: Path, password: str | None) -> PdfTables:
     found = PdfTables()
-    with pdfplumber.open(str(path), password=password or "") as pdf:
+    with pdfplumber.open(io.BytesIO(unlocked_pdf_bytes(str(path), password))) as pdf:
         for number, page in enumerate(pdf.pages, start=1):
             tables = page_tables(page)
             if not tables:

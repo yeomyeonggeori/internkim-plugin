@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
+import io
 import os
 from typing import Callable
 from xml.etree import ElementTree
 import zipfile
 
-from office_result import INPUT_NOT_FOUND, PDF_PASSWORD_REQUIRED, WRONG_INPUT_FORMAT, OfficeFailure
+from office_result import INPUT_NOT_FOUND, PDF_DAMAGED, PDF_PASSWORD_REQUIRED, WRONG_INPUT_FORMAT, OfficeFailure
 
 
 
@@ -115,9 +117,40 @@ def redirect_suggestion(path: str, actual: InputKind) -> str:
 def require_unlocked_pdf(path: str, password: str | None) -> None:
     from pypdf import PdfReader
 
-    reader = PdfReader(os.path.expanduser(path))
+    with damaged_pdf_refused(path):
+        reader = PdfReader(os.path.expanduser(path))
+        require_password_opens(reader, path, password)
+        len(reader.pages)
+
+
+def require_password_opens(reader, path: str, password: str | None) -> None:
     if not reader.is_encrypted or reader.decrypt(password or ""):
         return
     if password is None:
         raise OfficeFailure(PDF_PASSWORD_REQUIRED.issue(f"{path} needs a password to open", location=path))
     raise OfficeFailure(PDF_PASSWORD_REQUIRED.issue(f"{path}: the password does not open it", location=path, suggestion="ask the user for the correct password"))
+
+
+@contextmanager
+def damaged_pdf_refused(path: str):
+    from pypdf.errors import PyPdfError
+
+    try:
+        yield
+    except PyPdfError as error:
+        raise OfficeFailure(PDF_DAMAGED.issue(f"{path} cannot be read as a PDF: {error}", location=path)) from error
+
+
+def unlocked_pdf_bytes(path: str, password: str | None) -> bytes:
+    from pypdf import PdfReader, PdfWriter
+
+    expanded_path = os.path.expanduser(path)
+    reader = PdfReader(expanded_path)
+    if not reader.is_encrypted:
+        with open(expanded_path, "rb") as input_file:
+            return input_file.read()
+    # pdfminer.six 20260107 pdftypes.uint_value turns an /Encrypt /P of 0 into 2**32, which its RC4 key derivation cannot pack
+    reader.decrypt(password or "")
+    stream = io.BytesIO()
+    PdfWriter(clone_from=reader).write(stream)
+    return stream.getvalue()
