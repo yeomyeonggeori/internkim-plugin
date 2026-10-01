@@ -42,6 +42,15 @@ class MarkdownExportTest(unittest.TestCase):
         self.assertEqual([block["text"] for block in blocks if block["kind"] == "listItem"], ["하나", "둘", "셋", "넷"])
 
 
+FORMULAS = """# 수식
+
+피타고라스 정리는 $a^2+b^2=c^2$ 이다. 가격은 $100에서 $200 사이.
+
+$$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$
+
+잘못된 수식 $\\foo{x}$ 끝.
+"""
+
 
 class LineAndRuleTest(unittest.TestCase):
     def setUp(self):
@@ -89,6 +98,40 @@ class LineAndRuleTest(unittest.TestCase):
         page = (self.directory / "제안서.html").read_text(encoding="utf-8")
         self.assertIn("최견본 팀장)<br><strong>제안사:</strong>", page)
         self.assertIn("<hr>", page)
+
+
+
+class MathTest(unittest.TestCase):
+    def setUp(self):
+        self.temporary_directory = tempfile.TemporaryDirectory()
+        self.directory = Path(self.temporary_directory.name)
+        (self.directory / "수식.md").write_text(FORMULAS, encoding="utf-8")
+
+    def tearDown(self):
+        self.temporary_directory.cleanup()
+
+    def export(self, output_name):
+        return run_office(["doc", "export", "수식.md", "--output", output_name], self.directory)
+
+    def test_math_becomes_word_equations_and_unreadable_latex_is_named(self):
+        envelope = self.export("수식.docx")
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("MATH_NOT_CONVERTED", "\\foo{x}")])
+        with zipfile.ZipFile(self.directory / "수식.docx") as archive:
+            document_xml = archive.read("word/document.xml").decode()
+        self.assertEqual(document_xml.count("<m:oMathPara>"), 1)
+        self.assertEqual(document_xml.count("<m:oMath>"), 2)
+        self.assertNotIn("$a^2", document_xml)
+        self.assertNotIn("\\frac", document_xml)
+        self.assertIn("$100에서 $200 사이", document_xml)
+        self.assertIn("$\\foo{x}$", document_xml)
+
+    def test_the_pdf_typesets_the_formulas_instead_of_printing_latex(self):
+        self.assertEqual([issue["code"] for issue in self.export("수식.pdf")["issues"]], ["MATH_NOT_CONVERTED"])
+        text = pdf_text("수식.pdf", self.directory)
+        self.assertNotIn("\\frac", text)
+        self.assertNotIn("$a^2", text)
+        self.assertIn("4ac", text)
+        self.assertIn("$100에서 $200 사이", text)
 
 
 if __name__ == "__main__":

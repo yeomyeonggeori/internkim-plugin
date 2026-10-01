@@ -1,11 +1,7 @@
 from __future__ import annotations
 
 import datetime
-import re
 
-import latex2mathml.converter
-from latex2mathml.exceptions import NoAvailableTokensError
-import mathml2omml
 from docx.oxml import parse_xml
 from docx.oxml.ns import nsdecls, qn
 
@@ -14,26 +10,22 @@ from docx_reference_operations import field_runs, insertion_point, place_runs
 from docx_settings import request_field_update
 from docx_text import visible_text
 from docx_tracking import mark_block_inserted
+from latex_math import OMML_NAMESPACE, LatexNotReadable, latex_omml
 from office_operations import Change
 from office_result import INVALID_VALUE, MISSING_FIELD, OfficeFailure
 
 
-MATH_NAMESPACE = "http://schemas.openxmlformats.org/officeDocument/2006/math"
 DATE_FIELDS = ("DATE", "TIME", "CREATEDATE", "SAVEDATE")
 DEFAULT_PICTURES = {"TIME": "HH:mm"}
 DEFAULT_DATE_PICTURE = "yyyy-MM-dd"
 PICTURE_TOKENS = (("yyyy", "%Y"), ("yy", "%y"), ("MM", "%m"), ("dd", "%d"), ("HH", "%H"), ("mm", "%M"), ("ss", "%S"))
-UNKNOWN_COMMAND = re.compile(r"<m:t>[^<]*\\[A-Za-z]")
 
 
 def omml_from_latex(latex: str, location: str):
     try:
-        omml = mathml2omml.convert(latex2mathml.converter.convert(latex))
-    except (NoAvailableTokensError, RuntimeError, ValueError, IndexError, KeyError) as error:
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}.latex: {latex!r} is not LaTeX this converter reads ({error or type(error).__name__})", f"{location}.latex")) from error
-    if UNKNOWN_COMMAND.search(omml):
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}.latex: {latex!r} uses a command the converter does not know", f"{location}.latex", suggestion="use standard commands such as \\frac, \\sqrt, \\sum, ^ and _"))
-    return parse_xml(f'<m:oMath xmlns:m="{MATH_NAMESPACE}">{omml.removeprefix("<m:oMath>").removesuffix("</m:oMath>")}</m:oMath>')
+        return latex_omml(latex)
+    except LatexNotReadable as problem:
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}.latex: {problem}", f"{location}.latex", suggestion="use standard commands such as \\frac, \\sqrt, \\sum, ^ and _")) from problem
 
 
 def plan_insert_equation(editing: DocxEditing, operation: dict, location: str) -> Change:
@@ -43,8 +35,8 @@ def plan_insert_equation(editing: DocxEditing, operation: dict, location: str) -
     place = placement(editing, operation, location)
 
     def change() -> str:
-        paragraph = parse_xml(f'<w:p {nsdecls("w")} xmlns:m="{MATH_NAMESPACE}"><w:pPr><w:jc w:val="center"/></w:pPr><m:oMathPara/></w:p>')
-        paragraph.find(f"{{{MATH_NAMESPACE}}}oMathPara").append(equation)
+        paragraph = parse_xml(f'<w:p {nsdecls("w")} xmlns:m="{OMML_NAMESPACE}"><w:pPr><w:jc w:val="center"/></w:pPr><m:oMathPara/></w:p>')
+        paragraph.find(f"{{{OMML_NAMESPACE}}}oMathPara").append(equation)
         place(paragraph)
         if editing.tracking is not None:
             mark_block_inserted(paragraph, editing.tracking)

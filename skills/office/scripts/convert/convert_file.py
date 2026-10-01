@@ -20,6 +20,7 @@ from docx_markdown import DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, mar
 from docx_to_blocks import read_docx_blocks  # noqa: E402
 from export_document import export_pdf  # noqa: E402
 from html_to_blocks import read_html_blocks  # noqa: E402
+from latex_math import math_issues  # noqa: E402
 from office_preview import PAGE_SELECTOR, Preview, write_preview  # noqa: E402
 from markdown_blocks import Image, parse_markdown  # noqa: E402
 from markdown_charts import require_valid_charts  # noqa: E402
@@ -91,6 +92,7 @@ def require_route(input_path: Path, output_path: Path) -> Route:
 def markdown_blocks(conversion: Conversion) -> list:
     blocks = parse_markdown(read_text(conversion.input_path))
     require_valid_charts(blocks, conversion.input_path.name)
+    conversion.issues.extend(math_issues(blocks))
     return blocks
 
 

@@ -9,7 +9,8 @@ from doc_definitions import GLYPH_NOT_COVERED, IMAGE_UNAVAILABLE, PDF_RENDERER_F
 from document_pagination import MAXIMUM_PAGINATION_PASSES, stranded_heading
 from fontTools.ttLib import TTFont
 
-from markdown_blocks import Image, Paragraph, Table, local_image_problem
+from latex_math import math_text, text_with_math_drawn
+from markdown_blocks import Equation, Image, Paragraph, Table, local_image_problem
 from office_result import BOLD_FONT_UNAVAILABLE, Issue, OfficeFailure
 from pdf_fonts import font_file_for_face
 from render.renderer import DocumentPdfRequest, FontFile, RenderFailed, RendererUnavailable, javascript_runtime, render_document_pdf as render_pdf
@@ -132,5 +133,7 @@ def markdown_source_text(blocks: list) -> str:
 
 def block_texts(block) -> list[str]:
     if isinstance(block, Table):
-        return [cell for row in block.rows for cell in row]
-    return [getattr(block, "text", "")]
+        return [text_with_math_drawn(cell) for row in block.rows for cell in row]
+    if isinstance(block, Equation):
+        return [math_text(block.latex, display=True)]
+    return [text_with_math_drawn(getattr(block, "text", ""))]

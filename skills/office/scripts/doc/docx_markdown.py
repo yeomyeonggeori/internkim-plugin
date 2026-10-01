@@ -5,7 +5,7 @@ from pathlib import Path
 from docx import Document
 from docx.image.exceptions import UnrecognizedImageError
 from docx.opc.constants import RELATIONSHIP_TYPE
-from docx.oxml import OxmlElement
+from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
@@ -16,7 +16,8 @@ from docx_tables import add_space_after_table, format_table
 from docx_lists import add_list_paragraph, start_list
 from docx_charts import add_chart_part, drawing_run, next_drawing_id, specification
 from markdown_charts import Chart
-from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, inline_segments, link_parts, local_image_problem
+from latex_math import OMML_NAMESPACE, LatexNotReadable, latex_omml
+from markdown_blocks import Equation, Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, inline_segments, link_parts, local_image_problem, math_latex
 from office_result import Issue
 
 
@@ -65,7 +66,22 @@ def add_block(document: Document, block, source_directory: Path, list_ids: dict[
         add_inline_runs(document.add_paragraph(), block.text)
     elif isinstance(block, ThematicBreak):
         add_rule(document)
+    elif isinstance(block, Equation):
+        add_display_equation(document, block)
     return []
+
+
+def add_display_equation(document: Document, equation: Equation) -> None:
+    try:
+        formula = latex_omml(equation.latex, display=True)
+    except LatexNotReadable:
+        document.add_paragraph(equation.text)
+        return
+    paragraph = document.add_paragraph()
+    paragraph.alignment = ALIGNMENTS["center"]
+    display = parse_xml(f'<m:oMathPara xmlns:m="{OMML_NAMESPACE}"/>')
+    display.append(formula)
+    paragraph._p.append(display)
 
 
 def add_rule(document: Document) -> None:
@@ -121,7 +137,10 @@ def add_quote(document: Document, text: str) -> None:
 def add_inline_runs(paragraph, text: str) -> None:
     for segment in inline_segments(text):
         link = link_parts(segment)
-        if link:
+        latex = math_latex(segment)
+        if latex is not None:
+            add_inline_equation(paragraph, latex, segment)
+        elif link:
             add_hyperlink(paragraph, *link)
         elif segment.startswith("**") and segment.endswith("**") and len(segment) > 4:
             paragraph.add_run(segment[2:-2]).bold = True
@@ -133,6 +152,13 @@ def add_inline_runs(paragraph, text: str) -> None:
             run.font.size = Pt(9.5)
         else:
             paragraph.add_run(segment)
+
+
+def add_inline_equation(paragraph, latex: str, source: str) -> None:
+    try:
+        paragraph._p.append(latex_omml(latex))
+    except LatexNotReadable:
+        paragraph.add_run(source)
 
 
 def add_hyperlink(paragraph, text: str, target: str) -> None:

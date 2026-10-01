@@ -16,3 +16,4 @@ li { margin: 0 0 2pt; }
 blockquote { margin: 6pt 0 10pt; padding: 4pt 10pt; border-left: 3px solid #8c959f; color: #4b535c; background: #f6f8fa; }
 img { margin: 4pt 0 8pt; }
 hr { border: 0; border-top: 1px solid #8c959f; margin: 10pt 0; }
+.equation { text-align: center; margin: 6pt 0 10pt; }

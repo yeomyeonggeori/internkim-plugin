@@ -8,7 +8,8 @@ import mimetypes
 from chart_svg import chart_svg
 from docx_charts import specification
 from markdown_charts import Chart
-from markdown_blocks import Heading, Image, ListItem, Quote, Table, ThematicBreak, inline_segments, link_parts
+from latex_math import LatexNotReadable, latex_html
+from markdown_blocks import Equation, Heading, Image, ListItem, Quote, Table, ThematicBreak, inline_segments, link_parts, math_latex
 
 
 LIST_INDENT = "   "
@@ -30,7 +31,7 @@ class SizedImage:
         return data_uri(self.data, f"image{self.suffix}")
 HTML_STYLE = """body{font-family:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR","Nanum Gothic",sans-serif;line-height:1.6;max-width:46rem;margin:2rem auto;padding:0 1rem;color:#1a1a1a}
 table{border-collapse:collapse;margin:1rem 0}th,td{border:1px solid #999;padding:.3rem .6rem;text-align:left;vertical-align:top}th{background:#eef2f7}
-img{max-width:100%}hr{border:0;border-top:1px solid #8c959f;margin:1rem 0}blockquote{margin:1rem 0;padding-left:1rem;border-left:3px solid #ccc;color:#444}"""
+img{max-width:100%}hr{border:0;border-top:1px solid #8c959f;margin:1rem 0}.equation{text-align:center;margin:1rem 0}blockquote{margin:1rem 0;padding-left:1rem;border-left:3px solid #ccc;color:#444}"""
 
 
 def markdown_text(blocks: list) -> str:
@@ -60,6 +61,8 @@ def markdown_lines(block) -> list[str]:
         return block.source().split("\n")
     if isinstance(block, ThematicBreak):
         return ["---"]
+    if isinstance(block, Equation):
+        return [block.text]
     return block.text.split("\n")
 
 
@@ -133,6 +136,8 @@ def html_block(block) -> str:
         return f"<p><img src=\"{html.escape(block.source, quote=True)}\" alt=\"{html.escape(block.alt, quote=True)}\"></p>"
     if isinstance(block, ThematicBreak):
         return "<hr>"
+    if isinstance(block, Equation):
+        return f'<div class="equation">{math_html(block.latex, block.text, display=True)}</div>'
     return f"<p>{inline_html(block.text)}</p>"
 
 
@@ -168,7 +173,10 @@ def inline_html(text: str) -> str:
     parts = []
     for segment in inline_segments(text):
         link = link_parts(segment)
-        if link:
+        latex = math_latex(segment)
+        if latex is not None:
+            parts.append(math_html(latex, segment))
+        elif link:
             parts.append(f"<a href=\"{html.escape(link[1], quote=True)}\">{inline_html(link[0])}</a>")
         elif segment.startswith("**") and segment.endswith("**") and len(segment) > 4:
             parts.append(f"<strong>{html.escape(segment[2:-2])}</strong>")
@@ -179,6 +187,13 @@ def inline_html(text: str) -> str:
         else:
             parts.append(html.escape(segment).replace("&lt;br&gt;", "<br>").replace("\n", "<br>"))
     return "".join(parts)
+
+
+def math_html(latex: str, source: str, display: bool = False) -> str:
+    try:
+        return latex_html(latex, display)
+    except LatexNotReadable:
+        return html.escape(source)
 
 
 def data_uri(blob: bytes, name: str) -> str:

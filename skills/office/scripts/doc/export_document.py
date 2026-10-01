@@ -7,6 +7,7 @@ from pathlib import Path
 from docx_markdown import DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, markdown_document
 from doc_definitions import PDF_RENDERER_UNAVAILABLE
 from document_pdf import can_render, render_document_pdf
+from latex_math import math_issues
 from markdown_blocks import Heading, parse_markdown
 from markdown_charts import require_valid_charts
 from office_result import INVALID_VALUE, KOREAN_FONT_UNAVAILABLE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
@@ -34,7 +35,7 @@ def main() -> Result:
     else:
         document, issues = markdown_document(blocks, arguments.font, arguments.font_size, markdown_path.parent)
         document.save(output_path)
-    return Result(summary=f"exported {output_path} from {markdown_path}", output_path=str(output_path), issues=tuple(issues))
+    return Result(summary=f"exported {output_path} from {markdown_path}", output_path=str(output_path), issues=(*math_issues(blocks), *issues))
 
 
 def require_export_format(output_path: Path) -> str:

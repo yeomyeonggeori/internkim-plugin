@@ -7,7 +7,7 @@ from PIL import Image as PillowImage, UnidentifiedImageError
 
 from doc_definitions import IMAGE_UNAVAILABLE
 from markdown_charts import Chart, number_text
-from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, has_link, inline_segments, link_parts, local_image_problem, strip_inline_markers
+from markdown_blocks import Equation, Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, has_link, inline_segments, link_parts, local_image_problem, strip_inline_markers
 from office_result import Issue
 
 
@@ -45,7 +45,7 @@ class MarkdownPdf:
             return self.add_image(block)
         elif isinstance(block, Chart):
             self.add_chart_table(block)
-        elif isinstance(block, Paragraph):
+        elif isinstance(block, (Paragraph, Equation)):
             self.write_line(block.text, self.font_size)
         elif isinstance(block, ThematicBreak):
             self.add_rule()
