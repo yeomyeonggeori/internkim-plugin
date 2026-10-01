@@ -115,6 +115,10 @@ def stream_tables(words: list[dict], rules: list[dict]) -> list[FoundTable]:
     return [table_from(candidate) for candidate in candidates if is_table(candidate, total_units, rules)]
 
 
+def line_texts(words: list[dict]) -> list[str]:
+    return [" ".join(unit.text for unit in row.units) for row in unit_rows(words)]
+
+
 def unit_rows(words: list[dict]) -> list[Row]:
     lines: list[list[dict]] = []
     for word in sorted(words, key=lambda word: (word["top"], word["x0"])):

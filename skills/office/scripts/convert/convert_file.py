@@ -25,8 +25,10 @@ from office_preview import PAGE_SELECTOR, Preview, write_preview  # noqa: E402
 from markdown_blocks import Image, parse_markdown  # noqa: E402
 from markdown_charts import require_valid_charts  # noqa: E402
 from office_inputs import KINDS_BY_NAME, PDF, add_password_argument, office_file, require_unlocked_pdf
-from office_result import Issue, OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
-from pdf.pdf_definitions import page_reading_suggestion  # noqa: E402
+from office_result import INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
+from office_inputs import unlocked_pdf_bytes  # noqa: E402
+from pdf.pdf_definitions import OCR_UNAVAILABLE, PAGE_READ_BY_OCR, page_reading_suggestion  # noqa: E402
+from pdf_ocr import OcrUnavailable, pages_without_words, read_pages_by_ocr  # noqa: E402
 from pdf_to_blocks import read_pdf_blocks  # noqa: E402
 from pdf_workbook import read_pdf_tables, table_details, write_pdf_workbook  # noqa: E402
 from pdf_to_pptx import NO_TEXT_LAYER_REASON, write_pdf_slides  # noqa: E402
@@ -40,6 +42,7 @@ from spreadsheet_import import legacy_workbook_to_xlsx  # noqa: E402
 from table_conversions import DELIMITERS, delimited_to_workbook, workbook_to_delimited  # noqa: E402
 
 
+OCR_ROUTES = (("pdf", "docx"), ("pdf", "md"), ("pdf", "xlsx"))
 MINIMUM_MARGIN_POINTS = 36
 MAXIMUM_MARGIN_POINTS = 90
 
@@ -50,6 +53,7 @@ class Conversion:
     output_path: Path
     sheet: str | None
     password: str | None = None
+    ocr: bool = False
     issues: list[Issue] = field(default_factory=list)
     details: dict = field(default_factory=dict)
     written: list[str] = field(default_factory=list)
@@ -62,9 +66,10 @@ def main() -> Result:
     if not input_path.is_file():
         raise FileNotFoundError(2, "no such file", str(input_path))
     route = require_route(input_path, output_path)
+    require_ocr_route(route, arguments.ocr)
     require_readable_source(arguments.input_path, route.source, arguments.password)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    conversion = Conversion(input_path, output_path, arguments.sheet, arguments.password)
+    conversion = Conversion(input_path, output_path, arguments.sheet, arguments.password, arguments.ocr)
     CONVERTERS[(route.source, route.target)](conversion)
     written = conversion.written or [str(output_path)]
     details = {"route": f"{route.source} -> {route.target}", "files": written, **conversion.details}
@@ -77,6 +82,11 @@ def require_readable_source(input_path: str, source: str, password: str | None) 
     office_file(source)(input_path)
     if KINDS_BY_NAME[source] == PDF:
         require_unlocked_pdf(input_path, password)
+
+
+def require_ocr_route(route: Route, ocr: bool) -> None:
+    if ocr and (route.source, route.target) not in OCR_ROUTES:
+        raise OfficeFailure(INVALID_VALUE.issue(f"--ocr reads scanned pages only for pdf to docx, md or xlsx, not {route.source} to {route.target}", "--ocr", suggestion="drop --ocr, or convert the PDF to .docx, .md or .xlsx"))
 
 
 def require_route(input_path: Path, output_path: Path) -> Route:
@@ -208,11 +218,33 @@ def pdf_to_presentation(conversion: Conversion) -> None:
 
 def page_without_text_issue(conversion: Conversion, pages: list[int], outcome: str) -> Issue:
     listed = ",".join(map(str, pages))
-    return PAGE_WITHOUT_TEXT.issue(f"pages {listed} have no text layer and {outcome}", f"pages {listed}", suggestion=page_reading_suggestion(conversion.input_path, listed))
+    can_rerun_with_ocr = not conversion.ocr and route_of(conversion) in OCR_ROUTES
+    rerun_command = f"office convert {conversion.input_path} {conversion.output_path}" if can_rerun_with_ocr else None
+    return PAGE_WITHOUT_TEXT.issue(f"pages {listed} have no text layer and {outcome}", f"pages {listed}", suggestion=page_reading_suggestion(conversion.input_path, listed, rerun_command))
+
+
+def route_of(conversion: Conversion) -> tuple[str, str]:
+    return normalized_extension(conversion.input_path.suffix), normalized_extension(conversion.output_path.suffix)
+
+
+def scanned_page_lines(conversion: Conversion) -> dict:
+    if not conversion.ocr:
+        return {}
+    data = unlocked_pdf_bytes(str(conversion.input_path), conversion.password)
+    scanned = pages_without_words(data)
+    try:
+        lines = read_pages_by_ocr(data, scanned)
+    except OcrUnavailable as reason:
+        conversion.issues.append(OCR_UNAVAILABLE.issue(str(reason), f"pages {','.join(map(str, scanned))}"))
+        return {}
+    read = [number for number, page_lines in lines.items() if page_lines]
+    if read:
+        conversion.issues.append(PAGE_READ_BY_OCR.issue(f"pages {','.join(map(str, read))} were read by OCR", f"pages {','.join(map(str, read))}"))
+    return {number: page_lines for number, page_lines in lines.items() if page_lines}
 
 
 def read_pdf_reading(conversion: Conversion, media_directory: Path, media_prefix: str):
-    reading = read_pdf_blocks(conversion.input_path, media_directory, media_prefix, conversion.password)
+    reading = read_pdf_blocks(conversion.input_path, media_directory, media_prefix, conversion.password, scanned_page_lines(conversion))
     conversion.details["pages"] = [report.to_json() for report in reading.reports]
     pictures = [report.page for report in reading.reports if not report.has_text]
     if pictures:
@@ -260,7 +292,7 @@ def legacy_workbook(conversion: Conversion) -> None:
 
 
 def pdf_to_workbook(conversion: Conversion) -> None:
-    found = read_pdf_tables(conversion.input_path, conversion.password)
+    found = read_pdf_tables(conversion.input_path, conversion.password, scanned_page_lines(conversion))
     if not found.tables:
         raise OfficeFailure(TABLE_NOT_FOUND.issue(f"{conversion.input_path.name} has no table on any of its pages", conversion.input_path.name))
     write_pdf_workbook(found.tables, conversion.output_path, conversion.input_path.stem)
@@ -269,7 +301,7 @@ def pdf_to_workbook(conversion: Conversion) -> None:
         listed = ", ".join(str(number) for number in found.pages_without_tables)
         conversion.issues.append(CONVERSION_APPROXIMATED.issue(f"page {listed} has no table and was left out" if len(found.pages_without_tables) == 1 else f"pages {listed} have no table and were left out", conversion.input_path.name))
     if found.pages_without_text:
-        conversion.issues.append(PAGE_WITHOUT_TEXT.issue(f"pages {', '.join(str(number) for number in found.pages_without_text)} have no text layer, so their tables were not read", conversion.input_path.name))
+        conversion.issues.append(page_without_text_issue(conversion, found.pages_without_text, "their tables were not read"))
 
 
 def write_docx(conversion: Conversion, blocks: list, source_directory: Path, save: bool = True):
@@ -355,6 +387,7 @@ def parse_arguments():
     parser.add_argument("input_path", help="the file to convert")
     parser.add_argument("output_path", help="the file to write; its extension names the target format")
     parser.add_argument("--sheet", help="xlsx to csv, tsv or pdf: convert only this sheet; default every sheet, one file each for csv and tsv")
+    parser.add_argument("--ocr", action="store_true", help="pdf to docx, md or xlsx: read pages that have no text layer from their image by OCR; the first use installs the OCR engine, about 150 MB")
     add_password_argument(parser)
     return parser.parse_args()
 

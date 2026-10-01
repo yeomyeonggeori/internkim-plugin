@@ -128,3 +128,15 @@ STATEMENT_ROWS = [
 
 def statement_pdf_code(font_directory):
     return STATEMENT_PDF.replace("{font_directory!r}", repr(str(font_directory)))
+
+
+SCANNED_STATEMENT_PDF = """
+import pypdfium2
+from fpdf import FPDF
+image = pypdfium2.PdfDocument("statement.pdf")[0].render(scale=200 / 72, grayscale=True).to_pil()
+image.save("statement-scan.png")
+pdf = FPDF(format="A4")
+pdf.add_page()
+pdf.image("statement-scan.png", x=0, y=0, w=210, h=297)
+pdf.output("scanned-statement.pdf")
+"""

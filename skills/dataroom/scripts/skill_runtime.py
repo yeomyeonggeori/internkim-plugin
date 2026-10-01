@@ -128,11 +128,11 @@ def create_dependency_environment(python_path, environment_path):
         raise RuntimeError(message)
 
 
-def install_requirements_if_needed(python_path, requirements_path, environment_path):
+def install_requirements_if_needed(python_path, requirements_path, environment_path, *options):
     marker_path = environment_path / f".requirements-{requirements_hash(requirements_path)}.installed"
     if marker_path.exists():
         return
-    install_requirements(python_path, requirements_path)
+    install_requirements(python_path, requirements_path, *options)
     marker_path.write_text("ok\n", encoding="utf-8")
 
 
@@ -140,7 +140,7 @@ def requirements_hash(requirements_path):
     return hashlib.sha256(requirements_path.read_bytes()).hexdigest()[:16]
 
 
-def install_requirements(python_path, requirements_path):
+def install_requirements(python_path, requirements_path, *options):
     result = subprocess.run(
         [
             "uv",
@@ -151,6 +151,7 @@ def install_requirements(python_path, requirements_path):
             str(python_path),
             "-r",
             str(requirements_path),
+            *options,
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

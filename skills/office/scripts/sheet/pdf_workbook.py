@@ -10,7 +10,8 @@ import pdfplumber
 
 from create_xlsx import create_workbook
 from office_inputs import unlocked_pdf_bytes
-from pdf_tables import page_tables
+from pdf_ocr import OcrLine
+from pdf_tables import page_tables, stream_tables
 
 
 NUMBER = re.compile(r"(?P<open>\()?(?P<sign>[-−])?(?P<currency>[₩$€£¥])?(?P<digits>\d{1,3}(?:,\d{3})+|\d+)(?P<fraction>\.\d+)?(?P<percent>%)?(?P<close>\))?")
@@ -85,16 +86,20 @@ def continues(previous: PdfTable, rows: list[list[str]]) -> bool:
     return previous.has_header and len(rows[0]) == len(previous.rows[0]) and rows[0] == previous.rows[0]
 
 
-def read_pdf_tables(path: Path, password: str | None) -> PdfTables:
+def read_pdf_tables(path: Path, password: str | None, ocr_pages: dict[int, list[OcrLine]]) -> PdfTables:
     found = PdfTables()
     with pdfplumber.open(io.BytesIO(unlocked_pdf_bytes(str(path), password))) as pdf:
         for number, page in enumerate(pdf.pages, start=1):
-            tables = page_tables(page)
+            tables = ocr_tables(ocr_pages[number]) if number in ocr_pages else page_tables(page)
             if not tables:
-                (found.pages_without_text if not page.extract_words() else found.pages_without_tables).append(number)
+                (found.pages_without_text if number not in ocr_pages and not page.extract_words() else found.pages_without_tables).append(number)
             for position, table in enumerate(tables, start=1):
                 add_table(found, table.rows, number, position, len(tables))
     return found
+
+
+def ocr_tables(lines: list[OcrLine]) -> list:
+    return stream_tables([line.as_word() for line in lines], [])
 
 
 def add_table(found: PdfTables, rows: list[list[str]], page: int, position: int, page_table_count: int) -> None:

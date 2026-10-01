@@ -12,7 +12,8 @@ import pypdfium2
 
 from markdown_blocks import Heading, Image, ListItem, Paragraph, Table
 from office_inputs import unlocked_pdf_bytes
-from pdf_tables import page_tables
+from pdf_ocr import OcrLine
+from pdf_tables import FoundTable, page_tables, stream_tables
 
 
 RENDER_SCALE = 2.0
@@ -73,12 +74,13 @@ class PageReport:
     images: int = 0
     header_footer_lines: int = 0
     has_text: bool = True
+    read_by_ocr: bool = False
 
     def to_json(self) -> dict:
         return {
             "page": self.page, "columns": self.columns, "paragraphs": self.paragraphs, "headings": self.headings,
             "listItems": self.lists, "tables": self.tables, "images": self.images,
-            "headerFooterLinesDropped": self.header_footer_lines, "hasText": self.has_text,
+            "headerFooterLinesDropped": self.header_footer_lines, "hasText": self.has_text, "readByOcr": self.read_by_ocr,
         }
 
 
@@ -91,22 +93,37 @@ class PdfReading:
     text_right: float | None = None
 
 
-def read_pdf_blocks(path: Path, media_directory: Path, media_prefix: str, password: str | None) -> PdfReading:
+def read_pdf_blocks(path: Path, media_directory: Path, media_prefix: str, password: str | None, ocr_pages: dict[int, list[OcrLine]]) -> PdfReading:
     reading = PdfReading()
     data = unlocked_pdf_bytes(str(path), password)
     rendered = pypdfium2.PdfDocument(data)
     try:
         with pdfplumber.open(io.BytesIO(data)) as pdf:
-            pages = [page_segments(page) for page in pdf.pages]
+            texts = [page_text(page, ocr_pages.get(number)) for number, page in enumerate(pdf.pages, start=1)]
+            pages = [text.segments for text in texts]
             repeated = repeated_furniture(pages, pdf.pages)
             body_size = dominant_size([segment for segments in pages for segment in segments])
             heading_sizes = heading_size_ranks(pages, body_size)
             reading.page_size_points = (float(pdf.pages[0].width), float(pdf.pages[0].height)) if pdf.pages else None
-            for number, (page, segments) in enumerate(zip(pdf.pages, pages), start=1):
-                read_page(reading, page, segments, rendered[number - 1], number, repeated, body_size, heading_sizes, media_directory, media_prefix)
+            for number, (page, text) in enumerate(zip(pdf.pages, texts), start=1):
+                read_page(reading, page, text, rendered[number - 1], number, repeated, body_size, heading_sizes, media_directory, media_prefix)
     finally:
         rendered.close()
     return reading
+
+
+@dataclass(frozen=True)
+class PageText:
+    segments: list[Segment]
+    tables: list[FoundTable]
+    read_by_ocr: bool
+
+
+def page_text(page, ocr_lines: list[OcrLine] | None) -> PageText:
+    if ocr_lines is None:
+        return PageText(page_segments(page), page_tables(page), False)
+    words = [line.as_word() for line in ocr_lines]
+    return PageText(segments_from_words(words), stream_tables(words, []), True)
 
 
 def page_segments(page) -> list[Segment]:
@@ -116,6 +133,10 @@ def page_segments(page) -> list[Segment]:
         for word in page.extract_words(extra_attrs=["size", "fontname"], keep_blank_chars=False, use_text_flow=False, return_chars=True)
         for piece in split_at_links(word, links)
     ]
+    return segments_from_words(words)
+
+
+def segments_from_words(words: list[dict]) -> list[Segment]:
     lines: list[list[dict]] = []
     for word in sorted(words, key=lambda word: (round(word["top"]), word["x0"])):
         if lines and abs(lines[-1][0]["top"] - word["top"]) <= LINE_TOLERANCE_POINTS:
@@ -234,19 +255,19 @@ def heading_size_ranks(pages: list[list[Segment]], body_size: float) -> dict[flo
     return {size: min(rank, MAXIMUM_HEADING_LEVEL) for rank, size in enumerate(sizes, start=1)}
 
 
-def read_page(reading: PdfReading, page, segments: list[Segment], rendered_page, number: int, repeated: set[str], body_size: float, heading_sizes: dict, media_directory: Path, media_prefix: str) -> None:
-    report = PageReport(number)
+def read_page(reading: PdfReading, page, text: PageText, rendered_page, number: int, repeated: set[str], body_size: float, heading_sizes: dict, media_directory: Path, media_prefix: str) -> None:
+    report = PageReport(number, read_by_ocr=text.read_by_ocr)
     page_height = float(page.height)
-    content = [segment for segment in segments if not is_furniture(segment, page_height, repeated)]
-    report.header_footer_lines = len(segments) - len(content)
-    tables = page_tables(page)
+    content = [segment for segment in text.segments if not is_furniture(segment, page_height, repeated)]
+    report.header_footer_lines = len(text.segments) - len(content)
+    tables = text.tables
     table_boxes = [table.bbox for table in tables]
     content = [segment for segment in content if not inside_any(segment, table_boxes)]
     placed = [Placed(segment.top, segment.x0, segment.x1, segment) for segment in content]
     placed.extend(Placed(table.bbox[1], table.bbox[0], table.bbox[2], Table(table.rows)) for table in tables)
     report.tables = len(tables)
     image = page_image_bitmap(rendered_page)
-    pictures = [picture for picture in page.images if picture["x1"] - picture["x0"] >= MINIMUM_IMAGE_POINTS and picture["bottom"] - picture["top"] >= MINIMUM_IMAGE_POINTS]
+    pictures = [] if text.read_by_ocr else [picture for picture in page.images if picture["x1"] - picture["x0"] >= MINIMUM_IMAGE_POINTS and picture["bottom"] - picture["top"] >= MINIMUM_IMAGE_POINTS]
     for index, picture in enumerate(pictures, start=1):
         name = f"page{number}-image{index}.png"
         crop(image, picture).save(media_directory / name)
