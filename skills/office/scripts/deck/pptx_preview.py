@@ -5,6 +5,7 @@ import html
 
 from pptx.oxml.ns import qn
 
+from pptx_chart_look import chart_look
 from pptx_description import chart_details
 from pptx_geometry import SLIDE_FRAME, Box, Frame, child_frame, local_box, rotation_degrees
 from pptx_inheritance import SlideContext, slide_context
@@ -165,10 +166,11 @@ def chart_html(shape, box: Box, canvas: Canvas) -> str:
     details = chart_details(shape.chart)
     labels = [str(category) for category in details["categories"]] + [entry["name"] for entry in details["series"]] + [details.get("title") or ""]
     korean = any(has_east_asian(label) for label in labels)
+    own = shape.chart._chartSpace.find(f"{qn('c:txPr')}//{qn('a:defRPr')}/{qn('a:latin')}")
     minor = canvas.context.theme_element.find(f"{qn('a:themeElements')}/{qn('a:fontScheme')}/{qn('a:minorFont')}/{qn('a:latin')}")
-    requested = minor.get("typeface") if minor is not None else "sans-serif"
+    requested = next((typeface.get("typeface") for typeface in (own, minor) if typeface is not None), "sans-serif")
     face = font_face(requested, False, korean)
     canvas.faces.add((requested, face))
     width, height = box.w * PIXELS_PER_EMU, box.h * PIXELS_PER_EMU
-    svg = chart_svg(details, width, height, canvas.context, face.family)
+    svg = chart_svg(details, width, height, chart_look(shape.chart, canvas.context), face.family)
     return element("div", placed(box, shape._element), f'<img src="{svg_uri(svg)}" style="width:{width:.2f}px;height:{height:.2f}px"/>')

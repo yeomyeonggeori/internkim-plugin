@@ -16,7 +16,7 @@ def remove_animations_of(slide_element, shape_identifiers: set[str]) -> int:
     build_list = timing.find(qn("p:bldLst"))
     if build_list is not None and len(build_list) == 0:
         timing.remove(build_list)
-    if not any(timing.iter(qn("p:spTgt"))):
+    if next(timing.iter(qn("p:spTgt")), None) is None:
         slide_element.remove(timing)
     return len(effects)
 

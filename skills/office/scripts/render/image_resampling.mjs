@@ -1,5 +1,5 @@
 import { fromHtml } from "@takumi-rs/helpers/html";
-import { imageSize } from "./image_size.mjs";
+import { imageSize, isVectorImage } from "./image_size.mjs";
 
 const pixelDensity = 2;
 const worthwhileShrink = 0.85;
@@ -57,7 +57,7 @@ export async function resampleImages(renderer, pages, bytesOf) {
   for (const [source, box] of drawnBoxes(pages)) {
     const bytes = bytesOf(source);
     const natural = bytes && imageSize(bytes);
-    if (!natural) continue;
+    if (!natural || isVectorImage(bytes)) continue;
     const target = targetSize(natural, box);
     const format = hasAlpha(bytes) ? "png" : "jpeg";
     const becomesJpeg = format === "jpeg" && !isJpeg(bytes);

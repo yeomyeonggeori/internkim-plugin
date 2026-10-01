@@ -15,6 +15,7 @@ import { dataURIBytes, imageSize } from "./image_size.mjs";
 import { generatedContentStyle, materializeGeneratedContent } from "./generated_content.mjs";
 import { createInlineStyleFilter } from "./inline_styles.mjs";
 import { createLayout, documentFragmentHtml } from "./layout_shim.mjs";
+import { extractNativeCharts } from "./native_charts.mjs";
 import { measurePageGeometry } from "./page_geometry.mjs";
 import { analyzePagePixels } from "./page_pixels.mjs";
 import { exportedListAttribute, exportedTextAttribute, extractTextLayout, hideExportedText, insertMarkerProbes, markerProbeAttribute, markerProbeHostId } from "./text_layout.mjs";
@@ -182,13 +183,15 @@ async function writePdf(pdfPath, layout, inlineStyles, pages, css, fonts, bytesO
 }
 
 async function writeLayers(request, renderer, layout, inlineStyles, document, pages, bytesOf) {
+  for (const page of pages) await layout.layOut(page);
+  const chartLayouts = extractNativeCharts({ pages });
   insertMarkerProbes({ ...textAttributes, pages });
   const probeHost = document.getElementById(markerProbeHostId);
   if (probeHost) await layout.layOut(probeHost);
   for (const page of pages) await layout.layOut(page);
   const textLayout = extractTextLayout({ ...textAttributes, pages });
   const boxLayouts = extractBoxLayout({ ...boxAttributes, pages });
-  const slides = textLayout.slides.map((slide, index) => ({ ...slide, ...boxLayouts[index] }));
+  const slides = textLayout.slides.map((slide, index) => ({ ...slide, ...boxLayouts[index], ...chartLayouts[index] }));
   hideExportedText(textAttributes);
   hideExportedBoxes(boxAttributes);
   const css = collectStyles(document, request.excludeStyles);

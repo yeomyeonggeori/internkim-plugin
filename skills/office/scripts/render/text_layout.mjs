@@ -32,29 +32,31 @@ export function insertMarkerProbes({ markerProbeAttribute, markerProbeHostId, pa
   document.documentElement.appendChild(host);
 }
 
-export function extractTextLayout({ exportedTextAttribute, exportedListAttribute, markerProbeAttribute, markerProbeHostId, pages }) {
+export function renderedFamilyResolver() {
   const genericFamilies = new Set(["serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui", "ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded", "-apple-system", "blinkmacsystemfont", "emoji", "math", "fangsong"]);
-  const skippedTags = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "TEXTAREA", "SELECT", "OPTION"]);
-  const linkProtocols = new Set(["http:", "https:", "mailto:", "tel:"]);
-  const alignments = { left: "l", start: "l", right: "r", end: "r", center: "ctr", justify: "just", "-webkit-center": "ctr" };
-  const edgeTolerance = 2;
-
   const unquote = (name) => name.trim().replace(/^["']|["']$/g, "");
   const loadedFamilies = new Set();
   document.fonts.forEach((face) => {
     if (face.status === "loaded") loadedFamilies.add(unquote(face.family).toLowerCase());
   });
-
-  const round = (value) => Math.round(value * 100) / 100;
-  const pixels = (value) => parseFloat(value) || 0;
-
-  const renderedFamily = (fontFamilyList) => {
+  return (fontFamilyList) => {
     const families = fontFamilyList.split(",").map(unquote).filter(Boolean);
     return families.find((family) => loadedFamilies.has(family.toLowerCase()))
       || families.find((family) => !genericFamilies.has(family.toLowerCase()))
       || families[0]
       || "sans-serif";
   };
+}
+
+export function extractTextLayout({ exportedTextAttribute, exportedListAttribute, markerProbeAttribute, markerProbeHostId, pages }) {
+  const skippedTags = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "TEXTAREA", "SELECT", "OPTION"]);
+  const linkProtocols = new Set(["http:", "https:", "mailto:", "tel:"]);
+  const alignments = { left: "l", start: "l", right: "r", end: "r", center: "ctr", justify: "just", "-webkit-center": "ctr" };
+  const edgeTolerance = 2;
+
+  const round = (value) => Math.round(value * 100) / 100;
+  const pixels = (value) => parseFloat(value) || 0;
+  const renderedFamily = renderedFamilyResolver();
 
   const isInlineDisplay = (display) => display === "inline" || display === "contents";
 

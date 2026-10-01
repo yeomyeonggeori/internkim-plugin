@@ -1,0 +1,371 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+import zipfile
+
+from chart_workbook import SHEET_NAME, cell_reference, chart_workbook_bytes, number_text
+from css_color import parse_css_color
+from pptx_package import xml_document
+from pptx_text import SlideScale, TextContext, attribute, color_xml, run_properties_xml, text_content
+
+
+CHART_NAMESPACES = (
+    'xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" '
+    'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+    'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"'
+)
+CHART_RELATIONSHIP_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart"
+PACKAGE_RELATIONSHIP_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/package"
+CHART_URI = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+BAR_DIRECTIONS = {"column": "col", "stacked": "col", "bar": "bar"}
+ROUND_CHART_TYPES = {"donut", "pie"}
+NATIVE_CHART_TYPES = (*BAR_DIRECTIONS, "line", *ROUND_CHART_TYPES)
+LABEL_POSITIONS = {"column": "outEnd", "stacked": "ctr", "bar": "outEnd", "line": "t", "pie": "ctr"}
+LINE_GRID_INTERVALS = 2
+DONUT_HOLE_PERCENT = 60
+ROUND_PLOT_SHARE = 0.5
+ROUND_LEGEND_LEFT = 0.56
+LINE_WIDTH_PIXELS = 5
+MARKER_PIXELS = 16
+SLICE_GAP_PIXELS = 2
+AXIS_LINE_PIXELS = 2
+GRID_LINE_PIXELS = 1
+LIGHT_LUMINANCE = 0.6
+PERCENT_FORMAT = "0%"
+CATEGORY_AXIS_ID = 1001
+VALUE_AXIS_ID = 1002
+NO_FILL = "<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>"
+
+
+@dataclass(frozen=True)
+class ChartPart:
+    number: int
+    relationship_id: str
+    layout: dict
+
+    @property
+    def part_name(self) -> str:
+        return f"ppt/charts/chart{self.number}.xml"
+
+    @property
+    def workbook_name(self) -> str:
+        return f"ppt/embeddings/Microsoft_Excel_Worksheet{self.number}.xlsx"
+
+
+def chart_text_styles(slides: list[dict]) -> list[dict]:
+    charts = [chart for slide in slides for chart in slide.get("charts", [])]
+    return [style for chart in charts for style in chart["text"].values()] + [label["text"] for chart in charts for label in chart["pointLabels"]]
+
+
+def chart_count(slides: list[dict]) -> int:
+    return sum(len(slide.get("charts", [])) for slide in slides)
+
+
+def slide_chart_parts(charts: list[dict], first_number: int, first_relationship_number: int) -> list[ChartPart]:
+    return [ChartPart(first_number + index, f"rId{first_relationship_number + index}", layout) for index, layout in enumerate(charts)]
+
+
+def chart_relationships_xml(parts: list[ChartPart]) -> str:
+    return "".join(
+        f'<Relationship Id="{part.relationship_id}" Type="{CHART_RELATIONSHIP_TYPE}" Target="../charts/chart{part.number}.xml"/>'
+        for part in parts
+    )
+
+
+def write_chart_parts(archive: zipfile.ZipFile, parts: list[ChartPart], context: TextContext) -> None:
+    for part in parts:
+        archive.writestr(part.part_name, chart_space_xml(part.layout, context))
+        archive.writestr(f"ppt/charts/_rels/chart{part.number}.xml.rels", xml_document(
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            f'<Relationship Id="rId1" Type="{PACKAGE_RELATIONSHIP_TYPE}" Target="../{part.workbook_name.removeprefix("ppt/")}"/>'
+            "</Relationships>"
+        ))
+        archive.writestr(part.workbook_name, chart_workbook_bytes(part.layout["labels"], part.layout["series"]))
+
+
+def chart_frames_xml(parts: list[ChartPart], first_shape_id: int, context: TextContext) -> str:
+    frames = []
+    shape_id = first_shape_id
+    for part in parts:
+        frames.append(graphic_frame_xml(shape_id, part, context.scale))
+        shape_id += 1
+        if has_donut_center(part.layout):
+            frames.append(donut_center_xml(shape_id, part.layout, context))
+            shape_id += 1
+    return "".join(frames)
+
+
+def graphic_frame_xml(shape_id: int, part: ChartPart, scale: SlideScale) -> str:
+    box = part.layout["box"]
+    return (
+        f'<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="{shape_id}" name="Chart {shape_id}"/>'
+        '<p:cNvGraphicFramePr><a:graphicFrameLocks noGrp="1"/></p:cNvGraphicFramePr><p:nvPr/></p:nvGraphicFramePr>'
+        f'<p:xfrm><a:off x="{scale.x(box["left"])}" y="{scale.y(box["top"])}"/>'
+        f'<a:ext cx="{scale.x(box["right"] - box["left"])}" cy="{scale.y(box["bottom"] - box["top"])}"/></p:xfrm>'
+        f'<a:graphic><a:graphicData uri="{CHART_URI}"><c:chart xmlns:c="{CHART_URI}" r:id="{part.relationship_id}"/></a:graphicData></a:graphic>'
+        "</p:graphicFrame>"
+    )
+
+
+def chart_space_xml(layout: dict, context: TextContext) -> str:
+    is_round = layout["type"] in ROUND_CHART_TYPES
+    plot_layout = manual_layout_xml(0, 0, ROUND_PLOT_SHARE, 1, inner=True) if is_round else ""
+    axes = "" if is_round else axes_xml(layout, context)
+    return xml_document(
+        f'<c:chartSpace {CHART_NAMESPACES}><c:date1904 val="0"/><c:lang val="{context.language}"/><c:roundedCorners val="0"/>'
+        f'<c:chart><c:autoTitleDeleted val="1"/><c:plotArea>{plot_layout}{plot_xml(layout, context)}{axes}{NO_FILL}</c:plotArea>'
+        f'{legend_xml(layout, context)}<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart>'
+        f'{NO_FILL}{text_properties_xml(text_style(layout, "category"), context)}'
+        '<c:externalData r:id="rId1"><c:autoUpdate val="0"/></c:externalData></c:chartSpace>'
+    )
+
+
+def plot_xml(layout: dict, context: TextContext) -> str:
+    kind = layout["type"]
+    series = "".join(series_xml(layout, index, context) for index in range(len(layout["series"])))
+    if kind in BAR_DIRECTIONS:
+        grouping = "stacked" if kind == "stacked" else "clustered"
+        overlap = '<c:overlap val="100"/>' if kind == "stacked" else ""
+        return (
+            f'<c:barChart><c:barDir val="{BAR_DIRECTIONS[kind]}"/><c:grouping val="{grouping}"/><c:varyColors val="0"/>{series}'
+            f'<c:gapWidth val="{layout["gapWidth"]}"/>{overlap}<c:axId val="{CATEGORY_AXIS_ID}"/><c:axId val="{VALUE_AXIS_ID}"/></c:barChart>'
+        )
+    if kind == "line":
+        return f'<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>{series}<c:marker val="1"/><c:axId val="{CATEGORY_AXIS_ID}"/><c:axId val="{VALUE_AXIS_ID}"/></c:lineChart>'
+    if kind == "donut":
+        return f'<c:doughnutChart><c:varyColors val="1"/>{series}<c:firstSliceAng val="0"/><c:holeSize val="{DONUT_HOLE_PERCENT}"/></c:doughnutChart>'
+    return f'<c:pieChart><c:varyColors val="1"/>{series}<c:firstSliceAng val="0"/></c:pieChart>'
+
+
+def series_xml(layout: dict, index: int, context: TextContext) -> str:
+    kind = layout["type"]
+    color = layout["colors"]["series"][index]
+    if kind in ROUND_CHART_TYPES:
+        body = f"{round_points_xml(layout, context)}{round_labels_xml(layout, context)}"
+    elif kind == "line":
+        body = f"{line_properties_xml(color, context.scale)}{marker_xml(layout['colors']['background'], color, context.scale)}{last_point_xml(layout, color, context.scale)}{point_labels_xml(layout, index, context)}"
+    else:
+        body = f'<c:spPr>{solid_fill_xml(color)}</c:spPr><c:invertIfNegative val="0"/>{recolored_points_xml(layout, index)}{point_labels_xml(layout, index, context)}'
+    smooth = '<c:smooth val="0"/>' if kind == "line" else ""
+    return (
+        f'<c:ser><c:idx val="{index}"/><c:order val="{index}"/>{series_name_xml(layout, index)}{body}'
+        f"{categories_xml(layout)}{values_xml(layout, index)}{smooth}</c:ser>"
+    )
+
+
+def series_name_xml(layout: dict, index: int) -> str:
+    name = layout["series"][index]["name"]
+    return (
+        f'<c:tx><c:strRef><c:f>{SHEET_NAME}!{cell_reference(index + 1, 0, absolute=True)}</c:f>'
+        f'<c:strCache><c:ptCount val="1"/><c:pt idx="0"><c:v>{text_content(name)}</c:v></c:pt></c:strCache></c:strRef></c:tx>'
+    )
+
+
+def categories_xml(layout: dict) -> str:
+    labels = layout["labels"]
+    points = "".join(f'<c:pt idx="{index}"><c:v>{text_content(label)}</c:v></c:pt>' for index, label in enumerate(labels))
+    return (
+        f'<c:cat><c:strRef><c:f>{SHEET_NAME}!{cell_reference(0, 1, absolute=True)}:{cell_reference(0, len(labels), absolute=True)}</c:f>'
+        f'<c:strCache><c:ptCount val="{len(labels)}"/>{points}</c:strCache></c:strRef></c:cat>'
+    )
+
+
+def values_xml(layout: dict, index: int) -> str:
+    values = layout["series"][index]["values"]
+    points = "".join(f'<c:pt idx="{point}"><c:v>{number_text(value)}</c:v></c:pt>' for point, value in enumerate(values))
+    return (
+        f'<c:val><c:numRef><c:f>{SHEET_NAME}!{cell_reference(index + 1, 1, absolute=True)}:{cell_reference(index + 1, len(values), absolute=True)}</c:f>'
+        f'<c:numCache><c:formatCode>{attribute(number_format(layout))}</c:formatCode><c:ptCount val="{len(values)}"/>{points}</c:numCache></c:numRef></c:val>'
+    )
+
+
+def number_format(layout: dict) -> str:
+    fraction = "." + "0" * layout["decimals"] if layout["decimals"] else ""
+    literal = layout["unit"].replace('"', "")
+    return f'#,##0{fraction}"{literal}"' if literal else f"#,##0{fraction}"
+
+
+def solid_fill_xml(css_color: str) -> str:
+    return f"<a:solidFill>{color_xml(parse_css_color(css_color), 1.0)}</a:solidFill>"
+
+
+def line_xml(css_color: str, width_pixels: float, scale: SlideScale) -> str:
+    return f'<a:ln w="{scale.x(width_pixels)}" cap="rnd">{solid_fill_xml(css_color)}<a:round/></a:ln>'
+
+
+def line_properties_xml(color: str, scale: SlideScale) -> str:
+    return f"<c:spPr>{line_xml(color, LINE_WIDTH_PIXELS, scale)}</c:spPr>"
+
+
+def marker_xml(fill: str, line: str, scale: SlideScale) -> str:
+    size = max(2, min(72, round(scale.hundredths_of_point(MARKER_PIXELS) / 100)))
+    return f'<c:marker><c:symbol val="circle"/><c:size val="{size}"/><c:spPr>{solid_fill_xml(fill)}{line_xml(line, LINE_WIDTH_PIXELS / 2, scale)}</c:spPr></c:marker>'
+
+
+def last_point_xml(layout: dict, color: str, scale: SlideScale) -> str:
+    last = len(layout["labels"]) - 1
+    return f'<c:dPt><c:idx val="{last}"/>{marker_xml(color, color, scale)}<c:bubble3D val="0"/></c:dPt>'
+
+
+def recolored_points_xml(layout: dict, index: int) -> str:
+    series_color = layout["colors"]["series"][index]
+    return "".join(
+        f'<c:dPt><c:idx val="{point}"/><c:invertIfNegative val="0"/><c:bubble3D val="0"/><c:spPr>{solid_fill_xml(color)}</c:spPr></c:dPt>'
+        for point, color in enumerate(layout["colors"]["points"][index])
+        if color != series_color
+    )
+
+
+def label_flags_xml(show_value: bool, show_percent: bool) -> str:
+    return (
+        f'<c:showLegendKey val="0"/><c:showVal val="{int(show_value)}"/><c:showCatName val="0"/>'
+        f'<c:showSerName val="0"/><c:showPercent val="{int(show_percent)}"/><c:showBubbleSize val="0"/>'
+    )
+
+
+def label_body_xml(format_code: str, style: dict, position: str, show_percent: bool, context: TextContext) -> str:
+    position_xml = f'<c:dLblPos val="{position}"/>' if position else ""
+    return (
+        f'<c:numFmt formatCode="{attribute(format_code)}" sourceLinked="0"/><c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>'
+        f"{text_properties_xml(style, context)}{position_xml}{label_flags_xml(not show_percent, show_percent)}"
+    )
+
+
+def point_labels_xml(layout: dict, index: int, context: TextContext) -> str:
+    labels = sorted((label for label in layout["pointLabels"] if label["series"] == index), key=lambda label: label["point"])
+    if not labels:
+        return ""
+    shown = "".join(
+        f'<c:dLbl><c:idx val="{label["point"]}"/>{label_body_xml(number_format(layout), label["text"], label_position(layout["type"], label), False, context)}</c:dLbl>'
+        for label in labels
+    )
+    hidden = label_flags_xml(False, False)
+    return f"<c:dLbls>{shown}{hidden}</c:dLbls>"
+
+
+def label_position(kind: str, label: dict) -> str:
+    if kind == "line" and label["below"]:
+        return "b"
+    return LABEL_POSITIONS[kind]
+
+
+def round_points_xml(layout: dict, context: TextContext) -> str:
+    gap = line_xml(layout["colors"]["background"], SLICE_GAP_PIXELS, context.scale)
+    return "".join(
+        f'<c:dPt><c:idx val="{index}"/><c:bubble3D val="0"/><c:spPr>{solid_fill_xml(color)}{gap}</c:spPr></c:dPt>'
+        for index, color in enumerate(layout["colors"]["points"][0])
+    )
+
+
+def round_labels_xml(layout: dict, context: TextContext) -> str:
+    position = LABEL_POSITIONS.get(layout["type"], "")
+    share_style = text_style(layout, "share")
+    labels = "".join(
+        f'<c:dLbl><c:idx val="{index}"/>{label_body_xml(PERCENT_FORMAT, share_style | {"color": contrasting_text(color, layout)}, position, True, context)}</c:dLbl>'
+        for index, color in enumerate(layout["colors"]["points"][0])
+    )
+    return f"<c:dLbls>{labels}{label_body_xml(PERCENT_FORMAT, share_style, position, True, context)}<c:showLeaderLines val=\"0\"/></c:dLbls>"
+
+
+def contrasting_text(fill_color: str, layout: dict) -> str:
+    hex_value = parse_css_color(fill_color).hex_value
+    red, green, blue = (int(hex_value[offset:offset + 2], 16) / 255 for offset in (0, 2, 4))
+    luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
+    return text_style(layout, "share")["color"] if luminance > LIGHT_LUMINANCE else layout["colors"]["background"]
+
+
+def axes_xml(layout: dict, context: TextContext) -> str:
+    kind = layout["type"]
+    horizontal = kind == "bar"
+    orientation = "maxMin" if horizontal else "minMax"
+    axis_line = layout["colors"]["grid"] if kind == "line" else text_style(layout, "base")["color"]
+    category_axis = (
+        f'<c:catAx><c:axId val="{CATEGORY_AXIS_ID}"/><c:scaling><c:orientation val="{orientation}"/></c:scaling><c:delete val="0"/>'
+        f'<c:axPos val="{"l" if horizontal else "b"}"/><c:numFmt formatCode="General" sourceLinked="1"/>'
+        '<c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>'
+        f"<c:spPr>{line_xml(axis_line, AXIS_LINE_PIXELS, context.scale)}</c:spPr>{text_properties_xml(text_style(layout, 'category'), context)}"
+        f'<c:crossAx val="{VALUE_AXIS_ID}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>'
+    )
+    value_axis = (
+        f'<c:valAx><c:axId val="{VALUE_AXIS_ID}"/><c:scaling><c:orientation val="minMax"/>{value_limits_xml(layout)}</c:scaling><c:delete val="1"/>'
+        f'<c:axPos val="{"b" if horizontal else "l"}"/>{gridlines_xml(layout, context.scale)}<c:numFmt formatCode="{attribute(number_format(layout))}" sourceLinked="0"/>'
+        '<c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>'
+        f'<c:crossAx val="{CATEGORY_AXIS_ID}"/><c:crosses val="autoZero"/><c:crossBetween val="between"/>{major_unit_xml(layout)}</c:valAx>'
+    )
+    return category_axis + value_axis
+
+
+def value_limits_xml(layout: dict) -> str:
+    value_range = layout.get("valueRange")
+    if not value_range:
+        return ""
+    return f'<c:max val="{number_text(value_range["maximum"])}"/><c:min val="{number_text(value_range["minimum"])}"/>'
+
+
+def major_unit_xml(layout: dict) -> str:
+    value_range = layout.get("valueRange")
+    if not value_range:
+        return ""
+    return f'<c:majorUnit val="{number_text((value_range["maximum"] - value_range["minimum"]) / LINE_GRID_INTERVALS)}"/>'
+
+
+def gridlines_xml(layout: dict, scale: SlideScale) -> str:
+    if layout["type"] != "line":
+        return ""
+    return f'<c:majorGridlines><c:spPr>{line_xml(layout["colors"]["grid"], GRID_LINE_PIXELS, scale)}</c:spPr></c:majorGridlines>'
+
+
+def legend_xml(layout: dict, context: TextContext) -> str:
+    is_round = layout["type"] in ROUND_CHART_TYPES
+    if len(layout["series"]) < 2 and not is_round:
+        return ""
+    position = "r" if is_round else "t"
+    placement = manual_layout_xml(ROUND_LEGEND_LEFT, 0, 1 - ROUND_LEGEND_LEFT, 1, inner=False) if is_round else ""
+    return f'<c:legend><c:legendPos val="{position}"/>{placement}<c:overlay val="0"/>{text_properties_xml(text_style(layout, "legend"), context)}</c:legend>'
+
+
+def manual_layout_xml(left: float, top: float, width: float, height: float, inner: bool) -> str:
+    target = '<c:layoutTarget val="inner"/>' if inner else ""
+    return (
+        f'<c:layout><c:manualLayout>{target}<c:xMode val="edge"/><c:yMode val="edge"/>'
+        f'<c:x val="{left}"/><c:y val="{top}"/><c:w val="{width}"/><c:h val="{height}"/></c:manualLayout></c:layout>'
+    )
+
+
+def text_style(layout: dict, role: str) -> dict:
+    return layout["text"].get(role) or layout["text"]["base"]
+
+
+def styled_run(style: dict, text: str = "") -> dict:
+    return {**style, "text": text, "italic": False, "underline": False, "strike": False, "letterSpacingPx": 0, "baseline": "", "opacity": 1, "href": None}
+
+
+def text_properties_xml(style: dict, context: TextContext) -> str:
+    properties = run_properties_xml(styled_run(style), context, "a:defRPr", with_link=False)
+    return f'<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr>{properties}</a:pPr><a:endParaRPr lang="{context.language}"/></a:p></c:txPr>'
+
+
+def has_donut_center(layout: dict) -> bool:
+    return layout["type"] == "donut" and bool(layout.get("center"))
+
+
+def donut_center_xml(shape_id: int, layout: dict, context: TextContext) -> str:
+    box = layout["box"]
+    scale = context.scale
+    plot_width = (box["right"] - box["left"]) * ROUND_PLOT_SHARE
+    height = box["bottom"] - box["top"]
+    hole = min(plot_width, height) * DONUT_HOLE_PERCENT / 100
+    left = box["left"] + plot_width / 2 - hole / 2
+    top = box["top"] + height / 2 - hole / 2
+    lines = [(layout["center"], "center"), (layout.get("centerLabel", ""), "centerLabel")]
+    paragraphs = "".join(
+        f'<a:p><a:pPr algn="ctr"/><a:r>{run_properties_xml(styled_run(text_style(layout, role)), context, "a:rPr", with_link=False)}<a:t>{text_content(text)}</a:t></a:r></a:p>'
+        for text, role in lines
+        if text
+    )
+    return (
+        f'<p:sp><p:nvSpPr><p:cNvPr id="{shape_id}" name="Chart Center {shape_id}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'
+        f'<p:spPr><a:xfrm><a:off x="{scale.x(left)}" y="{scale.y(top)}"/><a:ext cx="{scale.x(hole)}" cy="{scale.y(hole)}"/></a:xfrm>'
+        '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr>'
+        f'<p:txBody><a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="ctr"><a:noAutofit/></a:bodyPr><a:lstStyle/>{paragraphs}</p:txBody></p:sp>'
+    )
