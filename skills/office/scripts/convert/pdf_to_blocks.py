@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
+import io
 from pathlib import Path
 import re
 import statistics
@@ -10,12 +11,12 @@ import pdfplumber
 import pypdfium2
 
 from markdown_blocks import Heading, Image, ListItem, Paragraph, Table
+from office_inputs import unlocked_pdf_bytes
+from pdf_ocr import OcrLine
+from pdf_tables import FoundTable, page_tables, stream_tables
 
 
 RENDER_SCALE = 2.0
-WIDE_RULE_SHARE = 0.3
-MAXIMUM_ROW_POINTS = 60
-COLUMN_GAP_POINTS = 8
 LINE_TOLERANCE_POINTS = 3
 WORD_GAP_FACTOR = 2.2
 SPACE_FACTOR = 0.15
@@ -73,12 +74,13 @@ class PageReport:
     images: int = 0
     header_footer_lines: int = 0
     has_text: bool = True
+    read_by_ocr: bool = False
 
     def to_json(self) -> dict:
         return {
             "page": self.page, "columns": self.columns, "paragraphs": self.paragraphs, "headings": self.headings,
             "listItems": self.lists, "tables": self.tables, "images": self.images,
-            "headerFooterLinesDropped": self.header_footer_lines, "hasText": self.has_text,
+            "headerFooterLinesDropped": self.header_footer_lines, "hasText": self.has_text, "readByOcr": self.read_by_ocr,
         }
 
 
@@ -91,21 +93,37 @@ class PdfReading:
     text_right: float | None = None
 
 
-def read_pdf_blocks(path: Path, media_directory: Path, media_prefix: str, password: str | None) -> PdfReading:
+def read_pdf_blocks(path: Path, media_directory: Path, media_prefix: str, password: str | None, ocr_pages: dict[int, list[OcrLine]]) -> PdfReading:
     reading = PdfReading()
-    rendered = pypdfium2.PdfDocument(str(path), password=password)
+    data = unlocked_pdf_bytes(str(path), password)
+    rendered = pypdfium2.PdfDocument(data)
     try:
-        with pdfplumber.open(str(path), password=password or "") as pdf:
-            pages = [page_segments(page) for page in pdf.pages]
+        with pdfplumber.open(io.BytesIO(data)) as pdf:
+            texts = [page_text(page, ocr_pages.get(number)) for number, page in enumerate(pdf.pages, start=1)]
+            pages = [text.segments for text in texts]
             repeated = repeated_furniture(pages, pdf.pages)
             body_size = dominant_size([segment for segments in pages for segment in segments])
             heading_sizes = heading_size_ranks(pages, body_size)
             reading.page_size_points = (float(pdf.pages[0].width), float(pdf.pages[0].height)) if pdf.pages else None
-            for number, (page, segments) in enumerate(zip(pdf.pages, pages), start=1):
-                read_page(reading, page, segments, rendered[number - 1], number, repeated, body_size, heading_sizes, media_directory, media_prefix)
+            for number, (page, text) in enumerate(zip(pdf.pages, texts), start=1):
+                read_page(reading, page, text, rendered[number - 1], number, repeated, body_size, heading_sizes, media_directory, media_prefix)
     finally:
         rendered.close()
     return reading
+
+
+@dataclass(frozen=True)
+class PageText:
+    segments: list[Segment]
+    tables: list[FoundTable]
+    read_by_ocr: bool
+
+
+def page_text(page, ocr_lines: list[OcrLine] | None) -> PageText:
+    if ocr_lines is None:
+        return PageText(page_segments(page), page_tables(page), False)
+    words = [line.as_word() for line in ocr_lines]
+    return PageText(segments_from_words(words), stream_tables(words, []), True)
 
 
 def page_segments(page) -> list[Segment]:
@@ -115,6 +133,10 @@ def page_segments(page) -> list[Segment]:
         for word in page.extract_words(extra_attrs=["size", "fontname"], keep_blank_chars=False, use_text_flow=False, return_chars=True)
         for piece in split_at_links(word, links)
     ]
+    return segments_from_words(words)
+
+
+def segments_from_words(words: list[dict]) -> list[Segment]:
     lines: list[list[dict]] = []
     for word in sorted(words, key=lambda word: (round(word["top"]), word["x0"])):
         if lines and abs(lines[-1][0]["top"] - word["top"]) <= LINE_TOLERANCE_POINTS:
@@ -233,19 +255,19 @@ def heading_size_ranks(pages: list[list[Segment]], body_size: float) -> dict[flo
     return {size: min(rank, MAXIMUM_HEADING_LEVEL) for rank, size in enumerate(sizes, start=1)}
 
 
-def read_page(reading: PdfReading, page, segments: list[Segment], rendered_page, number: int, repeated: set[str], body_size: float, heading_sizes: dict, media_directory: Path, media_prefix: str) -> None:
-    report = PageReport(number)
+def read_page(reading: PdfReading, page, text: PageText, rendered_page, number: int, repeated: set[str], body_size: float, heading_sizes: dict, media_directory: Path, media_prefix: str) -> None:
+    report = PageReport(number, read_by_ocr=text.read_by_ocr)
     page_height = float(page.height)
-    content = [segment for segment in segments if not is_furniture(segment, page_height, repeated)]
-    report.header_footer_lines = len(segments) - len(content)
-    tables = page_tables(page)
+    content = [segment for segment in text.segments if not is_furniture(segment, page_height, repeated)]
+    report.header_footer_lines = len(text.segments) - len(content)
+    tables = text.tables
     table_boxes = [table.bbox for table in tables]
     content = [segment for segment in content if not inside_any(segment, table_boxes)]
     placed = [Placed(segment.top, segment.x0, segment.x1, segment) for segment in content]
     placed.extend(Placed(table.bbox[1], table.bbox[0], table.bbox[2], Table(table.rows)) for table in tables)
     report.tables = len(tables)
     image = page_image_bitmap(rendered_page)
-    pictures = [picture for picture in page.images if picture["x1"] - picture["x0"] >= MINIMUM_IMAGE_POINTS and picture["bottom"] - picture["top"] >= MINIMUM_IMAGE_POINTS]
+    pictures = [] if text.read_by_ocr else [picture for picture in page.images if picture["x1"] - picture["x0"] >= MINIMUM_IMAGE_POINTS and picture["bottom"] - picture["top"] >= MINIMUM_IMAGE_POINTS]
     for index, picture in enumerate(pictures, start=1):
         name = f"page{number}-image{index}.png"
         crop(image, picture).save(media_directory / name)
@@ -266,81 +288,9 @@ def read_page(reading: PdfReading, page, segments: list[Segment], rendered_page,
     reading.reports.append(report)
 
 
-@dataclass(frozen=True)
-class FoundTable:
-    bbox: tuple[float, float, float, float]
-    rows: list[list[str]]
-
-
-def page_tables(page) -> list[FoundTable]:
-    gridded = [FoundTable(tuple(table.bbox), clean_rows(table.extract())) for table in page.find_tables()]
-    gridded = [table for table in gridded if is_regular(table.rows)]
-    if gridded:
-        return gridded
-    return [table for table in (row_ruled_table(page, rules) for rules in rule_stacks(page)) if table is not None]
-
-
-def is_regular(rows: list[list[str]]) -> bool:
-    return len(rows) >= 2 and max(len(row) for row in rows) >= 2
-
-
-def rule_stacks(page) -> list[list[dict]]:
-    wide = [edge for edge in merged_rules(page.horizontal_edges) if edge["x1"] - edge["x0"] > float(page.width) * WIDE_RULE_SHARE]
-    stacks: list[list[dict]] = []
-    for edge in wide:
-        stack = stacks[-1] if stacks else None
-        if stack and abs(stack[-1]["x0"] - edge["x0"]) <= 3 and abs(stack[-1]["x1"] - edge["x1"]) <= 3 and edge["top"] - stack[-1]["top"] <= MAXIMUM_ROW_POINTS:
-            if edge["top"] - stack[-1]["top"] > 1:
-                stack.append(edge)
-        else:
-            stacks.append([edge])
-    return [stack for stack in stacks if len(stack) >= 3]
-
-
-def merged_rules(edges: list[dict]) -> list[dict]:
-    merged: list[dict] = []
-    for edge in sorted(edges, key=lambda edge: (round(edge["top"], 1), edge["x0"])):
-        last = merged[-1] if merged else None
-        if last and abs(last["top"] - edge["top"]) <= 0.5 and edge["x0"] - last["x1"] <= 2:
-            last["x1"] = max(last["x1"], edge["x1"])
-        else:
-            merged.append({"x0": edge["x0"], "x1": edge["x1"], "top": edge["top"]})
-    return sorted(merged, key=lambda edge: edge["top"])
-
-
-def row_ruled_table(page, rules: list[dict]) -> FoundTable | None:
-    left, right = min(rule["x0"] for rule in rules), max(rule["x1"] for rule in rules)
-    tops = [rule["top"] for rule in rules]
-    words = [word for word in page.extract_words(keep_blank_chars=False) if left <= word["x0"] and word["x1"] <= right and tops[0] <= word["top"] and word["bottom"] <= tops[-1]]
-    boundaries = column_boundaries(words, left, right)
-    if len(boundaries) < 3:
-        return None
-    rows = []
-    for top, bottom in zip(tops, tops[1:]):
-        row_words = [word for word in words if top <= (word["top"] + word["bottom"]) / 2 <= bottom]
-        rows.append([" ".join(word["text"] for word in row_words if start <= (word["x0"] + word["x1"]) / 2 < end) for start, end in zip(boundaries, boundaries[1:])])
-    rows = [row for row in rows if any(row)]
-    return FoundTable((left, tops[0], right, tops[-1]), rows) if is_regular(rows) else None
-
-
-def column_boundaries(words: list[dict], left: float, right: float) -> list[float]:
-    covered = sorted((word["x0"], word["x1"]) for word in words)
-    boundaries = [left]
-    reach = None
-    for start, end in covered:
-        if reach is not None and start - reach >= COLUMN_GAP_POINTS:
-            boundaries.append((reach + start) / 2)
-        reach = end if reach is None else max(reach, end)
-    return boundaries + [right]
-
-
 def inside_any(segment: Segment, boxes: list) -> bool:
     center_x, center_y = (segment.x0 + segment.x1) / 2, (segment.top + segment.bottom) / 2
     return any(x0 <= center_x <= x1 and top <= center_y <= bottom for x0, top, x1, bottom in boxes)
-
-
-def clean_rows(rows: list[list]) -> list[list[str]]:
-    return [[" ".join((cell or "").split()) for cell in row] for row in rows if any(cell for cell in row)]
 
 
 def page_image_bitmap(rendered_page):

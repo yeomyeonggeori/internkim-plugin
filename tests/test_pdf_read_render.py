@@ -4,7 +4,8 @@ import sys
 import tempfile
 import unittest
 
-from doc_fixture import OFFICE_ENTRY, run_office, run_office_python
+from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, run_office, run_office_python
+from pdf_fixture import STATEMENT_ROWS, statement_pdf_code
 from render_fixture import png_size
 
 
@@ -51,6 +52,20 @@ class ReadTest(PdfFixture):
         rest = run_office(["pdf", "read", "fixture.pdf", "--start", "2"], self.directory)["details"]
         self.assertEqual([page["page"] for page in rest["pages"]], [2, 3])
         self.assertFalse(rest["truncated"])
+
+
+class ReadTablesTest(unittest.TestCase):
+    def test_read_gives_the_rows_of_a_table_laid_out_without_lines(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run_office_python(statement_pdf_code(SCRIPTS_PATH.parent / "assets" / "fonts" / "paperlogy"), Path(directory))
+            page = run_office(["pdf", "read", "statement.pdf"], Path(directory))["details"]["pages"][0]
+        self.assertEqual(page["tables"], [STATEMENT_ROWS])
+
+    def test_a_page_without_a_table_carries_no_tables_field(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run_office_python(FIXTURE_PDF, Path(directory))
+            pages = run_office(["pdf", "read", "fixture.pdf"], Path(directory))["details"]["pages"]
+        self.assertEqual([page.get("tables") for page in pages], [None, None, None])
 
 
 class RenderTest(PdfFixture):

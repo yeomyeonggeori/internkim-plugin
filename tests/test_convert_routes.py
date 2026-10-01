@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, block_texts, run_office, run_office_python
-from pdf_fixture import newsletter_pdf_code
+from pdf_fixture import STATEMENT_ROWS, newsletter_pdf_code, statement_pdf_code
 from pptx_edit_fixture import build_korean_deck
 from render_fixture import can_render, pdf_page_count
 from report_fixture import CHART_IMAGE, REPORT_MARKDOWN
@@ -101,6 +101,15 @@ class PdfSourceRouteTest(unittest.TestCase):
         self.assertNotIn("주식회사 예시상사 사내 소식", texts)
         self.assertTrue(read_has_picture(self.directory, "newsletter.docx"))
 
+
+    def test_a_table_laid_out_without_lines_becomes_a_table_between_its_paragraphs(self):
+        run_office_python(statement_pdf_code(FONT_DIRECTORY), self.directory)
+        envelope = convert("statement.pdf", "statement.docx", self.directory)
+        self.assertEqual(envelope["details"]["pages"][0]["tables"], 1)
+        blocks = [block for block in block_texts(self.directory, "statement.docx") if block[1]]
+        self.assertEqual([kind for kind, _ in blocks], ["heading", "paragraph", "table", "paragraph"])
+        self.assertEqual(blocks[2], ("table", STATEMENT_ROWS))
+        self.assertEqual(blocks[3], ("paragraph", "문의는 sample@example.com 으로 보내 주십시오. 담당자 이샘플."))
 
     def test_each_page_becomes_a_slide_of_text_boxes_or_one_picture(self):
         run_office_python("""

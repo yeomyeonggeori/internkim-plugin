@@ -7,9 +7,11 @@ from pathlib import Path
 from docx_markdown import DEFAULT_DOCUMENT_FONT, DEFAULT_DOCUMENT_FONT_SIZE, markdown_document
 from doc_definitions import PDF_RENDERER_UNAVAILABLE
 from document_pdf import can_render, render_document_pdf
+from latex_math import math_issues
 from markdown_blocks import Heading, parse_markdown
 from markdown_charts import require_valid_charts
-from office_result import KOREAN_FONT_UNAVAILABLE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
+from office_inputs import read_text_input
+from office_result import INVALID_VALUE, KOREAN_FONT_UNAVAILABLE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
 from pdf_fonts import register_regular_and_bold
 from pdf_markdown import MarkdownPdf
 from skill_runtime import HANGUL_FONT_PATHS, cache_home_path
@@ -17,22 +19,36 @@ from skill_runtime import HANGUL_FONT_PATHS, cache_home_path
 
 PDF_FONT_CANDIDATES = [Path(candidate) for candidate in HANGUL_FONT_PATHS]
 PDF_FONT_FAMILY = "DocumentFont"
+EXPORT_FORMATS = ("docx", "pdf")
 
 
 def main() -> Result:
     arguments = parse_arguments()
     markdown_path = Path(arguments.markdown_path)
-    markdown_text = markdown_path.read_text(encoding="utf-8")
-    output_path = Path(arguments.output) if arguments.output else markdown_path.with_suffix("." + arguments.format)
+    output_path = Path(arguments.output) if arguments.output else markdown_path.with_suffix(".docx")
+    output_format = require_export_format(output_path)
+    markdown_text = read_text_input(arguments.markdown_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     blocks = parse_markdown(markdown_text)
     require_valid_charts(blocks, markdown_path.name)
-    if arguments.format == "pdf":
+    if output_format == "pdf":
         issues = export_pdf(blocks, markdown_text, output_path, markdown_path.parent, arguments.font_path, arguments.font_size)
     else:
         document, issues = markdown_document(blocks, arguments.font, arguments.font_size, markdown_path.parent)
         document.save(output_path)
-    return Result(summary=f"exported {output_path} from {markdown_path}", output_path=str(output_path), issues=tuple(issues))
+    return Result(summary=f"exported {output_path} from {markdown_path}", output_path=str(output_path), issues=(*math_issues(blocks, output_format), *issues))
+
+
+def require_export_format(output_path: Path) -> str:
+    extension = output_path.suffix.lower().lstrip(".")
+    if extension in EXPORT_FORMATS:
+        return extension
+    ending = f"ends in {output_path.suffix}" if output_path.suffix else "has no extension"
+    raise OfficeFailure(INVALID_VALUE.issue(
+        f"--output {output_path.name} {ending}; doc export writes .docx or .pdf, chosen by that extension",
+        "--output",
+        suggestion=f"name the output {output_path.stem}.docx for Word or {output_path.stem}.pdf for a PDF",
+    ))
 
 
 def export_pdf(blocks: list, markdown_text: str, output_path: Path, source_directory: Path, font_path_argument: str, font_size: float) -> list[Issue]:
@@ -93,8 +109,7 @@ def resolve_pdf_font(font_path_argument: str) -> Path | None:
 def parse_arguments():
     parser = OfficeArgumentParser(description="Render a Markdown source of truth into a .docx or .pdf deliverable, keeping links, local images, and nested lists.")
     parser.add_argument("markdown_path", help="path to content.md")
-    parser.add_argument("--output", help="output path; defaults next to the markdown")
-    parser.add_argument("--format", default="docx", choices=["docx", "pdf"], help="deliverable format")
+    parser.add_argument("--output", help="the file to write; its extension, .docx or .pdf, picks the format; default <markdown name>.docx beside the markdown")
     parser.add_argument("--font", default=DEFAULT_DOCUMENT_FONT, help="base font family name for docx")
     parser.add_argument("--font-size", type=float, default=DEFAULT_DOCUMENT_FONT_SIZE)
     parser.add_argument("--font-path", default="", help="Korean-capable TTF for pdf output instead of the bundled Paperlogy; a Bold file beside it is used for bold")

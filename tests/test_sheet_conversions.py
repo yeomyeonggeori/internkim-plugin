@@ -6,6 +6,7 @@ import unittest
 
 from openpyxl import load_workbook
 
+from pdf_fixture import statement_pdf_code
 from sheet_fixture import SCRIPTS_PATH, run_office, run_office_python
 from xlsb_fixture import write_xlsb
 
@@ -123,6 +124,17 @@ class PdfTablesTest(ConversionFixture):
         third = workbook["Page 3"]
         self.assertEqual([cell.value for cell in third[1]], [1, 2, 3, 4])
         self.assertIsNone(third.freeze_panes)
+
+    def test_a_table_laid_out_without_lines_becomes_a_typed_sheet(self):
+        run_office_python(statement_pdf_code(FONT_DIRECTORY), self.directory)
+        envelope = self.convert("statement.pdf", "statement.xlsx")
+        self.assertEqual(envelope["status"], "ok", envelope["issues"])
+        self.assertEqual(envelope["details"]["tables"], [{"sheet": "Page 1", "pages": [1], "rows": 7, "columns": 5, "header": True}])
+        sheet = load_workbook(self.directory / "statement.xlsx")["Page 1"]
+        self.assertEqual([cell.value for cell in sheet[1]], ["일자", "품목", "수량", "단가", "금액"])
+        self.assertEqual([cell.value for cell in sheet[4]], [datetime.datetime(2026, 9, 16), "A4 복사 용지 (박스)", 45, 26500, 1192500])
+        self.assertEqual([cell.value for cell in sheet[7]], ["합계", None, None, None, 4024500])
+        self.assertEqual(sheet["E2"].number_format, "#,##0")
 
     def test_a_pdf_without_tables_is_refused_with_what_to_do(self):
         self.write_pdf(TEXT_PDF)

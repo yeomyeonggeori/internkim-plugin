@@ -11,7 +11,7 @@ from report_fixture import CHART_IMAGE, REPORT_MARKDOWN, pdf_text
 
 
 def export_pdf(markdown_name, working_directory):
-    return run_office(["doc", "export", markdown_name, "--format", "pdf"], working_directory)
+    return run_office(["doc", "export", markdown_name, "--output", str(Path(markdown_name).with_suffix(".pdf"))], working_directory)
 
 
 class DocumentPdfTest(unittest.TestCase):
@@ -61,10 +61,37 @@ class DocumentPdfTest(unittest.TestCase):
 
     def test_without_bun_the_plain_renderer_draws_the_pdf_and_says_so(self):
         environment = {"HOME": str(self.directory), "PATH": f"{Path(sys.executable).parent}:/usr/bin:/bin"}
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "doc", "export", "보고서.md", "--format", "pdf"], capture_output=True, text=True, cwd=self.directory, env=environment)
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "doc", "export", "보고서.md", "--output", "보고서.pdf"], capture_output=True, text=True, cwd=self.directory, env=environment)
         envelope = json.loads(completed.stdout)
         self.assertEqual(envelope["issues"][0]["code"], "PDF_RENDERER_UNAVAILABLE")
         self.assertTrue((self.directory / "보고서.pdf").exists())
+
+class ExportFormatTest(unittest.TestCase):
+    def setUp(self):
+        self.temporary_directory = tempfile.TemporaryDirectory()
+        self.directory = Path(self.temporary_directory.name)
+        (self.directory / "메모.md").write_text("# 메모\n\n이샘플이 작성했다.\n", encoding="utf-8")
+
+    def tearDown(self):
+        self.temporary_directory.cleanup()
+
+    def test_the_output_extension_picks_the_format(self):
+        for name, signature in (("메모.pdf", b"%PDF-"), ("메모.docx", b"PK")):
+            with self.subTest(output=name):
+                envelope = run_office(["doc", "export", "메모.md", "--output", name], self.directory)
+                self.assertNotEqual(envelope["status"], "error", envelope["issues"])
+                self.assertTrue((self.directory / name).read_bytes().startswith(signature))
+
+    def test_an_output_that_is_neither_docx_nor_pdf_is_refused_before_writing(self):
+        envelope = run_office(["doc", "export", "메모.md", "--output", "메모.doc"], self.directory)
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["INVALID_VALUE"])
+        self.assertIn("메모.pdf", envelope["issues"][0]["suggestion"])
+        self.assertFalse((self.directory / "메모.doc").exists())
+
+    def test_there_is_no_format_flag_to_disagree_with_the_extension(self):
+        envelope = run_office(["doc", "export", "메모.md", "--format", "pdf", "--output", "메모.docx"], self.directory)
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["INVALID_ARGUMENTS"])
+        self.assertFalse((self.directory / "메모.docx").exists())
 
 
 if __name__ == "__main__":

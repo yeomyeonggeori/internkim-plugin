@@ -86,7 +86,7 @@ class BoldFontTest(unittest.TestCase):
         self.add_bold_sibling()
         markdown_path = self.directory / "content.md"
         markdown_path.write_text("# Title\n\nBody\n")
-        result = run_office_script("doc/export_document.py", str(markdown_path), "--format", "pdf", "--font-path", str(self.regular_path))
+        result = run_office_script("doc/export_document.py", str(markdown_path), "--output", str(markdown_path.with_suffix(".pdf")), "--font-path", str(self.regular_path))
         self.assertEqual(issue_codes(result), [])
         self.assertEqual(embedded_font_names(Path(result["outputPath"])), {"TestGothicRegular", "TestGothicBoldFace"})
 

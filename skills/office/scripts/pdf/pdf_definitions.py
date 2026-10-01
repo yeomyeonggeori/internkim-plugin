@@ -39,10 +39,13 @@ KOREAN_FONT_NOT_EMBEDDED = IssueKind("KOREAN_FONT_NOT_EMBEDDED", ERROR, "the PDF
 
 PAGE_NOT_IN_DOCUMENT = IssueKind("PAGE_NOT_IN_DOCUMENT", ERROR, "--pages names a page the PDF does not have", "run pdf read to see the page count, then pass pages inside it")
 
-PAGE_WITHOUT_TEXT = IssueKind("PAGE_WITHOUT_TEXT", WARNING, "a PDF page has no text layer: it is a scan or a picture, and this skill has no OCR", "render those pages with pdf render --pages and --scale 2, read each page PNG with your own image tool, and say which pages were read that way")
+OCR_DOWNLOAD_SIZE = "about 150 MB"
+PAGE_WITHOUT_TEXT = IssueKind("PAGE_WITHOUT_TEXT", WARNING, "a PDF page has no text layer: it is a scan or a picture", f"rerun the command with --ocr to read those pages' text (the first OCR run downloads the engine, {OCR_DOWNLOAD_SIZE}), or render them with pdf render --pages and read each PNG with your own image tool")
+PAGE_READ_BY_OCR = IssueKind("PAGE_READ_BY_OCR", WARNING, "the text of a page without a text layer was read from its image by OCR: a space between words can be missing and a character can be misread", "tell the user which pages came from OCR, and confirm names, amounts and dates that matter with them before relying on them")
+OCR_UNAVAILABLE = IssueKind("OCR_UNAVAILABLE", WARNING, "the OCR engine could not be installed or run, so pages without a text layer were not read", "say which pages could not be read and why; the message names what failed, usually no network on the first OCR run")
 
 RENDER_ISSUE_KINDS = (PAGE_NOT_IN_DOCUMENT,)
-READ_ISSUE_KINDS = (PAGE_WITHOUT_TEXT,)
+READ_ISSUE_KINDS = (PAGE_WITHOUT_TEXT, PAGE_READ_BY_OCR, OCR_UNAVAILABLE)
 
 VALIDATE_ISSUE_KINDS = (
     PDF_ENCRYPTED,
@@ -67,5 +70,8 @@ GUIDE_ISSUES = (
 )
 
 
-def page_reading_suggestion(pdf_path, pages: str) -> str:
-    return f"pdf render {pdf_path} --pages {pages} --scale 2, then read each page PNG with your own image tool; this skill has no OCR"
+def page_reading_suggestion(pdf_path, pages: str, rerun_command: str | None) -> str:
+    rendering = f"run office pdf render {pdf_path} --pages {pages} --scale 2 and read each page PNG with your own image tool"
+    if rerun_command is None:
+        return f"{rendering}, or tell the user these pages could not be read"
+    return f"rerun with --ocr to read their text: {rerun_command} --ocr (the first OCR run downloads the engine, {OCR_DOWNLOAD_SIZE}); or {rendering}"

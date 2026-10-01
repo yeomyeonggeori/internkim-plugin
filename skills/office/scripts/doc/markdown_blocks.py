@@ -9,10 +9,14 @@ from markdown_charts import FENCE, parse_chart_fence
 
 HEADING_PATTERN = re.compile(r"^(#{1,4})\s+(.*)$")
 LIST_PATTERN = re.compile(r"^(\s*)([-*]|\d+[.)])\s+(.*)$")
+THEMATIC_BREAK_PATTERN = re.compile(r"^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$")
 IMAGE_LINE_PATTERN = re.compile(r"^\s*!\[([^\]]*)\]\(([^)\s]+)\)\s*$")
 LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
 CHART_FENCE_OPENING = f"{FENCE}chart"
-INLINE_PATTERN = re.compile(r"(\[[^\]]+\]\([^)\s]+\)|\*\*.+?\*\*|\*.+?\*|`.+?`)")
+INLINE_MATH = r"\$(?=[^\s$])(?:\\.|[^$\\\n])+?(?<=[^\s\\])\$(?!\d)"
+INLINE_PATTERN = re.compile(rf"({INLINE_MATH}|\[[^\]]+\]\([^)\s]+\)|\*\*.+?\*\*|\*.+?\*|`.+?`)")
+INLINE_MATH_PATTERN = re.compile(INLINE_MATH)
+DISPLAY_MATH_FENCE = "$$"
 
 
 @dataclass(frozen=True)
@@ -54,6 +58,20 @@ class Paragraph:
     text: str
 
 
+@dataclass(frozen=True)
+class ThematicBreak:
+    pass
+
+
+@dataclass(frozen=True)
+class Equation:
+    latex: str
+
+    @property
+    def text(self) -> str:
+        return f"{DISPLAY_MATH_FENCE}{self.latex}{DISPLAY_MATH_FENCE}"
+
+
 def parse_markdown(markdown_text: str) -> list:
     lines = markdown_text.splitlines()
     blocks = []
@@ -69,12 +87,30 @@ def parse_markdown(markdown_text: str) -> list:
             block, index = chart_block(lines, index)
             blocks.append(block)
             continue
+        if stripped.startswith(DISPLAY_MATH_FENCE):
+            block, index = equation_block(lines, index)
+            blocks.append(block)
+            continue
+        if THEMATIC_BREAK_PATTERN.match(line):
+            blocks.append(ThematicBreak())
+            list_indents = []
+            index += 1
+            continue
         list_match = LIST_PATTERN.match(line)
         if not list_match:
             list_indents = []
         block, index = next_block(lines, index, list_match, list_indents)
         blocks.append(block)
     return blocks
+
+
+def equation_block(lines: list[str], index: int):
+    stripped = lines[index].strip()
+    if len(stripped) > 2 * len(DISPLAY_MATH_FENCE) and stripped.endswith(DISPLAY_MATH_FENCE):
+        return Equation(stripped[len(DISPLAY_MATH_FENCE):-len(DISPLAY_MATH_FENCE)].strip()), index + 1
+    end = next((position for position in range(index + 1, len(lines)) if lines[position].strip().endswith(DISPLAY_MATH_FENCE)), len(lines) - 1)
+    body = [stripped[len(DISPLAY_MATH_FENCE):], *(line.strip() for line in lines[index + 1:end]), lines[end].strip().removesuffix(DISPLAY_MATH_FENCE) if end > index else ""]
+    return Equation(" ".join(part for part in body if part).strip()), end + 1
 
 
 def chart_block(lines: list[str], index: int):
@@ -126,12 +162,12 @@ def paragraph_block(lines: list[str], index: int):
     while index < len(lines) and continues_paragraph(lines[index]):
         paragraph_lines.append(lines[index].strip())
         index += 1
-    return Paragraph(" ".join(paragraph_lines)), index
+    return Paragraph("\n".join(paragraph_lines)), index
 
 
 def continues_paragraph(line: str) -> bool:
     stripped = line.strip()
-    if not stripped or HEADING_PATTERN.match(stripped) or is_table_line(line) or stripped.lower() == CHART_FENCE_OPENING:
+    if not stripped or HEADING_PATTERN.match(stripped) or is_table_line(line) or stripped.lower() == CHART_FENCE_OPENING or THEMATIC_BREAK_PATTERN.match(line) or stripped.startswith(DISPLAY_MATH_FENCE):
         return False
     return not LIST_PATTERN.match(line) and not IMAGE_LINE_PATTERN.match(line)
 
@@ -159,6 +195,10 @@ def split_table_row(line: str) -> list[str]:
 
 def inline_segments(text: str) -> list[str]:
     return [segment for segment in INLINE_PATTERN.split(text) if segment]
+
+
+def math_latex(segment: str) -> str | None:
+    return segment[1:-1] if INLINE_MATH_PATTERN.fullmatch(segment) else None
 
 
 def link_parts(segment: str) -> tuple[str, str] | None:

@@ -7,7 +7,7 @@ from PIL import Image as PillowImage, UnidentifiedImageError
 
 from doc_definitions import IMAGE_UNAVAILABLE
 from markdown_charts import Chart, number_text
-from markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, has_link, inline_segments, link_parts, local_image_problem, strip_inline_markers
+from markdown_blocks import Equation, Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, has_link, inline_segments, link_parts, local_image_problem, strip_inline_markers
 from office_result import Issue
 
 
@@ -17,6 +17,7 @@ NESTED_LIST_INDENT = 6
 QUOTE_INDENT = 8
 LINK_COLOR = (5, 99, 193)
 TEXT_COLOR = (0, 0, 0)
+RULE_COLOR = (140, 149, 159)
 DEFAULT_IMAGE_DOTS_PER_INCH = 96
 MILLIMETERS_PER_INCH = 25.4
 
@@ -44,9 +45,17 @@ class MarkdownPdf:
             return self.add_image(block)
         elif isinstance(block, Chart):
             self.add_chart_table(block)
-        elif isinstance(block, Paragraph):
+        elif isinstance(block, (Paragraph, Equation)):
             self.write_line(block.text, self.font_size)
+        elif isinstance(block, ThematicBreak):
+            self.add_rule()
         return []
+
+    def add_rule(self) -> None:
+        self.pdf.ln(2)
+        self.pdf.set_draw_color(*RULE_COLOR)
+        self.pdf.line(self.pdf.l_margin, self.pdf.get_y(), self.pdf.w - self.pdf.r_margin, self.pdf.get_y())
+        self.pdf.ln(4)
 
     def write_line(self, text: str, size: float, style: str = "", indent: float = 0, spacing: float = 2) -> None:
         self.pdf.set_font(self.family, style, size)

@@ -466,7 +466,8 @@ PDF_RENDERER_UNAVAILABLE = IssueKind("PDF_RENDERER_UNAVAILABLE", WARNING, "neith
 
 GLYPH_NOT_COVERED = IssueKind("GLYPH_NOT_COVERED", WARNING, "some characters have no glyph in the bundled Paperlogy font or the installed Korean font, so they print as empty boxes", "replace those characters, such as an emoji or a rare Hanja, with words")
 
-EXPORT_ISSUE_KINDS = (CHART_BLOCK_INVALID, IMAGE_UNAVAILABLE, PDF_RENDERER_FAILED, PDF_RENDERER_UNAVAILABLE, GLYPH_NOT_COVERED)
+MATH_NOT_CONVERTED = IssueKind("MATH_NOT_CONVERTED", WARNING, "a $...$ or $$...$$ formula is not LaTeX the converter reads, so its source text was written as it is", "fix the LaTeX with standard commands such as \\frac, \\sqrt, \\sum, ^ and _, or write the formula in words")
+EXPORT_ISSUE_KINDS = (CHART_BLOCK_INVALID, IMAGE_UNAVAILABLE, MATH_NOT_CONVERTED, PDF_RENDERER_FAILED, PDF_RENDERER_UNAVAILABLE, GLYPH_NOT_COVERED)
 
 GUIDE_INPUTS = (
     ("doc create --spec <file>", DOCUMENT_SPECIFICATION),
