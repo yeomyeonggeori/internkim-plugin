@@ -44,9 +44,12 @@ PPTX = InputKind("pptx", "a PowerPoint deck", "deck read", frozenset({
 }))
 PDF = InputKind("pdf", "a PDF", "pdf read")
 LEGACY_OFFICE = InputKind("legacy", "a pre-2007 Office file (.doc, .xls or .ppt)", "office convert")
+XLSB = InputKind("xlsb", "a binary Excel workbook (.xlsb)", "office convert", frozenset({
+    "application/vnd.ms-excel.sheet.binary.macroEnabled.main",
+}))
 OTHER_PACKAGE = InputKind("package", "a zip package that is not a Word, Excel or PowerPoint file", "")
 OTHER = InputKind("other", "neither an Office file nor a PDF", "")
-OPEN_XML_KINDS = (DOCX, XLSX, PPTX)
+OPEN_XML_KINDS = (DOCX, XLSX, PPTX, XLSB)
 KINDS_BY_NAME = {kind.name: kind for kind in (DOCX, XLSX, PPTX, PDF)}
 
 
@@ -102,6 +105,8 @@ def main_content_types(path: str) -> set[str]:
 def redirect_suggestion(path: str, actual: InputKind) -> str:
     if actual == LEGACY_OFFICE:
         return f"convert it first: office convert {path} <name>.docx, .xlsx or .pptx"
+    if actual == XLSB:
+        return f"convert it first: office convert {path} <name>.xlsx"
     if actual.reader:
         return f"read it with office {actual.reader} {path}"
     return "check that the path names the file the user meant"

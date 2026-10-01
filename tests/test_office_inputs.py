@@ -5,6 +5,8 @@ import sys
 import tempfile
 import unittest
 
+from xlsb_fixture import write_xlsb
+
 
 OFFICE_ENTRY = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "office"
 READERS = {
@@ -44,6 +46,7 @@ class InputBoundaryTest(unittest.TestCase):
         cls.temporary_directory = tempfile.TemporaryDirectory()
         cls.directory = Path(cls.temporary_directory.name)
         write_inputs(cls.directory)
+        write_xlsb(cls.directory / "binary.xlsb", [("판매", [["지역", "매출"], ["서울", 120]], [])])
 
     @classmethod
     def tearDownClass(cls):
@@ -73,6 +76,11 @@ class InputBoundaryTest(unittest.TestCase):
     def test_text_and_legacy_files_are_refused_with_what_they_are(self):
         self.assertIn("neither an Office file nor a PDF", self.assert_refused("doc read", "notes.txt", "WRONG_INPUT_FORMAT")["message"])
         self.assertIn("office convert", self.assert_refused("sheet read", "legacy.xls", "WRONG_INPUT_FORMAT")["suggestion"])
+
+    def test_a_binary_workbook_is_sent_to_convert(self):
+        issue = self.assert_refused("sheet read", "binary.xlsb", "WRONG_INPUT_FORMAT")
+        self.assertIn("binary Excel workbook", issue["message"])
+        self.assertIn("office convert binary.xlsb <name>.xlsx", issue["suggestion"])
 
     def test_a_password_protected_pdf_is_named_by_every_pdf_reader_and_convert(self):
         for command in READERS["pdf"]:
