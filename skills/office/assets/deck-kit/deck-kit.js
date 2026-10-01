@@ -168,8 +168,12 @@
     return { labels, series: [{ name: figure.getAttribute("data-name") || "", values: parseList(figure.getAttribute("data-values")).map(parseNumber) }] };
   }
 
+  function decimalsOf(series) {
+    return Math.min(2, Math.max(0, ...series.flatMap((item) => item.values).map((value) => (String(value).split(".")[1] || "").length)));
+  }
+
   function formatterFor(figure, series) {
-    const decimals = Math.min(2, Math.max(0, ...series.flatMap((item) => item.values).map((value) => (String(value).split(".")[1] || "").length)));
+    const decimals = decimalsOf(series);
     const formatter = new Intl.NumberFormat(locale(), { maximumFractionDigits: decimals, minimumFractionDigits: decimals });
     const unit = figure.getAttribute("data-unit") || "";
     return (value) => formatter.format(value) + unit;
@@ -215,15 +219,28 @@
     return colors[seriesIndex];
   }
 
-  function valueLabel(text, className, position) {
+  function valueLabel(text, className, position, point) {
     const label = element("span", `kit-data-label ${className}`.trim(), position);
     label.textContent = text;
+    if (point) {
+      label.setAttribute("data-series", String(point.series));
+      label.setAttribute("data-point", String(point.index));
+      if (point.below) label.setAttribute("data-below", "");
+    }
     return label;
   }
 
   function groupShare(categoryCount) {
     if (categoryCount <= 3) return 0.34;
     return categoryCount <= 6 ? 0.5 : 0.62;
+  }
+
+  function barGroupShare(seriesCount) {
+    return seriesCount === 1 ? 0.56 : 0.72;
+  }
+
+  function lineStartsAtZero(figure) {
+    return figure.getAttribute("data-zero") === "true";
   }
 
   function renderColumns(figure, data, chart, format, stacked) {
@@ -249,7 +266,7 @@
           stackTop -= height;
           area.appendChild(element("div", "kit-segment", { left: percent(left), top: percent(stackTop), width: percent(barWidth), height: percent(height), background: colors[seriesIndex] }));
           if (height >= 7 && seriesIndex < 2) {
-            const inside = valueLabel(format(value), seriesIndex === 0 ? "kit-inside" : "kit-inside kit-on-light", { left: percent(center), top: percent(stackTop + height / 2) });
+            const inside = valueLabel(format(value), seriesIndex === 0 ? "kit-inside" : "kit-inside kit-on-light", { left: percent(center), top: percent(stackTop + height / 2) }, { series: seriesIndex, index: category });
             area.appendChild(inside);
           }
         });
@@ -263,7 +280,7 @@
           const negative = value < 0 ? " kit-negative" : "";
           area.appendChild(element("div", `kit-bar${negative}`, { left: percent(barLeft + barWidth * 0.06), top: percent(barTop), width: percent(barWidth * 0.88), height: percent(height), background: barColor(figure, data, seriesIndex, label, colors) }));
           const muted = isMuted(figure, data, label) ? " kit-muted" : "";
-          area.appendChild(valueLabel(format(value), `${value < 0 ? "kit-below" : ""}${muted}`, { left: percent(barLeft + barWidth / 2), top: percent(value < 0 ? barTop + height : barTop) }));
+          area.appendChild(valueLabel(format(value), `${value < 0 ? "kit-below" : ""}${muted}`, { left: percent(barLeft + barWidth / 2), top: percent(value < 0 ? barTop + height : barTop) }, { series: seriesIndex, index: category }));
         });
       }
       const categoryLabel = element("span", "kit-category", { left: percent(center) });
@@ -279,7 +296,7 @@
     const colors = seriesColors(data.series.length);
     const range = niceRange(data.series.flatMap((item) => item.values), true);
     const slot = 100 / data.labels.length;
-    const group = slot * (data.series.length === 1 ? 0.56 : 0.72);
+    const group = slot * barGroupShare(data.series.length);
     const barHeight = group / data.series.length;
     const position = (value) => range.share(value) * 100 * barScaleShare;
     const zero = position(0);
@@ -299,7 +316,7 @@
         const negative = value < 0 ? " kit-negative" : "";
         area.appendChild(element("div", `kit-bar kit-horizontal${negative}`, { left: percent(left), top: percent(barTop + barHeight * 0.06), width: percent(width), height: percent(barHeight * 0.88), background: barColor(figure, data, seriesIndex, label, colors) }));
         const muted = isMuted(figure, data, label) ? " kit-muted" : "";
-        area.appendChild(valueLabel(format(value), `${value < 0 ? "kit-start" : "kit-end"}${muted}`, { left: percent(value < 0 ? left : left + width), top: percent(barTop + barHeight / 2) }));
+        area.appendChild(valueLabel(format(value), `${value < 0 ? "kit-start" : "kit-end"}${muted}`, { left: percent(value < 0 ? left : left + width), top: percent(barTop + barHeight / 2) }, { series: seriesIndex, index: category }));
       });
     });
     area.appendChild(element("div", "kit-baseline kit-vertical", { left: percent(zero) }));
@@ -310,7 +327,7 @@
     const categories = element("div", "kit-categories kit-line-categories");
     chart.append(area, categories);
     const colors = seriesColors(data.series.length);
-    const range = niceRange(data.series.flatMap((item) => item.values), figure.getAttribute("data-zero") === "true");
+    const range = niceRange(data.series.flatMap((item) => item.values), lineStartsAtZero(figure));
     const xOf = (index) => (data.labels.length === 1 ? 50 : lineInsetShare + (index * (100 - 2 * lineInsetShare)) / (data.labels.length - 1));
     const yOf = (value) => (1 - range.share(value)) * 100;
     [0, 50, 100].forEach((share) => area.appendChild(element("div", "kit-gridline", { top: percent(share) })));
@@ -331,7 +348,7 @@
         area.appendChild(element("i", `kit-dot${isLast ? " kit-last" : ""}`, { ...position, "border-color": colors[seriesIndex], background: isLast ? colors[seriesIndex] : "var(--bg)" }));
         if (!labelEveryPoint && !isLast) return;
         const below = data.series.length === 2 && seriesIndex === 1 && value < data.series[0].values[index];
-        area.appendChild(valueLabel(format(value), `${below ? "kit-below" : ""}${isLast ? "" : " kit-muted"}`, position));
+        area.appendChild(valueLabel(format(value), `${below ? "kit-below" : ""}${isLast ? "" : " kit-muted"}`, position, { series: seriesIndex, index, below }));
       });
     });
     data.labels.forEach((label, index) => {
@@ -340,6 +357,16 @@
       categories.appendChild(categoryLabel);
     });
     area.appendChild(element("div", "kit-baseline kit-faint", { top: "100%" }));
+  }
+
+  function donutCenter(figure, data) {
+    const values = data.series[0].values;
+    const total = values.reduce((sum, value) => sum + value, 0);
+    return figure.getAttribute("data-center") || `${Math.round((values[0] / total) * 100)}%`;
+  }
+
+  function donutCenterLabel(figure, data) {
+    return figure.getAttribute("data-center-label") || data.labels[0];
   }
 
   function renderDonut(figure, data, chart, format, isPie) {
@@ -362,9 +389,9 @@
     if (!isPie) {
       const center = element("div", "kit-donut-center");
       const big = element("b");
-      big.textContent = figure.getAttribute("data-center") || `${Math.round((values[0] / total) * 100)}%`;
+      big.textContent = donutCenter(figure, data);
       const caption = element("span");
-      caption.textContent = figure.getAttribute("data-center-label") || data.labels[0];
+      caption.textContent = donutCenterLabel(figure, data);
       center.append(big, caption);
       ring.appendChild(center);
     }
@@ -403,6 +430,41 @@
     figure.insertBefore(chart, figure.firstChild);
     if (data.series.length > 1) chart.appendChild(legendFor(data.series, seriesColors(data.series.length)));
     renderer(figure, data, chart, formatterFor(figure, data.series));
+    chart.setAttribute("data-native-chart", "");
+    chart.nativeChart = nativeChart(figure, type, data);
+  }
+
+  function rangeLimits(range) {
+    return { minimum: range.minimum, maximum: range.maximum };
+  }
+
+  function gapWidth(type, data) {
+    const share = type === "bar" ? barGroupShare(data.series.length) : groupShare(data.labels.length);
+    return Math.round(((1 - share) / share) * 100);
+  }
+
+  function pointColors(figure, type, data) {
+    if (type === "donut" || type === "pie") return [seriesColors(data.labels.length)];
+    const colors = seriesColors(data.series.length);
+    const usesHighlight = type === "column" || type === "bar";
+    return data.series.map((_, seriesIndex) => data.labels.map((label) => (usesHighlight ? barColor(figure, data, seriesIndex, label, colors) : colors[seriesIndex])));
+  }
+
+  function nativeChart(figure, type, data) {
+    return {
+      type,
+      labels: data.labels,
+      series: data.series,
+      unit: figure.getAttribute("data-unit") || "",
+      decimals: decimalsOf(data.series),
+      startsAtZero: type !== "line" || lineStartsAtZero(figure),
+      valueRange: type === "line" ? rangeLimits(niceRange(data.series.flatMap((item) => item.values), lineStartsAtZero(figure))) : null,
+      gapWidth: gapWidth(type, data),
+      center: type === "donut" ? donutCenter(figure, data) : "",
+      centerLabel: type === "donut" ? donutCenterLabel(figure, data) : "",
+      colors: { series: seriesColors(data.series.length), points: pointColors(figure, type, data), grid: "var(--line)", background: "var(--bg)" },
+      text: { category: ".kit-category", legend: ".kit-legend > span, .kit-donut-legend span", share: ".kit-donut-legend b", center: ".kit-donut-center > b", centerLabel: ".kit-donut-center > span" },
+    };
   }
 
   function applyAccent() {

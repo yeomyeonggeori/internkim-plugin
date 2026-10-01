@@ -423,7 +423,8 @@ class PreviewTest(KoreanDeckFixture):
         self.assertEqual(self.styled(cells[0])["background-color"], "#4F81BD")
         chart = next(image for image in self.section(document, 3).iter("img"))
         svg = base64.b64decode(chart.get("src").split(",", 1)[1]).decode("utf-8")
-        self.assertEqual(svg.count("<rect") - svg.count('width="10" height="10"'), 6)
+        bars, legend_swatches = 6, 2
+        self.assertEqual(svg.count("<rect"), bars + legend_swatches)
         self.assertIn("3분기", svg)
 
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")

@@ -7,6 +7,7 @@ import json
 import pathlib
 import zipfile
 
+from native_charts import ChartPart, chart_count, chart_frames_xml, chart_relationships_xml, chart_text_styles, slide_chart_parts, write_chart_parts
 from pptx_fonts import run_font
 from pptx_notes import noted_slide_numbers, notes_relationship_xml, write_notes_parts
 from pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU, DeckFonts, slide_document, write_pptx_static_files, xml_document
@@ -33,6 +34,7 @@ class TextLayers:
 class EditablePptx:
     text_box_count: int
     shape_count: int
+    chart_count: int
     boxes_kept_as_picture: int
     embedded_typefaces: tuple[str, ...]
     unembedded_families: tuple[str, ...]
@@ -57,35 +59,42 @@ def read_text_layers(review_path: pathlib.Path, slide_count: int) -> TextLayers 
 
 def write_editable_pptx(layers: TextLayers, notes: list[str], pptx_path: pathlib.Path) -> EditablePptx:
     runs = [run for slide in layers.slides for run in text_runs_of(slide)]
-    faces = used_faces(runs)
+    styled_text = runs + chart_text_styles(layers.slides)
+    faces = used_faces(styled_text)
     deck_fonts = DeckFonts(theme_fonts=theme_typefaces(runs), embedded_faces=tuple(faces))
     context_language = language_tag(layers.language)
     with zipfile.ZipFile(pptx_path, "w", zipfile.ZIP_DEFLATED) as archive:
-        write_pptx_static_files(archive, len(layers.slides), noted_slide_numbers(notes), deck_fonts)
+        write_pptx_static_files(archive, len(layers.slides), noted_slide_numbers(notes), deck_fonts, chart_count(layers.slides))
         write_notes_parts(archive, notes)
+        first_chart_number = 1
         for number, (slide, background_path) in enumerate(zip(layers.slides, layers.background_paths), start=1):
-            write_slide(archive, number, slide, background_path, context_language, bool(notes[number - 1]))
+            first_chart_number += write_slide(archive, number, slide, background_path, context_language, bool(notes[number - 1]), first_chart_number)
     return EditablePptx(
         text_box_count=sum(len(slide["blocks"]) for slide in layers.slides),
         shape_count=sum(len(slide["shapes"]) for slide in layers.slides),
+        chart_count=chart_count(layers.slides),
         boxes_kept_as_picture=sum(slide["boxesKeptAsPicture"] for slide in layers.slides),
         embedded_typefaces=tuple(face.family for face in faces),
-        unembedded_families=unembedded_families(runs),
+        unembedded_families=unembedded_families(styled_text),
         picture_texts=tuple(text for slide in layers.slides for text in slide["pictureTexts"]),
     )
 
 
-def write_slide(archive: zipfile.ZipFile, number: int, slide: dict, background_path: pathlib.Path, language: str, has_notes: bool) -> None:
+def write_slide(archive: zipfile.ZipFile, number: int, slide: dict, background_path: pathlib.Path, language: str, has_notes: bool, first_chart_number: int) -> int:
     links = slide_link_ids(slide)
     scale = SlideScale(slide["width"], slide["height"])
     context = TextContext(scale, language, links)
     shapes = slide["shapes"]
     first_text_box_id = FIRST_SHAPE_ID + len(shapes)
+    first_chart_id = first_text_box_id + len(slide["blocks"])
+    charts = slide_chart_parts(slide.get("charts", []), first_chart_number, FIRST_LINK_RELATIONSHIP_NUMBER + len(links))
     boxes = "".join(shape_xml(shape_id, shape, scale) for shape_id, shape in enumerate(shapes, start=FIRST_SHAPE_ID))
     text_boxes = "".join(text_box_xml(shape_id, block, context) for shape_id, block in enumerate(slide["blocks"], start=first_text_box_id))
     archive.write(background_path, f"ppt/media/background{number}.png")
-    archive.writestr(f"ppt/slides/slide{number}.xml", slide_document(background_picture_xml() + boxes + text_boxes))
-    archive.writestr(f"ppt/slides/_rels/slide{number}.xml.rels", slide_relationships_xml(number, has_notes, links))
+    archive.writestr(f"ppt/slides/slide{number}.xml", slide_document(background_picture_xml() + boxes + text_boxes + chart_frames_xml(charts, first_chart_id, context)))
+    archive.writestr(f"ppt/slides/_rels/slide{number}.xml.rels", slide_relationships_xml(number, has_notes, links, charts))
+    write_chart_parts(archive, charts, context)
+    return len(charts)
 
 
 def background_picture_xml() -> str:
@@ -102,7 +111,7 @@ def slide_link_ids(slide: dict) -> dict[str, str]:
     return {href: f"rId{number}" for number, href in enumerate(hrefs, start=FIRST_LINK_RELATIONSHIP_NUMBER)}
 
 
-def slide_relationships_xml(number: int, has_notes: bool, links: dict[str, str]) -> str:
+def slide_relationships_xml(number: int, has_notes: bool, links: dict[str, str], charts: list[ChartPart]) -> str:
     notes_relationship = notes_relationship_xml(number, "rId3") if has_notes else ""
     link_relationships = "".join(
         f'<Relationship Id="{relationship_id}" Type="{HYPERLINK_RELATIONSHIP_TYPE}" Target="{html.escape(href)}" TargetMode="External"/>'
@@ -112,7 +121,7 @@ def slide_relationships_xml(number: int, has_notes: bool, links: dict[str, str])
         '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
         '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>'
         f'<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/background{number}.png"/>'
-        f"{notes_relationship}{link_relationships}</Relationships>"
+        f"{notes_relationship}{link_relationships}{chart_relationships_xml(charts)}</Relationships>"
     )
 
 

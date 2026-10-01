@@ -20,9 +20,9 @@ class DeckFonts:
     embedded_faces: tuple[TrueTypeFace, ...] = ()
 
 
-def write_pptx_static_files(archive: zipfile.ZipFile, slide_count: int, noted_slides: tuple[int, ...], deck_fonts: DeckFonts = DeckFonts()) -> None:
+def write_pptx_static_files(archive: zipfile.ZipFile, slide_count: int, noted_slides: tuple[int, ...], deck_fonts: DeckFonts = DeckFonts(), chart_count: int = 0) -> None:
     fonts = embedded_fonts(list(deck_fonts.embedded_faces), slide_count + 3)
-    archive.writestr("[Content_Types].xml", content_types_xml(slide_count, noted_slides, bool(fonts)))
+    archive.writestr("[Content_Types].xml", content_types_xml(slide_count, noted_slides, bool(fonts), chart_count))
     archive.writestr("_rels/.rels", package_relationships_xml())
     archive.writestr("docProps/core.xml", core_properties_xml())
     archive.writestr("docProps/app.xml", app_properties_xml(slide_count))
@@ -37,7 +37,7 @@ def write_pptx_static_files(archive: zipfile.ZipFile, slide_count: int, noted_sl
         archive.writestr(font.part_name, embedded_open_type(font.face))
 
 
-def content_types_xml(slide_count: int, noted_slides: tuple[int, ...], has_fonts: bool = False) -> str:
+def content_types_xml(slide_count: int, noted_slides: tuple[int, ...], has_fonts: bool = False, chart_count: int = 0) -> str:
     overrides = [
         '<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>',
         '<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>',
@@ -51,12 +51,17 @@ def content_types_xml(slide_count: int, noted_slides: tuple[int, ...], has_fonts
         for index in range(1, slide_count + 1)
     )
     overrides.extend(notes_content_type_overrides(noted_slides))
+    overrides.extend(
+        f'<Override PartName="/ppt/charts/chart{number}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>'
+        for number in range(1, chart_count + 1)
+    )
     return xml_document(
         '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
         '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
         '<Default Extension="xml" ContentType="application/xml"/>'
         '<Default Extension="png" ContentType="image/png"/>'
         + ('<Default Extension="fntdata" ContentType="application/x-fontdata"/>' if has_fonts else "")
+        + ('<Default Extension="xlsx" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/>' if chart_count else "")
         + "".join(overrides)
         + "</Types>"
     )
