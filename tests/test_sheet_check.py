@@ -216,6 +216,39 @@ class FormulaVisibilityTest(WorkbookFixture):
         self.assertEqual([(code, issue["location"]) for code, issue in self.issues().items()], [("CIRCULAR_REFERENCE", "S!B1")])
 
 
+class FormulaNameTest(WorkbookFixture):
+    def setUp(self):
+        super().setUp()
+        self.create_workbook([{"title": "실적", "rows": [["담당", "매출"], ["이샘플", 1200], ["박예시", 980]]}])
+
+    def test_an_unknown_function_and_a_missing_sheet_are_refused_where_they_are_written(self):
+        envelope = self.apply([
+            {"op": "set_cell", "sheet": "실적", "cell": "C2", "value": "=SUMM(B2:B3)"},
+            {"op": "set_cell", "sheet": "실적", "cell": "C3", "value": "=Missing!A1"},
+        ])
+        self.assertEqual(envelope["status"], "error")
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("MISSING_SHEET_REFERENCE", "실적!C3"), ("UNKNOWN_FUNCTION", "실적!C2")])
+        self.assertIn("did you mean SUM?", envelope["issues"][1]["message"])
+        self.assertEqual(envelope["issues"][1]["suggestion"], "write SUM in place of SUMM")
+        self.assertNotIn("C2", self.cells())
+
+    def test_a_spec_formula_reading_a_later_sheet_and_a_let_function_are_written(self):
+        write_json(self.directory / "spec.json", {"sheets": [
+            {"title": "요약", "rows": [["합계", "=SUM(실적!B2:B3)"], ["두배", "=LET(double,LAMBDA(x,x*2),double(B1))"]]},
+            {"title": "실적", "rows": [["담당", "매출"], ["이샘플", 1200], ["박예시", 980]]},
+        ]})
+        envelope = run_office(["sheet", "create", "later.xlsx", "--spec", "spec.json"], self.directory)
+        self.assertNotIn("UNKNOWN_FUNCTION", [issue["code"] for issue in envelope["issues"]])
+        self.assertNotEqual(envelope["status"], "error", envelope["issues"])
+
+    def test_a_name_already_broken_in_the_workbook_does_not_stop_another_edit(self):
+        run_office_python(FIXTURE_WORKBOOK, self.directory)
+        envelope = self.apply([{"op": "set_cell", "sheet": "Sales", "cell": "F1", "value": "=Gone!B1+A1"}], name="fixture.xlsx")
+        self.assertNotEqual(envelope["status"], "error", envelope["issues"])
+        codes = {issue["code"]: issue for issue in run_office(["sheet", "check", "fixture.xlsx"], self.directory)["issues"]}
+        self.assertEqual(codes["MISSING_SHEET_REFERENCE"]["location"], "Sales!B2")
+
+
 class TextValueTest(WorkbookFixture):
     def check(self):
         return run_office(["sheet", "check", "book.xlsx"], self.directory)

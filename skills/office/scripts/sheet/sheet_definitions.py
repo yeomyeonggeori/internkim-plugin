@@ -417,7 +417,8 @@ AUTO_FILTER_MISSING = IssueKind("AUTO_FILTER_MISSING", WARNING, "a data table, a
 BLANK_HEADER_CELLS = IssueKind("BLANK_HEADER_CELLS", WARNING, "header cells are blank", "name every column")
 STALE_CACHED_VALUE = IssueKind("STALE_CACHED_VALUE", WARNING, "a formula's stored value differs from what the formula computes, so a viewer that does not recalculate shows the wrong number", "apply recalculate")
 FORMULA_ERROR = IssueKind("FORMULA_ERROR", ERROR, "a formula computes #DIV/0!, #REF!, #NAME?, #VALUE! or #N/A", "fix the formula's references or the cells it reads, with set_cell")
-MISSING_SHEET_REFERENCE = IssueKind("MISSING_SHEET_REFERENCE", ERROR, "a formula reads a sheet the workbook does not have", "add the sheet, or point the formula at an existing one with set_cell")
+MISSING_SHEET_REFERENCE = IssueKind("MISSING_SHEET_REFERENCE", ERROR, "a formula reads a sheet the workbook does not have; sheet create, edit and apply write nothing when their own formulas do", "add the sheet first, or point the formula at an existing one")
+UNKNOWN_FUNCTION = IssueKind("UNKNOWN_FUNCTION", ERROR, "a formula calls a function Excel does not have, so it shows #NAME?; sheet create, edit and apply write nothing when their own formulas do", "write the Excel function the message names, such as SUM for SUMM")
 BROKEN_DEFINED_NAME = IssueKind("BROKEN_DEFINED_NAME", ERROR, "a defined name points at #REF! or a sheet the workbook does not have", "read the workbook's defined names and recreate the reference")
 CONTENT_WOULD_BE_LOST = IssueKind("CONTENT_WOULD_BE_LOST", ERROR, "the workbook holds content the editor cannot carry through a save, such as form controls, embedded objects or an unknown extension, so nothing was written", "pass --allow-loss to save without it, or leave this workbook to Excel")
 CONTENT_DROPPED = IssueKind("CONTENT_DROPPED", WARNING, "--allow-loss saved the workbook without content the editor cannot carry", "tell the user what was dropped")
@@ -435,6 +436,7 @@ CHECK_ISSUE_KINDS = (
     STALE_CACHED_VALUE,
     FORMULA_ERROR,
     MISSING_SHEET_REFERENCE,
+    UNKNOWN_FUNCTION,
     BROKEN_DEFINED_NAME,
     NUMBER_TOO_WIDE,
     VALUE_STORED_AS_TEXT,
@@ -464,7 +466,7 @@ def behavior_lines() -> list[str]:
 
 GUIDE_SECTIONS = (("How the sheet commands behave", behavior_lines),)
 
-WRITE_ISSUE_KINDS = (FORMULA_SYNTAX, CIRCULAR_REFERENCE, FORMULA_NOT_EVALUATED, CHART_COLUMN_LEFT_OUT)
+WRITE_ISSUE_KINDS = (FORMULA_SYNTAX, UNKNOWN_FUNCTION, MISSING_SHEET_REFERENCE, CIRCULAR_REFERENCE, FORMULA_NOT_EVALUATED, CHART_COLUMN_LEFT_OUT)
 EDIT_ISSUE_KINDS = (CONTENT_WOULD_BE_LOST, CONTENT_DROPPED)
 GUIDE_ISSUES = (
     ("sheet create", WRITE_ISSUE_KINDS),
