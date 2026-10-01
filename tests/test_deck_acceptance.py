@@ -89,6 +89,13 @@ class FreeHtmlGateTest(unittest.TestCase):
         self.assertTrue(acceptance["verdict"].startswith("FIX ROUND 1"))
         self.assertTrue({"TINY_TEXT", "VERTICAL_DEAD_ZONE"} <= {defect["code"] for defect in acceptance["defects"]})
 
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+    def test_a_build_with_its_streams_merged_still_prints_one_json_document(self):
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory) / "slides.html").write_text(FREE_HTML_DECK, encoding="utf-8")
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, cwd=directory)
+        self.assertIn("acceptance", json.loads(completed.stdout)["details"])
+
 
 class BuildHelpTest(unittest.TestCase):
     def test_help_prints_usage_and_never_builds(self):
