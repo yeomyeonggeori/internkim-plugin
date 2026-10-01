@@ -67,7 +67,7 @@ COMMANDS = (
     Command("deck", "merge", "deck/merge_pptx.py", "fill a .pptx template's {{ placeholders }} from a values file, repeating table rows per list item"),
     Command("deck", "restore", "deck/restore_source.py", "recover the small authored slides.html from a delivered deck .html", needs_packages=False),
     Command("deck", "accept", "deck/accept_review.py", "check review-decision.json against the review evidence", needs_packages=False),
-    Command("deck", "image", "deck/fetch_image.py", "download a public-domain photo for a search query", needs_packages=False),
+    Command("deck", "image", "deck/fetch_image.py", "download up to three public-domain photos for an English search query, with each one's size, ratio, licence and source"),
     Command("paperwork", "render", "paperwork/render_paperwork.py", "render a company form to PDF on letterhead"),
     Command("paperwork", "fill", "paperwork/fill_template.py", "fill a standard contract template to .docx"),
     Command("convert", "", "convert/convert_file.py", "convert a file to another format, such as docx to md, pdf to docx, or xlsx to csv"),

@@ -102,7 +102,7 @@ It writes `build/<deck-slug>.pdf`; add `--format pptx` for PowerPoint or `--form
 
 ## Images
 
-Use a photo only when it shows what the slide is about, in a `cover` or `image` slide. `<skill>/scripts/office deck image "warehouse" images/warehouse.jpg` saves a public-domain photo and reports its ratio and source page; look at the file and drop it if it shows something else. The kit crops it to fill its frame. Never put a grey box or a placeholder where a photo would go; without a fitting photo, use another layout. Name the photo's source in `.source`. No emoji.
+Use a photo only when it shows what the slide is about, in a `cover` or `image` slide. `<skill>/scripts/office deck image "warehouse shelves" images/warehouse.jpg` saves up to three public-domain candidates for an English query, with each one's ratio and source page; look at them, keep the one that shows the subject, and delete the rest. The kit crops it to fill its frame. Never put a grey box or a placeholder where a photo would go; without a fitting photo, use another layout. Name the photo's source in `.source`. No emoji.
 
 ## Custom design
 
