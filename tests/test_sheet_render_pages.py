@@ -84,6 +84,17 @@ class RenderedPagesTest(WorkbookFixture):
         envelope, _ = self.render()
         self.assertNotIn("BLANK_PAGE", [issue["code"] for issue in envelope["issues"]])
 
+    def test_fit_to_one_page_tall_and_printed_gridlines_shape_the_pages(self):
+        self.create_workbook([{"title": "일지", "rows": [["일자", "건수"]] + [[f"{day}일", day] for day in range(1, 151)]}])
+        self.assertGreater(self.render()[0]["details"]["pageCount"], 1)
+        self.assertEqual(self.apply([{"op": "set_page_setup", "fitToHeight": 1, "fitToWidth": 0, "printGridlines": True}])["status"], "ok")
+        sheet = load_workbook(self.directory / "book.xlsx")["일지"]
+        self.assertEqual((sheet.page_setup.fitToWidth, sheet.page_setup.fitToHeight, sheet.print_options.gridLines), (0, 1, True))
+        self.apply([{"op": "set_cell", "sheet": "일지", "cell": "D2", "value": "메모"}])
+        envelope, preview = self.render()
+        self.assertEqual(envelope["details"]["pageCount"], 1)
+        self.assertIn("border-right:1px solid #d0d0d0", preview.replace(": ", ":"))
+
 
 SHARES = [["분기", "국내", "해외"], ["1분기", 30, 10], ["2분기", 20, 20], ["3분기", 45, 5]]
 

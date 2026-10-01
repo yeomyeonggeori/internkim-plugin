@@ -9,6 +9,7 @@ from openpyxl.utils import get_column_letter, range_boundaries
 from number_format import Displayed, displayed
 from office_preview import PageGeometry, Preview, emu_to_pixels, escaped, inches_to_pixels, page_section, pixels, points_to_pixels, positioned, style_attribute
 from preview_fonts import FontRegistry, FontRequest, css_font_family
+from sheet_objects import EXCEL_DEFAULT_FIT_PAGES
 from xlsx_colors import css_color
 from xlsx_conditional import ConditionalStyles
 from xlsx_preview_charts import chart_html, chart_kind, chart_title, drawing_box, image_html, is_whole
@@ -396,11 +397,13 @@ def print_scale(worksheet, frame: SheetFrame, geometry: PageGeometry) -> float:
     if properties is not None and properties.fitToPage:
         total_width = sum(frame.widths.values())
         total_height = sum(frame.heights.values())
+        width_pages = EXCEL_DEFAULT_FIT_PAGES if setup.fitToWidth is None else int(setup.fitToWidth)
+        height_pages = EXCEL_DEFAULT_FIT_PAGES if setup.fitToHeight is None else int(setup.fitToHeight)
         scales = [1.0]
-        if setup.fitToWidth:
-            scales.append(geometry.content_width * int(setup.fitToWidth) / total_width)
-        if setup.fitToHeight:
-            scales.append((geometry.height - geometry.margin_top - geometry.margin_bottom) * int(setup.fitToHeight) / total_height)
+        if width_pages:
+            scales.append(geometry.content_width * width_pages / total_width)
+        if height_pages:
+            scales.append((geometry.height - geometry.margin_top - geometry.margin_bottom) * height_pages / total_height)
         return min(scales)
     return (setup.scale or 100) / 100
 

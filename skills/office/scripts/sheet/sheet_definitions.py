@@ -55,6 +55,7 @@ VALUE_TYPE = Field("type", Choice(("auto", "text")), "auto (default) stores text
 COUNT = Field("count", Number(minimum=1, integer=True), "how many, default 1")
 RANGE = Field("range", CELL_ADDRESS, "range such as A1:D10, or one cell", required=True)
 COLOR = Text(non_empty=True)
+FIT_PAGES = AnyOf((Boolean(), Number(minimum=0, maximum=1000, integer=True)), name="true, false or a page count")
 HIDDEN = Field("hidden", Boolean(), "true (default) hides, false shows again")
 CHART_INDEX = Field("chart", Number(minimum=0, integer=True), "chart index on the sheet, from sheet read", required=True)
 SHAPE_GEOMETRIES = {"rectangle": "rect", "rounded_rectangle": "roundRect", "ellipse": "ellipse", "arrow": "rightArrow", "callout": "wedgeRectCallout", "textbox": "rect"}
@@ -275,7 +276,9 @@ OPERATIONS = Variant(
             SHEET_NAME,
             Field("orientation", Choice(("portrait", "landscape")), "page orientation"),
             Field("paperSize", Choice(("A4", "A3", "letter", "legal")), "paper size"),
-            Field("fitToWidth", Boolean(), "shrink every column onto one page width"),
+            Field("fitToWidth", FIT_PAGES, "shrink the columns onto this many pages wide; true is one page, and 0 or false lets the width run on"),
+            Field("fitToHeight", FIT_PAGES, "shrink the rows onto this many pages tall; true is one page, and 0 or false lets the length run on"),
+            Field("printGridlines", Boolean(), "print the cell gridlines"),
             Field("printTitleRows", Text(), "rows repeated on every page such as 1:1; empty text removes them"),
             Field("printArea", Text(), "range to print such as A1:H40; empty text prints the used range"),
             Field("margins", Choice(("normal", "narrow", "wide")), "page margins"),
