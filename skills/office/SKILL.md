@@ -1,7 +1,7 @@
 ---
 name: office
 description: Create, read, edit, validate, and attach office files — Word .docx, PDF, Excel .xlsx/.csv/.tsv, slide decks (HTML, PDF, PPTX), and standardized Korean company forms and contracts on letterhead. Use for reports, memos, letters, workbooks, formulas, decks, pitch decks, PowerPoint, Keynote, 워드, 문서, 보고서, PDF, 엑셀, 스프레드시트, 표, 발표자료, 파워포인트, 피피티, 견적서, 거래명세서, 청구서, 발주서, 품의서, 지출결의서, 회의록, 주간업무보고, 출장보고서, 재직증명서, 경력증명서, 휴가신청서, 위임장, 오퍼레터, 근로계약서, 비밀유지계약서, NDA, 업무협약서, MOU, 용역계약서, quotation, invoice, purchase order, certificate, and contract requests.
-compatibility: Requires python3 and uv, with network access on first run to install python-docx, docxtpl, fpdf2, pypdf, pypdfium2, openpyxl, and python-pptx. Korean PDFs need a Korean-capable TTF or TTC font. Drawing pages needs bun or node 18 and no browser. Company forms and reading attached files need InternKim's tool server.
+compatibility: Requires python3 and uv, and bun or node 18 to draw pages; no browser or office suite. The first run installs the packages the scripts declare, so it needs network access. Korean text needs a Korean-capable TTF or TTC font. Company forms and reading attached files need InternKim's tool server.
 metadata:
   kim.intern.tool-references: "read company_info_get company_info_set company_document_register company_document_update company_document_list company_document_search"
 ---
@@ -21,7 +21,7 @@ One command, `<skill>/scripts/office <format> <verb> [arguments]`, writes and ch
 | Converting a file to another format: docx, md, html, pdf to docx, xlsx to csv, csv to xlsx, xls or ods to xlsx, docx, xlsx or pptx to pdf | `convert` | `office guide convert` |
 | Standardized company form or contract on letterhead (견적서, 품의서, 증명서, 계약서, NDA, MOU) | `paperwork check`, `paperwork render`, `paperwork fill` | `references/paperwork.md` |
 
-A standardized form belongs to paperwork even when it ships as .docx or PDF: its letterhead, approval boxes, seals, and fixed clauses live there. Work the listed commands do not cover, such as merging PDFs or restyling a document, goes in a task-local Python file run with `<skill>/scripts/office python <script.py> [arguments]`, which provides every office package.
+A standardized form belongs to paperwork even when it ships as .docx or PDF: its letterhead, approval boxes, seals, and fixed clauses live there. Work the listed commands do not cover, such as merging PDFs, goes in a task-local Python file run with `<skill>/scripts/office python <script.py> [arguments]`, which provides every office package.
 
 ## Rules for every format
 
@@ -33,9 +33,9 @@ A standardized form belongs to paperwork even when it ships as .docx or PDF: its
 
 **File naming.** Documents, PDFs, and workbooks live at `~/documents/<title>.<ext>`, with any Markdown source beside them. Decks live in `artifacts/<deck-slug>/` and deliver from `artifacts/<deck-slug>/build/`. Company forms go to the storage directory their registration returns.
 
-**Results.** Every command prints one JSON result: `status` is ok, warning, or error, and each issue carries a stable `code`, a `location`, and a `suggestion`. `<skill>/scripts/office guide <format> [verb]` lists every input field and every code a command reports.
+**Results.** Every command prints one JSON result: `status` is ok, warning, or error, and each issue carries a stable `code`, a `location`, and a `suggestion`. `<skill>/scripts/office guide <format>` lists its operations and codes, `guide <format> <verb>` that command's fields, and `guide <format> <verb> <operation>` one operation's.
 
-**Verify before attaching.** Run the format's `validate` command, or reopen the file, before delivery. Pass the source names, dates, totals, and key labels as `--required-text` where the validator takes it. Read every warning, revise real problems, then attach only the accepted final output. Say what visual uncertainty remains.
+**Verify before attaching.** Run the final check the format's reference names and look at the pages it renders. Pass the source names, dates, totals, and key labels as `--required-text` where the command takes it. Read every warning, revise real problems, then attach only the accepted final output. Say what visual uncertainty remains.
 
 **Korean fonts.** Korean text needs a Korean-capable font. The commands find one from a single list (Nanum Gothic, Noto Sans CJK, Apple SD Gothic Neo); never fall back to a built-in Latin font for Korean. Decks use the bundled Paperlogy font.
 
