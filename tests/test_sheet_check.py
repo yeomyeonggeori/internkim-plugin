@@ -237,6 +237,14 @@ class TextValueTest(WorkbookFixture):
         values = run_office(["sheet", "read", "book.xlsx", "--range", "B2:C4"], self.directory)["details"]["range"]["values"]
         self.assertEqual(values, [[1200, 0.125], [1350, 0.2], [2550, None]])
 
+    def test_a_column_whose_every_cell_reads_as_a_number_is_reported_without_a_number_beside_it(self):
+        self.create_workbook([{"title": "실적", "rows": [["담당", "건수", "메모"], ["이샘플", "12", "가"], ["박예시", "9", "나"], ["최견본", "7", "다"]]}])
+        issues = self.text_issues()
+        self.assertEqual([issue["location"] for issue in issues], ["실적!B2:B4"])
+        self.assertEqual(issues[0]["suggestion"], [{"op": "set_range", "sheet": "실적", "cell": "B2", "values": [[12], [9], [7]]}])
+        self.assertEqual(self.apply(issues[0]["suggestion"])["status"], "ok")
+        self.assertEqual(self.text_issues(), [])
+
     def test_codes_with_leading_zeros_and_labels_in_a_text_column_are_left_alone(self):
         self.create_workbook([{"title": "S", "rows": [["코드", "이름", "수량"], ["007", "이샘플", 3], ["2026", "박예시", "4"]]}])
         self.assertEqual([issue["location"] for issue in self.text_issues()], ["S!C3"])

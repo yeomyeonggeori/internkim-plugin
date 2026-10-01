@@ -63,12 +63,27 @@ def text_value_runs(worksheet) -> list[Run]:
 
 
 def columns_holding_numbers(worksheet, header_row: int) -> set[int]:
-    return {
-        cell.column
-        for row in worksheet.iter_rows(min_row=header_row + 1)
-        for cell in row
-        if cell.data_type == "f" or isinstance(cell.value, (int, float)) and not isinstance(cell.value, bool)
-    }
+    holding: set[int] = set()
+    readings: dict[int, list[bool]] = {}
+    for row in worksheet.iter_rows(min_row=header_row + 1):
+        for cell in row:
+            if holds_number(cell):
+                holding.add(cell.column)
+            if cell.value is not None and cell.value != "":
+                readings.setdefault(cell.column, []).append(holds_or_reads_as_number(cell))
+    return holding | {column for column, reads_as_numbers in readings.items() if all(reads_as_numbers)}
+
+
+def holds_number(cell) -> bool:
+    return cell.data_type == "f" or isinstance(cell.value, (int, float)) and not isinstance(cell.value, bool)
+
+
+def holds_or_reads_as_number(cell) -> bool:
+    if holds_number(cell):
+        return True
+    if cell.data_type != "s" or not isinstance(cell.value, str) or cell.quotePrefix:
+        return False
+    return not isinstance(typed_text(cell.value)[0], str)
 
 
 def text_reading(cell, in_numeric_column: bool) -> Reading | None:
