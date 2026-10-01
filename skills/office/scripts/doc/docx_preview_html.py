@@ -13,14 +13,16 @@ VERTICAL_JUSTIFY = {"top": "flex-start", "center": "center", "bottom": "flex-end
 
 
 class PageWriter:
-    def __init__(self, page_number: int, page_count: int):
+    def __init__(self, page_number: int, page_count: int, shown_number: int):
         self.page_number = page_number
         self.page_count = page_count
+        self.shown_number = shown_number
 
     def page_html(self, page: Page) -> str:
         geometry = page.geometry
         width = geometry.content_width
-        parts = [positioned(geometry.margin_left, page.body_top, width, "".join(self.placed_html(item) for item in page.placed))]
+        parts = [watermark_image_html(page)] if page.section.watermark_image else []
+        parts.append(positioned(geometry.margin_left, page.body_top, width, "".join(self.placed_html(item) for item in page.placed)))
         if page.header:
             parts.append(positioned(geometry.margin_left, geometry.header_distance, width, self.layouts_html(page.header)))
         if page.footer:
@@ -109,7 +111,7 @@ class PageWriter:
 
     def field_text(self, fragment: Fragment) -> str:
         item = fragment.item
-        return str(self.page_number if isinstance(item, FieldItem) and item.kind == "page" else self.page_count)
+        return str(self.shown_number if isinstance(item, FieldItem) and item.kind == "page" else self.page_count)
 
     def object_html(self, fragment: Fragment) -> str:
         if fragment.kind == "tab":
@@ -181,6 +183,12 @@ def table_offset(block: TableBlock) -> str | None:
     if block.align == "center":
         return "auto"
     return pixels(block.indent) if block.indent else None
+
+
+def watermark_image_html(page: Page) -> str:
+    geometry, image = page.geometry, page.section.watermark_image
+    picture = f'<img src="{image.source}"{style_attribute({"width": pixels(image.width), "height": pixels(image.height)})}>'
+    return positioned((geometry.width - image.width) / 2, (geometry.height - image.height) / 2, image.width, picture)
 
 
 def watermark_html(page: Page) -> str:

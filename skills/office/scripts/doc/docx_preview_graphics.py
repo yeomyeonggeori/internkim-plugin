@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import base64
+import io
 import re
+
+from PIL import Image, UnidentifiedImageError
 
 from docx.oxml.ns import qn
 
 from docx_charts import read_specification
+from docx_page_operations import PICTURE_WATERMARK_PREFIX
 from docx_preview_model import BoxItem, ChartItem, ImageItem
 from docx_preview_tables import TableLayers
 from office_preview import emu_to_pixels, inches_to_pixels, points_to_pixels
@@ -24,6 +28,7 @@ ALTERNATE_CONTENT_TAG = f"{{{NAMESPACES['mc']}}}AlternateContent"
 GRAPHIC_TAGS = (qn("w:drawing"), qn("w:pict"), ALTERNATE_CONTENT_TAG)
 VML_LENGTH = re.compile(r"(width|height)\s*:\s*([\d.]+)(pt|in|px)?")
 VML_UNITS_TO_PIXELS = {"pt": points_to_pixels, "in": inches_to_pixels, "px": float, "": points_to_pixels}
+WASHOUT_WHITE_SHARE = 0.7
 
 
 def graphic_items(element, part, builder) -> list:
@@ -74,9 +79,12 @@ def vml_items(picture, part, builder) -> list:
     if text_path is not None:
         builder.watermark = text_path.get("string", "")
         return []
-    shape = next((child for child in picture if child.tag.startswith(f"{{{NAMESPACES['v']}}}")), None)
+    shape = next((child for child in picture if child.tag.startswith(f"{{{NAMESPACES['v']}}}") and not child.tag.endswith("}shapetype")), None)
     width, height = vml_size(shape.get("style", "") if shape is not None else "")
     image = picture.find(".//v:imagedata", NAMESPACES)
+    if image is not None and shape is not None and (shape.get("id") or "").startswith(PICTURE_WATERMARK_PREFIX):
+        builder.watermark_image = watermark_image(part, image.get(f"{{{NAMESPACES['r']}}}id"), width, height, image.get("gain") is not None)
+        return []
     if image is not None:
         source = image_data_uri(part, image.get(f"{{{NAMESPACES['r']}}}id"))
         return [ImageItem(source, width, height)] if source else []
@@ -85,6 +93,25 @@ def vml_items(picture, part, builder) -> list:
         builder.preview.approximate("floating pictures and shapes placed in line")
         return [BoxItem(builder.blocks(list(text_box), part, TableLayers()), width, height)]
     return []
+
+
+def watermark_image(part, relationship_id: str | None, width: float, height: float, is_washed_out: bool) -> ImageItem | None:
+    source = image_data_uri(part, relationship_id)
+    if source is None or not is_washed_out:
+        return ImageItem(source, width, height) if source else None
+    try:
+        return ImageItem(washed_out(part.rels[relationship_id].target_part.blob), width, height)
+    except UnidentifiedImageError:
+        return ImageItem(source, width, height)
+
+
+def washed_out(blob: bytes) -> str:
+    with Image.open(io.BytesIO(blob)) as picture:
+        opaque = picture.convert("RGBA")
+    white = Image.new("RGBA", opaque.size, (255, 255, 255, 255))
+    stream = io.BytesIO()
+    Image.blend(opaque, white, WASHOUT_WHITE_SHARE).save(stream, format="PNG")
+    return f"data:image/png;base64,{base64.b64encode(stream.getvalue()).decode('ascii')}"
 
 
 def vml_size(style: str) -> tuple[float, float]:

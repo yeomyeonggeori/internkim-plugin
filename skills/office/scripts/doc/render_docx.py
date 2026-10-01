@@ -8,7 +8,7 @@ SCRIPTS_PATH = Path(__file__).resolve().parents[1]
 sys.path[1:1] = [str(SCRIPTS_PATH / "deck")]
 
 from docx_layout import Layout  # noqa: E402
-from docx_pagination import Paginator  # noqa: E402
+from docx_pagination import Paginator, displayed_page_numbers  # noqa: E402
 from docx_preview import DocxModelBuilder  # noqa: E402
 from docx_preview_html import PageWriter  # noqa: E402
 from office_preview import Preview, approximation_issues, blank_page_issues, draw_pages, write_preview  # noqa: E402
@@ -23,7 +23,8 @@ def docx_preview(source_path: Path) -> tuple[Preview, list[dict]]:
     fonts = FontRegistry()
     pages = Paginator(Layout(fonts)).paginate(sections)
     preview = builder.preview
-    preview.pages = [PageWriter(number, len(pages)).page_html(page) for number, page in enumerate(pages, start=1)]
+    shown_numbers = displayed_page_numbers(pages)
+    preview.pages = [PageWriter(index + 1, len(pages), shown_numbers[index]).page_html(page) for index, page in enumerate(pages)]
     preview.blank_pages = [f"page {number}" for number, page in enumerate(pages, start=1) if page.is_blank]
     return preview, fonts.preview_fonts()
 
