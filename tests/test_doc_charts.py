@@ -94,7 +94,7 @@ class DocumentChartTest(unittest.TestCase):
         self.assertFalse((self.directory / "report.docx").exists())
 
     def test_the_pdf_export_draws_charts_as_vector_shapes(self):
-        self.export("--format", "pdf", "--output", "report.pdf")
+        self.export("--output", "report.pdf")
         run_office_python(PATH_COUNT, self.directory)
         self.assertGreater(int((self.directory / "paths.txt").read_text()), 20)
 

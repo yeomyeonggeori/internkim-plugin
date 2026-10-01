@@ -1,6 +1,6 @@
 # PDF
 
-Read, extract, merge, split, lightly edit, or create layout-critical PDFs in `~/documents`, when placement carries meaning. When it does not, write the content and export it with `doc export`; when the layout belongs to someone else's letterhead or contract template, fill that template with paperwork. SKILL.md's rules for source truth, totals, earlier files, naming, and verification apply here.
+Read, extract, merge, split, lightly edit, or create layout-critical PDFs in `~/documents`, when placement carries meaning. When it does not, write the content as Markdown and run `<skill>/scripts/office doc export ~/documents/<title>.md --output ~/documents/<title>.pdf`; the `.pdf` extension is what makes it a PDF. When the layout belongs to someone else's letterhead or contract template, fill that template with paperwork. SKILL.md's rules for source truth, totals, earlier files, naming, and verification apply here.
 
 ## Workflow
 

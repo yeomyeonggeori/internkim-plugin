@@ -17,7 +17,7 @@ class Route:
 ROUTES = (
     Route("md", "docx", "headings, lists, tables, links and local images; Korean fonts set"),
     Route("md", "html", "one self-contained page; local images embedded"),
-    Route("md", "pdf", "same as doc export --format pdf"),
+    Route("md", "pdf", "same as doc export --output <name>.pdf"),
     Route("docx", "pdf", "each page as doc render lays it out: page size, margins, styles, tables, pictures, headers and footers"),
     Route("xlsx", "pdf", "each visible sheet as sheet render prints it: print area, scaling, number formats, fills, borders and charts"),
     Route("pptx", "pdf", "each slide as deck check previews it: shapes, text, pictures, tables and charts"),

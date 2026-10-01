@@ -1,6 +1,6 @@
 # Word Documents
 
-Create or modify Word documents as local `.docx` files, PDF on request, authored from a Markdown source of truth. SKILL.md's rules for source truth, earlier files, naming, and verification apply here.
+Create or modify Word documents as local `.docx` files, PDF on request, authored from a Markdown source of truth. The `--output` extension of `doc export` picks the format: `--output ~/documents/<title>.pdf` writes the PDF from the same Markdown, and there is no `--format` flag. SKILL.md's rules for source truth, earlier files, naming, and verification apply here.
 
 ## Workflow
 
