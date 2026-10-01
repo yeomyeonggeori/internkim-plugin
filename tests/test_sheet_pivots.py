@@ -154,6 +154,44 @@ class DateGroupingTest(PivotFixture):
         self.assertIn("must also be named in row or column", issue["message"])
 
 
+class NumberGroupingTest(PivotFixture):
+    def test_numbers_group_into_bins_of_equal_width(self):
+        self.pivot(row="amount", values=["qty"], groupNumbers={"amount": {"step": 2000}})
+        self.assertEqual(self.grid(), [["amount", "Sum of qty"], ["2000-3999", 4], ["4000-5999", 11], ["6000-7999", 7], ["Grand Total", 22]])
+        cache = self.part("xl/pivotCache/pivotCacheDefinition1.xml")
+        self.assertIn('<rangePr autoStart="0" startNum="2000" endNum="7000" groupInterval="2000"/>', cache)
+        self.assertIn('<groupItems count="5"><s v="&lt;2000"/><s v="2000-3999"/>', cache)
+        self.assertEqual(self.reloaded_pivot().cache.cacheFields[5].fieldGroup.rangePr.groupInterval, 2000)
+        self.apply([{"op": "set_cell", "sheet": "Orders", "cell": "F2", "value": 12000000}])
+        self.pivot(row="amount", values=["qty"], groupNumbers={"amount": {"step": 5000000}}, targetSheet="Wide")
+        sheet = load_workbook(self.directory / "book.xlsx")["Wide"]
+        self.assertEqual((sheet["A4"].value, sheet["A5"].value), ("0-4999999", "10000000-14999999"))
+        self.assertGreaterEqual(sheet.column_dimensions["A"].width, len("10000000-14999999") + 2)
+
+    def test_a_bin_needs_a_number_in_every_row_and_a_positive_step(self):
+        self.apply([{"op": "set_cell", "sheet": "Orders", "cell": "F4", "value": "미정"}])
+        issue = self.refused(row="amount", values=["qty"], groupNumbers={"amount": {"step": 1000}})
+        self.assertIn("row 4 holds '미정'", issue["message"])
+        issue = self.refused(row="qty", values=["amount"], groupNumbers={"qty": {"step": 0}})
+        self.assertEqual(issue["location"], "ops[0].groupNumbers.qty.step")
+
+
+class TopFilterTest(PivotFixture):
+    def test_only_the_items_with_the_largest_totals_stay_and_the_total_follows_them(self):
+        self.pivot(row="region", values=["qty", "amount"], top={"field": "region", "count": 2})
+        self.assertEqual(self.grid(), [["region", "Sum of qty", "Sum of amount"], ["Daegu", 7, 7000], ["Seoul", 9, 11000], ["Grand Total", 16, 18000]])
+        table = self.part("xl/pivotTables/pivotTable1.xml")
+        self.assertIn('<filters count="1"><filter fld="1" type="count" evalOrder="-1" id="1" iMeasureFld="0"><autoFilter ref="A1"><filterColumn colId="0"><top10 val="2" filterVal="2"/>', table)
+        self.assertEqual(len(self.reloaded_pivot().filters), 1)
+        self.pivot(row="region", values=["qty"], top={"field": "region", "count": 1, "bottom": True}, targetCell="F3")
+        sheet = load_workbook(self.directory / "book.xlsx")["Pivot"]
+        self.assertEqual([[cell.value for cell in row] for row in sheet["F4:G5"]], [["Busan", 6], ["Grand Total", 6]])
+
+    def test_the_filtered_header_must_be_a_row_or_column(self):
+        issue = self.refused(row="region", values=["qty"], top={"field": "channel", "count": 1})
+        self.assertEqual(issue["location"], "ops[0].top.field")
+
+
 class ReportFilterTest(PivotFixture):
     def test_filters_sit_above_the_table_as_page_fields(self):
         self.pivot(row="region", filters=["channel", "product"], values=["amount"])
@@ -192,6 +230,10 @@ class PivotPersistenceTest(PivotFixture):
         self.assertIn('groupBy="quarters"', cache)
         self.assertIn("formula=\"'amount'-'cost'\"", cache)
         self.assertIn("pageField", self.part("xl/pivotTables/pivotTable1.xml"))
+        self.pivot(row="amount", values=["qty"], groupNumbers={"amount": {"step": 2000}}, top={"field": "amount", "count": 2}, targetSheet="Bins")
+        self.apply([{"op": "set_cell", "sheet": "Orders", "cell": "I2", "value": "later"}])
+        self.assertIn('groupInterval="2000"', self.part("xl/pivotCache/pivotCacheDefinition2.xml"))
+        self.assertIn('<top10 val="2" filterVal="2"/>', self.part("xl/pivotTables/pivotTable2.xml"))
         rendered = run_office(["sheet", "render", "book.xlsx", "--sheet", "Pivot"], self.directory)
         self.assertEqual(rendered["status"], "ok", rendered)
         preview = (self.directory / "book-preview" / "preview.html").read_text(encoding="utf-8")

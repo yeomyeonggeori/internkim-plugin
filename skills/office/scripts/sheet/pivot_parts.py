@@ -7,7 +7,7 @@ from xml.sax.saxutils import quoteattr
 from lxml import etree
 from openpyxl.styles.numbers import BUILTIN_FORMATS_REVERSE
 
-from pivot_layout import DATE_UNITS, PivotAxis, PivotField, PivotModel, as_datetime, item_key, numbers
+from pivot_layout import DATE_UNITS, DateGroup, PivotAxis, PivotField, PivotModel, as_datetime, item_key, numbers, shown_number
 from workbook_package import (
     MAIN_NAMESPACE,
     RELATIONSHIP_NAMESPACE,
@@ -131,10 +131,20 @@ def grouped_cache_field(header: str, index: int, pivot_field: PivotField, values
     group = pivot_field.group
     items = "".join(f"<s v={escaped(item)}/>" for item in group.items)
     return (
-        f'<cacheField name={escaped(header)} numFmtId="{SHORT_DATE_FORMAT_ID}">{shared_items(values)}'
-        f'<fieldGroup base="{index}"><rangePr groupBy="{DATE_UNITS[group.unit]}" startDate="{stamp(group.start)}" endDate="{stamp(group.end)}"/>'
+        f'<cacheField name={escaped(header)} numFmtId="{group_format_id(pivot_field)}">{shared_items(values)}'
+        f'<fieldGroup base="{index}">{range_xml(group)}'
         f'<groupItems count="{len(group.items)}">{items}</groupItems></fieldGroup></cacheField>'
     )
+
+
+def range_xml(group) -> str:
+    if isinstance(group, DateGroup):
+        return f'<rangePr groupBy="{DATE_UNITS[group.unit]}" startDate="{stamp(group.start)}" endDate="{stamp(group.end)}"/>'
+    return f'<rangePr autoStart="0" startNum="{shown_number(group.start)}" endNum="{shown_number(group.end)}" groupInterval="{shown_number(group.step)}"/>'
+
+
+def group_format_id(pivot_field: PivotField) -> int:
+    return SHORT_DATE_FORMAT_ID if isinstance(pivot_field.group, DateGroup) else 0
 
 
 def listed_cache_field(header: str, pivot_field: PivotField) -> str:
@@ -208,7 +218,7 @@ def pivot_field_xml(model: PivotModel, index: int, is_tabular: bool) -> str:
     for axis_name, fields in (("axisRow", model.rows.fields), ("axisCol", model.columns.fields), ("axisPage", model.pages)):
         pivot_field = next((candidate for candidate in fields if candidate.index == index), None)
         if pivot_field is not None:
-            number_format = f' numFmtId="{SHORT_DATE_FORMAT_ID}"' if pivot_field.group is not None else ""
+            number_format = f' numFmtId="{SHORT_DATE_FORMAT_ID}"' if isinstance(pivot_field.group, DateGroup) else ""
             return f'<pivotField axis="{axis_name}"{attributes}{number_format} showAll="0">{item_list(pivot_field)}</pivotField>'
     return f'<pivotField{attributes} showAll="0"/>'
 
@@ -287,5 +297,16 @@ def table_xml(model: PivotModel, placement: PivotPlacement, cache_id: int, forma
         f'<rowFields count="{model.rows.depth}">{row_fields}</rowFields>{axis_items_xml(model.rows, "rowItems")}'
         f'{column_part(model)}{page_part(model)}<dataFields count="{len(model.values)}">{data_fields}</dataFields>'
         '<pivotTableStyleInfo name="PivotStyleLight16" showRowHeaders="1" showColHeaders="1" showRowStripes="0" showColStripes="0" showLastColumn="1"/>'
-        '</pivotTableDefinition>'
+        f'{filters_xml(model)}</pivotTableDefinition>'
+    )
+
+
+def filters_xml(model: PivotModel) -> str:
+    if model.top is None:
+        return ""
+    direction = ' top="0"' if model.top.bottom else ""
+    return (
+        f'<filters count="1"><filter fld="{model.top.field}" type="count" evalOrder="-1" id="1" iMeasureFld="0">'
+        f'<autoFilter ref="A1"><filterColumn colId="0"><top10{direction} val="{model.top.count}" filterVal="{model.top.count}"/></filterColumn></autoFilter>'
+        '</filter></filters>'
     )

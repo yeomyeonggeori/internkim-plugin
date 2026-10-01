@@ -87,6 +87,16 @@ PIVOT_VALUE = AnyOf((Text(non_empty=True), Record("pivot value", "one summarized
     Field("numberFormat", Text(non_empty=True), "number format, default the pivot's, or 0.0% for a percent"),
 ))), name="header name or pivot value")
 
+PIVOT_NUMBER_GROUP = Record("number group", "bins of equal width over a number header", (
+    Field("step", Number(minimum=0), "width of each bin, more than 0", required=True),
+    Field("start", Number(), "lower bound of the first bin, default the smallest value rounded down to a multiple of step"),
+))
+PIVOT_TOP = Record("top items", "a top or bottom filter on a row or column header", (
+    Field("field", Text(non_empty=True), "row or column header whose items are ranked", required=True),
+    Field("count", Number(minimum=1, integer=True), "how many items stay", required=True),
+    Field("bottom", Boolean(), "keep the smallest totals instead, default false"),
+))
+
 OPERATIONS = Variant(
     "operation",
     "one edit of sheet apply; operations run in order and each sees the workbook the ones before it left, and the batch applies whole or not at all",
@@ -381,6 +391,8 @@ OPERATIONS = Variant(
             Field("values", ListOf(PIVOT_VALUE, non_empty=True), "what to summarize: header names, or objects for a per-value function, percent or formula", required=True),
             Field("function", Choice(PIVOT_FUNCTIONS), "how values given by name combine, default sum"),
             Field("groupDates", MapOf(Choice(("month", "quarter", "year")), key="row or column header"), "group a date header by month, quarter or year; every row needs a date"),
+            Field("groupNumbers", MapOf(PIVOT_NUMBER_GROUP, key="row or column header"), "group a number header into bins of equal width, such as {\"금액\": {\"step\": 1000000}}; every row needs a number"),
+            Field("top", PIVOT_TOP, "keep only the items of one row or column header with the largest, or smallest, totals of the first value"),
             Field("targetSheet", Text(non_empty=True), "sheet the pivot goes on, created when missing, default a new sheet named Pivot"),
             Field("targetCell", CELL_ADDRESS, "top-left cell of the pivot, default A3"),
             Field("name", Text(non_empty=True), "pivot table name, default PivotTable1, PivotTable2 and so on"),

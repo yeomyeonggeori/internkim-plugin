@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 import datetime
+import math
 import re
 
 from pivot_formula import PivotFormula, evaluate
@@ -91,6 +92,51 @@ def date_group(unit: str, values: list) -> DateGroup:
 
 
 @dataclass(frozen=True)
+class NumberGroup:
+    step: float
+    start: float
+    end: float
+    labels_whole_numbers: bool
+
+    @property
+    def bucket_count(self) -> int:
+        return math.floor((self.end - self.start) / self.step) + 1
+
+    def bucket_label(self, bucket: int) -> str:
+        low = self.start + bucket * self.step
+        high = low + self.step - 1 if self.labels_whole_numbers else low + self.step
+        return f"{shown_number(low)}-{shown_number(high)}"
+
+    @property
+    def items(self) -> list[str]:
+        upper = self.start + self.bucket_count * self.step
+        return [f"<{shown_number(self.start)}", *(self.bucket_label(bucket) for bucket in range(self.bucket_count)), f">{shown_number(upper)}"]
+
+    def member(self, value: float) -> int:
+        if value < self.start:
+            return 0
+        return min(math.floor((value - self.start) / self.step), self.bucket_count) + 1
+
+
+def shown_number(value: float) -> str:
+    return str(int(value)) if float(value).is_integer() else f"{value:g}"
+
+
+def number_group(step: float, start: float | None, values: list) -> NumberGroup:
+    found = numbers(values)
+    first = start if start is not None else math.floor(min(found) / step) * step
+    whole = float(step).is_integer() and float(first).is_integer() and all(float(value).is_integer() for value in found)
+    return NumberGroup(step, first, max(found), whole)
+
+
+@dataclass(frozen=True)
+class TopFilter:
+    field: int
+    count: int
+    bottom: bool = False
+
+
+@dataclass(frozen=True)
 class AxisLine:
     members: tuple[int, ...]
     is_subtotal: bool = False
@@ -101,7 +147,7 @@ class PivotField:
     index: int
     items: list[str]
     members: list[int]
-    group: DateGroup | None = None
+    group: DateGroup | NumberGroup | None = None
 
 
 def plain_field(index: int, records: list) -> PivotField:
@@ -112,6 +158,11 @@ def plain_field(index: int, records: list) -> PivotField:
 
 def grouped_field(index: int, records: list, unit: str) -> PivotField:
     group = date_group(unit, [record[index] for record in records])
+    return PivotField(index, group.items, [group.member(record[index]) for record in records], group)
+
+
+def binned_field(index: int, records: list, step: float, start: float | None) -> PivotField:
+    group = number_group(step, start, [record[index] for record in records])
     return PivotField(index, group.items, [group.member(record[index]) for record in records], group)
 
 
@@ -131,8 +182,8 @@ class PivotAxis:
         return self.fields[level].items[member] or BLANK_LABEL
 
 
-def axis_lines(axis: PivotAxis, record_count: int) -> list[AxisLine]:
-    present = {axis.record_path(record)[:length] for record in range(record_count) for length in range(1, axis.depth + 1)}
+def axis_lines(axis: PivotAxis, records: list[int]) -> list[AxisLine]:
+    present = {axis.record_path(record)[:length] for record in records for length in range(1, axis.depth + 1)}
     lines: list[AxisLine] = []
 
     def emit(prefix: tuple[int, ...]) -> None:
@@ -172,13 +223,18 @@ class PivotModel:
     pages: list[PivotField]
     values: list[PivotValue]
     total_label: str
+    top: TopFilter | None = None
+    shown_records: list[int] = field(default_factory=list)
     buckets: dict = field(default_factory=dict)
 
     def bucket(self, row_path: tuple, column_path: tuple) -> list[int]:
         return self.buckets.get((row_path, column_path), [])
 
     def raw_measure(self, value: PivotValue, row_path: tuple, column_path: tuple) -> float | None:
-        records = [self.records[index] for index in self.bucket(row_path, column_path)]
+        return self.measure_of(value, self.bucket(row_path, column_path))
+
+    def measure_of(self, value: PivotValue, record_indexes: list[int]) -> float | None:
+        records = [self.records[index] for index in record_indexes]
         if value.formula is None:
             return aggregate([record[value.field] for record in records], value.function)
         if not records:
@@ -197,7 +253,7 @@ class PivotModel:
 
 def fill_buckets(model: PivotModel) -> None:
     buckets = defaultdict(list)
-    for record in range(len(model.records)):
+    for record in model.shown_records:
         row_path, column_path = model.rows.record_path(record), model.columns.record_path(record)
         for row_length in range(len(row_path) + 1):
             for column_length in range(len(column_path) + 1):
@@ -206,10 +262,31 @@ def fill_buckets(model: PivotModel) -> None:
 
 
 def build_model(model: PivotModel) -> PivotModel:
-    model.rows.lines = axis_lines(model.rows, len(model.records))
-    model.columns.lines = axis_lines(model.columns, len(model.records))
+    model.shown_records = shown_records(model)
+    model.rows.lines = axis_lines(model.rows, model.shown_records)
+    model.columns.lines = axis_lines(model.columns, model.shown_records)
     fill_buckets(model)
     return model
+
+
+def filtered_field(model: PivotModel) -> PivotField | None:
+    if model.top is None:
+        return None
+    return next(pivot_field for pivot_field in [*model.rows.fields, *model.columns.fields] if pivot_field.index == model.top.field)
+
+
+def shown_records(model: PivotModel) -> list[int]:
+    every_record = list(range(len(model.records)))
+    pivot_field = filtered_field(model)
+    if pivot_field is None:
+        return every_record
+    by_member = defaultdict(list)
+    for record in every_record:
+        by_member[pivot_field.members[record]].append(record)
+    totals = {member: model.measure_of(model.values[0], records) for member, records in by_member.items()}
+    ranked = sorted((member for member in totals if totals[member] is not None), key=lambda member: totals[member], reverse=not model.top.bottom)
+    kept = set(ranked[:model.top.count])
+    return [record for record in every_record if pivot_field.members[record] in kept]
 
 
 @dataclass

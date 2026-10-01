@@ -6,9 +6,10 @@ from openpyxl.utils import get_column_letter
 from office_operations import OPERATION_NOT_APPLICABLE, Change
 from office_result import INVALID_VALUE, OfficeFailure
 from cell_values import typed_date
+from display_width import display_width
 from office_schema import closest_suggestion, did_you_mean
 from pivot_formula import parse_formula
-from pivot_layout import PivotAxis, PivotGrid, PivotModel, PivotValue, as_datetime, build_model, grouped_field, pivot_grid, plain_field
+from pivot_layout import PivotAxis, PivotGrid, PivotModel, PivotValue, TopFilter, as_datetime, binned_field, build_model, grouped_field, numbers, pivot_grid, plain_field
 from pivot_parts import PivotPlacement, add_pivot_parts
 from workbook_access import parse_cell, parse_range, sheet_of
 from workbook_snapshot import cell_values
@@ -24,6 +25,8 @@ DATE_FORMAT = "yyyy-mm-dd"
 ALL_ITEMS_LABEL = "(All)"
 HEADER_FILL = "DCEAF7"
 RULE_COLOR = "94A3B8"
+MINIMUM_COLUMN_WIDTH = 14
+LABEL_MARGIN = 2
 
 
 def refusal(message: str, location: str) -> OfficeFailure:
@@ -105,6 +108,38 @@ def date_groups(headers: list, operation: dict, axis_indexes: list[int], locatio
     return groups
 
 
+def number_groups(headers: list, operation: dict, axis_indexes: list[int], date_indexes: dict, location: str) -> dict[int, dict]:
+    groups = {}
+    for name, group in (operation.get("groupNumbers") or {}).items():
+        group_location = f"{location}.groupNumbers.{name}"
+        index = field_index(headers, name, group_location)
+        if index not in axis_indexes:
+            raise refusal(f"{name!r} is grouped into bins, so it must also be named in row or column", group_location)
+        if index in date_indexes:
+            raise refusal(f"{name!r} is grouped by date in groupDates, so it cannot also be grouped into bins", group_location)
+        if group["step"] <= 0:
+            raise refusal(f"step must be more than 0, and it is {group['step']}", f"{group_location}.step")
+        groups[index] = group
+    return groups
+
+
+def require_numbers(records: list, index: int, header: str, first_row: int, location: str) -> None:
+    for offset, record in enumerate(records):
+        if not numbers([record[index]]):
+            shown = "nothing" if record[index] in (None, "") else repr(record[index])
+            raise refusal(f"grouping {header!r} into bins needs a number in every row, and row {first_row + offset} holds {shown}", f"{location}.groupNumbers.{header}")
+
+
+def top_filter(headers: list, operation: dict, axis_indexes: list[int], location: str) -> TopFilter | None:
+    top = operation.get("top")
+    if top is None:
+        return None
+    index = field_index(headers, top["field"], f"{location}.top.field")
+    if index not in axis_indexes:
+        raise refusal(f"{top['field']!r} is filtered by its top items, so it must also be named in row or column", f"{location}.top.field")
+    return TopFilter(index, top["count"], top.get("bottom", False))
+
+
 def stored_date(value: object) -> object:
     return typed_date(value) if isinstance(value, str) else value
 
@@ -131,8 +166,16 @@ def date_notes(converted: dict[str, int]) -> str:
     return f"; stored {' and '.join(stored)} as dates so they group" if stored else ""
 
 
-def pivot_axis(records: list, indexes: list[int], groups: dict[int, str]) -> PivotAxis:
-    return PivotAxis([grouped_field(index, records, groups[index]) if index in groups else plain_field(index, records) for index in indexes])
+def pivot_axis(records: list, indexes: list[int], groups: dict[int, str], bins: dict[int, dict]) -> PivotAxis:
+    return PivotAxis([axis_field(records, index, groups, bins) for index in indexes])
+
+
+def axis_field(records: list, index: int, groups: dict[int, str], bins: dict[int, dict]):
+    if index in groups:
+        return grouped_field(index, records, groups[index])
+    if index in bins:
+        return binned_field(index, records, bins[index]["step"], bins[index].get("start"))
+    return plain_field(index, records)
 
 
 def pivot_names(workbook) -> set:
@@ -160,14 +203,19 @@ def plan_add_pivot_table(editing, operation: dict, location: str) -> Change:
     if column_indexes and len(values) != 1:
         raise refusal("a pivot with a column field summarizes exactly one value", f"{location}.values")
     groups = date_groups(headers, operation, row_indexes + column_indexes, location)
+    bins = number_groups(headers, operation, row_indexes + column_indexes, groups, location)
+    top = top_filter(headers, operation, row_indexes + column_indexes, location)
     target_row, target_column = parse_cell(operation.get("targetCell", DEFAULT_TARGET_CELL), f"{location}.targetCell")
     name = pivot_name(editing, operation, location)
 
     def change() -> str:
         records = cell_values(workbook, worksheet, (bounds[0] + 1, bounds[1], bounds[2], bounds[3]))
         converted = {headers[index]: store_text_dates(worksheet, records, index, headers[index], bounds[0] + 1, bounds[1] + index, location) for index in groups}
+        for index in bins:
+            require_numbers(records, index, headers[index], bounds[0] + 1, location)
         pages = [plain_field(index, records) for index in page_indexes]
-        model = build_model(PivotModel(headers, records, pivot_axis(records, row_indexes, groups), pivot_axis(records, column_indexes, groups), pages, values, operation.get("totalLabel", DEFAULT_TOTAL_LABEL)))
+        rows, columns = pivot_axis(records, row_indexes, groups, bins), pivot_axis(records, column_indexes, groups, bins)
+        model = build_model(PivotModel(headers, records, rows, columns, pages, values, operation.get("totalLabel", DEFAULT_TOTAL_LABEL), top))
         target = target_sheet(workbook, operation.get("targetSheet", DEFAULT_TARGET_SHEET))
         grid = pivot_grid(model)
         table_row = write_page_fields(target, model, target_row, target_column, location)
@@ -210,7 +258,8 @@ def write_grid(worksheet, grid: PivotGrid, top: int, left: int, location: str) -
             style_pivot_cell(cell, grid.kinds[offset], grid.number_formats.get(column_offset))
     for column_offset in range(width):
         letter = get_column_letter(left + column_offset)
-        worksheet.column_dimensions[letter].width = max(worksheet.column_dimensions[letter].width or 0, 14)
+        widest_label = max((display_width(row[column_offset]) for row in grid.rows if column_offset < len(row) and isinstance(row[column_offset], str)), default=0)
+        worksheet.column_dimensions[letter].width = max(worksheet.column_dimensions[letter].width or 0, MINIMUM_COLUMN_WIDTH, widest_label + LABEL_MARGIN)
     return f"{get_column_letter(left)}{top}:{get_column_letter(left + width - 1)}{top + len(grid.rows) - 1}"
 
 
