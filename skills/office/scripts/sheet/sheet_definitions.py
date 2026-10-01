@@ -496,6 +496,7 @@ def behavior_lines() -> list[str]:
         "  formulas are stored exactly as written: write each reference for the row it lands in, counting a heading row",
         "  each formula also stores the value it computes, so viewers that never recalculate show numbers; a formula that cannot be computed here keeps no value and is reported as FORMULA_NOT_EVALUATED",
         "  the spec title is document metadata; nothing is added to the sheet unless you write it, such as a heading",
+        "  a --row is one CSV line: values separated by commas, a value holding a comma in double quotes, and no more values than the header has",
         "  CSV and --row values become numbers when they are plain integers or decimals; 007, +82, 1,500 and anything over 15 digits stay text; text that is exactly YYYY-MM-DD becomes a date wherever it is written, unless set_cell or set_range says \"type\": \"text\"",
         "  sheet apply writes the whole batch or nothing; --dry-run lists the changes and --output leaves the source alone",
         "  inserting, deleting and renaming rewrite every formula, defined name, filter, merged range, table, chart series, sparkline and shape that points at the cells; a reference into a deleted row becomes #REF!",

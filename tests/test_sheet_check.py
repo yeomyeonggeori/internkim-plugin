@@ -300,6 +300,23 @@ class TextValueTest(WorkbookFixture):
         issues = self.text_issues()
         self.assertEqual([(issue["location"], issue["fix"][0]["value"]) for issue in issues], [("S!A4", "2026-09-03")])
 
+    def test_a_row_argument_is_one_csv_line_so_a_quoted_thousands_number_stays_one_text_cell(self):
+        created = run_office(["sheet", "create", "book.xlsx", "--title", "S", "--row", "품목,금액", "--row", '사과, "1,500"'], self.directory)
+        self.assertEqual(created["status"], "ok", created)
+        self.assertEqual(run_office(["sheet", "edit", "book.xlsx", "--row", '배,"2,000"'], self.directory)["status"], "ok")
+        sheet = load_workbook(self.directory / "book.xlsx")["S"]
+        self.assertEqual([[cell.value for cell in row] for row in sheet.iter_rows()], [["품목", "금액"], ["사과", "1,500"], ["배", "2,000"]])
+
+    def test_a_row_wider_than_the_header_is_refused_and_writes_nothing(self):
+        created = run_office(["sheet", "create", "book.xlsx", "--title", "S", "--row", "품목,금액", "--row", "사과,1,500"], self.directory)
+        self.assertEqual([(issue["code"], issue["location"]) for issue in created["issues"]], [("INVALID_VALUE", "--row")])
+        self.assertFalse((self.directory / "book.xlsx").exists())
+        self.assertEqual(run_office(["sheet", "create", "book.xlsx", "--title", "S", "--row", "품목,금액"], self.directory)["status"], "ok")
+        original = (self.directory / "book.xlsx").read_bytes()
+        appended = run_office(["sheet", "edit", "book.xlsx", "--row", "배,2,000"], self.directory)
+        self.assertEqual([(issue["code"], issue["location"]) for issue in appended["issues"]], [("INVALID_VALUE", "--row")])
+        self.assertEqual((self.directory / "book.xlsx").read_bytes(), original)
+
     def test_a_date_written_by_row_csv_or_append_is_the_same_date(self):
         (self.directory / "data.csv").write_text("일자,금액\n2026-01-06,200\n", encoding="utf-8")
         created = run_office(["sheet", "create", "book.xlsx", "--title", "S", "--row", "일자,금액", "--row", "2026-01-05,100"], self.directory)

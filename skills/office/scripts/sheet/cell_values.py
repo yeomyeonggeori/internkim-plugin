@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import re
 from datetime import date
 
@@ -13,6 +14,10 @@ DATE_FORMAT = "yyyy-mm-dd"
 
 def typed_cell_value(text):
     return typed_number(text) if INTEGER_OR_DECIMAL.fullmatch(text) else text
+
+
+def argument_row(text: str) -> list:
+    return [typed_cell_value(cell.strip()) for cell in next(csv.reader([text], skipinitialspace=True), [])]
 
 
 def typed_number(text):

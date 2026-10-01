@@ -17,7 +17,7 @@ from sheet.sheet_definitions import WORKBOOK_SPECIFICATION
 from sheet.sheet_operations import SHEET_OPERATIONS, SheetEditing, save_editing
 from sheet.sheet_styling import style_table
 from sheet.sheet_workbook import validate_sheet_name
-from sheet.written_cells import require_writable_rows
+from sheet.written_cells import argument_rows, require_writable_rows
 from core.excel_limits import fitting_sheet_name
 from core.office_outputs import output_file
 
@@ -129,13 +129,9 @@ def apply_column_number_formats(worksheet, sheet_specification):
             cell.number_format = number_format
 
 
-def parse_row(row_string):
-    return [typed_cell_value(cell.strip()) for cell in row_string.split(",")]
-
-
 def build_specification(arguments):
     sheet_name = arguments.sheet or arguments.title or "Sheet1"
-    rows = [parse_row(row_string) for row_string in arguments.row]
+    rows = argument_rows(arguments.row, None)
     sheet_specification = {"title": sheet_name, "rows": rows}
     return {"title": arguments.title or "", "sheets": [sheet_specification]}
 
@@ -145,7 +141,7 @@ def parse_arguments():
     parser.add_argument("output_path", type=output_file(".xlsx"), help="Path to the output .xlsx file")
     parser.add_argument("--title", metavar="TEXT", default="", help="Workbook title (also used as sheet name when --sheet is absent)")
     parser.add_argument("--sheet", metavar="NAME", default=None, help="Sheet name (default: title or Sheet1)")
-    parser.add_argument("--row", action="append", default=[], metavar="CELLS", help="Add one row; comma-separated cell values (repeatable)")
+    parser.add_argument("--row", action="append", default=[], metavar="CELLS", help="Add one row as one CSV line: values separated by commas, a value holding a comma in double quotes (repeatable)")
     parser.add_argument("--spec", metavar="JSON_PATH", help="Full workbook spec JSON for rich workbooks (multiple sheets, formulas, formats)")
     return parser.parse_args()
 
