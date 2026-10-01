@@ -8,6 +8,7 @@ import subprocess
 import sys
 import time
 
+from acceptance import judge_build
 from browser_render import clear_stale_render_evidence, try_html_render, write_render_source
 from check_deck import CheckRequest, add_check_arguments, check_deck, check_request
 from deck_definitions import BROWSER_RENDER_UNAVAILABLE, FONT_NOT_EMBEDDED, PPTX_WITHOUT_DESIGN, REVIEW_FAILED, REVIEW_ISSUE_KINDS, TEXT_KEPT_AS_PICTURE, UNKNOWN_FORMAT
@@ -26,6 +27,7 @@ from source_preflight import read_checked_source
 
 
 ALLOWED_FORMATS = {"html", "pdf", "pptx", "notes", "review"}
+BUILD_REVIEW_FACTS = ("renderSource", "slideCount", "renderedSlideCount", "geometryMeasured", "visualEvidenceReliable")
 USAGE = "usage: html_export.py <source.html> <deck-name> <build-dir> <formats> <render-review-script> <html-render-script> [--slide-count N] [--required-text TEXT ...]"
 POSITIONAL_ARGUMENT_COUNT = 7
 
@@ -67,11 +69,13 @@ def main() -> Result:
     html_output_path = request.output_path(".html")
     html_output_path.write_text(deck_html_text(request.source_path), encoding="utf-8")
     derived = write_derived_outputs(request, html_output_path, slide_sources)
+    issues = list(check.issues) + derived.issues
+    acceptance = judge_build(request.build_path, source_text, issues, deliverable_path(request), render_was_measured(derived))
     return Result(
-        summary=build_summary(request, derived),
-        output_path=str(html_output_path),
-        issues=tuple(list(check.issues) + derived.issues),
-        details=build_details(request, derived),
+        summary=f"{acceptance.verdict}. {build_summary(request, derived)}",
+        output_path=deliverable_path(request),
+        issues=tuple(issues),
+        details=build_details(request, derived) | {"acceptance": acceptance.to_json()},
     )
 
 
@@ -92,6 +96,17 @@ def check_options(source_path: pathlib.Path, arguments: list[str]) -> CheckReque
     parser = OfficeArgumentParser(prog="html_export.py")
     add_check_arguments(parser)
     return check_request(source_path, parser.parse_args(arguments))
+
+
+def deliverable_path(request: ExportRequest) -> str:
+    for format_name, suffix in (("pptx", ".pptx"), ("pdf", ".pdf")):
+        if format_name in request.formats and request.output_path(suffix).exists():
+            return str(request.output_path(suffix))
+    return str(request.output_path(".html"))
+
+
+def render_was_measured(derived: DerivedOutputs) -> bool:
+    return derived.review is not None and bool(derived.review.details.get("geometryMeasured"))
 
 
 def write_derived_outputs(request: ExportRequest, html_output_path: pathlib.Path, slide_sources: list[str]) -> DerivedOutputs:
@@ -231,7 +246,7 @@ def build_summary(request: ExportRequest, derived: DerivedOutputs) -> str:
 def build_details(request: ExportRequest, derived: DerivedOutputs) -> dict:
     details = {"outputs": output_paths(request, derived), "pptx": derived.pptx}
     if derived.review is not None:
-        details["review"] = derived.review.details
+        details["review"] = {field: derived.review.details[field] for field in BUILD_REVIEW_FACTS}
     return details
 
 

@@ -8,23 +8,31 @@ import urllib.parse
 import urllib.request
 
 from deck_definitions import IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND
-from office_result import INVALID_ARGUMENTS, OfficeFailure, Result, run_command
+from office_result import OfficeArgumentParser, OfficeFailure, Result, run_command
 
 OPENVERSE_ENDPOINT = "https://api.openverse.org/v1/images/"
 SAFE_LICENSES = "cc0,pdm"
 MAXIMUM_BYTES = 3_500_000
 USER_AGENT = "internkim-skill-image/1.0 (prototype image sourcing)"
+STRICT_FILTERS = {"aspect_ratio": "wide", "size": "large", "extension": "jpg"}
+RELAXED_FILTER_SETS = (STRICT_FILTERS, {"extension": "jpg"}, {})
 
 
 def search_openverse(query: str) -> list:
+    for filters in RELAXED_FILTER_SETS:
+        results = search_openverse_with(query, filters)
+        if results:
+            return results
+    return []
+
+
+def search_openverse_with(query: str, filters: dict[str, str]) -> list:
     parameters = urllib.parse.urlencode({
         "q": query,
         "license": SAFE_LICENSES,
         "page_size": 10,
-        "aspect_ratio": "wide",
-        "size": "large",
         "category": "photograph",
-        "extension": "jpg",
+        **filters,
     })
     request = urllib.request.Request(OPENVERSE_ENDPOINT + "?" + parameters, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=20) as response:
@@ -42,25 +50,16 @@ def download(url: str, output_path: pathlib.Path) -> int:
     return len(data)
 
 
-def parse_arguments(argv: list) -> tuple:
-    values = []
-    output_from_flag = None
-    index = 0
-    while index < len(argv):
-        argument = argv[index]
-        if argument in ("--output", "-o") and index + 1 < len(argv):
-            output_from_flag = argv[index + 1]
-            index += 2
-            continue
-        if argument.startswith("--output="):
-            output_from_flag = argument.split("=", 1)[1]
-            index += 1
-            continue
-        values.append(argument)
-        index += 1
-    query = values[0] if values else ""
-    output_value = output_from_flag or (values[1] if len(values) > 1 else "")
-    return query, output_value
+def parse_arguments(arguments: list[str]) -> tuple[str, str]:
+    parser = OfficeArgumentParser(description="Download one public-domain (CC0 or PDM) photo that matches an English search query, and report its size, ratio and source page.")
+    parser.add_argument("query", help="a concrete English scene, such as \"harbor cranes at dawn\"; one or two words find more")
+    parser.add_argument("output", nargs="?", help="where to save the photo, such as images/harbor.jpg")
+    parser.add_argument("--output", "-o", dest="output_option", help="the same as the second argument")
+    parsed = parser.parse_args(arguments)
+    output = parsed.output_option or parsed.output
+    if not output:
+        parser.error("give the output path as the second argument or --output")
+    return parsed.query, output
 
 
 def anchor_site_output(output_value: str) -> pathlib.Path:
@@ -83,13 +82,11 @@ def reference_path(output_path: pathlib.Path) -> str:
     as_posix = output_path.as_posix()
     if "public/" in as_posix:
         return "/" + as_posix.split("public/", 1)[-1]
-    return output_path.name
+    return as_posix
 
 
 def main() -> Result:
     query, output_value = parse_arguments(sys.argv[1:])
-    if not query or not output_value:
-        raise OfficeFailure(INVALID_ARGUMENTS.issue("usage: office deck image <search query> <output path>   (also accepts --output <path>)"))
     output_path = anchor_site_output(output_value)
     try:
         results = search_openverse(query)
@@ -115,10 +112,22 @@ def try_download(result: dict, output_path: pathlib.Path) -> Result | None:
     title = result.get("title") or "untitled"
     creator = result.get("creator") or "unknown"
     license_name = str(result.get("license", "?")).upper()
+    width, height = result.get("width"), result.get("height")
+    ratio = f"{width / height:.2f}" if width and height else "unknown"
     return Result(
-        summary=f"saved {output_path} ({written // 1024}KB), \"{title}\" by {creator}, license {license_name} (no attribution required); reference it as {reference_path(output_path)}",
+        summary=f"saved {output_path} ({written // 1024}KB, ratio {ratio}), \"{title}\" by {creator}, license {license_name}; look at it before using it, and reference it as {reference_path(output_path)}",
         output_path=str(output_path),
-        details={"title": title, "creator": creator, "license": license_name, "referencePath": reference_path(output_path), "bytes": written},
+        details={
+            "title": title,
+            "creator": creator,
+            "license": license_name,
+            "sourceUrl": result.get("foreign_landing_url"),
+            "width": width,
+            "height": height,
+            "aspectRatio": ratio,
+            "referencePath": reference_path(output_path),
+            "bytes": written,
+        },
     )
 
 

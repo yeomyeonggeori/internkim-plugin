@@ -60,7 +60,7 @@ COMMANDS = (
     Command("sheet", "render", "sheet/render_xlsx.py", "lay out each sheet as printed pages of preview HTML to look at"),
     Command("sheet", "validate", "sheet/validate_xlsx.py", "check an .xlsx for frozen headers, filters and blank headers"),
     Command("deck", "check", "deck/check_deck.py", "check slides.html for layout, chart, image, placeholder, slide-count and palette defects without rendering, or a .pptx for overflow, off-slide and overlapping shapes, with an HTML preview to look at"),
-    Command("deck", "build", "deck/build.sh", "build slides.html in this directory into HTML, PDF, PPTX and review evidence", needs_packages=False),
+    Command("deck", "build", "deck/build_deck.py", "check slides.html, then render it to PDF (default), PPTX or HTML with review evidence", needs_packages=False),
     Command("deck", "validate", "deck/validate_pptx.py", "check a .pptx for design warnings"),
     Command("deck", "read", "deck/read_pptx.py", "list a .pptx's slides with each shape's index, kind, box, text and style, tables, charts and notes"),
     Command("deck", "apply", "deck/apply_pptx.py", "apply a batch of edits to a .pptx, all or none, with --dry-run, and report the layout problems they leave"),

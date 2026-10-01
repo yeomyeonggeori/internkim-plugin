@@ -92,7 +92,7 @@ REVIEW_ISSUE_KINDS = tuple(check.kind for check in SLIDE_RENDER_CHECKS + DESIGN_
 
 SOURCE_NOT_HTML = IssueKind("SOURCE_NOT_HTML", ERROR, "the deck source is not an .html file", "write slides.html, or pass --source with an .html file")
 NO_SLIDE_SECTIONS = IssueKind("NO_SLIDE_SECTIONS", ERROR, "the HTML has no <section> slides", "put each slide in its own <section>")
-UNKNOWN_FORMAT = IssueKind("UNKNOWN_FORMAT", ERROR, "FORMATS names a format the build cannot write", "use html, pdf, pptx, notes, review, or all")
+UNKNOWN_FORMAT = IssueKind("UNKNOWN_FORMAT", ERROR, "--format names a format the build cannot write", "use pdf, pptx, html, or all")
 REVIEW_FAILED = IssueKind("REVIEW_FAILED", ERROR, "the slide review stopped before writing its report", "read the review's error output above the result")
 BROWSER_RENDER_UNAVAILABLE = IssueKind("BROWSER_RENDER_UNAVAILABLE", WARNING, "no browser rendered the deck", "say that the PDF and screenshots are missing, or deliver from a host with a browser")
 PPTX_WITHOUT_DESIGN = IssueKind("PPTX_WITHOUT_DESIGN", WARNING, "no browser rendered the deck, so the PPTX re-lays the slide text into stock layouts", "say the PPTX does not carry the deck's design, or build where a browser renders it")
