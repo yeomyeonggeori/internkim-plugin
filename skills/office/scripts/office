@@ -5,9 +5,10 @@ import os
 import pathlib
 import sys
 
-from office_commands import COMMANDS, Command, find_command, find_format
+from office_commands import COMMANDS, FORMATS, Command, find_command, find_format
 from office_guide import formats_text, guide_text, guide_verbs
-from office_result import DEPENDENCIES_UNAVAILABLE, UNKNOWN_COMMAND, OfficeFailure, run_command
+from office_result import DEPENDENCIES_UNAVAILABLE, UNKNOWN_COMMAND, OfficeFailure, failure_result, print_result, run_command
+from office_schema import closest_name
 from skill_runtime import ensure_requirements
 
 
@@ -36,7 +37,7 @@ def usage() -> str:
     lines = [
         "usage: office <format> <verb> [arguments]",
         "       office convert <input> <output>",
-        "       office guide <format> [verb]",
+        "       office guide <format> [verb [operation]]",
         "       office python <script.py> [arguments]",
         "",
     ]
@@ -48,15 +49,35 @@ def usage() -> str:
 
 
 def print_guide(arguments: list[str]) -> int:
-    office_format = find_format(arguments[0]) if arguments else None
-    if office_format is None:
+    if not arguments or arguments[0] in {"-h", "--help", "help"}:
         print(formats_text())
-        return 0 if not arguments else 2
+        return 0
+    return run_text_command(lambda: guide_for(arguments))
+
+
+def guide_for(arguments: list[str]) -> str:
+    office_format = find_format(arguments[0])
+    if office_format is None:
+        reject_unknown_topic(arguments[0], [office_format.name for office_format in FORMATS], "office guide")
     verb = arguments[1] if len(arguments) > 1 else None
     if verb is not None and verb not in guide_verbs(office_format):
-        print(f"usage: office guide {office_format.name} [{'|'.join(guide_verbs(office_format))}]")
-        return 2
-    print(guide_text(office_format, verb))
+        reject_unknown_topic(verb, guide_verbs(office_format), f"office guide {office_format.name}")
+    operation = arguments[2] if len(arguments) > 2 else None
+    return guide_text(office_format, verb, operation)
+
+
+def reject_unknown_topic(written: str, names: list[str], prefix: str):
+    match = closest_name(written, names)
+    suggestion = f"{prefix} {match}" if match else f"one of: {', '.join(names)}"
+    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"{prefix}: no topic {written!r}", written, suggestion))
+
+
+def run_text_command(command) -> int:
+    try:
+        text = command()
+    except OfficeFailure as failure:
+        return print_result(failure_result(failure.issues))
+    print(text)
     return 0
 
 

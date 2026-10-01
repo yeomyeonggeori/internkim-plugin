@@ -19,7 +19,10 @@ class IssueKind:
     suggestion: str
 
     def issue(self, message: str, location: str | None = None, suggestion: object = None) -> "Issue":
-        return Issue(self, message, location, self.suggestion if suggestion is None else suggestion)
+        return Issue(self, message, location, self.default_suggestion() if suggestion is None else suggestion)
+
+    def default_suggestion(self) -> str:
+        return self.suggestion.replace("{guide}", guide_reference())
 
 
 @dataclass(frozen=True)
@@ -89,10 +92,10 @@ PERMISSION_DENIED = IssueKind("PERMISSION_DENIED", ERROR, "the command may not r
 DEPENDENCIES_UNAVAILABLE = IssueKind("DEPENDENCIES_UNAVAILABLE", ERROR, "the office Python packages could not be installed", "check network access and that uv is on PATH, then rerun")
 KOREAN_FONT_UNAVAILABLE = IssueKind("KOREAN_FONT_UNAVAILABLE", ERROR, "the text needs a Korean-capable font and none is installed", "install Nanum Gothic or Noto Sans CJK, or pass a font path")
 BOLD_FONT_UNAVAILABLE = IssueKind("BOLD_FONT_UNAVAILABLE", WARNING, "no bold face was found beside the Korean font, so headings render without bold", "install fonts-nanum or fonts-noto-cjk, which carry a bold face, or pass a font path that has a Bold file beside it")
-MISSING_FIELD = IssueKind("MISSING_FIELD", ERROR, "a required field is absent or empty", "add the field; office guide <format> lists every field")
-UNKNOWN_FIELD = IssueKind("UNKNOWN_FIELD", ERROR, "a field is not part of this structure", "remove the field or correct its spelling; office guide <format> lists every field")
-WRONG_TYPE = IssueKind("WRONG_TYPE", ERROR, "a field holds the wrong kind of value", "give the field the type office guide <format> names")
-INVALID_VALUE = IssueKind("INVALID_VALUE", ERROR, "a field's value is outside what the command accepts", "use a value office guide <format> allows")
+MISSING_FIELD = IssueKind("MISSING_FIELD", ERROR, "a required field is absent or empty", "add the field; {guide} lists every field")
+UNKNOWN_FIELD = IssueKind("UNKNOWN_FIELD", ERROR, "a field is not part of this structure", "remove the field or correct its spelling; {guide} lists every field")
+WRONG_TYPE = IssueKind("WRONG_TYPE", ERROR, "a field holds the wrong kind of value", "give the field the type {guide} names")
+INVALID_VALUE = IssueKind("INVALID_VALUE", ERROR, "a field's value is outside what the command accepts", "use a value {guide} allows")
 
 COMMAND_ISSUE_KINDS = (
     INVALID_ARGUMENTS,
@@ -122,8 +125,16 @@ class OfficeArgumentParser(argparse.ArgumentParser):
         raise OfficeFailure(INVALID_ARGUMENTS.issue(f"{self.prog}: {message}", suggestion=f"run {self.prog} --help"))
 
 
+def guide_reference() -> str:
+    command_words = os.environ.get("OFFICE_COMMAND", "").split()[1:]
+    return " ".join(["office guide", *command_words])
+
+
 def run_command(command: Callable[[], Result]) -> int:
-    result = command_result(command)
+    return print_result(command_result(command))
+
+
+def print_result(result: Result) -> int:
     print(json.dumps(result.to_json(), ensure_ascii=False, indent=2))
     return 1 if result.status == "error" else 0
 

@@ -88,9 +88,9 @@ class GuideTest(unittest.TestCase):
     def guide(self, format_name, *verbs):
         return subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", format_name, *verbs], capture_output=True, text=True, check=True).stdout
 
-    def guide_with_requested_detail(self, office_format):
-        requested = getattr(load_definitions(office_format), "GUIDE_INPUTS_ON_REQUEST", ())
-        return "\n".join([self.guide(office_format.name), *(self.guide(*command.split()) for command in requested)])
+    def guide_with_every_verb(self, office_format):
+        verbs = [command.verb for command in COMMANDS if command.format_name == office_format.name and command.verb]
+        return "\n".join([self.guide(office_format.name), *(self.guide(office_format.name, verb) for verb in verbs)])
 
     def test_the_guide_lists_every_code_its_format_defines(self):
         for office_format in FORMATS:
@@ -102,13 +102,32 @@ class GuideTest(unittest.TestCase):
     def test_the_guide_lists_every_field_the_validators_accept(self):
         for office_format in FORMATS:
             with self.subTest(format=office_format.name):
-                guide_text = self.guide_with_requested_detail(office_format)
+                guide_text = self.guide_with_every_verb(office_format)
                 for _, shape in load_definitions(office_format).GUIDE_INPUTS:
                     for structure in shape.structures():
                         records = structure.records if isinstance(structure, Variant) else (structure,)
                         for record in records:
                             for field in record.fields:
                                 self.assertRegex(guide_text, rf"\n\s+{re.escape(field.name)}\s")
+
+
+    def test_one_operation_prints_only_its_fields(self):
+        text = self.guide("sheet", "apply", "add_chart")
+        self.assertIn('op "add_chart"', text)
+        self.assertIn("\n  range (", text)
+        self.assertNotIn("set_cell", text)
+
+    def test_an_unknown_topic_answers_with_the_envelope_and_the_close_name(self):
+        for arguments, suggestion in ((["sheat"], "office guide sheet"), (["sheet", "aply"], "office guide sheet apply"), (["sheet", "apply", "add_chrt"], "office guide sheet apply add_chart")):
+            with self.subTest(arguments=arguments):
+                completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", *arguments], capture_output=True, text=True)
+                self.assertEqual(completed.returncode, 1)
+                self.assertEqual(json.loads(completed.stdout)["issues"][0]["suggestion"], suggestion)
+
+    def test_the_index_names_operations_without_their_fields(self):
+        index = self.guide("sheet")
+        self.assertIn("add_chart", index)
+        self.assertNotIn("secondaryAxis", index)
 
 
 class SchemaTest(unittest.TestCase):

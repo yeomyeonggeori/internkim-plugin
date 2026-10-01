@@ -6,11 +6,12 @@ import sys
 from types import ModuleType
 
 from office_commands import COMMANDS, FORMATS, Format
-from office_result import COMMAND_ISSUE_KINDS, IssueKind
-from office_schema import Field, Record, Shape, Variant
+from office_result import COMMAND_ISSUE_KINDS, UNKNOWN_COMMAND, IssueKind, OfficeFailure
+from office_schema import Field, Record, Shape, Variant, closest_name
 
 
 SCRIPTS_PATH = pathlib.Path(__file__).resolve().parent
+USAGE = "usage: office guide <format> [verb [operation]]"
 ENVELOPE_LINE = (
     "Every command prints one JSON result: {status: ok|warning|error, summary, outputPath, "
     "issues: [{code, severity, message, location, suggestion}], details}. It exits 1 when status is error. "
@@ -18,29 +19,65 @@ ENVELOPE_LINE = (
 )
 
 
-def guide_text(office_format: Format, verb: str | None = None) -> str:
+def guide_text(office_format: Format, verb: str | None = None, operation: str | None = None) -> str:
     definitions = load_definitions(office_format)
-    command_name = f"{office_format.name} {verb}" if verb else None
-    on_request = getattr(definitions, "GUIDE_INPUTS_ON_REQUEST", ())
-    lines = [f"office {office_format.name}: {office_format.summary}", "", *command_lines(office_format.name, command_name), "", ENVELOPE_LINE]
-    described = []
+    if operation is not None:
+        return operation_text(office_format, definitions, verb, operation)
+    if verb is not None:
+        return verb_text(office_format, definitions, verb)
+    return index_text(office_format, definitions)
+
+
+def index_text(office_format: Format, definitions: ModuleType) -> str:
+    lines = [f"office {office_format.name}: {office_format.summary}", "", *command_lines(office_format.name), "", ENVELOPE_LINE]
     for label, shape in definitions.GUIDE_INPUTS:
-        if command_name and not label.startswith(command_name):
-            continue
-        requested_later = next((name for name in on_request if label.startswith(name)), None) if not command_name else None
-        lines.extend(["", *(summary_lines(label, shape, requested_later) if requested_later else input_lines(label, shape, described))])
-    for title, section_lines in () if command_name else getattr(definitions, "GUIDE_SECTIONS", ()):
+        lines.extend(["", *summary_lines(label, shape)])
+    for title, section_lines in getattr(definitions, "GUIDE_SECTIONS", ()):
         lines.extend(["", title, *section_lines()])
     for issue_command, kinds in definitions.GUIDE_ISSUES:
-        if command_name is None or issue_command == command_name:
-            lines.extend(["", f"Issues {issue_command} reports", *issue_lines(kinds)])
+        lines.extend(["", f"Issues {issue_command} reports", *issue_lines(kinds)])
     lines.extend(["", "Issues any command reports", *issue_lines(COMMAND_ISSUE_KINDS)])
     return "\n".join(lines)
 
 
-def summary_lines(label: str, shape: Shape, command_name: str) -> list[str]:
-    names = [record.name for structure in shape.structures() if isinstance(structure, Variant) for record in structure.records]
-    return [f"{label}: {shape.label}; office guide {command_name} lists every field", f"  one of: {', '.join(names)}"]
+def verb_text(office_format: Format, definitions: ModuleType, verb: str) -> str:
+    command_name = f"{office_format.name} {verb}"
+    lines = [*command_lines(office_format.name, command_name)]
+    described: list[Record | Variant] = []
+    for label, shape in verb_inputs(definitions, command_name):
+        lines.extend(["", *input_lines(label, shape, described)])
+    for issue_command, kinds in definitions.GUIDE_ISSUES:
+        if issue_command == command_name:
+            lines.extend(["", f"Issues {issue_command} reports", *issue_lines(kinds)])
+    return "\n".join(lines)
+
+
+def operation_text(office_format: Format, definitions: ModuleType, verb: str, operation: str) -> str:
+    command_name = f"{office_format.name} {verb}"
+    variants = [structure for _, shape in verb_inputs(definitions, command_name) for structure in shape.structures() if isinstance(structure, Variant)]
+    for variant in variants:
+        record = variant.record_named(operation)
+        if record is not None:
+            return "\n".join([f"office {command_name}, {variant.discriminator} \"{record.name}\": {record.description}", *field_lines(record.fields, "  ")])
+    names = [record.name for variant in variants for record in variant.records]
+    match = closest_name(operation, names)
+    suggestion = f"office guide {command_name} {match}" if match else f"one of: {', '.join(names)}" if names else f"office guide {command_name}"
+    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"office {command_name} has no operation {operation!r}", operation, suggestion))
+
+
+def verb_inputs(definitions: ModuleType, command_name: str) -> list[tuple[str, Shape]]:
+    return [(label, shape) for label, shape in definitions.GUIDE_INPUTS if label.startswith(command_name)]
+
+
+def summary_lines(label: str, shape: Shape) -> list[str]:
+    command_name = " ".join(label.split()[:2])
+    variants = [structure for structure in shape.structures() if isinstance(structure, Variant)]
+    lines = [f"{label}: {shape.label}; office guide {command_name} lists every field"]
+    for variant in variants:
+        lines.append(f"  {variant.discriminator}: {', '.join(record.name for record in variant.records)}")
+    if variants:
+        lines.append(f"  office guide {command_name} <{variants[0].discriminator}> lists one {variants[0].discriminator}'s fields")
+    return lines
 
 
 def guide_verbs(office_format: Format) -> list[str]:
@@ -49,7 +86,7 @@ def guide_verbs(office_format: Format) -> list[str]:
 
 def formats_text() -> str:
     width = max(len(office_format.name) for office_format in FORMATS)
-    lines = ["usage: office guide <format> [verb]", ""]
+    lines = [USAGE, ""]
     lines.extend(f"  {office_format.name.ljust(width)}  {office_format.summary}" for office_format in FORMATS)
     return "\n".join(lines)
 
@@ -99,15 +136,7 @@ def variant_lines(variant: Variant) -> list[str]:
 
 
 def field_lines(fields: tuple[Field, ...], indent: str) -> list[str]:
-    if not fields:
-        return []
-    labels = [field_label(field) for field in fields]
-    name_width = max(len(field.name) for field in fields)
-    label_width = max(len(label) for label in labels)
-    return [
-        f"{indent}{field.name.ljust(name_width)}  {label.ljust(label_width)}  {field.description}"
-        for field, label in zip(fields, labels)
-    ]
+    return [f"{indent}{field.name} ({field_label(field)}): {field.description}" for field in fields]
 
 
 def field_label(field: Field) -> str:
@@ -115,5 +144,4 @@ def field_label(field: Field) -> str:
 
 
 def issue_lines(kinds: tuple[IssueKind, ...]) -> list[str]:
-    width = max(len(kind.code) for kind in kinds)
-    return [f"  {kind.code.ljust(width)}  {kind.severity.ljust(7)}  {kind.meaning}. Fix: {kind.suggestion}" for kind in kinds]
+    return [f"  {kind.code} ({kind.severity}): {kind.meaning}. Fix: {kind.default_suggestion()}" for kind in kinds]

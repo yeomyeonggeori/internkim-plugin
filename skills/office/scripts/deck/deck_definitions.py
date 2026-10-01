@@ -273,7 +273,6 @@ GUIDE_INPUTS = (
     ("deck apply <file.pptx> <ops.json>", ListOf(OPERATIONS, non_empty=True)),
     ("deck merge <template.pptx> <values.json> <output.pptx>: values", MERGE_VALUES),
 )
-GUIDE_INPUTS_ON_REQUEST = ("deck apply",)
 GUIDE_ISSUES = (
     ("deck build", BUILD_ISSUE_KINDS + REVIEW_ISSUE_KINDS),
     ("deck validate", VALIDATE_ISSUE_KINDS),
