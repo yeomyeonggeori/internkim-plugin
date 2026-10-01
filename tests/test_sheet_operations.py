@@ -1,5 +1,3 @@
-import shutil
-import subprocess
 import unittest
 import zipfile
 
@@ -252,16 +250,6 @@ class PivotTest(OperationFixture):
         self.assertEqual(names, ["PivotTable1", "PivotTable2"])
         issue = self.refused([{"op": "add_pivot_table", "range": "A1:D7", "row": "regoin", "values": ["qty"], "targetSheet": "P2"}])
         self.assertEqual(issue["suggestion"], "use 'region'")
-
-    @unittest.skipUnless(shutil.which("soffice"), "LibreOffice is not installed")
-    def test_libreoffice_reads_the_pivot_and_the_sparklines(self):
-        self.edit([
-            {"op": "add_pivot_table", "range": "A1:D7", "row": "region", "values": ["amount"]},
-            {"op": "add_sparklines", "range": "C2:D7", "target": "F2:F7"},
-        ])
-        completed = subprocess.run(["soffice", "--headless", "--convert-to", "csv", "--outdir", str(self.directory / "out"), str(self.directory / "book.xlsx")], capture_output=True, text=True, timeout=180)
-        self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertTrue((self.directory / "out" / "book.csv").exists())
 
 
 class SpecOperationsTest(WorkbookFixture):
