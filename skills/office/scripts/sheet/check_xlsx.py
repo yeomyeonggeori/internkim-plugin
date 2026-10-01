@@ -4,6 +4,8 @@ from __future__ import annotations
 import math
 from collections import defaultdict
 
+from openpyxl.utils import range_boundaries
+
 from formula_cache import evaluation_issues
 from formula_names import name_issues, sheet_is_missing
 from formula_references import formula_references, referenced_sheet_names
@@ -12,7 +14,7 @@ from office_inputs import office_file
 from office_result import Issue, OfficeArgumentParser, Result, run_command
 from sheet_chart_references import chart_reference_issues
 from stale_values import stale_cached_value_issues
-from sheet_definitions import BROKEN_DEFINED_NAME, FORMULA_ERROR, NUMBER_TOO_WIDE
+from sheet_definitions import BROKEN_DEFINED_NAME, FORMULA_ERROR, NUMBER_TOO_WIDE, PIVOT_VALUES_EMPTY
 from text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
 from text_values import text_value_issues
 from workbook_access import open_workbook
@@ -37,6 +39,7 @@ def main() -> Result:
         + number_width_issues(workbook, evaluation)
         + text_value_issues(workbook)
         + chart_reference_issues(workbook)
+        + empty_pivot_issues(workbook)
         + placeholder_issues(workbook)
         + evaluation_issues(evaluation)
     )
@@ -132,6 +135,30 @@ def too_wide_issue(worksheet, column: int, needed: int, coordinate: str) -> Issu
     return NUMBER_TOO_WIDE.issue(f"{location} needs about {needed} characters but column {letter} holds {column_width(worksheet, column):g}", location, suggestion)
 
 
+def empty_pivot_issues(workbook) -> list[Issue]:
+    return [empty_pivot_issue(worksheet, pivot) for worksheet in workbook.worksheets for pivot in getattr(worksheet, "_pivots", []) if pivot_values_are_empty(worksheet, pivot)]
+
+
+def pivot_value_cells(worksheet, pivot) -> list:
+    min_column, min_row, max_column, max_row = range_boundaries(pivot.location.ref)
+    first_row = min_row + (pivot.location.firstDataRow or 0)
+    first_column = min_column + (pivot.location.firstDataCol or 0)
+    return [cell for row in worksheet.iter_rows(min_row=first_row, max_row=max_row, min_col=first_column, max_col=max_column) for cell in row]
+
+
+def pivot_values_are_empty(worksheet, pivot) -> bool:
+    cells = pivot_value_cells(worksheet, pivot)
+    return bool(cells) and all(cell.value in (None, "") for cell in cells)
+
+
+def empty_pivot_issue(worksheet, pivot) -> Issue:
+    location = cell_label(worksheet.title, pivot.location.ref)
+    source = getattr(getattr(pivot.cache, "cacheSource", None), "worksheetSource", None)
+    summarized = f" of {source.sheet}!{source.ref}" if source is not None and source.sheet else ""
+    fields = ", ".join(repr(field.name) for field in pivot.dataFields if field.name) or "its values"
+    return PIVOT_VALUES_EMPTY.issue(f"pivot table {pivot.name}{summarized} at {location} shows {fields} with every value cell empty; the summarized column holds no number", location)
+
+
 def placeholder_issues(workbook) -> list[Issue]:
     issues = []
     for worksheet in workbook.worksheets:
@@ -143,7 +170,7 @@ def placeholder_issues(workbook) -> list[Issue]:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Find stored formula values that differ from the computed ones, computed formula errors, missing sheets, unknown functions, broken names, numbers too wide for their column, numbers, dates and formulas stored as text, charts reading missing or empty ranges and template placeholders in an .xlsx.")
+    parser = OfficeArgumentParser(description="Find stored formula values that differ from the computed ones, computed formula errors, missing sheets, unknown functions, broken names, numbers too wide for their column, numbers, dates and formulas stored as text, charts reading missing or empty ranges, pivots with empty values and template placeholders in an .xlsx.")
     parser.add_argument("workbook_path", type=office_file("xlsx"))
     return parser.parse_args()
 

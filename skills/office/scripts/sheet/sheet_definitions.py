@@ -425,6 +425,7 @@ CONTENT_DROPPED = IssueKind("CONTENT_DROPPED", WARNING, "--allow-loss saved the 
 VALUE_STORED_AS_TEXT = IssueKind("VALUE_STORED_AS_TEXT", WARNING, "a cell holds text that reads as a number, a date or a formula missing its =, so sums, sorting, filters and charts treat it as words", "apply the suggested operations: they write the typed value or formula and keep how it looked")
 CHART_REFERENCE_BROKEN = IssueKind("CHART_REFERENCE_BROKEN", ERROR, "a chart series reads a sheet the workbook does not have, a range with no values, or values that hold no number, so the chart draws nothing for it", "read the sheet and point the chart at its data with edit_chart and range")
 CHART_COLUMN_LEFT_OUT = IssueKind("CHART_COLUMN_LEFT_OUT", WARNING, "a column of a chart's range, other than its first, holds no number, so the chart leaves it out instead of drawing an empty series", "start the range at the column that should label the categories, or leave it as it is")
+PIVOT_VALUES_EMPTY = IssueKind("PIVOT_VALUES_EMPTY", ERROR, "a pivot table's value cells are all empty, which is what summing a column of numbers stored as text gives", "convert the source column to numbers with the operations sheet check suggests for it, delete the pivot's sheet with delete_sheet, and add the pivot again")
 NUMBER_TOO_WIDE = IssueKind("NUMBER_TOO_WIDE", ERROR, "a number is wider than its column and Excel shows it as ####", "apply the suggested set_column_width")
 
 VALIDATE_ISSUE_KINDS = (
@@ -441,6 +442,7 @@ CHECK_ISSUE_KINDS = (
     NUMBER_TOO_WIDE,
     VALUE_STORED_AS_TEXT,
     CHART_REFERENCE_BROKEN,
+    PIVOT_VALUES_EMPTY,
     PLACEHOLDER_LEFT,
     CIRCULAR_REFERENCE,
     FORMULA_NOT_EVALUATED,
