@@ -47,6 +47,11 @@ Slide 1 is a `cover` and, from three slides on, the last is a `closing`. Choose 
 | rows the audience must read | `table` |
 | trend, ranking or share | `chart` |
 | a person's words | `quote` |
+| steps in order, joined by arrows | `process` |
+| stages that repeat | `cycle` |
+| an org chart or a breakdown | `hierarchy` |
+| levels that build on each other | `pyramid` |
+| four options on two axes | `matrix` |
 | a photo that shows the subject | `image` |
 | the decision or next actions | `closing` |
 
@@ -76,6 +81,11 @@ Slide 1 is a `cover` and, from three slides on, the last is a `closing`. Choose 
   <div class="insight"><p class="value">+33%</p><p>1년 사이 증가</p></div></section>
 <section data-layout="quote"><blockquote>주말에 재고를 세는 일이 없어졌어요.</blockquote><p class="by">박예시 · 점주</p></section>
 <section data-layout="image"><img src="images/warehouse.jpg" alt="창고"><h2>주문부터 입고까지 자동입니다</h2><p>판매 데이터를 매시간 가져옵니다.</p></section>
+<section data-layout="process"><h2>주문은 네 단계로 처리됩니다</h2><ol><li>주문 접수</li><li>재고 확인</li><li>출고</li><li class="pick">배송 완료</li></ol></section>
+<section data-layout="cycle"><h2>개선은 네 단계를 반복합니다</h2><ol><li>계획</li><li>실행</li><li>점검</li><li>개선</li></ol></section>
+<section data-layout="hierarchy"><h2>두 본부가 다섯 팀을 이끕니다</h2><ul><li>대표이사<small>이샘플</small><ul><li>영업본부<ul><li>수도권팀</li><li>영남팀</li><li>호남팀</li></ul></li><li>운영본부<ul><li>물류팀</li><li>고객지원팀</li></ul></li></ul></li></ul></section>
+<section data-layout="pyramid"><h2>비전은 세 층의 목표로 이룹니다</h2><ol><li>업계 1위 물류</li><li>당일 출고 95%</li><li>권역 센터 3곳</li></ol></section>
+<section data-layout="matrix"><h2>효과가 크고 쉬운 일부터 합니다</h2><ul data-y="기대 효과" data-x="실행 난이도"><li class="pick"><h3>자동 발주</h3><p>바로 시작</p></li><li><h3>센터 신설</h3><p>내년 계획</p></li><li><h3>알림 개선</h3><p>틈틈이</p></li><li><h3>자체 배송</h3><p>보류</p></li></ul></section>
 <section data-layout="closing"><h2>세 가지를 승인해 주십시오</h2><ol><li>예산 6억 원</li><li>파트너 두 곳 계약</li><li>11월 3일 출시</li></ol></section>
 ```
 
@@ -117,7 +127,7 @@ A brand that needs more than `data-accent` adds a `<style>` that sets the theme 
 
 ## PPTX
 
-The PPTX is built from the rendered slides: every word is an editable text box, boxes are native shapes, each kit chart is a native chart with its data, each table is a native table, and Paperlogy is embedded.
+The PPTX is built from the rendered slides: every word is an editable text box, boxes are native shapes, diagram arrows are connectors attached to their boxes, each kit chart is a native chart with its data, each table is a native table, and Paperlogy is embedded.
 
 ## Editing a delivered .pptx
 

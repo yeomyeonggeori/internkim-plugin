@@ -126,10 +126,19 @@ APPLY_ISSUE_KINDS = (PICTURE_UNREADABLE,)
 PPTX_CHECK_ISSUE_KINDS = (PPTX_NOT_RENDERED,)
 
 @dataclass(frozen=True)
+class ItemLimits:
+    minimum: int
+    maximum: int
+    levels: int = 1
+    leaves: int | None = None
+
+
+@dataclass(frozen=True)
 class LayoutPart:
     selector: str
     minimum: int = 1
     maximum: int | None = 1
+    items: ItemLimits | None = None
 
     def matches(self, tag: str, classes: set[str], attributes: dict[str, str]) -> bool:
         return any(selector_matches(alternative, tag, classes, attributes) for alternative in self.selector.split("|"))
@@ -167,6 +176,11 @@ KIT_LAYOUTS = (
     KitLayout("quote", "a customer's or expert's words in a <blockquote> with a .by line", (LayoutPart("blockquote"),)),
     KitLayout("image", "a photo that carries meaning on the left half, the text on the right", (TITLE, LayoutPart("img"))),
     KitLayout("closing", "the decision or next actions as .card blocks or an <ol>, on the deck's dark feature color", (TITLE, LayoutPart(".card", 0, 4))),
+    KitLayout("process", "steps in order, each an <li> of an <ol> drawn as a box with an arrow to the next", (TITLE, LayoutPart("ol", items=ItemLimits(3, 6)))),
+    KitLayout("cycle", "stages that repeat, each an <li> of an <ol> placed around a circle with arrows clockwise back to the first", (TITLE, LayoutPart("ol", items=ItemLimits(3, 6)))),
+    KitLayout("hierarchy", "an org chart or breakdown as nested <ul>: one top <li>, each <li> holding its own <ul> of children; <small> adds a second line to a box", (TITLE, LayoutPart("ul", items=ItemLimits(1, 1, levels=3, leaves=8)))),
+    KitLayout("pyramid", "levels of an <ol>, the top <li> the narrowest and most important", (TITLE, LayoutPart("ol", items=ItemLimits(3, 5)))),
+    KitLayout("matrix", "a 2x2 of the <li> in a <ul>, read left to right then top to bottom; data-y and data-x on the <ul> name the axes", (TITLE, LayoutPart("ul", items=ItemLimits(4, 4)))),
 )
 KIT_LAYOUT_NAMES = tuple(layout.name for layout in KIT_LAYOUTS)
 SHARED_PARTS = (
@@ -176,6 +190,12 @@ SHARED_PARTS = (
     ".source: the source line, placed in the footer beside the page number",
     "<em>: words in the accent color; .up and .down color a change; .pick highlights one item",
     "<aside class=\"notes\">: the speaker notes",
+)
+DIAGRAM_NOTES = (
+    "each <li> is one box: a short phrase, or an <h3> and a <p>; .pick on an <li> fills its box with the accent",
+    "process and cycle number their boxes; the top box of a hierarchy is dark and the top level of a pyramid takes the accent",
+    "the PPTX draws each box as a native shape and each arrow as a connector attached to the boxes it joins",
+    "deck check refuses a list with fewer or more items than the layout holds and names the count",
 )
 CHART_ATTRIBUTES = (
     "data-chart: " + ", ".join(chart_types()),
@@ -199,8 +219,21 @@ def kit_layout(name: str) -> KitLayout | None:
 
 
 def part_label(part: LayoutPart) -> str:
-    count = str(part.minimum) if part.maximum == part.minimum else f"{part.minimum}-{part.maximum}" if part.maximum else f"{part.minimum}+"
-    return f"{part.selector.replace('|', ' or ')} x{count}"
+    label = f"{part.selector.replace('|', ' or ')} x{count_label(part.minimum, part.maximum)}"
+    return f"{label} holding {items_label(part.items)}" if part.items else label
+
+
+def items_label(limits: ItemLimits) -> str:
+    label = f"{count_label(limits.minimum, limits.maximum)} <li>"
+    if limits.levels > 1:
+        label += f", nested at most {limits.levels} levels deep"
+    if limits.leaves is not None:
+        label += f" with at most {limits.leaves} on the lowest level"
+    return label
+
+
+def count_label(minimum: int, maximum: int | None) -> str:
+    return str(minimum) if maximum == minimum else f"{minimum}-{maximum}" if maximum else f"{minimum}+"
 
 
 def theme_lines() -> list[str]:
@@ -217,6 +250,10 @@ def layout_lines() -> list[str]:
     return lines + ["  Any layout also takes:"] + [f"    {part}" for part in SHARED_PARTS]
 
 
+def diagram_lines() -> list[str]:
+    return [f"  {note}" for note in DIAGRAM_NOTES]
+
+
 def chart_lines() -> list[str]:
     return [f"  {attribute}" for attribute in CHART_ATTRIBUTES]
 
@@ -224,6 +261,7 @@ def chart_lines() -> list[str]:
 GUIDE_SECTIONS = (
     ("Themes (<body data-theme=\"...\">)", theme_lines),
     ("Layouts (<section data-layout=\"...\">; parts are direct children of the section)", layout_lines),
+    ("Diagrams (process, cycle, hierarchy, pyramid, matrix)", diagram_lines),
     ("Charts (<figure data-chart=\"...\"> in a chart slide)", chart_lines),
 )
 

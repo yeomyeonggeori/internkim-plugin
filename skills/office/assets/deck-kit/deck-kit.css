@@ -385,3 +385,32 @@ section[data-layout="image"] > :where(:not(img, aside, .eyebrow, h2, .lead, .tak
 .kit-category.kit-from-start { transform: none; }
 .kit-category.kit-from-end { transform: translateX(-100%); }
 .kit-data-label.kit-inside.kit-before { transform: translate(-100%, -50%); padding: 0 14px 0 0; }
+
+section[data-layout] > .kit-source { display: none; }
+section[data-layout] > .kit-diagram { position: relative; align-self: stretch; min-height: 0; margin-top: 48px; margin-bottom: 8px; }
+.kit-diagram > .kit-slot { position: absolute; display: flex; align-items: center; justify-content: center; }
+.kit-diagram > .kit-slot > .kit-node { width: 100%; }
+.kit-diagram > .kit-slot.kit-filled > .kit-node { height: 100%; }
+.kit-diagram .kit-node { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px; padding: 20px 24px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); text-align: center; font-size: calc(24px * var(--fit)); font-weight: 700; line-height: 1.35; color: var(--ink); }
+.kit-diagram .kit-node > .kit-index { min-width: 0; font-size: calc(var(--size-small) * var(--fit)); }
+.kit-diagram .kit-node > h3 { font-size: calc(28px * var(--fit)); }
+.kit-diagram .kit-node > :where(p, small) { font-size: calc(20px * var(--fit)); font-weight: 500; line-height: 1.45; color: var(--ink-soft); }
+.kit-diagram .kit-node > small { display: block; }
+.kit-diagram .kit-node.pick { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.kit-diagram .kit-node.pick > * { color: var(--on-accent); }
+.kit-diagram > .kit-svg-layer { pointer-events: none; }
+section[data-layout="process"] .kit-node { justify-content: space-between; align-items: flex-start; padding: 36px 32px; text-align: left; font-size: calc(30px * var(--fit)); }
+section[data-layout="process"] .kit-node > .kit-index { font-size: calc(30px * var(--fit)); }
+section[data-layout="process"] .kit-node > h3 { margin-top: auto; }
+section[data-layout="hierarchy"] .kit-node.kit-level-1 { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+section[data-layout="hierarchy"] .kit-node.kit-level-1 > * { color: var(--bg); }
+section[data-layout="pyramid"] .kit-node { border: 0; border-radius: 6px; background: var(--surface-strong); font-size: calc(28px * var(--fit)); }
+section[data-layout="pyramid"] .kit-slot:first-child > .kit-node { background: var(--accent); color: var(--on-accent); }
+section[data-layout="pyramid"] .kit-slot:first-child > .kit-node > * { color: var(--on-accent); }
+section[data-layout="matrix"] .kit-node { align-items: flex-start; padding: 28px 40px; text-align: left; }
+section[data-layout="matrix"] .kit-node > h3 { font-size: calc(34px * var(--fit)); }
+section[data-layout="matrix"] .kit-node > :where(p, small) { font-size: calc(24px * var(--fit)); }
+section[data-layout="matrix"] .kit-axis-label { position: absolute; margin: 0; font-size: calc(var(--size-small) * var(--fit)); font-weight: 700; color: var(--muted); }
+section[data-layout="matrix"] .kit-axis-y { left: 3%; top: 0; transform: translateY(-120%); }
+section[data-layout="matrix"] .kit-axis-x { right: 0; bottom: 0; }
+section[data-layout="cycle"] .kit-node { padding: 28px 32px; font-size: calc(28px * var(--fit)); }
