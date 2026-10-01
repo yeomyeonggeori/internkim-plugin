@@ -27,7 +27,7 @@ FORMATS = (
     Format("doc", "Word documents (.docx), and PDFs exported from Markdown", "doc/doc_definitions.py"),
     Format("pdf", "PDF files", "pdf/pdf_definitions.py"),
     Format("sheet", "workbooks (.xlsx)", "sheet/sheet_definitions.py"),
-    Format("deck", "slide decks built from slides.html", "deck/deck_definitions.py"),
+    Format("deck", "slide decks built from slides.html, and .pptx files to read, edit and check", "deck/deck_definitions.py"),
     Format("paperwork", "Korean company forms and contracts on letterhead", "paperwork/paperwork_definitions.py"),
 )
 
@@ -53,8 +53,9 @@ COMMANDS = (
     Command("sheet", "validate", "sheet/validate_xlsx.py", "check an .xlsx for frozen headers, filters and blank headers"),
     Command("deck", "build", "deck/build.sh", "build slides.html in this directory into HTML, PDF, PPTX and review evidence", needs_packages=False),
     Command("deck", "validate", "deck/validate_pptx.py", "check a .pptx for design warnings"),
-    Command("deck", "read", "deck/read_pptx.py", "list a .pptx's slides, shape text, layout names and notes by index"),
-    Command("deck", "apply", "deck/apply_pptx.py", "apply a batch of edits to a .pptx, all or none, with --dry-run"),
+    Command("deck", "read", "deck/read_pptx.py", "list a .pptx's slides with each shape's index, kind, box, text and style, tables, charts and notes"),
+    Command("deck", "apply", "deck/apply_pptx.py", "apply a batch of edits to a .pptx, all or none, with --dry-run, and report the layout problems they leave"),
+    Command("deck", "check", "deck/check_pptx.py", "find text that overflows its box, shapes off the slide and overlaps in a .pptx, and write an HTML preview of it"),
     Command("deck", "restore", "deck/restore_source.py", "recover controller-free slides.html from a delivered deck", needs_packages=False),
     Command("deck", "accept", "deck/accept_review.py", "check review-decision.json against the review evidence", needs_packages=False),
     Command("deck", "image", "deck/fetch_image.py", "download a public-domain photo for a search query", needs_packages=False),

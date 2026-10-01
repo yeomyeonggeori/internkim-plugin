@@ -1,0 +1,285 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+import math
+
+from pptx.oxml.ns import qn
+
+from deck_definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_OVERLAP
+from office_result import Issue
+from pptx_geometry import EMU_PER_POINT, SLIDE_FRAME, Box, Frame, child_frame, local_box
+from pptx_inheritance import slide_context
+from pptx_shape_kinds import shape_address, shape_kind
+from pptx_text_measure import TextFit, grown_box, grows_with_text, largest_text_size, measure_text, wraps
+
+
+EDGE_TOLERANCE = EMU_PER_POINT
+OVERFLOW_TOLERANCE = 2 * EMU_PER_POINT
+SUGGESTION_SLACK = 4 * EMU_PER_POINT
+OVERLAP_RATIO = 0.12
+BACKGROUND_AREA_RATIO = 0.7
+DISTORTION_TOLERANCE = 0.05
+SMALLEST_SUGGESTED_SIZE = 10
+SHRINK_STEP = 0.05
+SHRINK_STEPS = 10
+MEDIA_KINDS = {"picture", "chart", "table", "diagram", "media", "object"}
+MEASURABLE_IMAGE_TYPES = {"image/png", "image/jpeg", "image/gif", "image/bmp", "image/tiff"}
+CROP_SCALE = 100000
+
+
+@dataclass(frozen=True)
+class Entry:
+    address: str
+    name: str
+    kind: str
+    box: Box
+    element: object
+    fit: TextFit | None
+    pixels: tuple[int, int] | None
+    context: object
+
+    @property
+    def has_text(self) -> bool:
+        return self.fit is not None
+
+    @property
+    def visible_box(self) -> Box:
+        return grown_box(self.element, self.box, self.fit)
+
+
+@dataclass(frozen=True)
+class SlideArea:
+    number: int
+    width: int
+    height: int
+
+
+@dataclass(frozen=True)
+class Audit:
+    issues: list[Issue]
+    faces: frozenset
+
+
+def audit_presentation(presentation, numbered_slides: list[tuple[int, object]]) -> Audit:
+    issues, faces = [], set()
+    for number, slide in numbered_slides:
+        entries = slide_entries(presentation, slide)
+        area = SlideArea(number, presentation.slide_width, presentation.slide_height)
+        issues.extend(slide_issues(entries, area))
+        faces.update(pair for entry in entries if entry.fit is not None for pair in entry.fit.faces)
+    return Audit(issues, frozenset(faces))
+
+
+def slide_entries(presentation, slide) -> list[Entry]:
+    context = slide_context(presentation, slide)
+    return list(walk_entries(slide.shapes, "", SLIDE_FRAME, context))
+
+
+def walk_entries(shapes, prefix: str, frame: Frame, context):
+    for index, shape in enumerate(shapes):
+        element, address = shape._element, shape_address(prefix, index)
+        kind = shape_kind(element)
+        if kind == "group":
+            yield from walk_entries(shape.shapes, address, child_frame(frame, element), context)
+            continue
+        box = frame.to_slide(local_box(element, context))
+        fit = measure_text(context, element, box) if kind in ("text", "shape") else None
+        yield Entry(address, shape.name, kind, box, element, fit, picture_pixels(shape, kind), context)
+
+
+def slide_issues(entries: list[Entry], area: SlideArea) -> list[Issue]:
+    issues = []
+    for entry in entries:
+        issues.extend(frame_issues(entry, area))
+        issues.extend(overflow_issues(entry, area, entries))
+        issues.extend(distortion_issues(entry, area))
+    issues.extend(overlap_issues(entries, area))
+    issues.extend(card_spill_issues(entries, area))
+    return issues
+
+
+def card_spill_issues(entries: list[Entry], area: SlideArea) -> list[Issue]:
+    issues = []
+    for entry in entries:
+        if entry.visible_box == entry.box:
+            continue
+        card = next((candidate for candidate in entries if candidate.kind == "shape" and not candidate.has_text and contains(candidate.box, entry.box)), None)
+        if card is None or contains(card.box, entry.visible_box):
+            continue
+        grown = Box(card.box.x, card.box.y, max(card.box.w, entry.visible_box.right + (card.box.right - entry.box.right) - card.box.x), max(card.box.h, entry.visible_box.bottom + (card.box.bottom - entry.box.bottom) - card.box.y))
+        text = f"{label(entry, area)} grows with its text past shape {card.address} {card.name!r} that holds it"
+        issues.append(Issue(CONTENT_OVERFLOW.kind, text, location(entry, area), growth_fix(entry, area) or transform_suggestion(card, area, inside(grown, area))))
+    return issues
+
+
+def contains(outer: Box, inner: Box) -> bool:
+    return outer.x - EDGE_TOLERANCE <= inner.x and outer.y - EDGE_TOLERANCE <= inner.y and inner.right <= outer.right + EDGE_TOLERANCE and inner.bottom <= outer.bottom + EDGE_TOLERANCE
+
+
+def label(entry: Entry, area: SlideArea) -> str:
+    return f"slide {area.number} shape {entry.address} {entry.name!r}"
+
+
+def location(entry: Entry, area: SlideArea) -> str:
+    return f"slide {area.number} shape {entry.address}"
+
+
+def transform_suggestion(entry: Entry, area: SlideArea, box: Box) -> dict:
+    changed = {name: value for name, value in box.to_json().items() if value != getattr(entry.box, name)}
+    return {"op": "set_transform", "slide": area.number, "shape": shape_reference(entry.address), **changed}
+
+
+def shape_reference(address: str) -> int | str:
+    return int(address) if address.isdigit() else address
+
+
+def inside(box: Box, area: SlideArea) -> Box:
+    width, height = min(box.w, area.width), min(box.h, area.height)
+    return Box(min(max(box.x, 0), area.width - width), min(max(box.y, 0), area.height - height), width, height)
+
+
+def frame_issues(entry: Entry, area: SlideArea) -> list[Issue]:
+    box = entry.visible_box
+    overhangs = {
+        "left": -box.x,
+        "top": -box.y,
+        "right": box.right - area.width,
+        "bottom": box.bottom - area.height,
+    }
+    past = [f"{round(amount / EMU_PER_POINT)}pt past the {edge} edge" for edge, amount in overhangs.items() if amount > EDGE_TOLERANCE]
+    if not past:
+        return []
+    whole = box.right < 0 or box.bottom < 0 or box.x > area.width or box.y > area.height
+    text = f"{label(entry, area)} lies {'wholly outside the slide' if whole else 'partly outside the slide'}: {', '.join(past)}"
+    fix = growth_fix(entry, area) or changed_transform(entry, area, inside(entry.box, area)) or OUT_OF_FRAME.kind.suggestion
+    return [Issue(OUT_OF_FRAME.kind, text, location(entry, area), fix)]
+
+
+def growth_fix(entry: Entry, area: SlideArea) -> dict | None:
+    if entry.visible_box == entry.box:
+        return None
+    if not wraps(entry.element) and entry.fit.width_overflow > 0:
+        return {"op": "set_text_frame", "slide": area.number, "shape": shape_reference(entry.address), "wrap": True}
+    if entry.visible_box.bottom > area.height and entry.visible_box.h <= area.height:
+        return {"op": "set_transform", "slide": area.number, "shape": shape_reference(entry.address), "y": area.height - entry.visible_box.h}
+    return None
+
+
+def changed_transform(entry: Entry, area: SlideArea, box: Box) -> dict | None:
+    return transform_suggestion(entry, area, box) if box != entry.box else None
+
+
+def overflow_issues(entry: Entry, area: SlideArea, entries: list[Entry]) -> list[Issue]:
+    fit = entry.fit
+    if fit is None or grows_with_text(entry.element):
+        return []
+    issues = []
+    if fit.height_overflow > OVERFLOW_TOLERANCE:
+        text = f"{label(entry, area)}: its text needs {points(fit.needed_height)}pt of height and the box gives {points(fit.available_height)}pt{measured_with(entry)}"
+        issues.append(Issue(CONTENT_OVERFLOW.kind, text, location(entry, area), taller_box_or_smaller_text(entry, area, entries)))
+    if fit.width_overflow > OVERFLOW_TOLERANCE:
+        text = f"{label(entry, area)}: a line is {points(fit.widest_line)}pt wide and the box gives {points(fit.available_width)}pt{measured_with(entry)}"
+        issues.append(Issue(CONTENT_OVERFLOW.kind, text, location(entry, area), wider_box_or_smaller_text(entry, area, entries)))
+    return issues
+
+
+def points(emu: int) -> int:
+    return round(emu / EMU_PER_POINT)
+
+
+def taller_box_or_smaller_text(entry: Entry, area: SlideArea, entries: list[Entry]) -> dict:
+    grown = inside(Box(entry.box.x, entry.box.y, entry.box.w, entry.box.h + entry.fit.height_overflow + SUGGESTION_SLACK), area)
+    if grown.h > entry.box.h and not collides(grown, entry, entries):
+        return transform_suggestion(entry, area, grown)
+    return smaller_text(entry, area, lambda fit: fit.height_overflow <= 0)
+
+
+def wider_box_or_smaller_text(entry: Entry, area: SlideArea, entries: list[Entry]) -> dict:
+    grown = inside(Box(entry.box.x, entry.box.y, entry.box.w + entry.fit.width_overflow + SUGGESTION_SLACK, entry.box.h), area)
+    if grown.w > entry.box.w and not collides(grown, entry, entries):
+        return transform_suggestion(entry, area, grown)
+    return smaller_text(entry, area, lambda fit: fit.width_overflow <= 0)
+
+
+def collides(grown: Box, entry: Entry, entries: list[Entry]) -> bool:
+    return any(
+        other is not entry and is_content(other) and grown.intersection(other.box) is not None and entry.box.intersection(other.box) is None
+        for other in entries
+    )
+
+
+def is_content(entry: Entry) -> bool:
+    return entry.has_text or entry.kind in MEDIA_KINDS or entry.kind == "shape"
+
+
+def smaller_text(entry: Entry, area: SlideArea, fits) -> dict | str:
+    largest = largest_text_size(entry.context, entry.element)
+    for step in range(1, SHRINK_STEPS + 1):
+        size = math.floor(largest * (1 - step * SHRINK_STEP))
+        if size < SMALLEST_SUGGESTED_SIZE:
+            break
+        if fits(measure_text(entry.context, entry.element, entry.box, size / largest)):
+            return {"op": "set_text_style", "slide": area.number, "shape": shape_reference(entry.address), "size": size}
+    return f"the text does not fit even at {SMALLEST_SUGGESTED_SIZE}pt; cut it or split it across slides"
+
+
+def distortion_issues(entry: Entry, area: SlideArea) -> list[Issue]:
+    if entry.pixels is None or entry.box.h <= 0 or entry.box.w <= 0:
+        return []
+    expected = cropped_ratio(entry.element, entry.pixels)
+    actual = entry.box.w / entry.box.h
+    distortion = abs(actual / expected - 1)
+    if distortion <= DISTORTION_TOLERANCE:
+        return []
+    if actual > expected:
+        corrected = Box(entry.box.x, entry.box.y, round(entry.box.h * expected), entry.box.h)
+    else:
+        corrected = Box(entry.box.x, entry.box.y, entry.box.w, round(entry.box.w / expected))
+    text = f"{label(entry, area)} is stretched {round(distortion * 100)}% away from its image's ratio"
+    return [Issue(IMAGE_DISTORTED.kind, text, location(entry, area), transform_suggestion(entry, area, inside(corrected, area)))]
+
+
+def cropped_ratio(element, pixels: tuple[int, int]) -> float:
+    crop = element.find(f"{qn('p:blipFill')}/{qn('a:srcRect')}")
+    sides = {side: int(crop.get(side, "0")) / CROP_SCALE if crop is not None else 0.0 for side in ("l", "t", "r", "b")}
+    width = pixels[0] * (1 - sides["l"] - sides["r"])
+    height = pixels[1] * (1 - sides["t"] - sides["b"])
+    return width / height if width > 0 and height > 0 else pixels[0] / pixels[1]
+
+
+def picture_pixels(shape, kind: str) -> tuple[int, int] | None:
+    if kind != "picture":
+        return None
+    blip = shape._element.find(f"{qn('p:blipFill')}/{qn('a:blip')}")
+    if blip is None or blip.get(qn("r:embed")) is None:
+        return None
+    image = shape.image
+    return image.size if image.content_type in MEASURABLE_IMAGE_TYPES else None
+
+
+def overlap_issues(entries: list[Entry], area: SlideArea) -> list[Issue]:
+    slide_area = area.width * area.height
+    content = [entry for entry in entries if (entry.has_text or entry.kind in MEDIA_KINDS) and entry.visible_box.area < slide_area * BACKGROUND_AREA_RATIO]
+    issues = []
+    for index, first in enumerate(content):
+        for second in content[index + 1:]:
+            if not first.has_text and not second.has_text:
+                continue
+            shared = first.visible_box.intersection(second.visible_box)
+            if shared is None or shared.area < OVERLAP_RATIO * min(first.visible_box.area, second.visible_box.area):
+                continue
+            text = f"{label(first, area)} and shape {second.address} {second.name!r} overlap by {points(shared.w)}x{points(shared.h)}pt"
+            fix = growth_fix(first, area) or growth_fix(second, area) or "move one of them with set_transform, or shorten the text that spills"
+            issues.append(Issue(TEXT_OVERLAP.kind, text, location(first, area), fix))
+    return issues
+
+
+def substitutions(faces: frozenset) -> dict[str, str]:
+    return {requested: face.family for requested, face in sorted(faces, key=lambda pair: pair[0]) if face.substituted}
+
+
+def measured_with(entry: Entry) -> str:
+    pairs = substitutions(entry.fit.faces)
+    if not pairs:
+        return ""
+    return " (measured with " + ", ".join(f"{used} in place of {requested}" for requested, used in pairs.items()) + ", which are not installed)"

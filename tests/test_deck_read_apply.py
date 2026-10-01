@@ -150,7 +150,7 @@ class ApplyTest(DeckEditFixture):
 
 class GuideTest(unittest.TestCase):
     def test_the_guide_lists_every_operation_and_its_fields(self):
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", "deck"], capture_output=True, text=True, check=True)
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", "deck", "apply"], capture_output=True, text=True, check=True)
         for operation in ("set_text", "find_replace", "set_notes", "delete_slide", "reorder"):
             self.assertIn(f'op "{operation}"', completed.stdout)
         self.assertIn("deck apply <file.pptx> <ops.json>", completed.stdout)

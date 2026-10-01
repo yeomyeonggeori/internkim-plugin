@@ -4,43 +4,27 @@ from __future__ import annotations
 from pptx import Presentation
 
 from office_result import OfficeArgumentParser, Result, run_command
-from pptx_content import frame_text, notes_text, shape_kind
+from pptx_description import describe_presentation
+from pptx_slide_selection import select_slides
 
 
 def main() -> Result:
     arguments = parse_arguments()
     presentation = Presentation(arguments.presentation_path)
-    slides = [describe_slide(slide, number) for number, slide in enumerate(presentation.slides, start=1)]
-    details = {
-        "slideCount": len(slides),
-        "layouts": [layout.name for layout in presentation.slide_layouts],
-        "slides": slides,
-    }
-    return Result(summary=f"read {len(slides)} slides from {arguments.presentation_path}", output_path=arguments.presentation_path, details=details)
-
-
-def describe_slide(slide, number: int) -> dict:
-    return {
-        "slide": number,
-        "layout": slide.slide_layout.name,
-        "shapes": [describe_shape(shape, index) for index, shape in enumerate(slide.shapes)],
-        "notes": notes_text(slide),
-    }
-
-
-def describe_shape(shape, index: int) -> dict:
-    kind = shape_kind(shape)
-    description = {"index": index, "name": shape.name, "kind": kind}
-    if kind == "table":
-        description["rows"] = [[frame_text(cell.text_frame) for cell in row.cells] for row in shape.table.rows]
-    if shape.has_text_frame:
-        description["text"] = frame_text(shape.text_frame)
-    return description
+    numbers = select_slides(arguments.slides, len(presentation.slides))
+    details = describe_presentation(presentation, numbers, arguments.detail)
+    return Result(summary=f"read {len(numbers)} of {len(presentation.slides)} slides from {arguments.presentation_path}", output_path=arguments.presentation_path, details=details)
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Read a .pptx as numbered slides with layout name, indexed shapes with their text, and speaker notes. Slide numbers and shape indexes are what deck apply takes.")
+    parser = OfficeArgumentParser(description=(
+        "Read a .pptx as numbered slides. Each shape has the index deck apply takes (3.1 is the second shape inside group 3), "
+        "its id, name, kind, placeholder type, box in EMU and in percent of the slide, and its text with the effective font, size, bold and color. "
+        "Shapes are listed back to front. Tables give their rows, charts their type, categories and series."
+    ))
     parser.add_argument("presentation_path")
+    parser.add_argument("--slides", default="", help="slides to read, such as 2,4-6; default every slide")
+    parser.add_argument("--detail", action="store_true", help="add each paragraph's runs with where every style value comes from (run, shape, layout, master, theme), fills, outlines, crops and animated shape ids")
     return parser.parse_args()
 
 

@@ -4,7 +4,8 @@ from dataclasses import dataclass
 
 from office_operations import OPERATION_ISSUE_KINDS
 from office_result import ERROR, WARNING, Issue, IssueKind
-from office_schema import Field, ListOf, Number, Record, Text, Variant
+from office_schema import ListOf
+from pptx_edit_definitions import OPERATIONS
 
 
 DECK_LOCATION = "deck"
@@ -139,44 +140,23 @@ IMAGE_SEARCH_FAILED = IssueKind("IMAGE_SEARCH_FAILED", ERROR, "the image search 
 NO_IMAGE_FOUND = IssueKind("NO_IMAGE_FOUND", ERROR, "no usable public-domain image matched", "try a simpler English query or skip imagery")
 
 IMAGE_ISSUE_KINDS = (IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND)
+LAYOUT_AUDIT_ISSUE_KINDS = (CONTENT_OVERFLOW.kind, OUT_OF_FRAME.kind, TEXT_OVERLAP.kind, IMAGE_DISTORTED.kind)
 
-SLIDE_NUMBER = Number(minimum=1, integer=True)
-SLIDE_FIELD = Field("slide", SLIDE_NUMBER, "slide number from deck read, counting from 1", required=True)
-SHAPE_INDEX = Number(minimum=0, integer=True)
+PICTURE_UNREADABLE = IssueKind("PICTURE_UNREADABLE", ERROR, "an image file given to an operation is not a PNG, JPEG or GIF picture", "pass the path of a PNG, JPEG or GIF file")
+PPTX_NOT_RENDERED = IssueKind("PPTX_NOT_RENDERED", WARNING, "no image of the slides was drawn, so nobody looked at them", "say the slides were checked by measurement only and not seen")
 
-OPERATIONS = Variant(
-    "operation",
-    "one edit of deck apply; every slide number and shape index refers to the deck as deck read showed it before the batch, and the batch applies whole or not at all",
-    "op",
-    (
-        Record("set_text", "replace a shape's text, keeping the first run's formatting; a newline starts a new paragraph", (
-            SLIDE_FIELD,
-            Field("shape", SHAPE_INDEX, "shape index from deck read, counting from 0", required=True),
-            Field("text", Text(), "new text", required=True),
-        )),
-        Record("find_replace", "replace every occurrence of text in shapes, groups and table cells, keeping the formatting of the run the match starts in", (
-            Field("find", Text(non_empty=True), "exact text to find; it must occur at least once", required=True),
-            Field("replace", Text(), "replacement text", required=True),
-            Field("slide", SLIDE_NUMBER, "only this slide; default every slide"),
-        )),
-        Record("set_notes", "replace a slide's speaker notes; empty text clears them", (
-            SLIDE_FIELD,
-            Field("text", Text(), "notes text; a newline starts a new paragraph", required=True),
-        )),
-        Record("delete_slide", "delete a slide", (SLIDE_FIELD,)),
-        Record("reorder", "put the slides in a new order, given as the numbers deck read showed", (
-            Field("order", ListOf(SLIDE_NUMBER, non_empty=True), "every slide that remains, each once, in the new order", required=True),
-        )),
-    ),
-)
+APPLY_ISSUE_KINDS = (PICTURE_UNREADABLE,)
+CHECK_ISSUE_KINDS = (PPTX_NOT_RENDERED,)
 
 GUIDE_INPUTS = (
     ("deck apply <file.pptx> <ops.json>", ListOf(OPERATIONS, non_empty=True)),
 )
+GUIDE_INPUTS_ON_REQUEST = ("deck apply",)
 GUIDE_ISSUES = (
     ("deck build", BUILD_ISSUE_KINDS + REVIEW_ISSUE_KINDS),
     ("deck validate", VALIDATE_ISSUE_KINDS),
-    ("deck apply", OPERATION_ISSUE_KINDS),
+    ("deck apply", OPERATION_ISSUE_KINDS + APPLY_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS),
+    ("deck check", LAYOUT_AUDIT_ISSUE_KINDS + CHECK_ISSUE_KINDS),
     ("deck restore", (NO_SLIDE_SECTIONS,)),
     ("deck accept", ACCEPT_ISSUE_KINDS),
     ("deck image", IMAGE_ISSUE_KINDS),

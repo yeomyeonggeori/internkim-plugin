@@ -6,7 +6,7 @@ import pathlib
 import sys
 
 from office_commands import COMMANDS, Command, find_command, find_format
-from office_guide import formats_text, guide_text
+from office_guide import formats_text, guide_text, guide_verbs
 from office_result import DEPENDENCIES_UNAVAILABLE, UNKNOWN_COMMAND, OfficeFailure, run_command
 from skill_runtime import ensure_requirements
 
@@ -35,7 +35,7 @@ def usage() -> str:
     width = max(len(command.name) for command in COMMANDS)
     lines = [
         "usage: office <format> <verb> [arguments]",
-        "       office guide <format>",
+        "       office guide <format> [verb]",
         "       office python <script.py> [arguments]",
         "",
     ]
@@ -51,7 +51,11 @@ def print_guide(arguments: list[str]) -> int:
     if office_format is None:
         print(formats_text())
         return 0 if not arguments else 2
-    print(guide_text(office_format))
+    verb = arguments[1] if len(arguments) > 1 else None
+    if verb is not None and verb not in guide_verbs(office_format):
+        print(f"usage: office guide {office_format.name} [{'|'.join(guide_verbs(office_format))}]")
+        return 2
+    print(guide_text(office_format, verb))
     return 0
 
 

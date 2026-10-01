@@ -17,7 +17,7 @@ One command, `<skill>/scripts/office <format> <verb> [arguments]`, writes and ch
 | Word document, report, memo, letter, template; a PDF whose words matter more than their placement | `doc export`, `doc create`, `doc edit`, `doc read`, `doc apply`, `doc merge`, `doc check`, `doc validate` | `references/doc.md` |
 | Existing PDF to read, look at, extract, split, merge, or append to; a PDF whose placement is the point | `pdf read`, `pdf render`, `pdf create`, `pdf edit`, `pdf validate` | `references/pdf.md` |
 | Workbook, CSV or TSV cleanup, formulas, charts | `sheet create`, `sheet edit`, `sheet read`, `sheet apply`, `sheet check`, `sheet validate` | `references/sheet.md` |
-| Deck, presentation, PPTX, or checking an existing .pptx | `deck build`, `deck validate`, `deck read`, `deck apply`, `deck restore`, `deck accept`, `deck image` | `references/deck.md` |
+| Deck, presentation, PPTX, or checking an existing .pptx | `deck build`, `deck validate`, `deck read`, `deck apply`, `deck check`, `deck restore`, `deck accept`, `deck image` | `references/deck.md` |
 | Standardized company form or contract on letterhead (견적서, 품의서, 증명서, 계약서, NDA, MOU) | `paperwork check`, `paperwork render`, `paperwork fill` | `references/paperwork.md` |
 
 A standardized form belongs to paperwork even when it ships as .docx or PDF: its letterhead, approval boxes, seals, and fixed clauses live there. Work the listed commands do not cover, such as merging PDFs or restyling a document, goes in a task-local Python file run with `<skill>/scripts/office python <script.py> [arguments]`, which provides every office package.
@@ -32,7 +32,7 @@ A standardized form belongs to paperwork even when it ships as .docx or PDF: its
 
 **File naming.** Documents, PDFs, and workbooks live at `~/documents/<title>.<ext>`, with any Markdown source beside them. Decks live in `artifacts/<deck-slug>/` and deliver from `artifacts/<deck-slug>/build/`. Company forms go to the storage directory their registration returns.
 
-**Results.** Every command prints one JSON result: `status` is ok, warning, or error, and each issue carries a stable `code`, a `location`, and a `suggestion`. `<skill>/scripts/office guide <format>` lists every input field and every code a command reports.
+**Results.** Every command prints one JSON result: `status` is ok, warning, or error, and each issue carries a stable `code`, a `location`, and a `suggestion`. `<skill>/scripts/office guide <format> [verb]` lists every input field and every code a command reports.
 
 **Verify before attaching.** Run the format's `validate` command, or reopen the file, before delivery. Pass the source names, dates, totals, and key labels as `--required-text` where the validator takes it. Read every warning, revise real problems, then attach only the accepted final output. Say what visual uncertainty remains.
 
