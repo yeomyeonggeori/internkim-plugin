@@ -55,11 +55,13 @@ def office_file(kind_name: str) -> Callable[[str], str]:
 
     def checked_path(path: str) -> str:
         require_kind(path, expected)
-        if expected == PDF:
-            require_unlocked_pdf(path, None)
         return path
 
     return checked_path
+
+
+def add_password_argument(parser) -> None:
+    parser.add_argument("--password", help="the password that opens the PDF, when it has one")
 
 
 def require_kind(path: str, expected: InputKind) -> None:

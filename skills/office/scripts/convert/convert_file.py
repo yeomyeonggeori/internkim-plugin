@@ -23,7 +23,7 @@ from html_to_blocks import read_html_blocks  # noqa: E402
 from office_preview import PAGE_SELECTOR, Preview, write_preview  # noqa: E402
 from markdown_blocks import Image, parse_markdown  # noqa: E402
 from markdown_charts import require_valid_charts  # noqa: E402
-from office_inputs import KINDS_BY_NAME, office_file
+from office_inputs import KINDS_BY_NAME, PDF, add_password_argument, office_file, require_unlocked_pdf
 from office_result import Issue, OfficeArgumentParser, OfficeFailure, Result, run_command  # noqa: E402
 from pdf_to_blocks import read_pdf_blocks  # noqa: E402
 from pptx import Presentation  # noqa: E402
@@ -45,6 +45,7 @@ class Conversion:
     input_path: Path
     output_path: Path
     sheet: str | None
+    password: str | None = None
     issues: list[Issue] = field(default_factory=list)
     details: dict = field(default_factory=dict)
     written: list[str] = field(default_factory=list)
@@ -57,19 +58,21 @@ def main() -> Result:
     if not input_path.is_file():
         raise FileNotFoundError(2, "no such file", str(input_path))
     route = require_route(input_path, output_path)
-    require_readable_source(arguments.input_path, route.source)
+    require_readable_source(arguments.input_path, route.source, arguments.password)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    conversion = Conversion(input_path, output_path, arguments.sheet)
+    conversion = Conversion(input_path, output_path, arguments.sheet, arguments.password)
     CONVERTERS[(route.source, route.target)](conversion)
     written = conversion.written or [str(output_path)]
     details = {"route": f"{route.source} -> {route.target}", "files": written, **conversion.details}
     return Result(summary=f"converted {input_path.name} to {', '.join(Path(path).name for path in written)}", output_path=written[0], issues=tuple(conversion.issues), details=details)
 
 
-def require_readable_source(input_path: str, source: str) -> None:
+def require_readable_source(input_path: str, source: str, password: str | None) -> None:
     if source not in KINDS_BY_NAME:
         return
     office_file(source)(input_path)
+    if KINDS_BY_NAME[source] == PDF:
+        require_unlocked_pdf(input_path, password)
 
 
 def require_route(input_path: Path, output_path: Path) -> Route:
@@ -185,7 +188,7 @@ def pdf_to_markdown(conversion: Conversion) -> None:
 
 
 def read_pdf_reading(conversion: Conversion, media_directory: Path, media_prefix: str):
-    reading = read_pdf_blocks(conversion.input_path, media_directory, media_prefix)
+    reading = read_pdf_blocks(conversion.input_path, media_directory, media_prefix, conversion.password)
     conversion.details["pages"] = [report.to_json() for report in reading.reports]
     pictures = [report.page for report in reading.reports if not report.has_text]
     if pictures:
@@ -312,6 +315,7 @@ def parse_arguments():
     parser.add_argument("input_path", help="the file to convert")
     parser.add_argument("output_path", help="the file to write; its extension names the target format")
     parser.add_argument("--sheet", help="xlsx to csv, tsv or pdf: convert only this sheet; default every sheet, one file each for csv and tsv")
+    add_password_argument(parser)
     return parser.parse_args()
 
 

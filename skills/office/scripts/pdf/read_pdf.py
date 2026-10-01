@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pypdf import PdfReader
 
-from office_inputs import office_file
+from office_inputs import add_password_argument, office_file, require_unlocked_pdf
 from office_result import OfficeArgumentParser, Result, run_command
 
 
@@ -13,7 +13,8 @@ TEXT_CHARACTER_LIMIT = 6000
 
 def main() -> Result:
     arguments = parse_arguments()
-    reader = PdfReader(arguments.pdf_path)
+    require_unlocked_pdf(arguments.pdf_path, arguments.password)
+    reader = PdfReader(arguments.pdf_path, password=arguments.password)
     page_count = len(reader.pages)
     first_index = max(arguments.start - 1, 0)
     shown = reader.pages[first_index:first_index + arguments.limit]
@@ -51,6 +52,7 @@ def parse_arguments():
     parser.add_argument("pdf_path", type=office_file("pdf"))
     parser.add_argument("--start", type=int, default=1, help="first page number to show, counting from 1")
     parser.add_argument("--limit", type=int, default=DEFAULT_PAGE_LIMIT, help=f"most pages to show, default {DEFAULT_PAGE_LIMIT}")
+    add_password_argument(parser)
     return parser.parse_args()
 
 
