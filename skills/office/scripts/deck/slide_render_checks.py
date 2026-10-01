@@ -56,7 +56,6 @@ def review_slide(path: typing.Optional[pathlib.Path], pixels: dict[str, object] 
         "risks": risks,
         "geometry": measured,
         "warnings": warnings,
-        "needsDesignRevision": False,
         "structure": structure,
     }
 
@@ -77,7 +76,6 @@ def review_slide_without_image(index: int, slide_text: dict[str, object], struct
         "risks": {"frameFitRisk": False},
         "geometry": None,
         "warnings": slide_design_warnings(structure),
-        "needsDesignRevision": False,
         "structure": structure,
     }
 

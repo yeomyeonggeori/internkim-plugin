@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 import re
 
-from slide_source import extract_section_attribute, normalize_structure_text, remove_invisible_markup, slide_layout, slide_role, slide_title, split_slide_sources
+from slide_source import normalize_structure_text, remove_invisible_markup, slide_layout, slide_role, slide_title, split_slide_sources
 
 
 PREVIEW_CHARACTER_LIMIT = 180
@@ -60,33 +60,13 @@ def inspect_slide_structure(slide_source: str) -> dict[str, object]:
     class_names = extract_class_names(slide_source)
     title = slide_title(slide_source)
     declared_role = slide_role(slide_source)
-    visual_system = extract_section_attribute(slide_source, "data-visual-system")
     return {
         "title": title,
         "normalizedTitle": normalize_structure_text(title),
         "slideRole": declared_role,
         "kitLayout": slide_layout(slide_source),
-        "visualSystem": visual_system,
-        "hasSlideRole": bool(declared_role),
-        "hasVisualSystem": bool(visual_system),
         "classNames": class_names,
-        "hasTable": has_tag(slide_source, "table"),
-        "hasList": has_tag(slide_source, "ul") or has_tag(slide_source, "ol"),
-        "tableTextRatio": tag_text_ratio(slide_source, r"<table\b.*?</table>"),
-        "listTextRatio": tag_text_ratio(slide_source, r"<[ou]l\b.*?</[ou]l>"),
     }
-
-
-def tag_text_ratio(slide_source: str, tag_pattern: str) -> float:
-    body_source = re.sub(r"<h[1-3]\b[^>]*>.*?</h[1-3]>", " ", slide_source, flags=re.DOTALL | re.IGNORECASE)
-    body_characters = len(visible_slide_text(body_source).replace("\n", ""))
-    if body_characters == 0:
-        return 0.0
-    tagged_characters = sum(
-        len(visible_slide_text(match).replace("\n", ""))
-        for match in re.findall(tag_pattern, body_source, flags=re.DOTALL | re.IGNORECASE)
-    )
-    return round(min(1.0, tagged_characters / body_characters), 3)
 
 
 def extract_class_names(slide_source: str) -> list[str]:
@@ -94,7 +74,3 @@ def extract_class_names(slide_source: str) -> list[str]:
     for match in re.finditer(r"\bclass\s*=\s*([\"'])(.*?)\1", slide_source, flags=re.IGNORECASE | re.DOTALL):
         names.extend(value.strip().lower() for value in re.split(r"\s+", match.group(2)) if value.strip())
     return names
-
-
-def has_tag(slide_source: str, tag_name: str) -> bool:
-    return re.search(rf"<{tag_name}\b", slide_source, flags=re.IGNORECASE) is not None

@@ -6,12 +6,6 @@ import pathlib
 from fit_review import FIT_REVIEW_PROMPT, fit_review_index, fit_review_markdown
 
 
-DESIGN_REVISION_NOTICE = (
-    "These warnings do not fail export, but they should trigger a design pass before delivery "
-    "unless the user only asked for mechanical conversion."
-)
-
-
 def write_review_outputs(review_directory_path: pathlib.Path, report: dict[str, object]) -> None:
     review_directory_path.mkdir(parents=True, exist_ok=True)
     for fit_review in report["fitReviews"]:
@@ -27,8 +21,6 @@ def write_json(path: pathlib.Path, document: dict[str, object]) -> None:
 
 def slide_review_markdown(report: dict[str, object]) -> str:
     lines = report_summary_lines(report)
-    if report["needsDesignRevision"]:
-        lines.extend(design_revision_lines(report["designWarnings"]))
     for slide in report["slides"]:
         lines.extend(slide_summary_lines(slide))
     return "\n".join(lines)
@@ -38,13 +30,8 @@ def report_summary_lines(report: dict[str, object]) -> list[str]:
     return [
         "# Slide Render Review",
         "",
-        f"- Passed: {report['passed']}",
-        f"- Quality gate passed: {report['qualityGatePassed']}",
-        f"- Static gate passed: {report['staticGatePassed']}",
-        f"- Visual quality score: {report['visualQualityScore']} / 100 (minimum {report['visualQualityScoreMinimum']})",
         f"- Visual evidence reliable: {report['visualEvidenceReliable']}",
         f"- Render source: {report['renderSource']}",
-        f"- Needs design revision: {report['needsDesignRevision']}",
         f"- Slide count: {report['slideCount']}",
         f"- Rendered slide count: {report['renderedSlideCount']}",
         f"- Geometry: {geometry_line(report)}",
@@ -55,10 +42,6 @@ def report_summary_lines(report: dict[str, object]) -> list[str]:
         "",
         FIT_REVIEW_PROMPT,
         "",
-        "## Design Review Instructions",
-        "",
-        str(report["designReviewPrompt"]),
-        "",
     ]
 
 
@@ -66,17 +49,6 @@ def geometry_line(report: dict[str, object]) -> str:
     if report["geometryMeasured"]:
         return "measured by the renderer (review/geometry.json)"
     return "not measured, so overflow, overlap and stretched images were not checked"
-
-
-def design_revision_lines(design_warnings: list[str]) -> list[str]:
-    return [
-        "## Design Revision Needed",
-        "",
-        DESIGN_REVISION_NOTICE,
-        "",
-        *(f"- {warning}" for warning in design_warnings),
-        "",
-    ]
 
 
 def slide_summary_lines(slide: dict[str, object]) -> list[str]:
@@ -87,7 +59,6 @@ def slide_summary_lines(slide: dict[str, object]) -> list[str]:
         *slide_file_lines(slide),
         f"- Text length: {slide['textCharacterCount']} chars, {slide['textLineCount']} lines",
         f"- Warnings: {warning_text}",
-        f"- Needs design revision: {slide['needsDesignRevision']}",
         "",
     ]
 

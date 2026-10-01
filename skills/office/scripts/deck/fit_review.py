@@ -8,10 +8,6 @@ FIT_REVIEW_PROMPT = (
     "Open the paired contact sheet and verify every expected visible text item is fully inside the slide frame, "
     "not clipped, hidden, or pushed past the right or bottom edge."
 )
-DESIGN_REVIEW_PROMPT = (
-    "Also judge whether the deck looks like a purposeful executive artifact: varied slide roles, claim-style titles, "
-    "clear decision logic, and no generic repeated card-grid or raw table/list slides."
-)
 
 
 def create_fit_reviews(contact_sheets: list[dict[str, object]], slides: list[dict[str, object]]) -> list[dict[str, object]]:
@@ -40,7 +36,6 @@ def fit_review_slide(slide: dict[str, object]) -> dict[str, object]:
         "textLineCount": slide["textLineCount"],
         "textPreview": slide["textPreview"],
         "warnings": slide["warnings"],
-        "needsDesignRevision": slide["needsDesignRevision"],
         "risks": slide["risks"],
         "structure": slide["structure"],
     }
@@ -84,7 +79,6 @@ def fit_review_markdown(review: dict[str, object]) -> str:
         f"- Contact sheet: {review['contactSheetFilename']}",
         f"- Slides: {', '.join(str(number) for number in review['slideNumbers'])}",
         f"- Check: {review['reviewPrompt']}",
-        f"- Design check: {DESIGN_REVIEW_PROMPT}",
         "",
     ]
     for slide in review["slides"]:
@@ -99,7 +93,6 @@ def fit_review_slide_lines(slide: dict[str, object]) -> list[str]:
         "",
         f"- Text length: {slide['textCharacterCount']} chars, {slide['textLineCount']} lines",
         f"- Deterministic warnings: {warning_text}",
-        f"- Needs design revision: {slide['needsDesignRevision']}",
         "",
         "Expected visible text:",
         "",

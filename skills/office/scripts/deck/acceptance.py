@@ -8,7 +8,6 @@ import pathlib
 from deck_definitions import (
     CONTENT_OVERFLOW,
     IMAGE_DISTORTED,
-    MISSING_REQUIRED_TEXT,
     OFF_PALETTE_COLOR,
     OUT_OF_FRAME,
     SLIDE_BLANK,
@@ -34,7 +33,6 @@ OBJECTIVE_DEFECT_CODES = frozenset(
         SLIDE_TOO_SPARSE.kind,
         VERTICAL_DEAD_ZONE.kind,
         TINY_TEXT.kind,
-        MISSING_REQUIRED_TEXT.kind,
         REQUIRED_TEXT_MISSING,
         OFF_PALETTE_COLOR,
     )

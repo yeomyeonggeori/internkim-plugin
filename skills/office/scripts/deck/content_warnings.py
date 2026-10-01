@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import re
 
-from deck_definitions import EMOJI_ICON, LANGUAGE_MISMATCH, MISSING_REQUIRED_TEXT, MISSING_SPEAKER_NOTES, UNSOURCED_CURRENT_DATE
+from deck_definitions import EMOJI_ICON, LANGUAGE_MISMATCH, MISSING_SPEAKER_NOTES, UNSOURCED_CURRENT_DATE
 from design_warnings import LABEL_ONLY_SLIDE_ROLES, append_deck_warning
 from slide_source import SPEAKER_NOTES_CLASS_ATTRIBUTE_PATTERN, split_slide_sources
 
@@ -15,7 +15,6 @@ SPEAKER_NOTES_PATTERN = re.compile(
     rf"<aside\b[^>]*(?:{SPEAKER_NOTES_CLASS_ATTRIBUTE_PATTERN}|role=[\"']note[\"'])|data-speaker-notes",
     flags=re.IGNORECASE,
 )
-REQUIRED_TEXT_PREVIEW_LINE_COUNT = 4
 
 
 def apply_language_mismatch_warning(slides: list[dict[str, object]], slide_texts: list[dict[str, object]]) -> None:
@@ -51,11 +50,11 @@ def title_is_latin_only(title: str) -> bool:
 def apply_unsourced_current_date_warning(
     slides: list[dict[str, object]],
     slide_texts: list[dict[str, object]],
-    required_text_ledger: str,
+    required_texts: tuple[str, ...],
 ) -> None:
     today = datetime.date.today()
     date_pattern = current_date_pattern(today)
-    if date_pattern.search(required_text_ledger):
+    if any(date_pattern.search(text) for text in required_texts):
         return
     dated_indexes = [
         str(slide_text["index"])
@@ -67,37 +66,9 @@ def apply_unsourced_current_date_warning(
             slides,
             UNSOURCED_CURRENT_DATE.deck_issue(
                 "slide " + ", ".join(dated_indexes)
-                + f" shows today's date {today.isoformat()}, which is not in required-visible-text.txt; only show dates from the source material"
+                + f" shows today's date {today.isoformat()}, which no --required-text names; only show dates from the source material"
             ),
         )
-
-
-def apply_missing_required_text_warning(
-    slides: list[dict[str, object]],
-    slide_texts: list[dict[str, object]],
-    required_text_ledger: str,
-) -> None:
-    ledger_lines = [line.strip() for line in required_text_ledger.splitlines() if line.strip()]
-    if not ledger_lines:
-        return
-    deck_text = normalize_for_coverage("\n".join(str(slide_text["expectedVisibleText"]) for slide_text in slide_texts))
-    spaceless_deck_text = deck_text.replace(" ", "")
-    missing_lines = [
-        line
-        for line in ledger_lines
-        if normalize_for_coverage(line) not in deck_text
-        and normalize_for_coverage(line).replace(" ", "") not in spaceless_deck_text
-    ]
-    if missing_lines:
-        preview = "; ".join(missing_lines[:REQUIRED_TEXT_PREVIEW_LINE_COUNT]) + (" ..." if len(missing_lines) > REQUIRED_TEXT_PREVIEW_LINE_COUNT else "")
-        append_deck_warning(
-            slides,
-            MISSING_REQUIRED_TEXT.deck_issue(f"{len(missing_lines)} of {len(ledger_lines)} required-visible-text.txt lines are not visible in the deck: {preview}"),
-        )
-
-
-def normalize_for_coverage(text: str) -> str:
-    return re.sub(r"\s+", " ", text).strip().casefold()
 
 
 def apply_missing_speaker_notes_warning(slides: list[dict[str, object]], source_text: str) -> None:
