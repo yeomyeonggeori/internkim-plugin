@@ -120,7 +120,7 @@ section[data-layout] {
 }
 
 section:is([data-layout="kpi"], [data-layout="cards"], [data-layout="comparison"], [data-layout="timeline"], [data-layout="closing"], [data-layout="table"]) {
-  grid-template-rows: auto auto auto minmax(48px, 1fr) auto auto minmax(0, 1.15fr) var(--footer-height);
+  grid-template-rows: auto auto auto 56px minmax(0, 1fr) auto 36px var(--footer-height);
 }
 section:is([data-layout="kpi"], [data-layout="cards"], [data-layout="comparison"], [data-layout="timeline"], [data-layout="closing"], [data-layout="table"]) > .takeaway { grid-row: 6; }
 
@@ -204,20 +204,21 @@ section[data-layout="number"] > :where(ul) { gap: 0; }
 section[data-layout="number"] > :where(ul) > li { --item-top: 26px; padding-top: 26px; padding-bottom: 26px; border-bottom: 1px solid var(--line); }
 section[data-layout="number"] > :where(ul) > li:first-child { border-top: 1px solid var(--line); }
 
-section[data-layout="kpi"] > .kpi { display: flex; flex-direction: column; gap: 12px; min-height: 300px; padding: 44px 40px 36px; border-radius: var(--radius); background: var(--surface); }
+section[data-layout="kpi"] > .kpi { align-self: center; display: flex; flex-direction: column; gap: 12px; min-height: 360px; padding: 44px 40px 36px; border-radius: var(--radius); background: var(--surface); }
 section[data-layout="kpi"] > .kpi > .label:first-child { order: -1; }
-section[data-layout="kpi"] > .kpi > .value { white-space: nowrap; font-size: calc((128px - 13px * var(--n)) * var(--fit)); }
+section[data-layout="kpi"] > .kpi > .value { white-space: nowrap; font-size: calc((150px - 15px * var(--n)) * var(--fit)); }
 section[data-layout="kpi"] > .kpi > .value + .label { font-size: calc(24px * var(--fit)); font-weight: 600; letter-spacing: -0.01em; color: var(--ink-soft); }
 section[data-layout="kpi"] > .kpi > :where(:not(.value, .label)) { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--line); font-size: calc(21px * var(--fit)); font-weight: 600; line-height: 1.4; color: var(--ink-soft); }
 section[data-layout="kpi"] > .kpi > .up { color: var(--accent); }
 section[data-layout="kpi"] > .kpi.pick { background: var(--accent); color: var(--on-accent); }
 section[data-layout="kpi"] > .kpi.pick > :is(.value, .label, p) { color: var(--on-accent); border-color: color-mix(in srgb, var(--on-accent) 30%, transparent); }
 
-section:is([data-layout="cards"], [data-layout="closing"]) > .card { display: flex; flex-direction: column; gap: 18px; min-height: 340px; padding: 48px 44px; border-radius: var(--radius); background: var(--surface); }
+section:is([data-layout="cards"], [data-layout="closing"]) > .card { align-self: center; display: flex; flex-direction: column; gap: 18px; min-height: 400px; padding: 48px 44px; border-radius: var(--radius); background: var(--surface); }
 section:is([data-layout="cards"], [data-layout="closing"]) > .card > .value { font-size: calc(64px * var(--fit)); color: var(--accent); margin-bottom: 4px; }
 section:is([data-layout="cards"], [data-layout="closing"]) > .card > .label { color: var(--accent); }
 section:is([data-layout="cards"], [data-layout="closing"]) > .card > h3 { font-size: calc(34px * var(--fit)); }
-section:is([data-layout="cards"], [data-layout="closing"]) > .card > h3:not(:first-child) { margin-top: 36px; }
+section:is([data-layout="cards"], [data-layout="closing"]) > .card > h3:not(:first-child) { margin-top: auto; padding-top: 36px; }
+section:is([data-layout="cards"], [data-layout="closing"]) > .card > h3:not(:first-child) + p:last-child { min-height: 3.2em; }
 section:is([data-layout="cards"], [data-layout="closing"]) > .card > :where(p:not(.value, .label), ul) { font-size: calc(25px * var(--fit)); color: var(--ink-soft); line-height: 1.6; }
 section:is([data-layout="cards"], [data-layout="closing"]) > .card > ul { gap: 10px; }
 section[data-layout="cards"] > .card.pick { background: var(--ink); color: var(--bg); }
@@ -227,7 +228,7 @@ section[data-layout="comparison"] { column-gap: 40px; }
 section[data-layout="comparison"] > .column { display: flex; flex-direction: column; gap: 20px; min-height: 360px; padding: 44px 48px; border-radius: var(--radius); background: var(--surface); }
 section[data-layout="comparison"] > .column > .label { order: -1; }
 section[data-layout="comparison"] > .column > h3 { padding-bottom: 22px; border-bottom: 2px solid var(--ink); font-size: calc(34px * var(--fit)); }
-section[data-layout="comparison"] > .column > ul { gap: 0; }
+section[data-layout="comparison"] > .column > ul { flex: 1; align-content: space-evenly; gap: 0; }
 section[data-layout="comparison"] > .column > ul > li { --item-top: 16px; padding: 16px 0 16px 28px; border-bottom: 1px solid var(--line); font-size: calc(25px * var(--fit)); color: var(--ink-soft); }
 section[data-layout="comparison"] > .column > ul > li:last-child { border-bottom: 0; }
 section[data-layout="comparison"] > .column.pick { background: var(--ink); color: var(--bg); }
@@ -236,16 +237,33 @@ section[data-layout="comparison"] > .column.pick > ul > li { color: var(--bg); b
 section[data-layout="comparison"] > .column.pick > h3 { border-bottom-color: var(--accent); }
 section[data-layout="comparison"] > .column.pick > .label { color: var(--feature-accent); }
 
-section[data-layout="timeline"] { column-gap: 20px; }
-section[data-layout="timeline"] > .step { display: flex; flex-direction: column; gap: 14px; min-height: 360px; padding: 40px 36px 44px; border-radius: var(--radius); background: var(--surface); }
-section[data-layout="timeline"] > .step > .label { --dot-fill: var(--surface); --rail: var(--line); margin: 0 -36px 0 0; padding-bottom: 52px; background: radial-gradient(circle closest-side, var(--dot-fill) 0 52%, var(--accent) 56% 88%, transparent 96%) no-repeat 0 100% / 26px 26px, linear-gradient(var(--rail), var(--rail)) no-repeat 0 calc(100% - 11px) / 100% 3px; font-size: calc(28px * var(--fit)); font-weight: 800; letter-spacing: -0.01em; color: var(--accent); }
-section[data-layout="timeline"] > .step:is(.done, .pick) > .label { --dot-fill: var(--accent); }
-section[data-layout="timeline"] > .step.done > .label { --rail: var(--accent); }
-section[data-layout="timeline"] > .step > h3 { margin-top: 28px; font-size: calc(32px * var(--fit)); }
-section[data-layout="timeline"] > .step > :where(p:not(.label)) { font-size: calc(24px * var(--fit)); color: var(--ink-soft); line-height: 1.6; }
-section[data-layout="timeline"] > .step > ul { font-size: calc(23px * var(--fit)); color: var(--ink-soft); gap: 8px; }
+section[data-layout="timeline"] { --n: 1; }
+section[data-layout="timeline"] > .kit-steps { grid-column: 1 / -1; grid-row: 5; display: grid; grid-auto-rows: minmax(0, 1fr); margin: 0; border-top: 1px solid var(--line); }
+section[data-layout="timeline"] .step {
+  --dot-fill: var(--bg);
+  --rail-above: var(--line);
+  --rail-below: var(--line);
+  display: grid;
+  grid-template-columns: 236px 88px minmax(0, 340px) minmax(0, 1fr);
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  background:
+    radial-gradient(circle closest-side, var(--dot-fill) 0 50%, var(--accent) 56% 86%, transparent 94%) no-repeat 266px 50% / 28px 28px,
+    linear-gradient(var(--rail-above), var(--rail-above)) no-repeat 279px 0 / 3px 50%,
+    linear-gradient(var(--rail-below), var(--rail-below)) no-repeat 279px 100% / 3px 50%;
+}
+section[data-layout="timeline"] .step:first-child { --rail-above: transparent; }
+section[data-layout="timeline"] .step:last-child { --rail-below: transparent; }
+section[data-layout="timeline"] .step:is(.done, .pick) { --dot-fill: var(--accent); }
+section[data-layout="timeline"] .step.done { --rail-below: var(--accent); }
+section[data-layout="timeline"] .step.done + .step { --rail-above: var(--accent); }
+section[data-layout="timeline"] .step.pick { background-color: var(--surface); }
+section[data-layout="timeline"] .step > .label { grid-column: 1; padding-left: 4px; font-size: calc(30px * var(--fit)); font-weight: 800; letter-spacing: -0.01em; color: var(--accent); }
+section[data-layout="timeline"] .step > h3 { grid-column: 3; padding-right: 40px; font-size: calc(32px * var(--fit)); }
+section[data-layout="timeline"] .step > :where(p:not(.label), ul) { grid-column: 4; font-size: calc(25px * var(--fit)); line-height: 1.55; color: var(--ink-soft); }
+section[data-layout="timeline"] .step > ul { gap: 6px; }
 
-section[data-layout="table"] > table { width: 100%; border-collapse: collapse; font-size: calc(25px * var(--fit)); line-height: 1.4; font-variant-numeric: tabular-nums; }
+section[data-layout="table"] > table { align-self: stretch; height: 100%; width: 100%; border-collapse: collapse; font-size: calc(25px * var(--fit)); line-height: 1.4; font-variant-numeric: tabular-nums; }
 section[data-layout="table"] th { padding: 0 20px 18px; border-bottom: 2px solid var(--ink); text-align: left; font-size: calc(var(--size-small) * var(--fit)); font-weight: 700; color: var(--muted); vertical-align: bottom; }
 section[data-layout="table"] td { padding: 22px 20px; border-bottom: 1px solid var(--line); color: var(--ink-soft); vertical-align: middle; }
 section[data-layout="table"] :is(th, td):first-child { padding-left: 4px; }
@@ -287,7 +305,8 @@ section[data-layout="closing"] > .card > .label { color: var(--feature-accent); 
 section[data-layout="closing"] > .card > h3 { color: var(--feature-ink); }
 section[data-layout="closing"] > .card > :where(p:not(.value, .label), ul) { color: var(--feature-muted); }
 section[data-layout="closing"] > :is(ol, ul) { grid-column: 1 / -1; font-size: calc(36px * var(--fit)); font-weight: 700; gap: 0; }
-section[data-layout="closing"] > :is(ol, ul) > li { --item-top: 26px; --bullet: var(--feature-accent); padding-top: 26px; padding-bottom: 26px; border-bottom: 1px solid rgba(255, 255, 255, 0.16); }
+section[data-layout="closing"] > :is(ol, ul) { grid-auto-rows: minmax(0, 1fr); border-top: 1px solid rgba(255, 255, 255, 0.16); }
+section[data-layout="closing"] > :is(ol, ul) > li { --item-top: calc(50% - 0.775em); --bullet: var(--feature-accent); align-items: center; padding-top: 0; padding-bottom: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.16); }
 section[data-layout="closing"] .kit-index { min-width: 52px; color: var(--feature-accent); }
 section[data-layout="closing"] > .kit-footer { border-top-color: rgba(255, 255, 255, 0.18); color: var(--feature-muted); }
 section[data-layout="closing"] > .kit-footer > :is(.kit-page, .source) { color: var(--feature-muted); }

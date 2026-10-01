@@ -21,7 +21,7 @@ from png_fixture import write_png  # noqa: E402
 from render_fixture import can_render, pdf_page_count  # noqa: E402
 
 
-LAYOUT_DEFECT_CODES = {"CONTENT_OVERFLOW", "TEXT_OVERLAP", "OUT_OF_FRAME"}
+LAYOUT_DEFECT_CODES = {"CONTENT_OVERFLOW", "TEXT_OVERLAP", "OUT_OF_FRAME", "VERTICAL_DEAD_ZONE"}
 GENERATED_PHOTO_SIZE = (960, 640)
 
 

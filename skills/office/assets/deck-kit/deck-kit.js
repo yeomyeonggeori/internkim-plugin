@@ -88,6 +88,16 @@
     });
   }
 
+  function groupSteps() {
+    document.querySelectorAll("section[data-layout='timeline']").forEach((slide) => {
+      const steps = directChildren(slide, "step");
+      if (!steps.length || directChildren(slide, "kit-steps").length) return;
+      const group = element("div", "kit-steps");
+      slide.insertBefore(group, steps[0]);
+      steps.forEach((step) => group.appendChild(step));
+    });
+  }
+
   function addQuoteMarks() {
     document.querySelectorAll("section[data-layout='quote'] > blockquote").forEach((quote) => {
       if (quote.firstElementChild?.classList.contains("kit-quote-mark")) return;
@@ -396,6 +406,7 @@
     addFooters();
     markStructure();
     addListIndexes();
+    groupSteps();
     addQuoteMarks();
     markNumericCells();
     document.querySelectorAll("section[data-layout] figure[data-chart]").forEach(renderChart);
