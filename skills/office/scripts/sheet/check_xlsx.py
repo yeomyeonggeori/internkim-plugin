@@ -4,7 +4,7 @@ from __future__ import annotations
 import math
 from collections import defaultdict
 
-from formula_cache import not_evaluated_issues
+from formula_cache import evaluation_issues
 from formula_references import formula_references, referenced_sheet_names
 from number_display import displayed_number_width
 from office_inputs import office_file
@@ -35,7 +35,7 @@ def main() -> Result:
         + number_width_issues(workbook, evaluation)
         + chart_reference_issues(workbook)
         + placeholder_issues(workbook)
-        + not_evaluated_issues(evaluation)
+        + evaluation_issues(evaluation)
     )
     return Result(summary=f"checked {arguments.workbook_path}: {len(issues)} issues", output_path=arguments.workbook_path, issues=tuple(issues))
 

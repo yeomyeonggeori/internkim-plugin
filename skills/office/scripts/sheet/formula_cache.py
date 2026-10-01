@@ -5,7 +5,7 @@ from openpyxl.worksheet.formula import ArrayFormula
 from dynamic_arrays import cell_element, dynamic_array_cell_metadata, mark_array_formula
 from excel_functions import is_dynamic_array_formula
 from office_result import Issue
-from sheet_definitions import FORMULA_NOT_EVALUATED
+from sheet_definitions import CIRCULAR_REFERENCE, FORMULA_NOT_EVALUATED
 from workbook_package import Package, main_tag, read_package, worksheet_parts, write_package
 from workbook_values import NUMBER, CachedValue, Evaluation, clear_array_area, evaluate_workbook
 
@@ -37,17 +37,27 @@ def cache_formula_values(path: str) -> list[Issue]:
     package = read_package(path)
     store_values(package, evaluation)
     write_package(package, path)
-    return not_evaluated_issues(evaluation)
+    return evaluation_issues(evaluation)
 
 
-def not_evaluated_issues(evaluation: Evaluation) -> list[Issue]:
-    if not evaluation.not_evaluated:
-        return []
-    cells = [f"{sheet}!{coordinate}" for sheet, coordinate in sorted(evaluation.not_evaluated)]
-    listed = ", ".join(cells[:LISTED_CELL_LIMIT])
+def evaluation_issues(evaluation: Evaluation) -> list[Issue]:
+    issues = []
+    if evaluation.circular:
+        cells = cell_labels(evaluation.circular)
+        issues.append(CIRCULAR_REFERENCE.issue(f"{len(cells)} formula cells read their own value: {listed(cells)}", cells[0]))
+    if evaluation.not_evaluated:
+        cells = cell_labels(evaluation.not_evaluated)
+        issues.append(FORMULA_NOT_EVALUATED.issue(f"{len(cells)} formula cells have no computed value: {listed(cells)}", cells[0]))
+    return issues
+
+
+def cell_labels(keys: list) -> list[str]:
+    return [f"{sheet}!{coordinate}" for sheet, coordinate in sorted(keys)]
+
+
+def listed(cells: list[str]) -> str:
     hidden = len(cells) - LISTED_CELL_LIMIT
-    suffix = f" and {hidden} more" if hidden > 0 else ""
-    return [FORMULA_NOT_EVALUATED.issue(f"{len(cells)} formula cells have no computed value: {listed}{suffix}", cells[0])]
+    return ", ".join(cells[:LISTED_CELL_LIMIT]) + (f" and {hidden} more" if hidden > 0 else "")
 
 
 def store_values(package: Package, evaluation: Evaluation) -> None:

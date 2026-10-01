@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
+from openpyxl.formula.tokenizer import Token
 from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
 
 from formula_references import MAXIMUM_COLUMN, MAXIMUM_ROW, formula_references, is_bare_name, parse_end, reference_parts, unquote_sheet_name
-from formula_tree import calls_in, parse_formula
+from formula_tree import Call, calls_in, meaningful, parse_formula, render, text_literal
 
 
 VOLATILE_REFERENCE_FUNCTIONS = frozenset(("INDIRECT", "OFFSET"))
@@ -41,9 +42,22 @@ class DependencyReader:
         nodes = parse_formula(formula)
         if nodes is None or depth > 8:
             return [EVERYWHERE]
-        if any(call.function in VOLATILE_REFERENCE_FUNCTIONS for call in calls_in(nodes)):
+        computed = [self.computed_reference_regions(call, host_sheet, depth) for call in calls_in(nodes) if call.function in VOLATILE_REFERENCE_FUNCTIONS]
+        if any(regions is None for regions in computed):
             return [EVERYWHERE]
-        return [region for reference in formula_references(formula) for region in self.reference_regions(reference, host_sheet, depth)]
+        written = [region for reference in formula_references(formula) for region in self.reference_regions(reference, host_sheet, depth)]
+        return written + [region for regions in computed for region in regions]
+
+    def computed_reference_regions(self, call: Call, host_sheet: str, depth: int) -> list[Region] | None:
+        if call.function == "INDIRECT":
+            return self.indirect_regions(call, host_sheet, depth)
+        return offset_regions(call, host_sheet)
+
+    def indirect_regions(self, call: Call, host_sheet: str, depth: int) -> list[Region] | None:
+        reference = text_literal(call.arguments[0]) if call.arguments else None
+        if reference is None or len(call.arguments) > 2 or len(call.arguments) == 2 and not is_true_literal(call.arguments[1]):
+            return None
+        return self.reference_regions(reference, host_sheet, depth) or None
 
     def reference_regions(self, reference: str, host_sheet: str, depth: int) -> list[Region]:
         if reference.upper().startswith(PARAMETER_PREFIX):
@@ -84,6 +98,33 @@ def cell_region(reference: str, host_sheet: str) -> Region | None:
         last.row if last.row is not None else MAXIMUM_ROW,
         last.column if last.column is not None else MAXIMUM_COLUMN,
     )
+
+
+def is_true_literal(nodes: list) -> bool:
+    significant = meaningful(nodes)
+    return len(significant) == 1 and isinstance(significant[0], Token) and significant[0].value.upper() in ("TRUE", "1")
+
+
+def integer_literal(nodes: list) -> int | None:
+    text = render(meaningful(nodes))
+    try:
+        return int(text)
+    except ValueError:
+        return None
+
+
+def offset_regions(call: Call, host_sheet: str) -> list[Region] | None:
+    if not 3 <= len(call.arguments) <= 5:
+        return None
+    base = cell_region(render(meaningful(call.arguments[0])), host_sheet)
+    numbers = [integer_literal(argument) for argument in call.arguments[1:]]
+    if base is None or any(number is None for number in numbers):
+        return None
+    rows, columns, *size = numbers
+    height = size[0] if size else base.max_row - base.min_row + 1
+    width = size[1] if len(size) > 1 else base.max_column - base.min_column + 1
+    top, left = base.min_row + rows, base.min_column + columns
+    return [replace(base, min_row=top, min_column=left, max_row=top + height - 1, max_column=left + width - 1)]
 
 
 def cell_position(coordinate: str) -> tuple[int, int]:

@@ -305,6 +305,14 @@
 ["=COUNTIF(D!C1:C5,\"<>Seoul\")", null, null],
 ["=COUNTIF(D!C1:C3,\"<>Seoul\")", "n", "1"],
 ["=LET(x,D!D1,x*2)", "n", "10"],
-["=HYPERLINK(\"https://example.com\",\"site\")", null, null],
-["=IFERROR(HYPERLINK(\"https://example.com\",\"site\"),0)", null, null]
+["=HYPERLINK(\"https://example.com\",\"site\")", "str", "site"],
+["=IFERROR(HYPERLINK(\"https://example.com\",\"site\"),0)", "str", "site"],
+["=ROWS(UNIQUE(D!B1:B4))", "n", "4"],
+["=COLUMNS(SEQUENCE(2,3))", "n", "3"],
+["=ROWS({1;2;3})", "n", "3"],
+["=INDIRECT(\"D!B2\")", "n", "2"],
+["=INDIRECT(\"D!B2:B3\")", null, null],
+["=OFFSET(D!A1,1,1)", "n", "2"],
+["=SUM(INDIRECT(\"D!B1:B4\"))", "n", "10"],
+["=HYPERLINK(\"https://example.com\")", "str", "https://example.com"]
 ]
