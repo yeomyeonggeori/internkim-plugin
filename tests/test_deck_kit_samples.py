@@ -29,6 +29,11 @@ PERCENT_DONUT_DECK = """<body data-theme="corporate">
 <section data-layout="closing"><h2>클라우드 비중을 더 키웁니다</h2></section>
 </body>
 """
+BRAND_TOKEN_DECK = """<head><style>:root { --accent: #E4002B; }</style></head><body data-theme="corporate">
+<section data-layout="cover"><h1>브랜드 색으로 그립니다</h1><p class="lead">주식회사 예시랩</p></section>
+<section data-layout="chart"><h2>매출이 늘었습니다</h2><figure data-chart="column" data-labels="1Q, 2Q" data-values="96, 128" data-unit="억"><figcaption>분기 매출</figcaption></figure></section>
+</body>
+"""
 GENERATED_PHOTO_SIZE = (960, 640)
 
 
@@ -109,6 +114,18 @@ class SampleDeckBuildTest(unittest.TestCase):
             texts = [shape.get("text", "") for slide in read["details"]["slides"] for shape in slide["shapes"]]
             self.assertEqual(texts.count("31%"), 1, texts)
             self.assert_pptx_keeps_the_layout(pptx_path)
+
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+    def test_root_tokens_win_over_the_theme_the_body_names(self):
+        with tempfile.TemporaryDirectory() as directory:
+            deck_path = Path(directory) / "brand"
+            deck_path.mkdir()
+            (deck_path / "slides.html").write_text(BRAND_TOKEN_DECK, encoding="utf-8")
+            subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path)
+            layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
+        chart = layout["slides"][1]["charts"][0]
+        self.assertEqual(chart["colors"]["series"], ["rgb(228, 0, 43)"])
+        self.assertEqual(chart["colors"]["background"], "rgb(255, 255, 255)")
 
     def assert_pptx_keeps_the_layout(self, pptx_path: Path):
         check = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "check", str(pptx_path)], capture_output=True, text=True).stdout)

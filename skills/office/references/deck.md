@@ -112,7 +112,7 @@ Use a photo only when it shows what the slide is about, in a `cover` or `image` 
 
 ## Custom design
 
-A brand that needs more than `data-accent` adds a `<style>` that sets the theme tokens (`--accent`, `--accent-2`, `--ink`, `--bg`, `--surface`) on `:root`. A `DESIGN.md` beside `slides.html` is optional; the colors in its front matter join the palette. The check reports any other color as `OFF_PALETTE_COLOR`.
+A brand that needs more than `data-accent` adds a `<style>` that sets the theme tokens (`--accent`, `--accent-2`, `--ink`, `--bg`, `--surface`) on `:root`; they replace those of the `data-theme` it names. A `DESIGN.md` beside `slides.html` is optional; the colors in its front matter join the palette. The check reports any other color as `OFF_PALETTE_COLOR`.
 
 ## PPTX
 

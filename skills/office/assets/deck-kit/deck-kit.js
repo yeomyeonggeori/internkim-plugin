@@ -660,6 +660,13 @@
     };
   }
 
+  function moveThemeToRoot() {
+    const theme = document.body.getAttribute("data-theme");
+    if (!theme) return;
+    document.documentElement.setAttribute("data-theme", theme);
+    document.body.removeAttribute("data-theme");
+  }
+
   function applyAccent() {
     const accent = document.body.getAttribute("data-accent");
     if (accent) document.body.style.setProperty("--accent", accent);
@@ -668,6 +675,7 @@
   function prepare() {
     if (document.body.getAttribute("data-kit-prepared")) return;
     document.body.setAttribute("data-kit-prepared", "true");
+    moveThemeToRoot();
     applyAccent();
     addFooters();
     markStructure();
