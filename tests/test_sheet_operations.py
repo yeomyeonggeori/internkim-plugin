@@ -194,6 +194,11 @@ class ChartTest(OperationFixture):
         self.assertIn("<lineChart>", self.chart_xml(1))
         self.assertIn("After", self.chart_xml(1))
 
+    def test_data_labels_show_the_value_alone(self):
+        self.edit([{"op": "add_chart", "type": "bar", "range": "A1:C4", "dataLabels": True}])
+        labels = self.chart_xml(1).split("<dLbls>")[1].split("</dLbls>")[0]
+        self.assertEqual(labels, '<showLegendKey val="0"/><showVal val="1"/><showCatName val="0"/><showSerName val="0"/><showPercent val="0"/><showBubbleSize val="0"/>')
+
     def test_a_chart_index_beyond_the_sheet_is_refused(self):
         issue = self.refused([{"op": "delete_chart", "chart": 0}])
         self.assertIn("has 0 charts", issue["message"])

@@ -186,7 +186,11 @@ def apply_labels(chart, operation: dict) -> None:
         chart.legend = chart.legend or Legend()
         chart.legend.position = LEGEND_POSITIONS[operation["legend"]]
     if operation.get("dataLabels") is not None:
-        chart.dataLabels = DataLabelList(showVal=True) if operation["dataLabels"] else None
+        chart.dataLabels = value_labels() if operation["dataLabels"] else None
+
+
+def value_labels() -> DataLabelList:
+    return DataLabelList(showVal=True, showLegendKey=False, showCatName=False, showSerName=False, showPercent=False, showBubbleSize=False)
 
 
 def show_axes(chart) -> None:
