@@ -13,10 +13,10 @@ from workbook_values import NUMBER, CachedValue, Evaluation, clear_array_area, e
 LISTED_CELL_LIMIT = 20
 
 
-def save_workbook_with_values(workbook, path: str) -> list[Issue]:
+def save_workbook_with_values(workbook, path: str) -> Evaluation:
     restore_dynamic_arrays(workbook)
     workbook.save(path)
-    return cache_formula_values(path)
+    return store_formula_values(path)
 
 
 def restore_dynamic_arrays(workbook) -> None:
@@ -33,11 +33,15 @@ def clear_previous_spill(worksheet, cell) -> None:
 
 
 def cache_formula_values(path: str) -> list[Issue]:
+    return evaluation_issues(store_formula_values(path))
+
+
+def store_formula_values(path: str) -> Evaluation:
     evaluation = evaluate_workbook(path, writes_dynamic_arrays=True)
     package = read_package(path)
     store_values(package, evaluation)
     write_package(package, path)
-    return evaluation_issues(evaluation)
+    return evaluation
 
 
 def evaluation_issues(evaluation: Evaluation) -> list[Issue]:

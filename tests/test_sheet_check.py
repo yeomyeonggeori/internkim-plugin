@@ -168,8 +168,19 @@ class FormulaVisibilityTest(WorkbookFixture):
         cells = run_office(["sheet", "read", "book.xlsx", "--sheet", "T", "--where", "formula"], self.directory)["details"]["range"]["cells"]
         self.assertEqual([(cell["formula"], cell["value"]) for cell in cells[:3]], [('=INDIRECT("Data!B2")', 1), ("=ROWS(UNIQUE(Data!A2:A4))", 2), ("=SUM(OFFSET(Data!B2,0,0,3,1))", 6)])
 
-    def test_a_formula_reading_its_own_cell_is_reported_as_circular(self):
+    def test_a_spec_whose_formula_reads_its_own_cell_creates_nothing(self):
         write_json(self.directory / "spec.json", {"sheets": [{"title": "S", "rows": [["total", "=SUM(B1:B2)"], ["x", 5]], "autoFilter": False}]})
         envelope = run_office(["sheet", "create", "book.xlsx", "--spec", "spec.json"], self.directory)
-        self.assertEqual((envelope["outputPath"], [issue["code"] for issue in envelope["issues"]]), ("book.xlsx", ["CIRCULAR_REFERENCE"]))
-        self.assertEqual([issue["location"] for issue in self.issues().values()], ["S!B1"])
+        self.assertEqual((envelope["status"], envelope["outputPath"], [issue["location"] for issue in envelope["issues"]]), ("error", None, ["S!B1"]))
+        self.assertFalse((self.directory / "book.xlsx").exists())
+
+    def test_a_formula_reading_its_own_cell_is_reported_as_circular(self):
+        run_office_python("""
+            from openpyxl import Workbook
+            workbook = Workbook()
+            workbook.active.title = "S"
+            workbook.active.append(["total", "=SUM(B1:B2)"])
+            workbook.active.append(["x", 5])
+            workbook.save("book.xlsx")
+        """, self.directory)
+        self.assertEqual([(code, issue["location"]) for code, issue in self.issues().items()], [("CIRCULAR_REFERENCE", "S!B1")])

@@ -169,6 +169,28 @@ class BatchTest(WorkbookEditTest):
         self.assertEqual((self.directory / "fixture.xlsx").read_bytes(), original)
         self.assertEqual(sorted(path.name for path in self.directory.iterdir() if path.name.startswith(".office-")), [])
 
+    def test_a_formula_that_reads_its_own_cell_writes_nothing(self):
+        original = (self.directory / "fixture.xlsx").read_bytes()
+        envelope = self.apply([
+            {"op": "set_cell", "sheet": "Sales", "cell": "A2", "value": "renamed"},
+            {"op": "set_cell", "sheet": "Sales", "cell": "B6", "value": "=SUM(B2:B6)"},
+        ], name="fixture.xlsx")
+        self.assertEqual((envelope["status"], envelope["outputPath"]), ("error", None))
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("CIRCULAR_REFERENCE", "Sales!B6")])
+        self.assertIn("nothing was written", envelope["summary"])
+        self.assertEqual((self.directory / "fixture.xlsx").read_bytes(), original)
+
+    def test_a_circular_reference_the_workbook_already_had_does_not_block_another_edit(self):
+        run_office_python("""
+            from openpyxl import load_workbook
+            workbook = load_workbook("fixture.xlsx")
+            workbook["Summary"]["B1"] = "=B1+1"
+            workbook.save("fixture.xlsx")
+        """, self.directory)
+        envelope = self.apply([{"op": "set_cell", "sheet": "Sales", "cell": "A2", "value": "renamed"}], name="fixture.xlsx")
+        self.assertEqual(envelope["status"], "ok", envelope)
+        self.assertEqual(load_workbook(self.directory / "fixture.xlsx")["Sales"]["A2"].value, "renamed")
+
     def test_a_dry_run_reports_each_change_and_writes_nothing(self):
         original = (self.directory / "fixture.xlsx").read_bytes()
         envelope = self.apply([{"op": "insert_rows", "sheet": "Sales", "at": 2}, {"op": "delete_columns", "sheet": "Sales", "at": "A"}], "--dry-run", name="fixture.xlsx")

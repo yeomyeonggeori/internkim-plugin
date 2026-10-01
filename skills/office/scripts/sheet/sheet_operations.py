@@ -6,13 +6,13 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
 
 from excel_functions import written_value
-from formula_cache import save_workbook_with_values
+from formula_cache import cell_labels, evaluation_issues, listed, save_workbook_with_values
 from formula_references import COLUMN_AXIS, ROW_AXIS, Shift
 from office_operations import Change, OperationSet
 from office_result import INVALID_VALUE, OfficeFailure
 from sheet_charts import plan_add_chart, plan_delete_chart, plan_edit_chart
 from sheet_data import plan_find_replace, plan_sort_range
-from sheet_definitions import CONTENT_DROPPED, CONTENT_WOULD_BE_LOST, OPERATIONS
+from sheet_definitions import CIRCULAR_REFERENCE, CONTENT_DROPPED, CONTENT_WOULD_BE_LOST, OPERATIONS
 from sheet_formatting import plan_format_range, plan_hide_columns, plan_hide_rows, plan_hide_sheet, plan_merge_cells, plan_set_row_height, plan_unmerge_cells
 from sheet_objects import plan_add_table, plan_set_comment, plan_set_hyperlink, plan_set_page_setup
 from sheet_pivots import plan_add_pivot_table
@@ -26,6 +26,7 @@ from workbook_access import column_index, open_workbook, parse_cell, parse_range
 from workbook_fidelity import EditRecord, preserve_source_content
 from workbook_package import Package, read_package, write_package
 from workbook_structure import isolate_column, rename_sheet_references, shift_workbook
+from workbook_values import evaluate_workbook
 
 
 @dataclass
@@ -33,6 +34,7 @@ class SheetEditing:
     workbook: object
     source: Package | None
     allows_loss: bool = False
+    source_path: str | None = None
     record: EditRecord = field(default_factory=EditRecord)
     package_patches: list = field(default_factory=list)
     reserved_names: set = field(default_factory=set)
@@ -40,11 +42,13 @@ class SheetEditing:
 
 def load_editing(path: str, allows_loss: bool = False) -> SheetEditing:
     workbook = open_workbook(path)
-    return SheetEditing(workbook, read_package(path), allows_loss)
+    return SheetEditing(workbook, read_package(path), allows_loss, path)
 
 
 def save_editing(editing: SheetEditing, path: str) -> list:
-    issues = save_workbook_with_values(editing.workbook, path)
+    evaluation = save_workbook_with_values(editing.workbook, path)
+    refuse_new_circular_references(editing, evaluation)
+    issues = [issue for issue in evaluation_issues(evaluation) if issue.kind is not CIRCULAR_REFERENCE]
     output = read_package(path)
     for patch in editing.package_patches:
         patch(output)
@@ -53,6 +57,16 @@ def save_editing(editing: SheetEditing, path: str) -> list:
         raise OfficeFailure(CONTENT_WOULD_BE_LOST.issue(f"saving would drop what the editor cannot carry: {', '.join(lost)}", lost[0]))
     write_package(output, path)
     return issues + ([CONTENT_DROPPED.issue(f"dropped what the editor cannot carry: {', '.join(lost)}", lost[0])] if lost else [])
+
+
+def refuse_new_circular_references(editing: SheetEditing, evaluation) -> None:
+    if not evaluation.circular or editing.workbook.calculation.iterate:
+        return
+    existing = evaluate_workbook(editing.source_path).circular if editing.source_path else []
+    if len(evaluation.circular) <= len(existing):
+        return
+    cells = cell_labels([key for key in evaluation.circular if key not in existing] or evaluation.circular)
+    raise OfficeFailure(CIRCULAR_REFERENCE.issue(f"{len(cells)} formula cells would read their own value: {listed(cells)}; nothing was written", cells[0]))
 
 
 def on_workbook(planner):

@@ -7,7 +7,7 @@ from pathlib import Path
 
 from cell_values import typed_cell_value
 from excel_functions import written_value
-from office_operations import apply_batch
+from office_operations import apply_batch, save_atomically
 from office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from office_schema import require_valid
 from sheet_definitions import WORKBOOK_SPECIFICATION
@@ -142,7 +142,7 @@ def main():
     output_path.parent.mkdir(parents=True, exist_ok=True)
     editing = SheetEditing(workbook, None)
     changes = apply_batch(SHEET_OPERATIONS, editing, specification.get("operations") or [])
-    issues = save_editing(editing, str(output_path))
+    issues = save_atomically(lambda temporary_path: save_editing(editing, temporary_path), str(output_path))
     details = {"changes": changes} if changes else None
     return Result(summary=f"created {output_path}", output_path=str(output_path), issues=tuple(issues), details=details)
 
