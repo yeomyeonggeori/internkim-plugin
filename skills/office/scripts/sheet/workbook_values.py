@@ -14,6 +14,7 @@ from excel_functions import is_dynamic_array_formula
 from formula_dependencies import DependencyReader, cell_position, propagate
 from formula_references import is_bare_name, join_parts, quote_sheet_name, reference_parts, rewrite_formula
 from ironcalc_compatibility import constant_names, is_divergent_criteria, needs_criteria_probe, prepare, with_constant_names
+from office_inputs import holds_macros
 from workbook_access import open_workbook
 from workbook_package import main_tag, read_package, relationships_part, worksheet_parts, write_package
 
@@ -108,7 +109,7 @@ def evaluate_workbook(path: str, writes_dynamic_arrays: bool = False) -> Evaluat
     if not cells:
         return evaluation
     marked = set() if writes_dynamic_arrays else dynamic_cells_in_file(path)
-    plan = plan_evaluation(workbook, cells, marked, writes_dynamic_arrays, path.lower().endswith(".xlsm"))
+    plan = plan_evaluation(workbook, cells, marked, writes_dynamic_arrays, holds_macros(path))
     for cell in cells:
         fixed_error = plan.preparations[cell.key].fixed_error
         if fixed_error:

@@ -9,6 +9,7 @@ import warnings
 from openpyxl import load_workbook
 from openpyxl.worksheet.formula import ArrayFormula
 
+from office_inputs import holds_macros, package_stream
 from office_operations import TARGET_NOT_FOUND
 from office_result import INVALID_VALUE, OfficeFailure
 from office_schema import closest_name
@@ -18,14 +19,10 @@ from formula_tree import FUNCTION_PREFIXES, Call, parse_formula, render, tokens_
 warnings.filterwarnings("ignore", category=UserWarning, module=r"openpyxl\.")
 
 
-def is_macro_workbook(path: str) -> bool:
-    return path.lower().endswith(".xlsm")
-
-
 def open_workbook(path: str, data_only: bool = False):
     if not os.path.exists(path):
         raise FileNotFoundError(2, "No such file or directory", path)
-    return load_workbook(path, data_only=data_only, keep_vba=is_macro_workbook(path))
+    return load_workbook(package_stream(path), data_only=data_only, keep_vba=holds_macros(path))
 
 
 def resolve_sheet(workbook, sheet_name: str | None, location: str):
