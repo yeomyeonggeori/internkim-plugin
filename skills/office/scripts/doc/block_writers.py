@@ -51,7 +51,7 @@ def markdown_lines(block) -> list[str]:
         marker = "1." if block.is_numbered else "-"
         return [f"{LIST_INDENT * block.level}{marker} {block.text}"]
     if isinstance(block, Table):
-        return table_markdown(block.rows)
+        return table_markdown(block.rows, block.alignments)
     if isinstance(block, Quote):
         return [f"> {block.text}"]
     if isinstance(block, Image):
@@ -61,13 +61,21 @@ def markdown_lines(block) -> list[str]:
     return [block.text]
 
 
-def table_markdown(rows: list[list[str]]) -> list[str]:
+def table_markdown(rows: list[list[str]], alignments: tuple[str, ...] = ()) -> list[str]:
     if not rows:
         return []
     width = max(len(row) for row in rows)
     padded = [[markdown_cell(row[index]) if index < len(row) else "" for index in range(width)] for row in rows]
-    divider = "| " + " | ".join("---" for _ in range(width)) + " |"
+    divider = "| " + " | ".join(DIVIDER_CELLS[alignments[index] if index < len(alignments) else ""] for index in range(width)) + " |"
     return ["| " + " | ".join(padded[0]) + " |", divider, *("| " + " | ".join(row) + " |" for row in padded[1:])]
+
+
+DIVIDER_CELLS = {"": "---", "left": ":---", "center": ":---:", "right": "---:"}
+
+
+def alignment_style(alignments: tuple[str, ...], index: int) -> str:
+    alignment = alignments[index] if index < len(alignments) else ""
+    return f' style="text-align:{alignment}"' if alignment else ""
 
 
 def markdown_cell(text: str) -> str:
@@ -111,7 +119,7 @@ def html_block(block) -> str:
     if isinstance(block, Heading):
         return f"<h{block.level}>{inline_html(block.text)}</h{block.level}>"
     if isinstance(block, Table):
-        return html_table(block.rows)
+        return html_table(block.rows, block.alignments)
     if isinstance(block, Quote):
         return f"<blockquote>{inline_html(block.text)}</blockquote>"
     if isinstance(block, Image):
@@ -139,11 +147,11 @@ def html_list(items: list[ListItem]) -> str:
     return "".join(output)
 
 
-def html_table(rows: list[list[str]]) -> str:
+def html_table(rows: list[list[str]], alignments: tuple[str, ...] = ()) -> str:
     if not rows:
         return ""
-    header = "".join(f"<th>{inline_html(cell)}</th>" for cell in rows[0])
-    body = "".join("<tr>" + "".join(f"<td>{inline_html(cell)}</td>" for cell in row) + "</tr>" for row in rows[1:])
+    header = "".join(f"<th{alignment_style(alignments, index)}>{inline_html(cell)}</th>" for index, cell in enumerate(rows[0]))
+    body = "".join("<tr>" + "".join(f"<td{alignment_style(alignments, index)}>{inline_html(cell)}</td>" for index, cell in enumerate(row)) + "</tr>" for row in rows[1:])
     return f"<table>\n<thead><tr>{header}</tr></thead>\n<tbody>{body}</tbody>\n</table>"
 
 

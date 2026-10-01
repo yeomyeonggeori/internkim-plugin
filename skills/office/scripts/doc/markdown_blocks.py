@@ -24,6 +24,7 @@ class Heading:
 @dataclass(frozen=True)
 class Table:
     rows: list[list[str]]
+    alignments: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -104,7 +105,20 @@ def table_block(lines: list[str], index: int):
     while index < len(lines) and is_table_line(lines[index]):
         table_lines.append(lines[index])
         index += 1
-    return Table([split_table_row(line) for line in table_lines if not is_divider_row(line)]), index
+    dividers = [line for line in table_lines if is_divider_row(line)]
+    alignments = tuple(column_alignment(cell) for cell in split_table_row(dividers[0])) if dividers else ()
+    return Table([split_table_row(line) for line in table_lines if not is_divider_row(line)], alignments), index
+
+
+def column_alignment(divider_cell: str) -> str:
+    starts, ends = divider_cell.startswith(":"), divider_cell.endswith(":")
+    if starts and ends:
+        return "center"
+    if ends:
+        return "right"
+    if starts:
+        return "left"
+    return ""
 
 
 def paragraph_block(lines: list[str], index: int):

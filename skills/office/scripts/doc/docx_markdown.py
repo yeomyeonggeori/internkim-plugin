@@ -11,6 +11,7 @@ from docx.shared import Inches, Pt, RGBColor
 
 from doc_definitions import IMAGE_UNAVAILABLE
 from docx_defaults import apply_korean_defaults, set_page
+from docx_format_operations import ALIGNMENTS
 from docx_tables import add_space_after_table, format_table
 from docx_lists import add_list_paragraph, start_list
 from docx_charts import add_chart_part, drawing_run, next_drawing_id, specification
@@ -49,7 +50,7 @@ def add_block(document: Document, block, source_directory: Path, list_ids: dict[
     if isinstance(block, Heading):
         document.add_heading(block.text, level=block.level)
     elif isinstance(block, Table):
-        add_table(document, block.rows)
+        add_table(document, block.rows, block.alignments)
     elif isinstance(block, ListItem):
         add_inline_runs(add_list_item(document, block, list_ids), block.text)
     elif isinstance(block, Quote):
@@ -79,7 +80,7 @@ def add_list_item(document: Document, item: ListItem, list_ids: dict[bool, int])
     return add_list_paragraph(document, list_ids[item.is_numbered], item.level)
 
 
-def add_table(document: Document, rows: list[list[str]]) -> None:
+def add_table(document: Document, rows: list[list[str]], alignments: tuple[str, ...] = ()) -> None:
     if not rows:
         return
     column_count = max(len(row) for row in rows)
@@ -89,6 +90,9 @@ def add_table(document: Document, rows: list[list[str]]) -> None:
         for column_index in range(column_count):
             paragraph = table.rows[row_index].cells[column_index].paragraphs[0]
             add_inline_runs(paragraph, row[column_index] if column_index < len(row) else "")
+            alignment = alignments[column_index] if column_index < len(alignments) else ""
+            if alignment:
+                paragraph.alignment = ALIGNMENTS[alignment]
     format_table(table)
     add_space_after_table(document)
 

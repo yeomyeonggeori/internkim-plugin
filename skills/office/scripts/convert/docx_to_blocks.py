@@ -33,13 +33,29 @@ class DocumentReading:
             self.dropped[kind] = self.dropped.get(kind, 0) + count
 
 
+JUSTIFICATION_ALIGNMENTS = {"left": "left", "start": "left", "center": "center", "right": "right", "end": "right"}
+
+
+def table_block(element) -> Table:
+    rows = list(element.iterchildren(qn("w:tr")))
+    cells = [[visible_text(cell).strip() for cell in row.iterchildren(qn("w:tc"))] for row in rows]
+    alignment_row = rows[1] if len(rows) > 1 else rows[0] if rows else None
+    alignments = tuple(cell_alignment(cell) for cell in alignment_row.iterchildren(qn("w:tc"))) if alignment_row is not None else ()
+    return Table(cells, alignments if any(alignments) else ())
+
+
+def cell_alignment(cell) -> str:
+    justification = cell.find(f"{qn('w:p')}/{qn('w:pPr')}/{qn('w:jc')}")
+    return JUSTIFICATION_ALIGNMENTS.get(justification.get(qn("w:val")), "") if justification is not None else ""
+
+
 def read_docx_blocks(path: Path, media_directory_name: str) -> DocumentReading:
     document = Document(str(path))
     reading = DocumentReading()
     numbering = numbering_formats(document)
     for element in document.element.body.iterchildren():
         if element.tag == TABLE_TAG:
-            reading.blocks.append(Table([[visible_text(cell).strip() for cell in row.iterchildren(qn("w:tc"))] for row in element.iterchildren(qn("w:tr"))]))
+            reading.blocks.append(table_block(element))
         elif element.tag == PARAGRAPH_TAG:
             add_paragraph(reading, DocxParagraph(element, document._body), numbering, media_directory_name)
         elif element.tag == qn("w:sdt"):
