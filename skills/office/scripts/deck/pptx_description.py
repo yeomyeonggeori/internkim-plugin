@@ -2,26 +2,33 @@ from __future__ import annotations
 
 from pptx.oxml.ns import qn
 
+from pptx_comments import slide_comments
 from pptx_content import frame_text, notes_text
 from pptx_geometry import SLIDE_FRAME, Frame, child_frame, local_box, percent_of_slide, points, rotation_degrees
 from pptx_inheritance import SlideContext, slide_context
+from pptx_section_operations import describe_sections
 from pptx_shape_kinds import placeholder_type, shape_address, shape_identifier, shape_kind
 from pptx_style import resolve_color, run_style
 
 
 ALIGNMENT_NAMES = {"l": "left", "ctr": "center", "r": "right", "just": "justify", "dist": "distributed"}
+TRANSITION_EXTRAS = ("sndAc", "extLst")
 AUTOFIT_NAMES = {qn("a:noAutofit"): "none", qn("a:normAutofit"): "shrink", qn("a:spAutoFit"): "resize"}
 
 
 def describe_presentation(presentation, numbers: list[int], detail: bool) -> dict:
     slides = list(presentation.slides)
     width, height = presentation.slide_width, presentation.slide_height
-    return {
+    description = {
         "slideCount": len(slides),
         "slideSize": {"w": width, "h": height, "unit": "EMU", "emuPerPoint": 12700},
         "layouts": [layout.name for master in presentation.slide_masters for layout in master.slide_layouts],
-        "slides": [describe_slide(presentation, slides[number - 1], number, detail) for number in numbers],
     }
+    sections = describe_sections(presentation)
+    if sections:
+        description["sections"] = sections
+    description["slides"] = [describe_slide(presentation, slides[number - 1], number, detail) for number in numbers]
+    return description
 
 
 def describe_slide(presentation, slide, number: int, detail: bool) -> dict:
@@ -31,6 +38,12 @@ def describe_slide(presentation, slide, number: int, detail: bool) -> dict:
         description["hidden"] = True
     description["shapes"] = describe_shapes(slide.shapes, "", SLIDE_FRAME, context, detail, (presentation.slide_width, presentation.slide_height))
     description["notes"] = notes_text(slide)
+    transition = transition_details(slide._element)
+    if transition:
+        description["transition"] = transition
+    comments = slide_comments(slide)
+    if comments:
+        description["comments"] = comments
     if detail and slide._element.find(qn("p:timing")) is not None:
         description["animated"] = sorted({target.get("spid") for target in slide._element.iter(qn("p:spTgt"))})
     return description
@@ -54,8 +67,40 @@ def describe_shape(shape, address: str, frame: Frame, context: SlideContext, det
         rotation = rotation_degrees(element)
         if rotation:
             description["rotation"] = rotation
+    link = link_target(shape.part, element.find(f".//{qn('p:cNvPr')}/{qn('a:hlinkClick')}"))
+    if link:
+        description["link"] = link
     description.update(kind_details(shape, kind, address, frame, context, detail, slide_size))
     return description
+
+
+def link_target(part, link) -> str | None:
+    if link is None:
+        return None
+    relationship_id = link.get(qn("r:id"))
+    if relationship_id and relationship_id in part.rels:
+        relationship = part.rels[relationship_id]
+        if relationship.is_external:
+            return relationship.target_ref
+        slides = list(part.package.presentation_part.presentation.slides)
+        number = next((index for index, slide in enumerate(slides, start=1) if slide.part is relationship.target_part), None)
+        return f"slide {number}" if number else None
+    return link.get("action")
+
+
+def local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1]
+
+
+def transition_details(slide_element) -> dict:
+    transition = next(slide_element.iter(qn("p:transition")), None)
+    if transition is None:
+        return {}
+    effect = next((local_name(child.tag) for child in transition if local_name(child.tag) not in TRANSITION_EXTRAS), "none")
+    details = {"kind": effect, "speed": {"fast": "fast", "med": "medium", "slow": "slow"}.get(transition.get("spd", "fast"), "fast")}
+    if transition.get("advTm"):
+        details["advanceAfter"] = int(transition.get("advTm")) / 1000
+    return details
 
 
 def kind_details(shape, kind: str, address: str, frame: Frame, context: SlideContext, detail: bool, slide_size) -> dict:
@@ -106,10 +151,16 @@ def paragraph_details(paragraph, shape_element, context: SlideContext) -> dict:
         details["bullet"] = "bullet"
     elif properties is not None and properties.find(qn("a:buAutoNum")) is not None:
         details["bullet"] = "number"
-    details["runs"] = [
-        {"text": run.text, **run_style(context, shape_element, paragraph._p, run._r.find(qn("a:rPr"))).detailed(run.text)}
-        for run in paragraph.runs
-    ]
+    details["runs"] = [run_details(run, shape_element, paragraph, context) for run in paragraph.runs]
+    return details
+
+
+def run_details(run, shape_element, paragraph, context: SlideContext) -> dict:
+    properties = run._r.find(qn("a:rPr"))
+    details = {"text": run.text, **run_style(context, shape_element, paragraph._p, properties).detailed(run.text)}
+    link = link_target(context.slide.part, properties.find(qn("a:hlinkClick")) if properties is not None else None)
+    if link:
+        details["link"] = link
     return details
 
 

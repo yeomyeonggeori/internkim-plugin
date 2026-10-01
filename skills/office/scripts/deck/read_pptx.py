@@ -21,7 +21,8 @@ def parse_arguments():
     parser = OfficeArgumentParser(description=(
         "Read a .pptx as numbered slides. Each shape has the index deck apply takes (3.1 is the second shape inside group 3), "
         "its id, name, kind, placeholder type, box in EMU and in percent of the slide, and its text with the effective font, size, bold and color. "
-        "Shapes are listed back to front. Tables give their rows, charts their type, categories and series."
+        "Shapes are listed back to front. Tables give their rows, charts their type, categories and series; "
+        "links, transitions, comments and sections appear where the deck has them."
     ))
     parser.add_argument("presentation_path", type=office_file("pptx"))
     parser.add_argument("--slides", default="", help="slides to read, such as 2,4-6; default every slide")
