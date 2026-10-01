@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.styles import Alignment, Border, Color, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from office_operations import OPERATION_NOT_APPLICABLE, Change
@@ -10,14 +10,18 @@ from office_result import OfficeFailure
 from office_schema import color_problem
 from workbook_access import cell_rows, column_index, parse_range, resolve_sheet, sheet_of
 from workbook_structure import isolate_column
+from theme_colors import theme_reference
 
 
 COLOR_PATTERN = re.compile(r"^[0-9A-Fa-f]{6}$")
 COLOR_FIELDS = ("fill", "fontColor", "borderColor", "color", "lineColor")
-FONT_FIELDS = ("bold", "italic", "underline", "fontSize", "fontName", "fontColor")
-ALIGNMENT_FIELDS = ("alignment", "verticalAlignment", "indent", "wrapText")
+FONT_FIELDS = ("bold", "italic", "underline", "strikethrough", "fontSize", "fontName", "fontColor")
+ALIGNMENT_FIELDS = ("alignment", "verticalAlignment", "indent", "wrapText", "textRotation")
 DEFAULT_BORDER_COLOR = "94A3B8"
 BORDER_EDGES = ("left", "right", "top", "bottom")
+# ECMA-376 Part 1, 18.8.1 alignment: a textRotation of 91 to 180 is 90 plus the degrees below the horizon, and 255 is vertical text
+STACKED_ROTATION = 255
+CLOCKWISE_ROTATION_BASE = 90
 
 
 def require_colors(operation: dict, location: str) -> None:
@@ -26,10 +30,26 @@ def require_colors(operation: dict, location: str) -> None:
             raise OfficeFailure(color_problem(operation[name], "six hex digits such as DCEAF7", f"{location}.{name}"))
 
 
+def style_color(text: str) -> Color:
+    theme = theme_reference(text)
+    if theme is not None:
+        return Color(theme=theme[0], tint=theme[1])
+    return Color(rgb=text.lstrip("#").upper())
+
+
+def excel_rotation(rotation: int | str) -> int:
+    if rotation == "vertical":
+        return STACKED_ROTATION
+    return rotation if rotation >= 0 else CLOCKWISE_ROTATION_BASE - rotation
+
+
+def rotation_degrees(excel_value: int) -> int:
+    return excel_value if excel_value <= CLOCKWISE_ROTATION_BASE else CLOCKWISE_ROTATION_BASE - excel_value
+
+
 def plan_format_range(workbook, operation: dict, location: str) -> Change:
     worksheet = sheet_of(workbook, operation, location)
     bounds = parse_range(operation["range"], f"{location}.range")
-    require_colors(operation, location)
 
     def change() -> str:
         rows = [list(row) for row in cell_rows(worksheet, bounds)]
@@ -48,7 +68,7 @@ def apply_format(cell, operation: dict) -> None:
     if any(name in operation for name in FONT_FIELDS):
         cell.font = changed_font(cell.font, operation)
     if "fill" in operation:
-        cell.fill = PatternFill("solid", fgColor=operation["fill"].upper())
+        cell.fill = PatternFill("solid", fgColor=style_color(operation["fill"]))
     if any(name in operation for name in ALIGNMENT_FIELDS):
         cell.alignment = changed_alignment(cell.alignment, operation)
 
@@ -60,8 +80,8 @@ def changed_font(font, operation: dict) -> Font:
         bold=operation.get("bold", font.b),
         italic=operation.get("italic", font.i),
         underline=("single" if operation["underline"] else None) if "underline" in operation else font.u,
-        strike=font.strike,
-        color=operation["fontColor"].upper() if "fontColor" in operation else font.color,
+        strike=operation.get("strikethrough", font.strike),
+        color=style_color(operation["fontColor"]) if "fontColor" in operation else font.color,
         vertAlign=font.vertAlign,
         family=font.family,
         charset=font.charset,
@@ -76,13 +96,13 @@ def changed_alignment(alignment, operation: dict) -> Alignment:
         wrap_text=operation.get("wrapText", alignment.wrap_text),
         shrink_to_fit=alignment.shrink_to_fit,
         indent=operation.get("indent", alignment.indent),
-        text_rotation=alignment.text_rotation,
+        text_rotation=excel_rotation(operation["textRotation"]) if "textRotation" in operation else alignment.text_rotation,
     )
 
 
 def apply_border(rows: list[list], operation: dict) -> None:
     style = None if operation["border"] == "none" else operation.get("borderStyle", "thin")
-    side = Side(style=style, color=operation.get("borderColor", DEFAULT_BORDER_COLOR).upper() if style else None)
+    side = Side(style=style, color=style_color(operation.get("borderColor", DEFAULT_BORDER_COLOR)) if style else None)
     last_row, last_column = len(rows) - 1, len(rows[0]) - 1
     for row_index, row in enumerate(rows):
         for column_position, cell in enumerate(row):

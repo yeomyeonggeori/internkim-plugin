@@ -9,6 +9,7 @@ from openpyxl.utils import get_column_letter, range_boundaries
 from number_format import Displayed, displayed
 from office_preview import PageGeometry, Preview, emu_to_pixels, escaped, inches_to_pixels, page_section, pixels, points_to_pixels, positioned, style_attribute
 from preview_fonts import FontRegistry, FontRequest, css_font_family
+from sheet_formatting import STACKED_ROTATION, rotation_degrees
 from sheet_objects import EXCEL_DEFAULT_FIT_PAGES
 from xlsx_colors import css_color
 from xlsx_conditional import ConditionalStyles
@@ -196,7 +197,7 @@ class SheetPreviewer:
         request = font_request(font, scale)
         alignment = cell.alignment
         horizontal = alignment.horizontal or ("right" if text.is_number else "center" if isinstance(value, bool) else "left")
-        content = text.text
+        content = stacked(text.text) if alignment.textRotation == STACKED_ROTATION else text.text
         wraps = bool(alignment.wrap_text)
         if text.is_number and not wraps and self.fonts.width(request, content) > width - 2 * CELL_PADDING_PIXELS * scale:
             content = "#" * max(1, int((width - 2 * CELL_PADDING_PIXELS * scale) // max(self.fonts.width(request, "#"), 1)))
@@ -207,7 +208,7 @@ class SheetPreviewer:
             **span,
             "display": "flex",
             "justify-content": HORIZONTAL.get(horizontal, "flex-start"),
-            "align-items": VERTICAL.get(alignment.vertical or "bottom", "flex-end"),
+            "align-items": "center" if rotation_style(alignment.textRotation) else VERTICAL.get(alignment.vertical or "bottom", "flex-end"),
             "padding": f"0 {pixels(CELL_PADDING_PIXELS * scale)}",
             "padding-left": pixels((CELL_PADDING_PIXELS + INDENT_PIXELS * (alignment.indent or 0)) * scale) if alignment.indent else None,
             "box-sizing": "border-box",
@@ -217,12 +218,12 @@ class SheetPreviewer:
             "font-size": pixels(points_to_pixels(request.size)),
             "font-weight": "700" if font.b else None,
             "font-style": "italic" if font.i else None,
-            "text-decoration": " ".join(name for name, flag in (("underline", font.u and font.u != "none"), ("line-through", font.strike)) if flag) or None,
             "color": extra.get("color") or text.color or css_color(font.color, self.palette),
             "line-height": pixels(self.fonts.line_height(request)),
             "text-align": horizontal if horizontal in ("left", "center", "right") else None,
         }
-        return f"<div{style_attribute(declarations)}><span>{escaped(content)}</span></div>"
+        span = {"text-decoration": text_decoration(font), **rotation_style(alignment.textRotation)}
+        return f"<div{style_attribute(declarations)}><span{style_attribute(span)}>{escaped(content)}</span></div>"
 
     def border_css(self, frame: SheetFrame, row: int, column: int, last_row: int, last_column: int, scale: float) -> dict:
         worksheet = frame.worksheet
@@ -278,6 +279,20 @@ def page_content(page_number: int, frame: SheetFrame, columns: list[int], rows: 
     if drawings:
         content["drawings"] = drawings
     return content
+
+
+def text_decoration(font) -> str | None:
+    return " ".join(name for name, flag in (("underline", font.u and font.u != "none"), ("line-through", font.strike)) if flag) or None
+
+
+def stacked(text: str) -> str:
+    return "\n".join(text)
+
+
+def rotation_style(rotation: int | None) -> dict:
+    if not rotation or rotation == STACKED_ROTATION:
+        return {}
+    return {"display": "inline-block", "transform": f"rotate({-rotation_degrees(rotation)}deg)"}
 
 
 def font_request(font, scale: float = 1.0) -> FontRequest:

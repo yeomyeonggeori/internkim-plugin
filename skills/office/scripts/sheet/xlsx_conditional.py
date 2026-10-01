@@ -17,6 +17,15 @@ COMPARISONS = {
 }
 
 
+TEXT_TESTS = {
+    "containsText": lambda text, sought: sought in text,
+    "notContainsText": lambda text, sought: sought not in text,
+    "beginsWith": lambda text, sought: text.startswith(sought),
+    "endsWith": lambda text, sought: text.endswith(sought),
+}
+BLANK_TESTS = {"containsBlanks": True, "notContainsBlanks": False}
+
+
 class ConditionalStyles:
     def __init__(self, worksheet, values, palette: tuple):
         self.values = values
@@ -37,14 +46,23 @@ class ConditionalStyles:
 
     def style_for(self, row: int, column: int, value) -> dict:
         style: dict = {}
-        if not isinstance(value, (int, float)) or isinstance(value, bool):
-            return style
         for cells, rule, numbers in sorted(self.entries, key=lambda entry: entry[1].priority or 0, reverse=True):
             if (row, column) in cells:
-                style.update(self.rule_style(rule, float(value), numbers))
+                style.update(self.rule_style(rule, value, numbers))
         return style
 
-    def rule_style(self, rule, value: float, numbers: list[float]) -> dict:
+    def rule_style(self, rule, value, numbers: list[float]) -> dict:
+        if rule.type in TEXT_TESTS:
+            matches = value is not None and TEXT_TESTS[rule.type](str(value).casefold(), (rule.text or "").casefold())
+            return differential_style(rule.dxf, self.palette) if matches else {}
+        if rule.type in BLANK_TESTS:
+            is_blank = value is None or str(value).strip() == ""
+            return differential_style(rule.dxf, self.palette) if is_blank == BLANK_TESTS[rule.type] else {}
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return {}
+        return self.number_style(rule, float(value), numbers)
+
+    def number_style(self, rule, value: float, numbers: list[float]) -> dict:
         if rule.type == "cellIs":
             return self.cell_is_style(rule, value)
         if rule.type == "colorScale" and rule.colorScale is not None:

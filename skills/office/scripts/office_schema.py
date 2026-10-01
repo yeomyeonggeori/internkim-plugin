@@ -295,6 +295,15 @@ NAME_SYNONYMS = {
     "column": ("bar",),
     "avg": ("average",),
     "mean": ("average",),
+    "bg1": ("lt1",),
+    "bg2": ("lt2",),
+    "tx1": ("dk1",),
+    "tx2": ("dk2",),
+    "background1": ("lt1",),
+    "background2": ("lt2",),
+    "text1": ("dk1",),
+    "text2": ("dk2",),
+    "hyperlink": ("hlink",),
 }
 
 

@@ -7,9 +7,10 @@ from chart_svg import LABEL_FLAGS
 from office_preview import PREVIEW_ISSUE_KINDS
 from office_operations import OPERATION_ISSUE_KINDS
 from template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
-from office_result import ERROR, WARNING, WRONG_TYPE, Issue, IssueKind
-from office_schema import AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Text, Variant
+from office_result import ERROR, INVALID_VALUE, WARNING, WRONG_TYPE, Issue, IssueKind
+from office_schema import HEX_COLOR_PATTERN, AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, closest_name, color_problem, wrong_type
 from text_checks import PLACEHOLDER_LEFT
+from theme_colors import THEME_COLOR, THEME_SLOTS, theme_reference
 
 
 SHOWN_ROW_LIMIT = 4
@@ -31,6 +32,24 @@ class Rows(ListOf):
             location,
             f"write the header once and every row as a list in the header's order: {shown}",
         )]
+
+
+@dataclass(frozen=True)
+class CellColor(Shape):
+    label = "hex or theme color such as 1F4E79, accent1 or dk2-25%"
+    accepted = "six hex digits, or a theme slot (" + " ".join(THEME_SLOTS) + ") with an optional tint such as accent1+40%"
+
+    def problems(self, value: object, location: str) -> list[Issue]:
+        if not isinstance(value, str):
+            return [wrong_type(self, value, location)]
+        if HEX_COLOR_PATTERN.fullmatch(value) or theme_reference(value) is not None:
+            return []
+        slot = THEME_COLOR.fullmatch(value.strip())
+        nearest = closest_name(slot["slot"], THEME_SLOTS) if slot else None
+        if nearest is None:
+            return [color_problem(value, self.accepted, location)]
+        written = value.strip()[len(slot["slot"]):]
+        return [INVALID_VALUE.issue(f"{location}: {value!r} is not {self.accepted} (did you mean {nearest + written!r}?)", location, f'use "{nearest + written}"')]
 
 
 ROWS = Rows(ListOf(CellValue()))
@@ -55,6 +74,7 @@ VALUE_TYPE = Field("type", Choice(("auto", "text")), "auto (default) stores text
 COUNT = Field("count", Number(minimum=1, integer=True), "how many, default 1")
 RANGE = Field("range", CELL_ADDRESS, "range such as A1:D10, or one cell", required=True)
 COLOR = Text(non_empty=True)
+STYLE_COLOR = CellColor()
 FIT_PAGES = AnyOf((Boolean(), Number(minimum=0, maximum=1000, integer=True)), name="true, false or a page count")
 HIDDEN = Field("hidden", Boolean(), "true (default) hides, false shows again")
 CHART_INDEX = Field("chart", Number(minimum=0, integer=True), "chart index on the sheet, from sheet read", required=True)
@@ -124,17 +144,19 @@ OPERATIONS = Variant(
             Field("bold", Boolean(), "bold text on or off"),
             Field("italic", Boolean(), "italic text on or off"),
             Field("underline", Boolean(), "single underline on or off"),
+            Field("strikethrough", Boolean(), "line through the text on or off"),
             Field("fontSize", Number(minimum=6, maximum=72), "font size in points"),
             Field("fontName", Text(non_empty=True), "font family such as Malgun Gothic"),
-            Field("fontColor", COLOR, "text color as six hex digits"),
-            Field("fill", COLOR, "background color as six hex digits such as DCEAF7"),
+            Field("fontColor", STYLE_COLOR, "text color"),
+            Field("fill", STYLE_COLOR, "background color such as DCEAF7 or accent1+80%"),
             Field("alignment", Choice(("left", "center", "right")), "horizontal alignment"),
             Field("verticalAlignment", Choice(("top", "center", "bottom")), "vertical alignment"),
             Field("indent", Number(minimum=0, maximum=15, integer=True), "indent level of left-aligned text"),
             Field("wrapText", Boolean(), "wrap long text inside the cell"),
+            Field("textRotation", AnyOf((Number(minimum=-90, maximum=90, integer=True), Choice(("vertical",))), name='degrees from -90 to 90, or "vertical"'), "turn the text: positive degrees counterclockwise, negative clockwise, vertical stacks the letters"),
             Field("border", Choice(("all", "outline", "top", "bottom", "none")), "draw borders on every cell edge, around the range, on its top or bottom edge, or remove them"),
             Field("borderStyle", Choice(("thin", "medium", "thick", "dashed", "double")), "border line, default thin"),
-            Field("borderColor", COLOR, "border color, default 94A3B8"),
+            Field("borderColor", STYLE_COLOR, "border color, default 94A3B8"),
         )),
         Record("merge_cells", "merge a range into one cell that keeps the top-left value", (SHEET_NAME, RANGE)),
         Record("unmerge_cells", "split a merged range back into cells", (SHEET_NAME, RANGE)),
@@ -221,16 +243,22 @@ OPERATIONS = Variant(
         Record("add_conditional_format", "color cells by a rule; highlight rules default to a light red fill with dark red text", (
             SHEET_NAME,
             RANGE,
-            Field("rule", Choice(("greater_than", "less_than", "between", "equal", "not_equal", "greater_or_equal", "less_or_equal", "contains_text", "duplicate", "unique", "top", "bottom", "above_average", "below_average", "formula", "color_scale", "data_bar", "icon_set")), "what to color", required=True),
-            Field("value", CellValue(), "number or text the rule compares with; text starting with = is a formula such as =$B$1"),
+            Field("rule", Choice(("greater_than", "less_than", "between", "equal", "not_equal", "greater_or_equal", "less_or_equal", "contains_text", "not_contains_text", "begins_with", "ends_with", "blank", "not_blank", "duplicate", "unique", "top", "bottom", "above_average", "below_average", "formula", "color_scale", "data_bar", "icon_set")), "what to color", required=True),
+            Field("value", CellValue(), "number or text the rule compares with, or the text contains_text, begins_with and ends_with look for, ignoring case; text starting with = is a formula such as =$B$1"),
             Field("value2", CellValue(), "between: the upper bound"),
             Field("formula", Text(non_empty=True), "formula rule: true for cells to color, written for the range's top-left cell, such as =$E2<0"),
             Field("rank", Number(minimum=1, integer=True), "top and bottom: how many, default 10"),
             Field("percent", Boolean(), "top and bottom: rank is a percentage"),
-            Field("fill", COLOR, "highlight fill, default FFC7CE; data_bar bar color, default 638EC6"),
-            Field("fontColor", COLOR, "highlight text color, default 9C0006"),
+            Field("fill", STYLE_COLOR, "highlight fill, default FFC7CE; data_bar bar color, default 638EC6"),
+            Field("fontColor", STYLE_COLOR, "highlight text color, default 9C0006"),
             Field("bold", Boolean(), "highlight text bold"),
             Field("scale", Choice(("red_yellow_green", "green_yellow_red", "white_green", "white_red", "white_blue")), "color_scale colors from lowest to highest, default red_yellow_green"),
+            Field("minColor", STYLE_COLOR, "color_scale: color of the lowest value, in place of the scale's"),
+            Field("midColor", STYLE_COLOR, "color_scale: color of the middle, which makes three colors"),
+            Field("maxColor", STYLE_COLOR, "color_scale: color of the highest value, in place of the scale's"),
+            Field("minValue", Number(), "color_scale: the number that takes minColor, default the lowest value"),
+            Field("midValue", Number(), "color_scale: the number that takes midColor, default the 50th percentile"),
+            Field("maxValue", Number(), "color_scale: the number that takes maxColor, default the highest value"),
             Field("icons", Choice(("3_traffic_lights", "3_arrows", "3_flags", "3_symbols", "4_arrows", "4_rating", "5_arrows", "5_rating")), "icon_set icons, default 3_traffic_lights"),
         )),
         Record("clear_conditional_formats", "remove the conditional formats that overlap a range, or every one on the sheet", (
