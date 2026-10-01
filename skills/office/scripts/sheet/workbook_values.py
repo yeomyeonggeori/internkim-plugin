@@ -5,7 +5,6 @@ import math
 import os
 import tempfile
 
-from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.cell import range_boundaries
 from openpyxl.worksheet.formula import ArrayFormula
@@ -15,6 +14,7 @@ from excel_functions import is_dynamic_array_formula
 from formula_dependencies import DependencyReader, cell_position, propagate
 from formula_references import is_bare_name, join_parts, quote_sheet_name, reference_parts, rewrite_formula
 from ironcalc_compatibility import is_divergent_criteria, needs_criteria_probe, prepare
+from workbook_access import open_workbook
 from workbook_package import main_tag, read_package, relationships_part, worksheet_parts, write_package
 
 
@@ -102,7 +102,7 @@ def dynamic_cells_in_file(path: str) -> set:
 
 
 def evaluate_workbook(path: str, writes_dynamic_arrays: bool = False) -> Evaluation:
-    workbook = load_workbook(path)
+    workbook = open_workbook(path)
     cells = formula_cells(workbook)
     evaluation = Evaluation()
     if not cells:

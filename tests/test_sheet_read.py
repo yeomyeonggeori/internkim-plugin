@@ -1,6 +1,8 @@
+import subprocess
+import sys
 import unittest
 
-from sheet_fixture import WorkbookFixture, run_office, run_office_python, write_json
+from sheet_fixture import OFFICE_ENTRY, WorkbookFixture, run_office, run_office_python, write_json
 
 FIXTURE_WORKBOOK = """
 from openpyxl import Workbook
@@ -120,6 +122,15 @@ class ReadTest(WorkbookFixture):
         envelope = run_office(["sheet", "read", "fixture.xlsx", "--sheet", "Missing"], self.directory)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["TARGET_NOT_FOUND"])
         self.assertIn("Sales, Notes", envelope["issues"][0]["message"])
+
+
+class LibraryWarningTest(WorkbookFixture):
+    def test_reading_a_workbook_with_sparklines_prints_only_the_result(self):
+        self.create_workbook([{"title": "S", "rows": [["name", "1월", "2월", "3월", "trend"], ["a", 1, 2, 3, None], ["b", 3, 2, 1, None]]}])
+        self.assertEqual(self.apply([{"op": "add_sparklines", "range": "B2:D3", "target": "E2:E3"}])["status"], "ok")
+        for command in (["sheet", "read"], ["sheet", "check"], ["sheet", "validate"]):
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *command, "book.xlsx"], capture_output=True, text=True, cwd=self.directory)
+            self.assertEqual(completed.stderr, "", command)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import os
 from typing import Iterable
+import warnings
 
 from openpyxl import load_workbook
 from openpyxl.worksheet.formula import ArrayFormula
@@ -15,6 +16,8 @@ from office_result import INVALID_VALUE, OfficeFailure
 from office_schema import closest_name
 from excel_functions import PARAMETER_PREFIX
 from formula_tree import FUNCTION_PREFIXES, Call, parse_formula, render, tokens_in
+
+warnings.filterwarnings("ignore", category=UserWarning, module=r"openpyxl\.")
 
 
 def is_macro_workbook(path: str) -> bool:
