@@ -3,12 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from docx import Document
-
 from chart_svg import DEFAULT_PALETTE
 from docx.oxml.ns import qn
 from lxml import etree
 
+from docx_package import open_document
 from docx_preview_css import DEFAULT_FONT_SIZE_POINTS, HIGHLIGHT_COLORS, hex_color, text_decoration
 from docx_preview_graphics import GRAPHIC_TAGS, graphic_items
 from docx_preview_model import (
@@ -57,7 +56,7 @@ class InlineState:
 
 class DocxModelBuilder:
     def __init__(self, path: Path):
-        self.document = Document(str(path))
+        self.document = open_document(str(path))
         theme = self.theme_root()
         self.styles = StyleSheet(self.document.styles.element, theme)
         self.chart_palette = theme_accents(theme)

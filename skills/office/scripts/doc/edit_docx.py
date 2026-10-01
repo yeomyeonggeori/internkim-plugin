@@ -3,11 +3,10 @@ from __future__ import annotations
 
 import argparse
 
-from docx import Document
-
 from create_docx import add_block, add_list, require_rectangular_tables
 from doc_definitions import BLOCK_LIST
 from documents_folder import resolve_document_path
+from docx_package import open_document
 from office_inputs import office_file
 from office_result import OfficeArgumentParser, Result, read_json_file, run_command
 from office_schema import require_valid
@@ -17,7 +16,7 @@ def main() -> Result:
     arguments = parse_arguments()
     blocks = load_blocks(arguments.blocks) if arguments.blocks else []
     document_path = resolve_document_path(arguments.document_path, "docx")
-    document = Document(document_path)
+    document = open_document(document_path)
     for heading_text in arguments.heading:
         document.add_heading(heading_text, level=1)
     for paragraph_text in arguments.paragraph:

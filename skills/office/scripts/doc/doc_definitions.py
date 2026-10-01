@@ -369,7 +369,17 @@ EAST_ASIA_FONT_MISSING = IssueKind("EAST_ASIA_FONT_MISSING", WARNING, "Korean te
 EAST_ASIA_LANGUAGE_NOT_KOREAN = IssueKind("EAST_ASIA_LANGUAGE_NOT_KOREAN", WARNING, "Korean text is tagged with another East Asian language, so LibreOffice breaks its lines mid-word and Word picks that language's fonts", "apply set_korean_language")
 TRACKED_CHANGES_PRESENT = IssueKind("TRACKED_CHANGES_PRESENT", WARNING, "the document holds tracked changes nobody has accepted or rejected", "doc read --revisions lists them; settle them with accept_revisions or reject_revisions unless the reader should see the redline")
 
-CHECK_ISSUE_KINDS = (PLACEHOLDER_LEFT, BROKEN_INTERNAL_REFERENCE, STALE_TABLE_OF_CONTENTS, EAST_ASIA_FONT_MISSING, EAST_ASIA_LANGUAGE_NOT_KOREAN, TRACKED_CHANGES_PRESENT)
+MISSING_IMAGE = IssueKind("MISSING_IMAGE", ERROR, "a picture's image part is missing from the file, so it shows an empty frame or nothing", "delete_block when the paragraph holds only the picture, or insert_image the file again")
+CHART_EMPTY = IssueKind("CHART_EMPTY", WARNING, "a chart has no number in any series, so it draws empty axes", "apply edit_chart with the categories and values")
+EMPTY_HEADING = IssueKind("EMPTY_HEADING", WARNING, "a heading has no text, so the outline and the table of contents show a blank line", "apply delete_block, or set_text with the heading")
+HEADING_SKIP = IssueKind("HEADING_SKIP", WARNING, "a heading is more than one level deeper than the heading before it", "apply set_style with the next level's heading style")
+UNRESOLVED_COMMENTS = IssueKind("UNRESOLVED_COMMENTS", WARNING, "comment threads are still open, and the reader sees them in the margin", "doc read lists them; answer or resolve_comment each, or delete_comment")
+FIELD_NOT_EVALUATED = IssueKind("FIELD_NOT_EVALUATED", WARNING, "a field holds no result, so it shows blank until Word updates fields", "apply update_fields_on_open")
+
+CHECK_ISSUE_KINDS = (
+    PLACEHOLDER_LEFT, BROKEN_INTERNAL_REFERENCE, STALE_TABLE_OF_CONTENTS, EAST_ASIA_FONT_MISSING, EAST_ASIA_LANGUAGE_NOT_KOREAN, TRACKED_CHANGES_PRESENT,
+    MISSING_IMAGE, CHART_EMPTY, EMPTY_HEADING, HEADING_SKIP, UNRESOLVED_COMMENTS, FIELD_NOT_EVALUATED,
+)
 
 MERGE_ISSUE_KINDS = (UNRESOLVED_PLACEHOLDER, UNUSED_VALUE, LIST_NEEDS_A_ROW, TEMPLATE_SYNTAX_ERROR)
 
