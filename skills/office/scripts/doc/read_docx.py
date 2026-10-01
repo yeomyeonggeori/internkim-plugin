@@ -6,6 +6,8 @@ from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml.ns import qn
 
 from docx_blocks import block_kind, body_block_elements, element_text, has_page_break, heading_level, table_cell_texts, wrap_block
+from docx_comments import describe_comment_threads
+from docx_revisions import collect_revisions
 from docx_text import visible_text
 from office_result import OfficeArgumentParser, Result, run_command
 
@@ -29,8 +31,12 @@ def main() -> Result:
         "sections": [describe_section(section, index) for index, section in enumerate(document.sections)],
         "paragraphStyles": style_names(document, WD_STYLE_TYPE.PARAGRAPH),
         "tableStyles": style_names(document, WD_STYLE_TYPE.TABLE),
-        "comments": describe_comments(document, elements),
+        "comments": describe_comment_threads(document, elements),
     }
+    revisions = collect_revisions(document.element.body, elements)
+    details["revisionCount"] = len(revisions)
+    if arguments.revisions:
+        details["revisions"] = [revision.to_json() for revision in revisions]
     return Result(summary=f"read {len(blocks)} of {len(elements)} blocks from {arguments.document_path}", output_path=arguments.document_path, details=details)
 
 
@@ -88,27 +94,6 @@ def part_text(header_or_footer) -> str:
     return "\n".join(line for line in visible_text(header_or_footer._element).split("\n") if line.strip())
 
 
-def describe_comments(document, elements: list) -> list[dict]:
-    anchors = comment_anchor_blocks(elements)
-    return [
-        {
-            "id": comment.comment_id,
-            "author": comment.author,
-            "text": limited(comment.text),
-            "block": anchors.get(str(comment.comment_id)),
-        }
-        for comment in document.comments
-    ]
-
-
-def comment_anchor_blocks(elements: list) -> dict[str, int]:
-    anchors = {}
-    for index, element in enumerate(elements):
-        for start in element.iter(qn("w:commentRangeStart")):
-            anchors.setdefault(start.get(qn("w:id")), index)
-    return anchors
-
-
 def limited(text: str) -> str:
     if len(text) <= TEXT_CHARACTER_LIMIT:
         return text
@@ -116,9 +101,10 @@ def limited(text: str) -> str:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser(description="Read a .docx as indexed blocks, section headers and footers, and comments. Block indexes are what doc apply takes.")
+    parser = OfficeArgumentParser(description="Read a .docx as indexed blocks, section headers and footers, comment threads, and tracked changes. Block indexes, comment ids and revision ids are what doc apply takes. Block text is the text as if every tracked change were accepted.")
     parser.add_argument("document_path")
     parser.add_argument("--start", type=int, default=0, help="first block index to show")
+    parser.add_argument("--revisions", action="store_true", help="list every tracked change with its id, type, author, date, block and text")
     parser.add_argument("--limit", type=int, default=DEFAULT_BLOCK_LIMIT, help=f"most blocks to show, default {DEFAULT_BLOCK_LIMIT}")
     return parser.parse_args()
 

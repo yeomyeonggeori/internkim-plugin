@@ -10,6 +10,7 @@ from docx.text.paragraph import Paragraph
 from doc_definitions import BROKEN_INTERNAL_REFERENCE, EAST_ASIA_FONT_MISSING, EAST_ASIA_LANGUAGE_NOT_KOREAN, STALE_TABLE_OF_CONTENTS, TRACKED_CHANGES_PRESENT
 from docx_defaults import KOREAN_LANGUAGE
 from docx_language import effective_east_asia_language
+from docx_revisions import collect_revisions, describe_pending
 from docx_styles import run_styles
 from docx_blocks import PARAGRAPH_TAG, body_block_elements, element_text, heading_level
 from office_result import Issue, OfficeArgumentParser, Result, run_command
@@ -34,7 +35,7 @@ def main() -> Result:
         + table_of_contents_issues(document, elements)
         + east_asia_font_issues(document)
         + east_asia_language_issues(document)
-        + tracked_change_issues(document)
+        + tracked_change_issues(document, elements)
     )
     return Result(summary=f"checked {arguments.document_path}: {len(issues)} issues", output_path=arguments.document_path, issues=tuple(issues))
 
@@ -184,11 +185,11 @@ def east_asia_language_issues(document) -> list[Issue]:
     return [EAST_ASIA_LANGUAGE_NOT_KOREAN.issue(f"{len(mistagged)} runs of Korean text have an East Asian language other than ko-KR", "document", suggestion={"op": "set_korean_language"})]
 
 
-def tracked_change_issues(document) -> list[Issue]:
-    revisions = sum(1 for _ in document.element.body.iter(qn("w:ins"), qn("w:del")))
-    if revisions == 0:
+def tracked_change_issues(document, elements: list) -> list[Issue]:
+    revisions = collect_revisions(document.element.body, elements)
+    if not revisions:
         return []
-    return [TRACKED_CHANGES_PRESENT.issue(f"the document holds {revisions} tracked insertions or deletions", "document")]
+    return [TRACKED_CHANGES_PRESENT.issue(f"the document holds tracked changes: {describe_pending(revisions)}", "document")]
 
 
 def parse_arguments():

@@ -6,6 +6,7 @@ from office_schema import AnyOf, Boolean, CellValue, Choice, Field, ListOf, MapO
 from text_checks import PLACEHOLDER_LEFT, TEXT_CHECK_ISSUE_KINDS
 
 
+REVISION_TYPES = ("insertion", "deletion", "move", "formatting")
 TABLE_ROWS = ListOf(ListOf(CellValue()), non_empty=True)
 
 BLOCK = Variant(
@@ -95,6 +96,15 @@ TARGET_BLOCK = Field("block", BLOCK_INDEX, "block index from doc read", required
 TABLE_BLOCK = Field("block", BLOCK_INDEX, "index of a table block from doc read", required=True)
 ROW_INDEX = Number(minimum=0, integer=True)
 
+COMMENT_ID = Field("comment", Number(minimum=0, integer=True), "comment id from doc read", required=True)
+REVISION_SELECTOR = (
+    Field("all", Boolean(), "every tracked change"),
+    Field("ids", ListOf(Text(non_empty=True)), "revision ids from doc read --revisions, such as r1; ids are renumbered after every edit"),
+    Field("author", Text(non_empty=True), "only changes by this author"),
+    Field("type", Choice(REVISION_TYPES), "only this kind of change"),
+    Field("block", BLOCK_INDEX, "only changes in this block"),
+)
+
 OPERATIONS = Variant(
     "operation",
     "one edit of doc apply; every index refers to the document as doc read showed it before the batch, and the batch applies whole or not at all",
@@ -162,11 +172,25 @@ OPERATIONS = Variant(
             Field("text", Text(), "footer text", required=True),
             Field("section", Number(minimum=0, integer=True), "section index, default 0"),
         )),
-        Record("add_comment", "attach a review comment to a paragraph", (
+        Record("add_comment", "start a comment thread on a paragraph, or on exact text inside it; the document text is untouched", (
             TARGET_BLOCK,
             Field("text", Text(non_empty=True), "comment text", required=True),
+            Field("find", Text(non_empty=True), "exact text inside the block the comment marks; default the whole paragraph"),
+            Field("occurrence", Number(minimum=1, integer=True), "which occurrence of find, default 1"),
             Field("author", Text(), "author name"),
         )),
+        Record("reply_comment", "reply in a comment's thread", (
+            COMMENT_ID,
+            Field("text", Text(non_empty=True), "reply text", required=True),
+            Field("author", Text(), "author name"),
+        )),
+        Record("resolve_comment", "mark a comment's thread resolved, or reopen it", (
+            COMMENT_ID,
+            Field("resolved", Boolean(), "false reopens the thread, default true"),
+        )),
+        Record("delete_comment", "delete a comment and its anchor; deleting a thread's first comment deletes its replies", (COMMENT_ID,)),
+        Record("accept_revisions", "accept tracked changes: insertions become plain text, deleted text goes, formatting stays", REVISION_SELECTOR),
+        Record("reject_revisions", "reject tracked changes: inserted text goes, deleted text comes back, formatting reverts", REVISION_SELECTOR),
         Record("set_east_asia_font", "make the document's default East Asian font this one", (
             Field("font", Text(non_empty=True), "font name such as 맑은 고딕", required=True),
         )),
@@ -182,7 +206,7 @@ BROKEN_INTERNAL_REFERENCE = IssueKind("BROKEN_INTERNAL_REFERENCE", ERROR, "a lin
 STALE_TABLE_OF_CONTENTS = IssueKind("STALE_TABLE_OF_CONTENTS", WARNING, "the table of contents does not list the headings the document has", "apply update_fields_on_open so Word refreshes it")
 EAST_ASIA_FONT_MISSING = IssueKind("EAST_ASIA_FONT_MISSING", WARNING, "Korean text has no East Asian font at any level, so each reader substitutes its own", "apply set_east_asia_font")
 EAST_ASIA_LANGUAGE_NOT_KOREAN = IssueKind("EAST_ASIA_LANGUAGE_NOT_KOREAN", WARNING, "Korean text is tagged with another East Asian language, so LibreOffice breaks its lines mid-word and Word picks that language's fonts", "apply set_korean_language")
-TRACKED_CHANGES_PRESENT = IssueKind("TRACKED_CHANGES_PRESENT", WARNING, "the document holds tracked insertions or deletions, which doc apply neither reads nor edits", "accept or reject them in Word before editing")
+TRACKED_CHANGES_PRESENT = IssueKind("TRACKED_CHANGES_PRESENT", WARNING, "the document holds tracked changes nobody has accepted or rejected", "doc read --revisions lists them; settle them with accept_revisions or reject_revisions unless the reader should see the redline")
 
 CHECK_ISSUE_KINDS = (PLACEHOLDER_LEFT, BROKEN_INTERNAL_REFERENCE, STALE_TABLE_OF_CONTENTS, EAST_ASIA_FONT_MISSING, EAST_ASIA_LANGUAGE_NOT_KOREAN, TRACKED_CHANGES_PRESENT)
 

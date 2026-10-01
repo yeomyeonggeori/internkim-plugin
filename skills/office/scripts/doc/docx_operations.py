@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass, field
 
-from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.text import WD_BREAK
 from docx.oxml import OxmlElement
@@ -13,99 +11,27 @@ from docx.text.paragraph import Paragraph
 
 from doc_definitions import OPERATIONS
 from docx_language import make_east_asia_language_korean
-from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, body_block_elements, paragraph_runs
+from docx_comments import plan_add_comment, plan_delete_comment, plan_reply_comment, plan_resolve_comment
+from docx_blocks import PARAGRAPH_TAG, TABLE_TAG, paragraph_runs
+from docx_editing import DocxEditing, load_editing, placement, require_style, resolve_block, resolve_paragraph, resolve_table, save_editing
+from docx_revision_operations import plan_accept_revisions, plan_reject_revisions
+from docx_text import REMOVED_RUN_CONTAINER_TAGS
+from docx_tracking import (
+    mark_block_deleted, mark_block_inserted, mark_paragraph_deleted, mark_row, record_paragraph_property_change,
+    snapshot_paragraph_properties, tracked_replace, tracked_set_text,
+)
 from office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change, OperationSet
 from office_result import INVALID_VALUE, OfficeFailure
 from run_replacement import joined_text, replace_in_runs
 
 
+RUN_WRAPPER_TAGS = tuple(qn(f"w:{name}") for name in ("hyperlink", "ins", "moveTo", "smartTag", "customXml"))
 SETTINGS_AFTER_UPDATE_FIELDS = (
     "hdrShapeDefaults", "footnotePr", "endnotePr", "compat", "docVars", "rsids", "mathPr", "attachedSchema",
     "themeFontLang", "clrSchemeMapping", "doNotIncludeSubdocsInStats", "doNotAutoCompressPictures", "forceUpgrade",
     "captions", "readModeInkLockDown", "smartTagType", "schemaLibrary", "shapeDefaults", "doNotEmbedSmartTags",
     "decimalSymbol", "listSeparator",
 )
-
-
-@dataclass
-class DocxEditing:
-    document: Document
-    elements: list
-    cursors: dict = field(default_factory=dict)
-    deleted: set = field(default_factory=set)
-    touched: set = field(default_factory=set)
-
-
-def load_editing(path: str) -> DocxEditing:
-    document = Document(path)
-    return DocxEditing(document, body_block_elements(document))
-
-
-def save_editing(editing: DocxEditing, path: str) -> None:
-    editing.document.save(path)
-
-
-def resolve_block(editing: DocxEditing, index: int, location: str):
-    if index >= len(editing.elements):
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}: block {index} does not exist; the document has {len(editing.elements)} blocks", location))
-    element = editing.elements[index]
-    if id(element) in editing.deleted:
-        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}: block {index} is deleted by another operation in this batch", location))
-    editing.touched.add(id(element))
-    return element
-
-
-def resolve_paragraph(editing: DocxEditing, index: int, location: str) -> Paragraph:
-    element = resolve_block(editing, index, location)
-    if element.tag != PARAGRAPH_TAG:
-        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}: block {index} is not a paragraph", location))
-    return Paragraph(element, editing.document._body)
-
-
-def resolve_table(editing: DocxEditing, index: int, location: str) -> Table:
-    element = resolve_block(editing, index, location)
-    if element.tag != TABLE_TAG:
-        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}: block {index} is not a table", location))
-    return Table(element, editing.document._body)
-
-
-def require_style(editing: DocxEditing, style_name: str, style_types: tuple, location: str) -> None:
-    style = next((style for style in editing.document.styles if style.name == style_name), None)
-    if style is None:
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}: the document defines no style named {style_name!r}", location))
-    if style.type not in style_types:
-        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}: style {style_name!r} cannot apply here", location))
-
-
-def placement(editing: DocxEditing, operation: dict, location: str):
-    after, before = operation.get("after"), operation.get("before")
-    if (after is None) == (before is None):
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: give exactly one of after and before", location))
-    if before is not None:
-        anchor = resolve_block(editing, before, f"{location}.before")
-        return lambda element: anchor.addprevious(element)
-    if after == -1:
-        return start_placement(editing)
-    anchor = resolve_block(editing, after, f"{location}.after")
-    return cursor_placement(editing, anchor)
-
-
-def start_placement(editing: DocxEditing):
-    def place(element):
-        cursor = editing.cursors.get("start")
-        if cursor is not None:
-            cursor.addnext(element)
-        elif editing.elements:
-            editing.elements[0].addprevious(element)
-        editing.cursors["start"] = element
-    return place
-
-
-def cursor_placement(editing: DocxEditing, anchor):
-    def place(element):
-        editing.cursors.get(id(anchor), anchor).addnext(element)
-        editing.cursors[id(anchor)] = element
-    return place
 
 
 def plan_replace_text(editing: DocxEditing, operation: dict, location: str) -> Change:
@@ -115,6 +41,9 @@ def plan_replace_text(editing: DocxEditing, operation: dict, location: str) -> C
         raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}: {operation['find']!r} does not occur", location))
 
     def change() -> str:
+        if editing.tracking is not None:
+            replaced = sum(tracked_replace_in_paragraph(paragraph, operation["find"], operation["replace"], editing.tracking) for paragraph in paragraphs)
+            return f"replaced {replaced} occurrences of {operation['find']!r} as tracked changes"
         replaced = sum(replace_in_paragraph(paragraph, operation["find"], operation["replace"]) for paragraph in paragraphs)
         return f"replaced {replaced} occurrences of {operation['find']!r}"
     return change
@@ -139,16 +68,33 @@ def replace_in_paragraph(paragraph: Paragraph, find: str, replace: str) -> int:
     return replace_in_runs(paragraph_runs(paragraph), find, replace)
 
 
+def tracked_replace_in_paragraph(paragraph: Paragraph, find: str, replace: str, tracking) -> int:
+    text = joined_run_text(paragraph)
+    positions = []
+    position = text.find(find)
+    while position >= 0:
+        positions.append(position)
+        position = text.find(find, position + len(find))
+    for start in reversed(positions):
+        tracked_replace(paragraph._p, start, start + len(find), replace, tracking)
+    return len(positions)
+
+
 def plan_set_text(editing: DocxEditing, operation: dict, location: str) -> Change:
     paragraph = resolve_paragraph(editing, operation["block"], f"{location}.block")
 
     def change() -> str:
+        if editing.tracking is not None:
+            tracked_set_text(paragraph._p, operation["text"], editing.tracking)
+            return f"set the text of block {operation['block']} as tracked changes"
         set_paragraph_text(paragraph, operation["text"])
         return f"set the text of block {operation['block']}"
     return change
 
 
 def set_paragraph_text(paragraph: Paragraph, text: str) -> None:
+    for removed in list(paragraph._p.iter(*REMOVED_RUN_CONTAINER_TAGS)):
+        removed.getparent().remove(removed)
     runs = paragraph_runs(paragraph)
     if not runs:
         paragraph.add_run(text)
@@ -156,9 +102,21 @@ def set_paragraph_text(paragraph: Paragraph, text: str) -> None:
     runs[0].text = text
     for run in runs[1:]:
         run._r.getparent().remove(run._r)
-    for hyperlink in paragraph._p.findall(qn("w:hyperlink")):
-        if hyperlink.find(qn("w:r")) is None:
-            paragraph._p.remove(hyperlink)
+    remove_empty_run_wrappers(paragraph._p)
+
+
+def remove_empty_run_wrappers(paragraph_element) -> None:
+    for wrapper in list(paragraph_element.iter(*RUN_WRAPPER_TAGS)):
+        if wrapper.find(f".//{qn('w:r')}") is None and wrapper.getparent() is not None:
+            wrapper.getparent().remove(wrapper)
+
+
+def place_new_block(editing: DocxEditing, place, element) -> str:
+    place(element)
+    if editing.tracking is None:
+        return ""
+    mark_block_inserted(element, editing.tracking)
+    return " as a tracked change"
 
 
 def plan_insert_paragraph(editing: DocxEditing, operation: dict, location: str) -> Change:
@@ -167,8 +125,8 @@ def plan_insert_paragraph(editing: DocxEditing, operation: dict, location: str) 
     place = placement(editing, operation, location)
 
     def change() -> str:
-        place(editing.document.add_paragraph(operation["text"], style=style)._p)
-        return f"inserted a {style} paragraph"
+        tracked = place_new_block(editing, place, editing.document.add_paragraph(operation["text"], style=style)._p)
+        return f"inserted a {style} paragraph{tracked}"
     return change
 
 
@@ -178,8 +136,8 @@ def plan_insert_heading(editing: DocxEditing, operation: dict, location: str) ->
     place = placement(editing, operation, location)
 
     def change() -> str:
-        place(editing.document.add_heading(operation["text"], level=level)._p)
-        return f"inserted a level {level} heading"
+        tracked = place_new_block(editing, place, editing.document.add_heading(operation["text"], level=level)._p)
+        return f"inserted a level {level} heading{tracked}"
     return change
 
 
@@ -190,8 +148,8 @@ def plan_insert_list(editing: DocxEditing, operation: dict, location: str) -> Ch
 
     def change() -> str:
         for item in operation["items"]:
-            place(editing.document.add_paragraph(item, style=style)._p)
-        return f"inserted {len(operation['items'])} list items"
+            tracked = place_new_block(editing, place, editing.document.add_paragraph(item, style=style)._p)
+        return f"inserted {len(operation['items'])} list items{tracked}"
     return change
 
 
@@ -211,8 +169,8 @@ def plan_insert_table(editing: DocxEditing, operation: dict, location: str) -> C
         for row_cells, values in zip(table.rows, rows):
             for cell, value in zip(row_cells.cells, values):
                 cell.text = "" if value is None else str(value)
-        place(table._tbl)
-        return f"inserted a {len(rows)}x{width} table"
+        tracked = place_new_block(editing, place, table._tbl)
+        return f"inserted a {len(rows)}x{width} table{tracked}"
     return change
 
 
@@ -222,8 +180,7 @@ def plan_insert_page_break(editing: DocxEditing, operation: dict, location: str)
     def change() -> str:
         paragraph = editing.document.add_paragraph()
         paragraph.add_run().add_break(WD_BREAK.PAGE)
-        place(paragraph._p)
-        return "inserted a page break"
+        return "inserted a page break" + place_new_block(editing, place, paragraph._p)
     return change
 
 
@@ -235,6 +192,9 @@ def plan_delete_block(editing: DocxEditing, operation: dict, location: str) -> C
     editing.deleted.add(id(element))
 
     def change() -> str:
+        if editing.tracking is not None:
+            mark_block_deleted(element, editing.tracking)
+            return f"deleted block {operation['block']} as a tracked change"
         element.getparent().remove(element)
         return f"deleted block {operation['block']}"
     return change
@@ -247,7 +207,10 @@ def plan_set_style(editing: DocxEditing, operation: dict, location: str) -> Chan
     target = Table(element, editing.document._body) if is_table else Paragraph(element, editing.document._body)
 
     def change() -> str:
+        old_properties = snapshot_paragraph_properties(element) if editing.tracking is not None and not is_table else None
         target.style = operation["style"]
+        if old_properties is not None:
+            record_paragraph_property_change(element, old_properties, editing.tracking)
         return f"set block {operation['block']} to style {operation['style']!r}"
     return change
 
@@ -257,7 +220,7 @@ def plan_set_cell(editing: DocxEditing, operation: dict, location: str) -> Chang
     cell = table_cell(table, operation["row"], operation["column"], location)
 
     def change() -> str:
-        replace_cell_text(cell, operation["text"])
+        replace_cell_text(cell, operation["text"], editing.tracking)
         return f"set cell ({operation['row']}, {operation['column']}) of block {operation['block']}"
     return change
 
@@ -271,8 +234,13 @@ def table_cell(table: Table, row: int, column: int, location: str):
     return cells[column]
 
 
-def replace_cell_text(cell, text: str) -> None:
+def replace_cell_text(cell, text: str, tracking=None) -> None:
     paragraphs = cell.paragraphs
+    if tracking is not None:
+        tracked_set_text(paragraphs[0]._p, text, tracking)
+        for paragraph in paragraphs[1:]:
+            mark_paragraph_deleted(paragraph._p, tracking)
+        return
     set_paragraph_text(paragraphs[0], text)
     for paragraph in paragraphs[1:]:
         paragraph._p.getparent().remove(paragraph._p)
@@ -293,6 +261,9 @@ def plan_insert_table_row(editing: DocxEditing, operation: dict, location: str) 
         for index, cell in enumerate(new_row.cells):
             value = operation["cells"][index] if index < len(operation["cells"]) else ""
             replace_cell_text(cell, "" if value is None else str(value))
+        if editing.tracking is not None:
+            mark_row(new_row_element, editing.tracking, inserted=True)
+            return f"inserted a row after row {operation['after']} of block {operation['block']} as a tracked change"
         return f"inserted a row after row {operation['after']} of block {operation['block']}"
     return change
 
@@ -306,6 +277,9 @@ def plan_delete_table_row(editing: DocxEditing, operation: dict, location: str) 
     row_element = table.rows[operation["row"]]._tr
 
     def change() -> str:
+        if editing.tracking is not None:
+            mark_row(row_element, editing.tracking, inserted=False)
+            return f"deleted row {operation['row']} of block {operation['block']} as a tracked change"
         row_element.getparent().remove(row_element)
         return f"deleted row {operation['row']} of block {operation['block']}"
     return change
@@ -336,17 +310,6 @@ def plan_header_or_footer(editing: DocxEditing, operation: dict, location: str, 
             for paragraph in paragraphs[1:]:
                 paragraph._p.getparent().remove(paragraph._p)
         return f"set the {part_name} of section {section_index}"
-    return change
-
-
-def plan_add_comment(editing: DocxEditing, operation: dict, location: str) -> Change:
-    paragraph = resolve_paragraph(editing, operation["block"], f"{location}.block")
-    if not paragraph_runs(paragraph):
-        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}: block {operation['block']} has no text to comment on", location))
-
-    def change() -> str:
-        editing.document.add_comment(paragraph_runs(paragraph), text=operation["text"], author=operation.get("author") or "")
-        return f"commented on block {operation['block']}"
     return change
 
 
@@ -423,6 +386,11 @@ DOCX_OPERATIONS = OperationSet(OPERATIONS, {
     "set_header": plan_set_header,
     "set_footer": plan_set_footer,
     "add_comment": plan_add_comment,
+    "reply_comment": plan_reply_comment,
+    "resolve_comment": plan_resolve_comment,
+    "delete_comment": plan_delete_comment,
+    "accept_revisions": plan_accept_revisions,
+    "reject_revisions": plan_reject_revisions,
     "set_east_asia_font": plan_set_east_asia_font,
     "set_korean_language": plan_set_korean_language,
     "update_fields_on_open": plan_update_fields_on_open,
