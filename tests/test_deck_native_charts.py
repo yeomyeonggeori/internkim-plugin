@@ -24,11 +24,11 @@ OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from deck.deck_kit import chart_types  # noqa: E402
-from deck.editable_pptx import read_text_layers, write_editable_pptx  # noqa: E402
-from deck.native_charts import NATIVE_CHART_TYPES  # noqa: E402
-from deck.pptx_chart_look import chart_look, chart_model  # noqa: E402
-from deck.pptx_description import chart_details  # noqa: E402
-from deck.pptx_inheritance import slide_context  # noqa: E402
+from deck.pptx_export.editable import read_text_layers, write_editable_pptx  # noqa: E402
+from deck.pptx_export.charts import NATIVE_CHART_TYPES  # noqa: E402
+from powerpoint.preview.chart_look import chart_look, chart_model  # noqa: E402
+from powerpoint.description import chart_details  # noqa: E402
+from powerpoint.model.inheritance import slide_context  # noqa: E402
 from charts.svg import chart_svg  # noqa: E402
 
 

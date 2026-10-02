@@ -4,13 +4,13 @@ from __future__ import annotations
 from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml.ns import qn
 
-from doc.docx_blocks import block_kind, body_block_elements, element_text, has_page_break, heading_level, table_cell_texts, wrap_block
-from doc.docx_charts import chart_references, describe as describe_chart, document_charts
-from doc.docx_comments import describe_comment_threads
-from doc.docx_package import open_document
-from doc.docx_reference_operations import bookmark_names, describe_notes
-from doc.docx_revisions import collect_revisions
-from doc.docx_text import visible_text
+from doc.model.body import block_kind, body_block_elements, element_text, has_page_break, heading_level, table_cell_texts, wrap_block
+from doc.model.charts import chart_references, describe as describe_chart, document_charts
+from doc.model.comments import describe_comment_threads
+from doc.model.package import open_document
+from doc.operations.references import bookmark_names, describe_notes
+from doc.model.revisions import collect_revisions
+from doc.model.text import visible_text
 from core.office_arguments import route_arguments
 from core.office_result import Result, run_command
 

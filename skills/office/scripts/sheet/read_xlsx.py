@@ -5,11 +5,11 @@ from openpyxl.utils import get_column_letter
 
 from core.office_arguments import route_arguments
 from core.office_result import Result, run_command
-from sheet.sheet_chart_references import describe_charts
+from sheet.checks.chart_references import describe_charts
 from sheet.sheet_definitions import READ_ROW_LIMIT
-from sheet.sheet_read_cells import cells_where, column_stats, formats_in, selected_columns
-from sheet.workbook_access import cell_rows, formula_text, json_value, open_workbook, parse_range, resolve_sheet
-from sheet.workbook_package import read_package, worksheet_parts
+from sheet.read_cells import cells_where, column_stats, formats_in, selected_columns
+from sheet.workbook.access import cell_rows, formula_text, json_value, open_workbook, parse_range, resolve_sheet
+from sheet.workbook.package import read_package, worksheet_parts
 
 
 SPARKLINE_TAG = "{http://schemas.microsoft.com/office/spreadsheetml/2009/9/main}sparkline"

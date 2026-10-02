@@ -9,8 +9,8 @@ from core.office_result import Result, read_json_file, run_command
 from core.office_schema import require_valid
 from core.page_sizes import DEFAULT_PAPER, PAPER_BY_NAME
 from core.units import millimetres_to_pixels
-from doc.document_pdf import DocumentFonts, PageLayout, render_document_pdf
-from doc.markdown_blocks import Heading, ListItem, Paragraph, Table
+from doc.blocks.pdf import DocumentFonts, PageLayout, render_document_pdf
+from doc.blocks.markdown import Heading, ListItem, Paragraph, Table
 from pdf.pdf_definitions import PDF_SPECIFICATION
 
 

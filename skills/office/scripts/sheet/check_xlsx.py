@@ -6,22 +6,22 @@ from collections import defaultdict
 
 from openpyxl.utils import range_boundaries
 
-from sheet.formula_cache import evaluation_issues
-from sheet.formula_names import name_issues, sheet_is_missing
-from sheet.formula_references import formula_references, referenced_sheet_names
-from sheet.number_display import displayed_number_width
+from sheet.formulas.cache import evaluation_issues
+from sheet.formulas.names import name_issues, sheet_is_missing
+from sheet.formulas.references import formula_references, referenced_sheet_names
+from sheet.checks.number_display import displayed_number_width
 from core.number_format import displayed
 from core.office_arguments import route_arguments
 from core.office_result import Issue, Result, run_command
-from sheet.sheet_chart_references import chart_reference_issues
-from sheet.stale_values import stale_cached_value_issues
+from sheet.checks.chart_references import chart_reference_issues
+from sheet.formulas.stale_values import stale_cached_value_issues
 from sheet.sheet_definitions import BROKEN_DEFINED_NAME, FORMULA_ERROR, NUMBER_TOO_WIDE, PIVOT_VALUES_EMPTY
 from core.text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN, text_presence_issues
-from sheet.text_values import text_value_issues
-from sheet.sheet_table_checks import table_findings
-from sheet.workbook_access import open_workbook
-from sheet.workbook_values import evaluate_workbook
-from sheet.xlsx_preview import sheet_print_width_issues
+from sheet.checks.text_values import text_value_issues
+from sheet.checks.tables import table_findings
+from sheet.workbook.access import open_workbook
+from sheet.formulas.evaluation import evaluate_workbook
+from sheet.preview.pages import sheet_print_width_issues
 
 
 DEFAULT_COLUMN_WIDTH = 8.43

@@ -15,8 +15,8 @@ OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from deck.check_deck import CheckRequest, check_deck  # noqa: E402
-from deck.pptx_connectors import facing_route  # noqa: E402
-from deck.pptx_geometry import Box  # noqa: E402
+from powerpoint.model.connectors import facing_route  # noqa: E402
+from powerpoint.model.geometry import Box  # noqa: E402
 
 PROCESS = '<section data-layout="process"><h2>주문은 네 단계로 처리됩니다</h2><ol><li>주문 접수</li><li>재고 확인</li><li>출고</li><li class="pick">배송 완료</li></ol></section>'
 CYCLE = '<section data-layout="cycle"><h2>개선은 네 단계를 반복합니다</h2><ol><li>계획</li><li>실행</li><li>점검</li><li>개선</li></ol></section>'

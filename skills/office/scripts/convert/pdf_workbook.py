@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pdfplumber
 
-from sheet.cell_values import typed_text
+from sheet.workbook.cell_values import typed_text
 from sheet.create_xlsx import create_workbook
 from core.office_inputs import unlocked_pdf_bytes
 from pdf.ocr.pdf_ocr import OcrLine

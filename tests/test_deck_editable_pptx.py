@@ -18,7 +18,7 @@ SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scri
 OFFICE_ENTRY = SCRIPTS_PATH.parent / "office"
 sys.path.insert(0, str(SCRIPTS_PATH.parent))
 
-from deck.editable_pptx import read_text_layers, write_editable_pptx  # noqa: E402
+from deck.pptx_export.editable import read_text_layers, write_editable_pptx  # noqa: E402
 from png_fixture import read_png, write_png  # noqa: E402
 from deck.resource_inlining import PAPERLOGY  # noqa: E402
 from fonts.truetype import read_truetype_face, sfnt_data  # noqa: E402

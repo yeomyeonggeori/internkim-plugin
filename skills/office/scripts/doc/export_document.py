@@ -4,12 +4,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from fonts.docx_embedding import save_document
-from doc.block_writers import embedded_image, html_document
-from doc.docx_markdown import DEFAULT_DOCUMENT_FONT, markdown_document
-from doc.document_pdf import DocumentFonts, render_document_pdf
-from doc.latex_math import math_issues
-from doc.markdown_blocks import Heading, parse_markdown
-from doc.markdown_charts import require_valid_charts
+from doc.blocks.writers import embedded_image, html_document
+from doc.blocks.docx import DEFAULT_DOCUMENT_FONT, markdown_document
+from doc.blocks.pdf import DocumentFonts, render_document_pdf
+from doc.blocks.latex_math import math_issues
+from doc.blocks.markdown import Heading, parse_markdown
+from doc.blocks.charts import require_valid_charts
 from core.office_arguments import route_arguments
 from core.office_inputs import read_text_input
 from fonts.registry import BODY_SIZE_POINTS

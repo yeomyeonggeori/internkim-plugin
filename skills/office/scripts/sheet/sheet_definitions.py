@@ -15,7 +15,7 @@ from core.page_sizes import PAPER_NAMES
 from core.office_schema import HEX_COLOR_PATTERN, AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, closest_name, color_problem, guess_text, wrong_type
 from core.text_checks import PLACEHOLDER_LEFT, TEXT_CHECK_ISSUE_KINDS
 from core.office_theme import THEME_SLOTS
-from sheet.theme_colors import THEME_COLOR, theme_reference
+from sheet.workbook.theme_colors import THEME_COLOR, theme_reference
 from core.image_formats import PICTURE_FORMATS_TEXT
 
 

@@ -10,8 +10,8 @@ import pypdfium2
 from core.office_result import Issue
 from core.page_sizes import DEFAULT_PAPER
 from core.units import millimetres_to_pixels
-from doc.block_writers import file_data_uri
-from doc.document_pdf import DocumentFonts, covering_fonts, draw
+from doc.blocks.writers import file_data_uri
+from doc.blocks.pdf import DocumentFonts, covering_fonts, draw
 from paperwork.paperwork_design import COLOR_BORDER, COLOR_HEADER_FILL, COLOR_INK, COLOR_MUTED, COLOR_RULE, PDF_PAGE_MARGIN_MILLIMETERS, SIZE_BODY, SIZE_FOOTER, SIZE_LETTERHEAD_DETAIL, SIZE_LETTERHEAD_NAME, SIZE_TITLE
 from paperwork.jurisdictions import Jurisdiction, Labels
 from render.renderer import DocumentPdfRequest, FontFile, render_document_pdf as render_pdf

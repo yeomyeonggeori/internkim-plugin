@@ -84,7 +84,7 @@ class ApplyTest(DocumentFixture):
 class OperationPlannerTest(unittest.TestCase):
     def test_every_declared_operation_has_a_planner(self):
         completed = subprocess.run(
-            [sys.executable, str(OFFICE_ENTRY), "python", "-c", "from doc.docx_operations import DOCX_OPERATIONS as o; print(sorted(o.planners) == sorted(r.name for r in o.shape.records))"],
+            [sys.executable, str(OFFICE_ENTRY), "python", "-c", "from doc.operations.operation_set import DOCX_OPERATIONS as o; print(sorted(o.planners) == sorted(r.name for r in o.shape.records))"],
             capture_output=True,
             text=True,
             check=True,

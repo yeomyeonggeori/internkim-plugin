@@ -7,19 +7,19 @@ import mimetypes
 from pathlib import Path
 import tempfile
 
-from doc.block_writers import file_data_uri, html_document, markdown_text
+from doc.blocks.writers import file_data_uri, html_document, markdown_text
 from convert.convert_definitions import CONVERSION_APPROXIMATED, PAGE_WITHOUT_TEXT, TABLE_NOT_FOUND, UNSUPPORTED_CONVERSION
 from core.office_arguments import route_arguments
 from core.office_commands import KINDS, Conversion as ConversionRoute, command_text, conversion_sources, conversion_targets, find_conversion, find_route, normalized_extension
 from docx.shared import Pt
 from fonts.docx_embedding import save_document
 from fonts.registry import BODY_SIZE_POINTS
-from doc.docx_markdown import DEFAULT_DOCUMENT_FONT, markdown_document
+from doc.blocks.docx import DEFAULT_DOCUMENT_FONT, markdown_document
 from convert.docx_to_blocks import read_docx_blocks
 from doc.export_document import export_pdf
 from convert.html_to_blocks import read_html_blocks
 from render.office_preview import PAGE_SELECTOR, Preview, write_preview
-from doc.markdown_blocks import Image
+from doc.blocks.markdown import Image
 from core.office_inputs import KINDS_BY_NAME, PDF, office_file, require_unlocked_pdf
 from core.office_result import INVALID_VALUE, Issue, OfficeFailure, Result, run_command
 from core.office_inputs import read_text_input, unlocked_pdf_bytes
@@ -29,11 +29,11 @@ from convert.pdf_to_blocks import read_pdf_blocks
 from convert.pdf_workbook import read_pdf_tables, table_details, write_pdf_workbook
 from convert.pdf_to_pptx import NO_TEXT_LAYER_REASON, write_pdf_slides
 from pptx import Presentation
-from deck.pptx_preview import preview_document
+from powerpoint.preview.document import preview_document
 from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE, RenderFailed, RendererUnavailable, draw_preview
 from doc.render_docx import docx_preview
 from sheet.render_xlsx import xlsx_preview
-from deck.check_pptx import SLIDE_SELECTOR, preview_fonts
+from powerpoint.check_pptx import SLIDE_SELECTOR, preview_fonts
 from convert.spreadsheet_import import legacy_workbook_to_xlsx
 from convert.table_conversions import DELIMITERS, workbook_to_delimited
 

@@ -7,17 +7,17 @@ import tempfile
 from lxml import etree
 from openpyxl.utils import get_column_letter
 
-from sheet.formula_cache import cache_formula_values
+from sheet.formulas.cache import cache_formula_values
 from core.office_arguments import route_arguments
 from core.office_operations import apply_batch, save_atomically
 from core.office_result import Result, read_json_file, run_command
 from core.office_schema import require_valid
-from sheet.formula_references import ROW_AXIS, parse_end, rebuild_reference, reference_parts, same_sheet, unquote_sheet_name
-from sheet.sheet_operations import SHEET_OPERATIONS, load_editing, save_editing
-from sheet.workbook_structure import rewrite_chart_references, rewrite_defined_names, rewrite_formulas
+from sheet.formulas.references import ROW_AXIS, parse_end, rebuild_reference, reference_parts, same_sheet, unquote_sheet_name
+from sheet.operations.operation_set import SHEET_OPERATIONS, load_editing, save_editing
+from sheet.operations.structure import rewrite_chart_references, rewrite_defined_names, rewrite_formulas
 from core.template_merge import MERGE_VALUES, MISSING, PLACEHOLDER, MergeReport, fill_text_nodes, repeated_list_name, whole_placeholder, write_package
 from core.office_outputs import same_kind_output
-from sheet.workbook_package import MAIN_NAMESPACE, read_package, worksheet_parts
+from sheet.workbook.package import MAIN_NAMESPACE, read_package, worksheet_parts
 
 
 SHARED_STRINGS_PART = "xl/sharedStrings.xml"

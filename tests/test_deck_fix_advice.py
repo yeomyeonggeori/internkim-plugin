@@ -13,9 +13,9 @@ SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scri
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
-from deck.pptx_edit_definitions import OUT_OF_FRAME  # noqa: E402
-from deck.geometry_checks import geometry_warnings  # noqa: E402
-from deck.pptx_layout_audit import layout_issue  # noqa: E402
+from powerpoint.definitions import OUT_OF_FRAME  # noqa: E402
+from deck.review.geometry_checks import geometry_warnings  # noqa: E402
+from powerpoint.layout_audit import layout_issue  # noqa: E402
 
 
 CARD_SENTENCE = "품절 3일 전에 알립니다. "

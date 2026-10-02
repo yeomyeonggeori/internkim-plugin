@@ -112,9 +112,9 @@ class DocumentPreviewTest(unittest.TestCase):
         code = (
             "import json, sys\n"
             "from pathlib import Path\n"
-            "from doc.docx_layout import Layout\n"
-            "from doc.docx_pagination import Paginator\n"
-            "from doc.docx_preview import DocxModelBuilder\n"
+            "from doc.preview.layout import Layout\n"
+            "from doc.preview.pagination import Paginator\n"
+            "from doc.preview.document import DocxModelBuilder\n"
             "from fonts.preview import FontRegistry\n"
             "pages = Paginator(Layout(FontRegistry())).paginate(DocxModelBuilder(Path('보고서.docx')).sections())\n"
             "print(json.dumps([(sum(item.height for item in page.placed), page.body_bottom - page.body_top) for page in pages]))\n"
@@ -290,7 +290,7 @@ class PaginationTest(unittest.TestCase):
 
     def test_list_items_of_one_style_drop_the_space_between_them(self):
         run_office_python(KEPT_HEADING, self.directory)
-        reader = "import json; from pathlib import Path; from doc.docx_preview import DocxModelBuilder; blocks = DocxModelBuilder(Path('빠듯한.docx')).sections()[0].blocks; print(json.dumps([[block.space_before, block.space_after] for block in blocks[-2:]]))"
+        reader = "import json; from pathlib import Path; from doc.preview.document import DocxModelBuilder; blocks = DocxModelBuilder(Path('빠듯한.docx')).sections()[0].blocks; print(json.dumps([[block.space_before, block.space_after] for block in blocks[-2:]]))"
         completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", reader], capture_output=True, text=True, check=True, cwd=self.directory, env={**os.environ, "PYTHONPATH": str(SCRIPTS_PATH)})
         first_item, second_item = json.loads(completed.stdout)
         self.assertEqual((first_item[1], second_item[0]), (0, 0))

@@ -113,7 +113,7 @@ class CellValueGrammarTest(unittest.TestCase):
     def setUp(self):
         sys.path.insert(0, str(SCRIPTS_PATH))
         self.addCleanup(sys.path.remove, str(SCRIPTS_PATH))
-        from sheet.cell_values import typed_cell_value
+        from sheet.workbook.cell_values import typed_cell_value
 
         self.typed_cell_value = typed_cell_value
 

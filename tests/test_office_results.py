@@ -353,7 +353,7 @@ def skeleton_shape(document, definitions):
 
 class DeckReviewResultTest(unittest.TestCase):
     def test_the_review_reports_every_warning_it_writes_as_an_issue_without_legacy_codes(self):
-        from deck.render_review import review_deck
+        from deck.review.deck_review import review_deck
 
         with tempfile.TemporaryDirectory() as temporary_directory:
             deck_path = Path(temporary_directory)

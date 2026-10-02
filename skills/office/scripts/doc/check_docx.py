@@ -7,15 +7,15 @@ from docx.oxml.ns import qn
 from docx.text.paragraph import Paragraph
 
 from doc.doc_definitions import BROKEN_INTERNAL_REFERENCE, EAST_ASIA_LANGUAGE_NOT_KOREAN, STALE_TABLE_OF_CONTENTS, TRACKED_CHANGES_PRESENT
-from doc.docx_content_checks import chart_empty_issues, field_result_issues, heading_issues, missing_image_issues, unresolved_comment_issues
-from doc.docx_defaults import KOREAN_LANGUAGE
-from doc.docx_language import east_asia_font_issues, effective_east_asia_language
-from doc.docx_package import open_document
-from doc.docx_quality_checks import quality_findings
-from doc.docx_page_checks import stranded_heading_issues
-from doc.docx_reference_operations import bookmark_names
-from doc.docx_revisions import collect_revisions, describe_pending
-from doc.docx_blocks import PARAGRAPH_TAG, body_block_elements, element_text, heading_level
+from doc.checks.content import chart_empty_issues, field_result_issues, heading_issues, missing_image_issues, unresolved_comment_issues
+from doc.model.defaults import KOREAN_LANGUAGE
+from doc.model.language import east_asia_font_issues, effective_east_asia_language
+from doc.model.package import open_document
+from doc.checks.quality import quality_findings
+from doc.checks.pages import stranded_heading_issues
+from doc.operations.references import bookmark_names
+from doc.model.revisions import collect_revisions, describe_pending
+from doc.model.body import PARAGRAPH_TAG, body_block_elements, element_text, heading_level
 from core.office_arguments import route_arguments
 from core.office_result import VALUE_FILL_IN, Issue, Result, run_command
 from core.text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN

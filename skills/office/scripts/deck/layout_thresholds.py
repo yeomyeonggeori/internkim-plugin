@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from deck.deck_kit import kit_length, kit_number, slide_size
-from deck.pptx_edit_definitions import BACKGROUND_SHARE_OF_SLIDE, DISTORTION_TOLERANCE, OVERLAP_RATIO
+from powerpoint.definitions import BACKGROUND_SHARE_OF_SLIDE, DISTORTION_TOLERANCE, OVERLAP_RATIO
 
 
 PIXEL_TOLERANCE = 4

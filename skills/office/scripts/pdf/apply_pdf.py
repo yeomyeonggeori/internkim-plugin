@@ -13,7 +13,7 @@ from core.office_operations import Change, OperationSet, run_apply
 from core.office_result import Issue, Result, run_command
 from core.page_sizes import Paper
 from core.units import MILLIMETRES_PER_INCH, POINTS_PER_INCH
-from doc.document_pdf import PageLayout, render_document_pdf
+from doc.blocks.pdf import PageLayout, render_document_pdf
 from pdf.create_pdf import section_blocks
 from pdf.pdf_definitions import OPERATIONS
 

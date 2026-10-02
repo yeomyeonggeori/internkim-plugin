@@ -14,9 +14,9 @@ from charts.numbers import GROUPED_NUMBER_PATTERN  # noqa: E402
 from deck.deck_definitions import KIT_LAYOUT_NAMES, KIT_LAYOUTS, kit_layout  # noqa: E402
 from deck.deck_kit import chart_types, kit_length, slide_size  # noqa: E402
 from deck.layout_thresholds import SMALLEST_TEXT_SHARE_OF_WIDTH  # noqa: E402
-from deck.kit_fixes import DEAD_ZONE_ADVICE, LIST_ADVICE, PART_LABELS  # noqa: E402
+from deck.review.kit_fixes import DEAD_ZONE_ADVICE, LIST_ADVICE, PART_LABELS  # noqa: E402
 from core.text_script import HANGUL_RANGES  # noqa: E402
-from deck.slide_render_checks import CENTERED_KIT_LAYOUTS  # noqa: E402
+from deck.review.slide_checks import CENTERED_KIT_LAYOUTS  # noqa: E402
 
 
 def constant(source: str, name: str) -> str:

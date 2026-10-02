@@ -8,7 +8,7 @@ import zipfile
 from doc_fixture import run_office
 
 
-from doc.block_writers import html_table  # noqa: E402
+from doc.blocks.writers import html_table  # noqa: E402
 
 MARKDOWN = "# 견적\n\n| 품목 | 수량 | 금액 |\n| :--- | :---: | ---: |\n| 유지보수 | 1 | 1,200,000 |\n| 교육 | 2 | 300,000 |\n"
 

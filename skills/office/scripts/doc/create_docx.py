@@ -10,10 +10,10 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt
 
 from doc.doc_definitions import DOCUMENT_SPECIFICATION
-from doc.docx_defaults import DOCUMENT_FONT, apply_korean_defaults, set_page, usable_width_inches
+from doc.model.defaults import DOCUMENT_FONT, apply_korean_defaults, set_page, usable_width_inches
 from fonts.docx_embedding import save_document
-from doc.docx_tables import add_space_after_table, format_table
-from doc.docx_lists import add_list_paragraph, start_list
+from doc.model.tables import add_space_after_table, format_table
+from doc.model.lists import add_list_paragraph, start_list
 from core.office_arguments import route_arguments
 from core.office_result import INVALID_VALUE, Issue, OfficeFailure, Result, read_json_file, run_command
 from core.office_schema import require_valid

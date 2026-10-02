@@ -10,7 +10,7 @@ from core.office_help import usage_text, verb_help_text
 from core.office_result import DEPENDENCIES_UNAVAILABLE, UNKNOWN_COMMAND, OfficeFailure, failure_result, print_result, run_command
 from core.office_routing import Call, positional_arguments, resolve_call
 from core.office_schema import closest_name
-from core.office_setup import setup_result
+from office_setup import setup_result
 from core.retired_commands import RETIRED_FORMATS, find_retired, replacement_command
 from office_guide import guide_for
 from skill_runtime import ensure_requirements, environment_path

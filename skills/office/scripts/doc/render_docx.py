@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from doc.docx_layout import Layout
-from doc.docx_pagination import Paginator, displayed_page_numbers
-from doc.docx_preview import DocxModelBuilder
-from doc.docx_preview_html import PageWriter
+from doc.preview.layout import Layout
+from doc.preview.pagination import Paginator, displayed_page_numbers
+from doc.preview.document import DocxModelBuilder
+from doc.preview.html import PageWriter
 from render.office_preview import Preview, approximation_issues, blank_page_issues, draw_pages, write_preview
 from core.office_outputs import preview_directory
 from core.office_arguments import route_arguments

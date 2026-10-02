@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from doc.docx_tracking import DEFAULT_TRACKING_AUTHOR
-from doc.docx_editing import load_editing, save_editing
-from doc.docx_operations import DOCX_OPERATIONS
+from doc.operations.tracking import DEFAULT_TRACKING_AUTHOR
+from doc.operations.editing import load_editing, save_editing
+from doc.operations.operation_set import DOCX_OPERATIONS
 from core.office_arguments import route_arguments
 from core.office_operations import run_apply
 from core.office_result import Result, run_command

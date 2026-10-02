@@ -7,7 +7,7 @@ from deck.deck_kit import DEFAULT_THEME, chart_types, icon_names, kit_names, sli
 from deck.layout_thresholds import EMPTY_REGION_SHARE_MAXIMUM, LABEL_LINE_MAXIMUM, MARK_BREADTH_MINIMUM, REPEATED_FIGURE_MINIMUM, ROUND_SLOT_MINIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
 from core.office_commands import EVERY_KIND
 from core.office_result import ERROR, WARNING, IssueKind
-from deck.pptx_edit_definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, SLIDE_COUNT_MISMATCH, TEXT_OVERLAP, review_check
+from powerpoint.definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, SLIDE_COUNT_MISMATCH, TEXT_OVERLAP, review_check
 from render.renderer import RENDER_ISSUE_KINDS
 from core.text_checks import PLACEHOLDER_LEFT, TEXT_CHECK_ISSUE_KINDS
 

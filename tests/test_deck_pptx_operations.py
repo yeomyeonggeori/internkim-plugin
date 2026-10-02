@@ -15,7 +15,7 @@ from test_deck_pptx_editing import KoreanDeckFixture, codes, run_office
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
-from deck.editable_pptx import read_text_layers, write_editable_pptx  # noqa: E402
+from deck.pptx_export.editable import read_text_layers, write_editable_pptx  # noqa: E402
 from png_fixture import write_png  # noqa: E402
 
 

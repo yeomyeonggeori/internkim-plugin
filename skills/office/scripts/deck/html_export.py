@@ -3,17 +3,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 import pathlib
 
-from deck.acceptance import judge_build
+from deck.review.acceptance import judge_build
 from deck.check_deck import CheckRequest, check_deck
 from deck.deck_definitions import FONT_NOT_EMBEDDED, TEXT_KEPT_AS_PICTURE
 from deck.deck_kit import KIT_MARKER, inject_deck_kit, slide_size
-from deck.editable_pptx import EditablePptx, read_text_layers, text_layers_path, write_editable_pptx
-from deck.geometry_checks import GEOMETRY_FILE_NAME
+from deck.pptx_export.editable import EditablePptx, read_text_layers, text_layers_path, write_editable_pptx
+from deck.review.geometry_checks import GEOMETRY_FILE_NAME
 from deck.layout_thresholds import renderer_thresholds
 from core.office_result import Issue, OfficeFailure, Result
 from render.renderer import PIXELS_FILE_NAME, RENDER_FAILED, RENDERER_UNAVAILABLE, RenderFailed, RendererUnavailable, RenderRequest, render_html, render_issues
-from deck.render_evidence import clear_stale_render_evidence
-from deck.render_review import review_deck
+from deck.review.evidence import clear_stale_render_evidence
+from deck.review.deck_review import review_deck
 from deck.resource_inlining import VENDORED_FONTS_MARKER, inject_vendored_paperlogy_fallback, inline_local_fonts, inline_local_images
 from deck.slide_source import SPEAKER_NOTES_CLASS
 from deck.slide_structure import extract_notes

@@ -10,7 +10,7 @@ from test_deck_pptx_editing import KoreanDeckFixture, codes
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
-from deck.table_styles import TABLE_STYLES  # noqa: E402
+from powerpoint.model.table_styles import TABLE_STYLES  # noqa: E402
 
 
 A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"

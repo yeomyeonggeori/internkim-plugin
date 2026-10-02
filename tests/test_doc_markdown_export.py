@@ -6,8 +6,8 @@ import zipfile
 from doc_fixture import run_office, run_office_python
 from report_fixture import pdf_text
 
-from doc.block_writers import markdown_text  # noqa: E402
-from doc.markdown_blocks import CodeBlock, parse_markdown  # noqa: E402
+from doc.blocks.writers import markdown_text  # noqa: E402
+from doc.blocks.markdown import CodeBlock, parse_markdown  # noqa: E402
 
 
 PROPOSAL = """# 도입 제안서

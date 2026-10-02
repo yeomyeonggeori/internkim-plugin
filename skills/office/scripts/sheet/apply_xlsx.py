@@ -4,7 +4,7 @@ from __future__ import annotations
 from core.office_arguments import route_arguments
 from core.office_operations import run_apply
 from core.office_result import Result, run_command
-from sheet.sheet_operations import SHEET_OPERATIONS, load_editing, save_editing
+from sheet.operations.operation_set import SHEET_OPERATIONS, load_editing, save_editing
 
 
 def main() -> Result:

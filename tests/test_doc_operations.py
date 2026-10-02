@@ -189,7 +189,7 @@ class SectionPropertyOrderTest(unittest.TestCase):
     def test_page_numbering_is_inserted_before_what_python_docx_orders_after_it(self):
         sys.path.insert(0, str(SCRIPTS_PATH))
         from docx.oxml.section import CT_SectPr
-        from doc.docx_page_operations import SECTION_PROPERTIES_AFTER_PAGE_NUMBERING
+        from doc.operations.pages import SECTION_PROPERTIES_AFTER_PAGE_NUMBERING
         page_margin_successors = CT_SectPr._insert_pgMar.__closure__[0].cell_contents._successors
         after_page_numbering = page_margin_successors[page_margin_successors.index("w:pgNumType") + 1:]
         self.assertEqual(SECTION_PROPERTIES_AFTER_PAGE_NUMBERING, after_page_numbering)
