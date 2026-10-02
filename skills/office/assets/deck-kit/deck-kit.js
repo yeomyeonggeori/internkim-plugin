@@ -10,6 +10,7 @@
   const itemClasses = ["kpi", "card", "step", "column"];
   const rowItemClasses = ["kpi", "card", "column"];
   const alignedAttribute = "data-kit-aligned";
+  const numberFrameSelector = ".eyebrow, h2, .lead, .value, .label, .takeaway, .source, .kit-footer, aside";
   const gridCardCount = 4;
   const capacityAttribute = "data-kit-capacity";
   const connectorLayerAttribute = "data-native-connectors";
@@ -112,10 +113,20 @@
       if (slide.getAttribute("data-layout") === "cards") arrangeCardGrid(slide);
       if (slide.getAttribute("data-layout") === "closing" && directChildren(slide, "card").length) slide.classList.add("kit-carded");
       if (directChildren(slide, "insight").length) slide.classList.add("kit-with-insight");
+      if (slide.getAttribute("data-layout") === "number") arrangeNumber(slide);
       slide.querySelectorAll("ol, ul").forEach((list) => list.style.setProperty("--items", String(listItems(list).length)));
       const hasBody = Array.from(slide.children).some((child) => child.classList.contains("card") || ["OL", "UL"].includes(child.tagName));
       if (!hasBody) slide.classList.add("kit-bare");
     });
+  }
+
+  function arrangeNumber(slide) {
+    const support = Array.from(slide.children).filter((child) => !child.matches(numberFrameSelector));
+    support.forEach((child) => child.classList.add("kit-support"));
+    if (support.length) return;
+    slide.classList.add("kit-lone");
+    [...directChildren(slide, "value"), ...directChildren(slide, "label")].forEach(groupPhrasing);
+    if (!directChildren(slide, "label").length) slide.classList.add("kit-unlabelled");
   }
 
   function arrangeCardGrid(slide) {

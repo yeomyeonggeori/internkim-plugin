@@ -52,6 +52,7 @@ TOPIC_TITLE = review_check("TOPIC_TITLE", "the title is a topic label, not a cla
 LANGUAGE_MISMATCH = review_check("LANGUAGE_MISMATCH", "slide titles are Latin-only in a Korean deck", "write the titles in the request language")
 UNSOURCED_CURRENT_DATE = review_check("UNSOURCED_CURRENT_DATE", "a slide shows today's date that the source does not", "show only dates from the source material")
 VERTICAL_DEAD_ZONE = review_check("VERTICAL_DEAD_ZONE", "an empty band spans much of the slide height, between content, under the body or inside a card", "give the body what its layout holds, such as a .takeaway band, more items or an .insight, or move the content to a layout that fills the frame")
+HORIZONTAL_DEAD_ZONE = review_check("HORIZONTAL_DEAD_ZONE", "an empty region beside the content spans much of the body's height, such as a half-width box with nothing next to it", "give the empty side what the layout holds, such as the points that explain a number, an .insight or another item, or move the content to a layout composed for one part")
 EMOJI_ICON = review_check("EMOJI_ICON", "a slide uses emoji glyphs", "write a .label word instead; the kit draws list markers and numbers itself")
 MISSING_SPEAKER_NOTES = review_check("MISSING_SPEAKER_NOTES", "a slide has no speaker notes", 'add an <aside class="notes"> script to every slide')
 
@@ -61,6 +62,7 @@ DESIGN_CHECKS = (
     LANGUAGE_MISMATCH,
     UNSOURCED_CURRENT_DATE,
     VERTICAL_DEAD_ZONE,
+    HORIZONTAL_DEAD_ZONE,
     EMOJI_ICON,
     MISSING_SPEAKER_NOTES,
 )

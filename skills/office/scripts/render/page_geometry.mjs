@@ -279,6 +279,60 @@ export function measurePageGeometry(pages, thresholds) {
     return mergedBands(contentRects(page), frame.top, Infinity).map(([top, bottom]) => [round(top), round(bottom)]);
   };
 
+  const uniqueSorted = (values) => Array.from(new Set(values.map(round))).sort((first, second) => first - second);
+
+  const bodyFrame = (page, rects) => {
+    const footer = footerOf(page);
+    const top = Math.min(...rects.map((rect) => rect.top));
+    const bottom = footer ? footer.getBoundingClientRect().top : Math.max(...rects.map((rect) => rect.bottom));
+    const box = page.getBoundingClientRect();
+    const style = getComputedStyle(page);
+    return { left: box.left + (parseFloat(style.paddingLeft) || 0), right: box.right - (parseFloat(style.paddingRight) || 0), top, bottom };
+  };
+
+  const largestEmptyRectangle = (frame, rects) => {
+    const inside = rects.map((rect) => intersection(rect, frame)).filter((rect) => rect.right > rect.left && rect.bottom > rect.top);
+    const xs = uniqueSorted([frame.left, frame.right, ...inside.flatMap((rect) => [rect.left, rect.right])]);
+    const ys = uniqueSorted([frame.top, frame.bottom, ...inside.flatMap((rect) => [rect.top, rect.bottom])]);
+    const columns = xs.length - 1;
+    const isEmpty = (row, column) => {
+      const x = (xs[column] + xs[column + 1]) / 2;
+      const y = (ys[row] + ys[row + 1]) / 2;
+      return !inside.some((rect) => rect.left <= x && x <= rect.right && rect.top <= y && y <= rect.bottom);
+    };
+    const heights = new Array(columns).fill(0);
+    let best = null;
+    for (let row = 0; row < ys.length - 1; row += 1) {
+      for (let column = 0; column < columns; column += 1) heights[column] = isEmpty(row, column) ? heights[column] + ys[row + 1] - ys[row] : 0;
+      const stack = [];
+      for (let column = 0; column <= columns; column += 1) {
+        const height = column < columns ? heights[column] : 0;
+        while (stack.length && heights[stack[stack.length - 1]] >= height) {
+          const tallest = heights[stack.pop()];
+          const left = stack.length ? xs[stack[stack.length - 1] + 1] : xs[0];
+          const area = tallest * (xs[column] - left);
+          if (tallest > 0 && (!best || area > best.area)) best = { area, left, right: xs[column], top: ys[row + 1] - tallest, bottom: ys[row + 1] };
+        }
+        stack.push(column);
+      }
+    }
+    return best;
+  };
+
+  const figureRects = (page) => Array.from(page.querySelectorAll("figure")).filter(isMeasurable).map((figure) => figure.getBoundingClientRect());
+
+  const emptyRegion = (page) => {
+    const rects = contentRects(page);
+    if (!rects.length) return null;
+    const frame = bodyFrame(page, rects);
+    if (frame.bottom <= frame.top || frame.right <= frame.left) return null;
+    const region = largestEmptyRectangle(frame, [...rects, ...figureRects(page)]);
+    if (!region) return null;
+    const origin = page.getBoundingClientRect();
+    const relative = (rect) => ({ left: round(rect.left - origin.left), top: round(rect.top - origin.top), right: round(rect.right - origin.left), bottom: round(rect.bottom - origin.top) });
+    return { ...relative(region), frame: relative(frame) };
+  };
+
   const contentBoxOf = (box, rect) => {
     const style = getComputedStyle(box);
     const inset = (side) => (parseFloat(style[`border${side}Width`]) || 0) + (parseFloat(style[`padding${side}`]) || 0);
@@ -319,8 +373,10 @@ export function measurePageGeometry(pages, thresholds) {
 
   return pages.map((page, index) => ({
     index: index + 1,
+    width: round(page.getBoundingClientRect().width),
     height: round(page.getBoundingClientRect().height),
     contentBands: contentBands(page),
+    emptyRegion: emptyRegion(page),
     hollowBoxes: hollowBoxes(page),
     overflow: overflowingElements(page).map(describeOverflow),
     outOfFrame: elementsOutsideFrame(page).map((element) => ({ ...describe(element), rect: describeRect(element.getBoundingClientRect()) })),

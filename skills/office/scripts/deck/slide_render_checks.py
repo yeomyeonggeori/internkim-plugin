@@ -3,11 +3,11 @@ from __future__ import annotations
 import pathlib
 import typing
 
-from deck.deck_definitions import SLIDE_BLANK, VERTICAL_DEAD_ZONE
+from deck.deck_definitions import HORIZONTAL_DEAD_ZONE, SLIDE_BLANK, VERTICAL_DEAD_ZONE
 from deck.design_warnings import LABEL_ONLY_SLIDE_ROLES, slide_design_warnings
 from deck.geometry_checks import content_extent, geometry_warnings, slide_geometry
 from deck.kit_fixes import dead_zone_fix, hollow_fix
-from deck.layout_thresholds import VERTICAL_DEAD_ZONE_HEIGHT_RATIO
+from deck.layout_thresholds import FULL_WIDTH_RATIO, HORIZONTAL_DEAD_ZONE_BODY_HEIGHT_RATIO, HORIZONTAL_DEAD_ZONE_WIDTH_RATIO, VERTICAL_DEAD_ZONE_HEIGHT_RATIO
 from core.office_result import Issue
 
 
@@ -37,7 +37,7 @@ def review_slide(path: typing.Optional[pathlib.Path], pixels: dict[str, object] 
         return review_slide_without_image(index, slide_text, structure)
     page = pixels or UNMEASURED_PAGE
     is_blank = pixels is not None and page["bounds"] is None
-    warnings = slide_warnings(is_blank, structure, measured) + hollow_box_warnings(measured, structure) + vertical_dead_zone_warnings(page, measured, structure)
+    warnings = slide_warnings(is_blank, structure, measured) + hollow_box_warnings(measured, structure) + vertical_dead_zone_warnings(page, measured, structure) + horizontal_dead_zone_warnings(measured, structure)
     return {
         "index": index,
         "filename": path.name,
@@ -81,7 +81,7 @@ def slide_text_fields(slide_text: dict[str, object]) -> dict[str, object]:
 
 
 def vertical_dead_zone_warnings(analysis: dict[str, object], measured: dict[str, object] | None, structure: dict[str, object]) -> list[Issue]:
-    if str(structure["slideRole"]) in LABEL_ONLY_SLIDE_ROLES or structure["kitLayout"] in CENTERED_KIT_LAYOUTS:
+    if is_composed_for_space(structure):
         return []
     extent = content_extent(measured)
     suggestion = dead_zone_fix(str(structure["kitLayout"])) if structure["kitLayout"] else None
@@ -91,6 +91,33 @@ def vertical_dead_zone_warnings(analysis: dict[str, object], measured: dict[str,
     if analysis["verticalGapRatio"] >= VERTICAL_DEAD_ZONE_HEIGHT_RATIO:
         return [VERTICAL_DEAD_ZONE.issue(f"an empty band spans {analysis['verticalGapRatio']:.0%} of the slide height", suggestion=suggestion)]
     return []
+
+
+def horizontal_dead_zone_warnings(measured: dict[str, object] | None, structure: dict[str, object]) -> list[Issue]:
+    if is_composed_for_space(structure):
+        return []
+    region = (measured or {}).get("emptyRegion")
+    if not region or not is_beside_content(region, float(measured["width"])):
+        return []
+    frame = region["frame"]
+    width_share = (region["right"] - region["left"]) / float(measured["width"])
+    height_share = (region["bottom"] - region["top"]) / (frame["bottom"] - frame["top"])
+    suggestion = dead_zone_fix(str(structure["kitLayout"])) if structure["kitLayout"] else None
+    return [HORIZONTAL_DEAD_ZONE.issue(f"x {region['left']:g}-{region['right']:g}, y {region['top']:g}-{region['bottom']:g} is empty beside the content: {width_share:.0%} of the slide width and {height_share:.0%} of the body height", suggestion=suggestion)]
+
+
+def is_beside_content(region: dict[str, object], slide_width: float) -> bool:
+    frame = region["frame"]
+    width = region["right"] - region["left"]
+    return (
+        width >= slide_width * HORIZONTAL_DEAD_ZONE_WIDTH_RATIO
+        and width < (frame["right"] - frame["left"]) * FULL_WIDTH_RATIO
+        and region["bottom"] - region["top"] >= (frame["bottom"] - frame["top"]) * HORIZONTAL_DEAD_ZONE_BODY_HEIGHT_RATIO
+    )
+
+
+def is_composed_for_space(structure: dict[str, object]) -> bool:
+    return str(structure["slideRole"]) in LABEL_ONLY_SLIDE_ROLES or structure["kitLayout"] in CENTERED_KIT_LAYOUTS
 
 
 def hollow_box_warnings(measured: dict[str, object] | None, structure: dict[str, object]) -> list[Issue]:
