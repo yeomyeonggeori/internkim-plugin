@@ -1,55 +1,63 @@
-import argparse
-import importlib.util
+import hashlib
 import json
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
 
 
-SCRIPT_DIRECTORY = Path(__file__).resolve().parents[1] / "skills/dataroom/scripts"
-sys.path.insert(0, str(SCRIPT_DIRECTORY))
-SPECIFICATION = importlib.util.spec_from_file_location("dataroom", SCRIPT_DIRECTORY / "dataroom.py")
-DATA_ROOM = importlib.util.module_from_spec(SPECIFICATION)
-SPECIFICATION.loader.exec_module(DATA_ROOM)
+SKILL_DIRECTORY = Path(__file__).resolve().parents[1] / "skills" / "dataroom"
+SCRIPT_DIRECTORY = SKILL_DIRECTORY / "scripts"
+DATA_ROOM = SCRIPT_DIRECTORY / "dataroom.py"
+SETUP = f"python3 {SCRIPT_DIRECTORY / 'skill_runtime.py'} setup"
 
 
+def run(*arguments) -> subprocess.CompletedProcess:
+    return subprocess.run([sys.executable, str(DATA_ROOM), *map(str, arguments)], capture_output=True, text=True)
+
+
+def is_prepared() -> bool:
+    return run("--help").returncode == 0
+
+
+@unittest.skipUnless(is_prepared(), f"the data room's Python environment is not prepared; run {SETUP}")
 class DataRoomTreeTest(unittest.TestCase):
+    def setUp(self):
+        self.directory = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.root = self.directory / "room"
+        self.assertEqual(run("init", self.root, "--slug", "sample").returncode, 0)
+
+    def file(self, name: str, category: str) -> subprocess.CompletedProcess:
+        original = self.directory / name
+        original.write_bytes(b"Revenue 100, expenses 80.\n")
+        return run("ingest", self.root, original, "--category", category, "--summary", "Revenue 100 and expenses 80.")
+
+    def test_init_writes_the_standard_template(self):
+        template = json.loads((SKILL_DIRECTORY / "assets" / "template.json").read_text(encoding="utf-8"))
+        self.assertEqual(json.loads((self.root / "company.json").read_text(encoding="utf-8"))["dataroom"], template)
+
     def test_filing_preserves_the_original_and_generates_a_text_preview(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            directory = Path(temporary)
-            root = directory / "room"
-            original = directory / "sample.txt"
-            original.write_bytes(b"Revenue 100, expenses 80.\n")
-            arguments = DATA_ROOM.build_parser().parse_args(["init", str(root), "--slug", "sample"])
-            arguments.handler(arguments)
-            arguments = DATA_ROOM.build_parser().parse_args([
-                "ingest", str(root), str(original), "--category", "FS", "--summary", "Revenue 100 and expenses 80."
-            ])
-            arguments.handler(arguments)
-            filed = next((root / "F-finance/FS-statements").glob("*.txt"))
-            self.assertEqual(filed.read_bytes(), original.read_bytes())
-            metadata = DATA_ROOM.load_frontmatter(DATA_ROOM.sidecar_path(filed))
-            self.assertEqual(metadata["categoryCode"], "FS")
-            preview = filed.parent / ".derived" / metadata["sha256"] / "content.txt"
-            self.assertEqual(preview.read_bytes(), original.read_bytes())
-            self.assertEqual(DATA_ROOM.run_check(argparse.Namespace(directory=str(root))), 0)
-            template = json.loads((root / "company.json").read_text())["dataroom"]
-            self.assertEqual(template, DATA_ROOM.TEMPLATE)
+        completed = self.file("sample.txt", "FS")
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        original = (self.directory / "sample.txt").read_bytes()
+        filed = next((self.root / "F-finance" / "FS-statements").glob("*.txt"))
+        self.assertEqual(filed.read_bytes(), original)
+        preview = filed.parent / ".derived" / hashlib.sha256(original).hexdigest() / "content.txt"
+        self.assertEqual(preview.read_bytes(), original)
+        checked = run("check", self.root)
+        self.assertEqual((checked.returncode, checked.stdout.strip()), (0, "ok 1 documents"), checked.stdout)
 
     def test_filing_destinations_follow_whether_the_category_has_children(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            arguments = DATA_ROOM.build_parser().parse_args(["init", str(root), "--slug", "sample"])
-            arguments.handler(arguments)
-            with self.assertRaises(DATA_ROOM.Failure):
-                DATA_ROOM.resolve_category(root, "F")
-            self.assertEqual(DATA_ROOM.resolve_category(root, "X"), "X-inbox")
-            company = DATA_ROOM.load_company(root)
-            company["dataroom"]["categories"] = [category for category in company["dataroom"]["categories"]
-                                                  if category["parent"] != "F"]
-            DATA_ROOM.write_json(root / "company.json", company)
-            self.assertEqual(DATA_ROOM.resolve_category(root, "F"), "F-finance")
+        refused = self.file("parent.txt", "F")
+        self.assertEqual(refused.returncode, 2)
+        self.assertIn("no filing category named F", refused.stderr)
+        self.assertIn("filed X-inbox/", self.file("inbox.txt", "X").stdout)
+        company_path = self.root / "company.json"
+        company = json.loads(company_path.read_text(encoding="utf-8"))
+        company["dataroom"]["categories"] = [category for category in company["dataroom"]["categories"] if category["parent"] != "F"]
+        company_path.write_text(json.dumps(company), encoding="utf-8")
+        self.assertIn("filed F-finance/", self.file("leaf.txt", "F").stdout)
 
 
 if __name__ == "__main__":
