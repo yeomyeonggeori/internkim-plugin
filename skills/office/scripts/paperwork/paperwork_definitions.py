@@ -20,10 +20,10 @@ PROFILE = Record("profile", "the company_info_get result, pasted whole; the lett
     Field("name", CellValue(), "company name; name or companyName is required"),
     Field("companyName", CellValue(), "company name when name is absent"),
     Field("logoPath", CellValue(), "logo image at the letterhead's left"),
-    Field("legalAttributes", ListOf(LABELED_VALUE), "the first two print on the letterhead, such as 사업자등록번호"),
-    Field("registrationNumber", CellValue(), "printed as 사업자등록번호 when legalAttributes is empty"),
+    Field("legalAttributes", ListOf(LABELED_VALUE), "the first two print on the letterhead, such as the business registration number (사업자등록번호)"),
+    Field("registrationNumber", CellValue(), "printed as 사업자등록번호 (business registration number) when legalAttributes is empty"),
     Field("representative", CellValue(), "representative's name"),
-    Field("representativeTitle", CellValue(), "title before the name, default 대표"),
+    Field("representativeTitle", CellValue(), "title before the name, default 대표 (representative)"),
     Field("address", CellValue(), "address line"),
     Field("phone", CellValue(), "contact line"),
     Field("email", CellValue(), "contact line"),
@@ -39,7 +39,7 @@ ITEMS = Record("items", "the item table with its totals", (
 ))
 
 RECIPIENT = Record("recipient", "the addressee block", (
-    Field("label", CellValue(), "caption above the lines, default 수신"),
+    Field("label", CellValue(), "caption above the lines, default 수신 (to)"),
     Field("lines", ListOf(CellValue()), "addressee lines"),
 ))
 
@@ -51,13 +51,13 @@ PAPERWORK_SECTION = Record("section", "a titled block of paragraphs and bullets"
 
 SIGNATURE = Record("signature", "the dated signature line", (
     Field("date", CellValue(), "date line"),
-    Field("line", CellValue(), "signer line; (인) is appended"),
+    Field("line", CellValue(), "signer line; (인), the seal mark, is appended"),
     Field("stamp", Boolean(), "place profile.stampPath on the signer line"),
 ))
 
 PAPERWORK_DOCUMENT = Record("document", "the JSON of paperwork render to a .pdf; each spec under references/paperwork has its skeleton", (
     Field("title", Text(non_empty=True), "centered document title", required=True),
-    Field("documentNumber", CellValue(), "printed as 문서번호 under the title"),
+    Field("documentNumber", CellValue(), "printed as 문서번호 (document number) under the title"),
     Field("profile", PROFILE, "company profile for the letterhead", required=True),
     Field("approvalLine", ListOf(Text()), "approval box captions, left to right"),
     Field("recipient", RECIPIENT, "addressee"),
@@ -173,7 +173,7 @@ def amount_rule_lines() -> list[str]:
         "  row amount = quantity x unit price; supply total = sum of row amounts; grand total = supply total + VAT",
         f"  row VAT = {VAT_RATE_PERCENT}% of the row amount when rows have a {' or '.join(TAX_HEADERS)} column; VAT total = sum of row VATs, else {VAT_RATE_PERCENT}% of the supply total",
         f"  rounding: {ROUNDING_RULE}",
-        "  items.totals lists supply total, VAT and grand total in that order; meta \"합계금액\" holds the amount in words",
+        "  items.totals lists supply total, VAT and grand total in that order; meta \"합계금액\" (total amount) holds the amount in Korean words",
         "  amount in words: \"일금 일백만원정\" for 1,000,000; a trailing 整 counts as 정",
         "  the command only reports facts in details and never rewrites the input",
     ]

@@ -14,7 +14,7 @@ from paperwork.template_context import caller_fields, complete_context, non_empt
 from paperwork.template_fields import TEMPLATES_PATH, template_list_fields, template_names
 
 
-UNKNOWN_VALUE_GUIDANCE = 'fill EVERY field; use "미정" only when the requester truly did not provide the value'
+UNKNOWN_VALUE_GUIDANCE = 'fill EVERY field; use "미정" (to be decided) only when the requester truly did not provide the value'
 
 
 def main() -> Result:
@@ -36,8 +36,8 @@ def main() -> Result:
 
 
 def context_hint(template_name: str) -> str:
-    fields = {field: "<값>" for field in caller_fields(template_name)}
-    fields.update({field: ["<항목>"] for field in template_list_fields(template_name)})
+    fields = {field: "<value>" for field in caller_fields(template_name)}
+    fields.update({field: ["<item>"] for field in template_list_fields(template_name)})
     return f"context JSON for {template_name} must contain: {json.dumps(fields, ensure_ascii=False)}"
 
 
