@@ -1637,6 +1637,34 @@
     slide.style.removeProperty("--chart-width");
     slide.querySelectorAll(".insight > .value").forEach((value) => value.style.removeProperty("font-size"));
     unsquareRings(Array.from(slide.querySelectorAll(".kit-donut-ring")));
+    const side = chartSide(slide);
+    if (side) ["min-height", "margin-top"].forEach((name) => side.style.removeProperty(name));
+  }
+
+  function chartSide(slide) {
+    if (!chartFigure(slide)) return null;
+    return directChildren(slide, "kit-side")[0] || directChildren(slide, "insight")[0] || null;
+  }
+
+  function chartBottom(figure) {
+    const drawn = Array.from(figure.children).filter((child) => child.tagName !== "FIGCAPTION");
+    return Math.max(...drawn.map((child) => child.getBoundingClientRect().bottom));
+  }
+
+  async function spanChartSide(slide, layOut) {
+    const side = chartSide(slide);
+    if (!side) return;
+    const box = side.getBoundingClientRect();
+    const reach = chartBottom(chartFigure(slide)) - box.top;
+    if (side.classList.contains("kit-side")) side.style.setProperty("min-height", `${Math.floor(reach)}px`);
+    else centreBeside(side, reach - (box.bottom - box.top));
+    if (layOut) await layOut(slide);
+  }
+
+  function centreBeside(part, slack) {
+    if (slack <= 0) return;
+    const margin = parseFloat(getComputedStyle(part).marginTop) || 0;
+    part.style.setProperty("margin-top", `${Math.floor(margin + slack / 2)}px`);
   }
 
   async function fitTickGutters(slide, layOut) {
@@ -1702,6 +1730,7 @@
       await boundItemSlack(slide, layOut);
       await balanceTitles(slide, layOut);
       await fitChart(slide, layOut);
+      await spanChartSide(slide, layOut);
       drawConnectors(slide);
     }
   }

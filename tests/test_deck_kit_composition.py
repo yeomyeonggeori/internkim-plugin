@@ -58,6 +58,21 @@ h2 { margin: 0 0 60px; font-size: 54px; }
 </style></head><body>
 <section><h2>오른쪽 절반이 비어 있습니다</h2><div class="panel">23곳</div></section>
 </body></html>"""
+SIDE_COLUMN_DECK = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>옆 칸</title>
+<style>
+body { margin: 0; font-family: sans-serif; }
+section { width: 1600px; height: 900px; box-sizing: border-box; padding: 80px; background: #fff; }
+h2 { margin: 0 0 60px; font-size: 54px; }
+.body { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; height: 560px; }
+.panel { background: #1a56db; color: #fff; font-size: 80px; padding: 40px; }
+.side { display: flex; flex-direction: column; gap: 40px; }
+.card { height: 120px; box-sizing: border-box; padding: 32px; background: #e2e8f0; font-size: 32px; }
+.pinned { justify-content: space-between; }
+.centred { justify-content: center; }
+</style></head><body>
+<section><h2>두 카드가 위아래로 벌어졌습니다</h2><div class="body"><div class="panel">23곳</div><div class="side pinned"><div class="card">위 카드</div><div class="card">아래 카드</div></div></div></section>
+<section><h2>두 카드가 가운데에 모였습니다</h2><div class="body"><div class="panel">23곳</div><div class="side centred"><div class="card">위 카드</div><div class="card">아래 카드</div></div></div></section>
+</body></html>"""
 STRETCHED_DRAWING_DECK = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>늘어난 원</title>
 <style>
 body { margin: 0; font-family: sans-serif; }
@@ -141,7 +156,7 @@ class ComposedDeckTest(unittest.TestCase):
         value_top = self.block_box(2, "23곳")
         label = self.block_box(2, "3분기 신규 고객사, 2분기 14곳 대비")
         self.assertGreater(label["left"], value_top["right"], (value_top, label))
-        self.assertEqual(self.issue_messages("HORIZONTAL_DEAD_ZONE", 3), [])
+        self.assertEqual(self.issue_messages("EMPTY_REGION", 3), [])
 
     def test_a_slide_source_sits_above_a_footer_that_still_names_the_deck(self):
         source = self.block_box(2, "출처: 사내 실적 집계")
@@ -162,7 +177,8 @@ class ComposedDeckTest(unittest.TestCase):
         chart = self.layout["slides"][3]["charts"][0]["box"]
         self.assertGreater(legend["left"], chart["right"], (legend, chart))
         self.assertLessEqual(abs(legend["top"] - chart["top"]), 48, (legend, chart))
-        self.assertLessEqual(abs(insight["bottom"] - caption["bottom"]), 48, (insight, caption))
+        self.assertLessEqual(abs(insight["bottom"] - chart["bottom"]), 48, (insight, chart))
+        self.assertLess(insight["bottom"], caption["top"], (insight, caption))
 
     def test_a_figure_shown_three_times_on_one_slide_is_reported(self):
         messages = self.issue_messages("REPEATED_FIGURE", 4)
@@ -184,14 +200,19 @@ class StretchedDrawingTest(unittest.TestCase):
 
 @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
 class EmptyRegionTest(unittest.TestCase):
-    def test_a_half_width_box_with_nothing_beside_it_is_a_horizontal_dead_zone(self):
+    def test_a_half_width_box_with_nothing_beside_it_is_an_empty_region(self):
         with tempfile.TemporaryDirectory() as directory:
             envelope = build(Path(directory) / "half", HALF_EMPTY_DECK)
-        messages = [issue["message"] for issue in envelope["issues"] if issue["code"] == "HORIZONTAL_DEAD_ZONE"]
+        messages = [issue["message"] for issue in envelope["issues"] if issue["code"] == "EMPTY_REGION"]
         self.assertEqual(len(messages), 1, envelope["issues"])
-        self.assertIn("is empty beside the content", messages[0])
-        self.assertIn("HORIZONTAL_DEAD_ZONE", {defect["code"] for defect in envelope["details"]["acceptance"]["defects"]})
+        self.assertIn("is empty inside the content", messages[0])
+        self.assertIn("EMPTY_REGION", {defect["code"] for defect in envelope["details"]["acceptance"]["defects"]})
 
+    def test_parts_pinned_apart_leave_an_empty_region_and_centred_parts_do_not(self):
+        with tempfile.TemporaryDirectory() as directory:
+            envelope = build(Path(directory) / "side", SIDE_COLUMN_DECK)
+        locations = [issue["location"] for issue in envelope["issues"] if issue["code"] == "EMPTY_REGION"]
+        self.assertEqual(locations, ["slide 1"], envelope["issues"])
 
 if __name__ == "__main__":
     unittest.main()

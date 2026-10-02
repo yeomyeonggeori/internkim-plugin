@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from fonts.registry import DECK, default_family
 from deck.deck_kit import DEFAULT_THEME, chart_types, icon_names, kit_names, slide_size, theme_palettes
-from deck.layout_thresholds import LABEL_LINE_MAXIMUM, MARK_BREADTH_MINIMUM, REPEATED_FIGURE_MINIMUM, ROUND_SLOT_MINIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
+from deck.layout_thresholds import EMPTY_REGION_SHARE_MAXIMUM, LABEL_LINE_MAXIMUM, MARK_BREADTH_MINIMUM, REPEATED_FIGURE_MINIMUM, ROUND_SLOT_MINIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
 from core.office_operations import OPERATION_ISSUE_KINDS
 from core.template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
 from core.office_result import ERROR, WARNING, Issue, IssueKind
@@ -51,7 +51,7 @@ TOPIC_TITLE = review_check("TOPIC_TITLE", "the title is a topic label, not a cla
 LANGUAGE_MISMATCH = review_check("LANGUAGE_MISMATCH", "slide titles are Latin-only in a Korean deck", "write the titles in the request language")
 UNSOURCED_CURRENT_DATE = review_check("UNSOURCED_CURRENT_DATE", "a slide shows today's date that the source does not", "show only dates from the source material")
 VERTICAL_DEAD_ZONE = review_check("VERTICAL_DEAD_ZONE", "an empty band spans much of the slide height, between content, under the body or inside a card", "give the body what its layout holds, such as a .takeaway band, more items or an .insight, or move the content to a layout that fills the frame")
-HORIZONTAL_DEAD_ZONE = review_check("HORIZONTAL_DEAD_ZONE", "an empty region beside the content spans much of the body's height, such as a half-width box with nothing next to it", "give the empty side what the layout holds, such as the points that explain a number, an .insight or another item, or move the content to a layout composed for one part")
+EMPTY_REGION = review_check("EMPTY_REGION", f"an empty rectangle inside the content takes {EMPTY_REGION_SHARE_MAXIMUM:.0%} or more of its area, such as a half-width box with nothing beside it or a card that stops halfway down its chart; space split evenly around a part is centring and does not count", "give the empty side what the layout holds, such as the points that explain a number, an .insight or another item, drop custom styles that pin parts apart, or move the content to a layout composed for one part")
 EMOJI_ICON = review_check("EMOJI_ICON", "a slide uses emoji glyphs", "write a .label word or a data-icon office guide deck lists instead; the kit draws list markers and numbers itself")
 MISSING_SPEAKER_NOTES = review_check("MISSING_SPEAKER_NOTES", "a slide has no speaker notes", 'add an <aside class="notes"> script to every slide')
 
@@ -61,7 +61,7 @@ DESIGN_CHECKS = (
     LANGUAGE_MISMATCH,
     UNSOURCED_CURRENT_DATE,
     VERTICAL_DEAD_ZONE,
-    HORIZONTAL_DEAD_ZONE,
+    EMPTY_REGION,
     EMOJI_ICON,
     MISSING_SPEAKER_NOTES,
 )

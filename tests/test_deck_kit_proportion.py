@@ -21,6 +21,7 @@ from deck.layout_thresholds import MARK_BREADTH_MINIMUM  # noqa: E402
 KIT_SCRIPT = (SCRIPTS_PATH.parent / "assets" / "deck-kit" / "deck-kit.js").read_text(encoding="utf-8")
 LEGIBLE_CONTRAST = 3
 POSITION_TOLERANCE = 48
+EDGE_TOLERANCE = 4
 FRAME_WIDTH = slide_size()[0] - 2 * kit_length("margin-x")
 ROUND_STEP_MULTIPLES = (1, 2, 5, 10)
 TICK_INTERVALS_MAXIMUM = 4
@@ -76,6 +77,10 @@ def build(deck_path: Path, source: str) -> dict:
 
 def block_text(block: dict) -> str:
     return "".join("".join(run["text"] for paragraph in block["paragraphs"] for run in paragraph["runs"]).split())
+
+
+def contains(outer: dict, inner: dict) -> bool:
+    return outer["left"] <= inner["left"] and outer["top"] <= inner["top"] and outer["right"] >= inner["right"] and outer["bottom"] >= inner["bottom"]
 
 
 def channels(color: str) -> list[float]:
@@ -151,8 +156,27 @@ class ProportionedChartTest(unittest.TestCase):
         legend = max((block["box"] for block in self.layout["slides"][2]["blocks"] if block_text(block) == "클라우드"), key=lambda box: box["left"])
         takeaway = self.block_box(2, "온프레미스 31%, 컨설팅 17%가 뒤를 이었습니다.")
         self.assertGreater(takeaway["left"], ring["right"], (takeaway, ring))
-        self.assertLessEqual(abs(legend["top"] - ring["top"]), POSITION_TOLERANCE, (legend, ring))
         self.assertGreaterEqual(ring["bottom"] - ring["top"], 0.8 * (takeaway["bottom"] - legend["top"]), (ring, legend, takeaway))
+
+    def test_no_part_beside_a_chart_leaves_an_empty_region(self):
+        self.assertEqual(self.issues("EMPTY_REGION"), [])
+
+    def test_an_insight_beside_a_column_chart_is_centred_on_the_chart(self):
+        chart = self.layout["slides"][1]["charts"][0]["box"]
+        value = self.block_box(1, "+3.3%p")
+        card = next(shape["box"] for shape in self.layout["slides"][1]["shapes"] if "fill" in shape and contains(shape["box"], value))
+        above = card["top"] - chart["top"]
+        below = chart["bottom"] - card["bottom"]
+        self.assertGreater(above, 0, (card, chart))
+        self.assertLessEqual(abs(above - below), EDGE_TOLERANCE, (card, chart))
+
+    def test_the_parts_beside_a_donut_are_centred_on_its_ring(self):
+        ring = self.layout["slides"][2]["charts"][0]["box"]
+        legend = max((block["box"] for block in self.layout["slides"][2]["blocks"] if block_text(block) == "클라우드"), key=lambda box: box["left"])
+        takeaway = self.block_box(2, "온프레미스 31%, 컨설팅 17%가 뒤를 이었습니다.")
+        group_middle = (legend["top"] + takeaway["bottom"]) / 2
+        ring_middle = (ring["top"] + ring["bottom"]) / 2
+        self.assertLessEqual(abs(group_middle - ring_middle), POSITION_TOLERANCE / 2, (legend, takeaway, ring))
 
     def test_short_metric_cards_are_not_stretched_hollow(self):
         self.assertEqual([issue for issue in self.issues("VERTICAL_DEAD_ZONE") if issue["location"] == "slide 4"], [])
