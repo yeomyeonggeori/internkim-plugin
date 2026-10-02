@@ -8,6 +8,8 @@
   const phraseBreakPenalty = 0.35;
   const footerlessLayouts = new Set(["cover", "section"]);
   const itemClasses = ["kpi", "card", "step", "column"];
+  const rowItemClasses = ["kpi", "card", "column"];
+  const alignedAttribute = "data-kit-aligned";
   const gridCardCount = 4;
   const capacityAttribute = "data-kit-capacity";
   const connectorLayerAttribute = "data-native-connectors";
@@ -658,11 +660,71 @@
     return growingLayouts.has(slide.getAttribute("data-layout")) || slide.classList.contains("kit-carded");
   }
 
+  function rowItems(slide) {
+    return Array.from(slide.children).filter((child) => rowItemClasses.some((className) => child.classList.contains(className)));
+  }
+
+  function rowsOf(items) {
+    const rows = new Map();
+    items.forEach((item) => {
+      const top = Math.round(item.getBoundingClientRect().top);
+      rows.set(top, [...(rows.get(top) || []), item]);
+    });
+    return Array.from(rows.values()).filter((row) => row.length > 1);
+  }
+
+  function partRole(part, isLast) {
+    if (part.classList.contains("value")) return "value";
+    if (part.classList.contains("label")) return "label";
+    if (part.tagName === "H3") return "heading";
+    return isLast ? "closing" : "text";
+  }
+
+  function rolesOf(item) {
+    const parts = Array.from(item.children).filter((part) => part.getBoundingClientRect().height > 0);
+    const seen = {};
+    return parts.map((part, index) => {
+      const role = partRole(part, index === parts.length - 1 && index > 0);
+      seen[role] = (seen[role] || 0) + 1;
+      return { part, key: `${role}${seen[role]}` };
+    });
+  }
+
+  function alignRow(row) {
+    const parts = row.flatMap(rolesOf);
+    const keys = new Set(parts.map((entry) => entry.key));
+    keys.forEach((key) => {
+      const shared = parts.filter((entry) => entry.key === key);
+      if (shared.length < 2) return;
+      const tallest = Math.max(...shared.map((entry) => entry.part.getBoundingClientRect().height));
+      shared.forEach((entry) => {
+        entry.part.setAttribute(alignedAttribute, "");
+        entry.part.style.setProperty("min-height", `${Math.ceil(tallest)}px`);
+      });
+    });
+  }
+
+  function clearRowAlignment(slide) {
+    slide.querySelectorAll(`[${alignedAttribute}]`).forEach((part) => {
+      part.removeAttribute(alignedAttribute);
+      part.style.removeProperty("min-height");
+    });
+  }
+
+  async function settle(slide, layOut) {
+    clearRowAlignment(slide);
+    if (layOut) await layOut(slide);
+    const rows = rowsOf(rowItems(slide));
+    if (!rows.length) return;
+    rows.forEach(alignRow);
+    if (layOut) await layOut(slide);
+  }
+
   async function growSlide(slide, layOut) {
     if (!canGrow(slide)) return false;
     for (const step of growSteps) {
       slide.style.setProperty("--grow", String(step));
-      if (layOut) await layOut(slide);
+      await settle(slide, layOut);
       if (!slide.clientHeight || !overflows(slide)) return true;
     }
     slide.style.removeProperty("--grow");
@@ -675,7 +737,7 @@
     if (await growSlide(slide, layOut)) return;
     for (const step of fitSteps) {
       slide.style.setProperty("--fit", String(step));
-      if (layOut) await layOut(slide);
+      await settle(slide, layOut);
       if (!slide.clientHeight || !overflows(slide)) return;
       if (step === fitSteps[0]) slide.setAttribute(capacityAttribute, JSON.stringify(slideCapacity(slide)));
     }

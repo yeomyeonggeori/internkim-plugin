@@ -1,7 +1,7 @@
 export const capacityAttribute = "data-kit-capacity";
 
 export function measurePageGeometry(pages, thresholds) {
-  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, backgroundShareOfSlide, deadZoneShareOfSlide } = thresholds;
+  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, labelLineMaximum, backgroundShareOfSlide, deadZoneShareOfSlide } = thresholds;
 
   const isMeasurable = (element) => {
     const style = getComputedStyle(element);
@@ -119,11 +119,13 @@ export function measurePageGeometry(pages, thresholds) {
 
   const colorIsVisible = (color) => color !== "transparent" && !/(,\s*0\)|\/\s*0%?\))$/.test(color);
 
-  const paintsBox = (style) =>
-    colorIsVisible(style.backgroundColor) ||
-    style.backgroundImage !== "none" ||
-    style.boxShadow !== "none" ||
-    ["Top", "Right", "Bottom", "Left"].some((side) => parseFloat(style[`border${side}Width`]) > 0 && style[`border${side}Style`] !== "none" && colorIsVisible(style[`border${side}Color`]));
+  const drawsBorder = (style, side) => parseFloat(style[`border${side}Width`]) > 0 && style[`border${side}Style`] !== "none" && colorIsVisible(style[`border${side}Color`]);
+
+  const paintsFill = (style) => colorIsVisible(style.backgroundColor) || style.backgroundImage !== "none" || style.boxShadow !== "none";
+
+  const paintsBox = (style) => paintsFill(style) || ["Top", "Right", "Bottom", "Left"].some((side) => drawsBorder(style, side));
+
+  const enclosesBox = (style) => paintsFill(style) || (drawsBorder(style, "Top") && drawsBorder(style, "Bottom")) || (drawsBorder(style, "Left") && drawsBorder(style, "Right"));
 
   const mediaTags = new Set(["IMG", "SVG", "CANVAS", "VIDEO", "PICTURE", "OBJECT", "EMBED", "IFRAME"]);
 
@@ -236,6 +238,13 @@ export function measurePageGeometry(pages, thresholds) {
       .filter(({ lines }) => lines > titleLineMaximum)
       .map(({ title, lines }) => ({ ...describe(title), lines, maximum: titleLineMaximum }));
 
+  const longLabels = (page) =>
+    Array.from(page.querySelectorAll(".label"))
+      .filter(isMeasurable)
+      .map((label) => ({ label, lines: lineCount(descendantTextRects(label)) }))
+      .filter(({ lines }) => lines > labelLineMaximum)
+      .map(({ label, lines }) => ({ ...describe(label), lines, maximum: labelLineMaximum }));
+
   const contentRects = (page, elements = elementsOf(page).slice(1)) => {
     const frame = page.getBoundingClientRect();
     const slideArea = frame.width * frame.height;
@@ -298,7 +307,7 @@ export function measurePageGeometry(pages, thresholds) {
     const frame = page.getBoundingClientRect();
     const boxes = elementsOf(page)
       .slice(1)
-      .filter((element) => !mediaTags.has(element.tagName.toUpperCase()) && paintsBox(getComputedStyle(element)) && descendantTextRects(element).length > 0)
+      .filter((element) => !mediaTags.has(element.tagName.toUpperCase()) && enclosesBox(getComputedStyle(element)) && descendantTextRects(element).length > 0)
       .map((element) => ({ element, rect: element.getBoundingClientRect() }))
       .filter(({ rect }) => area(rect) > 0 && !isBackground(rect, page))
       .map(({ element, rect }) => ({ element, rect, empty: emptyHeightInside(element, rect, page) }));
@@ -321,6 +330,7 @@ export function measurePageGeometry(pages, thresholds) {
     coveredText: coveredText(page),
     footerCrossings: footerCrossings(page),
     longTitles: longTitles(page),
+    longLabels: longLabels(page),
     capacity: JSON.parse(page.getAttribute(capacityAttribute) || "[]"),
   }));
 }
