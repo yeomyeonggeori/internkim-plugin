@@ -9,6 +9,8 @@ import sys
 import tempfile
 import unittest
 
+from bundle_fixture import bundled_files
+
 
 REPOSITORY_PATH = Path(__file__).resolve().parents[1]
 SKILLS_PATH = REPOSITORY_PATH / "skills"
@@ -29,7 +31,7 @@ def file_digest(path):
 
 
 def skill_files():
-    return sorted(path for path in SKILLS_PATH.rglob("*") if path.is_file())
+    return bundled_files(SKILLS_PATH)
 
 
 def office_command_table():
@@ -67,7 +69,7 @@ class OfficeEntryTest(unittest.TestCase):
         command_names = {command.name for command in office_command_table()} | {"python", "guide", "setup"}
         command_names |= {f"guide {format_name}" for format_name in office_format_names()}
         referenced_names = set()
-        for document_path in (SKILLS_PATH / "office").rglob("*.md"):
+        for document_path in bundled_files(SKILLS_PATH / "office", "*.md"):
             text = document_path.read_text(encoding="utf-8")
             for words in re.findall(r"<skill>/scripts/office ([a-z]+)(?: ([a-z]+))?", text):
                 referenced_names.add(words[0] if words[0] == "python" or not words[1] else " ".join(words))
@@ -120,10 +122,10 @@ class PackageFreeCommandTest(unittest.TestCase):
     def test_every_command_declared_package_free_has_a_case(self):
         self.assertEqual(set(PACKAGE_FREE_CASES), {command.name for command in office_command_table() if not command.needs_packages})
 
-    def test_each_package_free_command_runs_on_an_interpreter_without_the_skill_packages_or_a_font_cache(self):
+    def test_each_package_free_command_runs_on_an_interpreter_without_the_skill_packages(self):
         with tempfile.TemporaryDirectory() as directory:
             interpreter = bare_interpreter(Path(directory) / "bare")
-            environment = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"} | {"XDG_CACHE_HOME": str(Path(directory) / "empty-cache")}
+            environment = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
             for name, prepare in PACKAGE_FREE_CASES.items():
                 with self.subTest(command=name):
                     working_directory = Path(directory) / name.replace(" ", "-")
@@ -144,7 +146,7 @@ OWNED_LITERALS = {
 
 class OwnedLiteralTest(unittest.TestCase):
     def test_excel_limits_and_emu_sizes_are_written_only_where_they_are_owned(self):
-        scripts = sorted((SKILLS_PATH / "office" / "scripts").rglob("*.py"))
+        scripts = bundled_files(OFFICE_SCRIPTS_PATH, "*.py")
         written_elsewhere = sorted(
             (literal, str(path.relative_to(OFFICE_SCRIPTS_PATH)))
             for path in scripts
@@ -158,7 +160,7 @@ class OldPythonTest(unittest.TestCase):
     def test_modern_annotations_are_never_evaluated_at_definition_time(self):
         offending_paths = [
             str(path.relative_to(SKILLS_PATH))
-            for path in (SKILLS_PATH / "office" / "scripts").rglob("*.py")
+            for path in bundled_files(OFFICE_SCRIPTS_PATH, "*.py")
             if uses_modern_annotations(path) and not postpones_annotations(path)
         ]
         self.assertEqual(offending_paths, [], "Python 3.9, the macOS Command Line Tools interpreter, cannot evaluate list[str] or X | None")

@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 import re
 import struct
@@ -12,7 +11,6 @@ if str(SCRIPTS_PATH) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_PATH))
 
 from render.renderer import RendererUnavailable, javascript_runtime  # noqa: E402
-from skill_runtime import cache_home_path  # noqa: E402
 
 
 PDF_PAGE_PATTERN = re.compile(rb"/Type\s*/Page(?!s)")
@@ -30,7 +28,6 @@ def bare_environment(home) -> dict[str, str]:
     return {
         "HOME": str(home),
         "PATH": f"{Path(sys.executable).parent}:/usr/bin:/bin",
-        "XDG_CACHE_HOME": str(cache_home_path(os.environ)),
     }
 
 

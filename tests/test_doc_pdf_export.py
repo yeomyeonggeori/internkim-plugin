@@ -67,7 +67,7 @@ class DocumentPdfTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 1)
         self.assertEqual(completed.stderr, "")
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["RENDERER_UNAVAILABLE"])
-        self.assertIn("install bun, or node 18 or newer", envelope["issues"][0]["suggestion"])
+        self.assertIn("office setup", envelope["issues"][0]["suggestion"])
         self.assertEqual(sorted(self.directory.iterdir()), before)
 
 

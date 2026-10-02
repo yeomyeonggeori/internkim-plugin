@@ -6,12 +6,14 @@ import hashlib
 import io
 import os
 import pathlib
+import shutil
 
 from fonts.truetype import ENGLISH_UNITED_STATES, FAMILY_NAME_ID, FULL_NAME_ID, SUBFAMILY_NAME_ID, TYPOGRAPHIC_FAMILY_NAME_ID, UNICODE_BMP_ENCODING, WINDOWS_PLATFORM, has_korean_code_page, license_allows_embedding
-from skill_runtime import skill_cache_path, writable_skill_cache_path
+from core.office_result import DEPENDENCIES_UNAVAILABLE, OfficeFailure
 
 
 FONT_DIRECTORY = pathlib.Path(__file__).resolve().parents[2] / "assets" / "fonts"
+UNPACKED_FONT_DIRECTORY = FONT_DIRECTORY / ".unpacked"
 OPENTYPE_FLAVOR = b"OTTO"
 WOFF2_FLAVOR_OFFSET = 4
 REGULAR_WEIGHT = 400
@@ -283,32 +285,26 @@ def renderer_fonts() -> list[dict]:
 
 @functools.lru_cache(maxsize=None)
 def unpacked_font(asset: pathlib.Path) -> pathlib.Path:
-    data = asset.read_bytes()
-    prepared, writable = (unpacked_font_path(cache, asset, data) for cache in (skill_cache_path(os.environ), writable_skill_cache_path(os.environ)))
-    if prepared.exists():
-        return prepared
-    if not writable.exists():
-        write_unpacked_font(data, writable)
-    return writable
+    target = unpacked_font_path(asset, asset.read_bytes())
+    if not target.exists():
+        raise OfficeFailure(DEPENDENCIES_UNAVAILABLE.issue(f"the bundled font {asset.name} is not unpacked to {target}", str(target)))
+    return target
 
 
-def unpacked_font_path(cache: pathlib.Path, asset: pathlib.Path, data: bytes) -> pathlib.Path:
+def unpacked_font_path(asset: pathlib.Path, data: bytes) -> pathlib.Path:
     suffix = ".otf" if data[WOFF2_FLAVOR_OFFSET:WOFF2_FLAVOR_OFFSET + 4] == OPENTYPE_FLAVOR else ".ttf"
-    return cache / "fonts" / "bundled" / hashlib.sha256(data).hexdigest()[:16] / f"{asset.stem}{suffix}"
+    return UNPACKED_FONT_DIRECTORY / hashlib.sha256(data).hexdigest()[:16] / f"{asset.stem}{suffix}"
 
 
 def prepare_bundled_fonts() -> str:
-    written = [prepare_font(family.asset(face)) for family in FAMILIES for face in family.faces]
-    return "prepared" if any(written) else "found"
-
-
-def prepare_font(asset: pathlib.Path) -> bool:
-    data = asset.read_bytes()
-    target = unpacked_font_path(skill_cache_path(os.environ), asset, data)
-    if target.exists():
-        return False
-    write_unpacked_font(data, target)
-    return True
+    assets = {family.asset(face): family.asset(face).read_bytes() for family in FAMILIES for face in family.faces}
+    if all(unpacked_font_path(asset, data).exists() for asset, data in assets.items()):
+        return "found"
+    if UNPACKED_FONT_DIRECTORY.exists():
+        shutil.rmtree(UNPACKED_FONT_DIRECTORY)
+    for asset, data in assets.items():
+        write_unpacked_font(data, unpacked_font_path(asset, data))
+    return "prepared"
 
 
 def write_unpacked_font(data: bytes, target: pathlib.Path) -> None:

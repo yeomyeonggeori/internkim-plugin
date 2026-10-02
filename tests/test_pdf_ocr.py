@@ -8,9 +8,9 @@ import unittest
 
 from openpyxl import load_workbook
 
-from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, run_office, run_office_python
+from doc_fixture import run_office, run_office_python
 from pdf_fixture import SCANNED_STATEMENT_PDF, copy_pdf_fixture
-from skill_runtime import dependency_environment_path, safe_name, skill_cache_path
+from skill_copy_fixture import copy_skill
 
 
 AMOUNTS = ["금액", "1,440,000", "540,000", "1,192,500", "432,000", "420,000", "4,024,500"]
@@ -60,12 +60,10 @@ class ScannedStatementTest(unittest.TestCase):
         self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("INVALID_VALUE", "--ocr")])
 
     def test_an_engine_that_is_not_prepared_is_named_with_its_setup_and_the_page_still_answers(self):
-        with tempfile.TemporaryDirectory() as cache:
-            environment = {**os.environ, "XDG_CACHE_HOME": cache, "PATH": str(Path(sys.executable).parent)}
-            office_environment = skill_cache_path(environment) / "environments" / safe_name("office")
-            office_environment.parent.mkdir(parents=True)
-            office_environment.symlink_to(dependency_environment_path("office"))
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "pdf", "read", "scanned-statement.pdf", "--ocr"], capture_output=True, text=True, cwd=self.directory, env=environment)
+        with tempfile.TemporaryDirectory() as root:
+            office_entry = copy_skill(Path(root) / "office", ("python environment", "fonts"))
+            environment = {**os.environ, "PATH": str(Path(sys.executable).parent)}
+            completed = subprocess.run([sys.executable, str(office_entry), "pdf", "read", "scanned-statement.pdf", "--ocr"], capture_output=True, text=True, cwd=self.directory, env=environment)
         self.assertNotIn("Traceback", completed.stderr)
         envelope = json.loads(completed.stdout)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["OCR_UNAVAILABLE", "PAGE_WITHOUT_TEXT"])

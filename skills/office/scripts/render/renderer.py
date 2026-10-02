@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-import hashlib
 import json
-import os
 import pathlib
 import re
 import shutil
@@ -12,11 +10,12 @@ import tempfile
 
 from fonts.registry import renderer_fonts
 from core.office_result import INPUT_NOT_FOUND, SETUP_COMMAND, SETUP_SUGGESTION, IssueKind, OfficeFailure, WARNING, ERROR
-from skill_runtime import skill_cache_path, writable_skill_cache_path
 
 
 RENDER_DIRECTORY = pathlib.Path(__file__).resolve().parent
-PACKAGE_MANIFEST = RENDER_DIRECTORY / "package.json"
+PACKAGE_LOCK = RENDER_DIRECTORY / "package-lock.json"
+NODE_MODULES = RENDER_DIRECTORY / "node_modules"
+INSTALLED_LOCK = NODE_MODULES / ".installed-package-lock.json"
 ENTRY_SCRIPT_NAME = "render_html.mjs"
 DOCUMENT_ENTRY_SCRIPT_NAME = "document_pdf.mjs"
 COLLECTION_SUFFIXES = {".ttc", ".otc"}
@@ -28,7 +27,6 @@ PAGE_NUMBER_FOOTER = '<div style="display:flex;width:100%;justify-content:center
 
 RUNTIME_REQUIREMENT = f"bun, or node {NODE_MAJOR_VERSION_MINIMUM} or newer"
 RUNTIME_MISSING = f"neither bun nor node {NODE_MAJOR_VERSION_MINIMUM} or newer is installed"
-PACKAGES_INSTALLED_MARKER = ".installed"
 RENDERER_UNAVAILABLE = IssueKind("RENDERER_UNAVAILABLE", ERROR, f"{RUNTIME_MISSING}, or the renderer's packages are not prepared, so nothing was drawn or written", SETUP_SUGGESTION)
 RENDER_FAILED = IssueKind("RENDER_FAILED", ERROR, "the renderer stopped before drawing every page", "read the message for the page or element that stopped it")
 LAYOUT_NOT_MAPPED = IssueKind("LAYOUT_NOT_MAPPED", WARNING, "part of a page's layout could not be matched to its HTML, so its boxes were not measured", "report the element the message names; the page images are still drawn")
@@ -107,25 +105,25 @@ def font_from_json(entry: dict) -> FontFile:
     return FontFile(entry["family"], pathlib.Path(entry["path"]), int(entry.get("weight", 400)), int(entry.get("index", 0)), entry.get("style", "normal"))
 
 
-def single_face_path(font: FontFile) -> pathlib.Path:
+def single_face_path(font: FontFile, scratch: pathlib.Path) -> pathlib.Path:
     if font.path.suffix.casefold() not in COLLECTION_SUFFIXES:
         return font.path
     from fonts.font_files import extract_face
 
-    extracted_path = writable_skill_cache_path(os.environ) / "fonts" / f"{font.path.stem}-face{font.index}.ttf"
+    extracted_path = scratch / f"{font.path.stem}-face{font.index}.ttf"
     if not extracted_path.exists():
         extract_face(font.path, font.index, extracted_path)
     return extracted_path
 
 
-def font_requests(fonts: tuple[FontFile, ...]) -> list[dict]:
+def font_requests(fonts: tuple[FontFile, ...], scratch: pathlib.Path) -> list[dict]:
     requested = {(font.family, font.weight) for font in fonts}
     chosen = list(fonts) + [font for font in bundled_fonts() if (font.family, font.weight) not in requested]
-    return [font_request(font) for font in chosen]
+    return [font_request(font, scratch) for font in chosen]
 
 
-def font_request(font: FontFile) -> dict:
-    return {"family": font.family, "weight": font.weight, "style": font.style, "path": str(single_face_path(font)), "generic": font.generic}
+def font_request(font: FontFile, scratch: pathlib.Path) -> dict:
+    return {"family": font.family, "weight": font.weight, "style": font.style, "path": str(single_face_path(font, scratch)), "generic": font.generic}
 
 
 def javascript_runtime() -> list[str]:
@@ -144,82 +142,42 @@ def node_major_version(node_path: str) -> int:
     return int(match.group(1)) if match else 0
 
 
-def package_directory() -> pathlib.Path:
-    return skill_cache_path(os.environ) / "render" / hashlib.sha256(PACKAGE_MANIFEST.read_bytes()).hexdigest()[:16]
-
-
-def has_packages(packages: pathlib.Path) -> bool:
-    return (packages / PACKAGES_INSTALLED_MARKER).exists()
-
-
-def package_environment() -> pathlib.Path:
-    packages = package_directory()
-    if not has_packages(packages):
-        raise RendererUnavailable(f"the renderer's packages are not prepared; run {SETUP_COMMAND}")
-    return staged_scripts(packages, writable_skill_cache_path(os.environ) / "render" / packages.name / "scripts")
-
-
-def renderer_scripts() -> dict[str, bytes]:
-    return {script.name: script.read_bytes() for script in sorted(RENDER_DIRECTORY.glob("*.mjs"))}
-
-
-def scripts_digest(scripts: dict[str, bytes]) -> str:
-    return hashlib.sha256(b"".join(name.encode() + b"\0" + content for name, content in sorted(scripts.items()))).hexdigest()[:16]
-
-
-def staged_scripts(packages: pathlib.Path, fallback_parent: pathlib.Path) -> pathlib.Path:
-    scripts = renderer_scripts()
-    digest = scripts_digest(scripts)
-    prepared = packages / "scripts" / digest
-    if prepared.exists():
-        return prepared
-    return stage_scripts(fallback_parent / digest, scripts, packages / "node_modules")
-
-
-def stage_scripts(directory: pathlib.Path, scripts: dict[str, bytes], node_modules: pathlib.Path) -> pathlib.Path:
-    if directory.exists():
-        return directory
-    directory.parent.mkdir(parents=True, exist_ok=True)
-    staging = pathlib.Path(tempfile.mkdtemp(dir=directory.parent))
-    for name, content in scripts.items():
-        (staging / name).write_bytes(content)
-    if node_modules.parent != directory.parent.parent:
-        (staging / "node_modules").symlink_to(node_modules, target_is_directory=True)
-    try:
-        staging.rename(directory)
-    except OSError:
-        shutil.rmtree(staging)
-    return directory
+def has_packages() -> bool:
+    return INSTALLED_LOCK.exists() and INSTALLED_LOCK.read_bytes() == PACKAGE_LOCK.read_bytes()
 
 
 def prepare_renderer() -> str:
     javascript_runtime()
-    packages = package_directory()
-    state = "found" if has_packages(packages) else "prepared"
-    if state == "prepared":
-        install_packages(packages)
-    staged_scripts(packages, packages / "scripts")
-    return state
+    if has_packages():
+        return "found"
+    install_packages()
+    return "prepared"
 
 
-def install_packages(packages: pathlib.Path) -> None:
-    packages.mkdir(parents=True, exist_ok=True)
-    (packages / "package.json").write_bytes(PACKAGE_MANIFEST.read_bytes())
-    installer = [shutil.which("bun"), "install", "--production"] if shutil.which("bun") else [shutil.which("npm"), "install", "--omit=dev", "--no-audit", "--no-fund"]
-    if not installer[0]:
-        raise RendererUnavailable("neither bun nor npm is installed to fetch the renderer's packages")
-    completed = subprocess.run(installer, cwd=packages, capture_output=True, text=True)
+def install_packages() -> None:
+    if NODE_MODULES.exists():
+        shutil.rmtree(NODE_MODULES)
+    completed = subprocess.run(package_installer(), cwd=RENDER_DIRECTORY, capture_output=True, text=True)
+    (RENDER_DIRECTORY / "bun.lock").unlink(missing_ok=True)
     if completed.returncode != 0:
-        raise RendererUnavailable(f"installing the renderer's packages failed: {completed.stderr.strip()[-400:]}")
-    (packages / PACKAGES_INSTALLED_MARKER).write_text("ok\n", encoding="utf-8")
+        raise RendererUnavailable(f"installing the renderer's packages from {PACKAGE_LOCK.name} failed: {completed.stderr.strip()[-400:]}")
+    shutil.copyfile(PACKAGE_LOCK, INSTALLED_LOCK)
 
 
-def request_json(request: RenderRequest) -> dict:
+def package_installer() -> list[str]:
+    if shutil.which("npm"):
+        return [shutil.which("npm"), "ci", "--omit=dev", "--no-audit", "--no-fund"]
+    if shutil.which("bun"):
+        return [shutil.which("bun"), "install", "--frozen-lockfile", "--production"]
+    raise RendererUnavailable("neither npm nor bun is installed to fetch the renderer's packages")
+
+
+def request_json(request: RenderRequest, scratch: pathlib.Path) -> dict:
     payload = {
         "html": str(request.html_path.resolve()),
         "pageSelector": request.page_selector,
         "viewport": {"width": request.viewport[0], "height": request.viewport[1]},
-        "fonts": font_requests(request.fonts),
+        "fonts": font_requests(request.fonts, scratch),
         "scriptSelector": request.script_selector,
         "excludeStyles": request.excluded_styles,
         "extraCss": list(request.extra_css),
@@ -236,18 +194,17 @@ def request_json(request: RenderRequest) -> dict:
 def render_html(request: RenderRequest) -> RenderedPages:
     if not request.html_path.exists():
         raise OfficeFailure(INPUT_NOT_FOUND.issue(f"{request.html_path} does not exist", str(request.html_path)))
-    return rendered_pages(run_entry(ENTRY_SCRIPT_NAME, request_json(request)))
+    return rendered_pages(run_entry(ENTRY_SCRIPT_NAME, lambda scratch: request_json(request, scratch)))
 
 
-def run_entry(entry_script_name: str, payload: dict) -> dict:
+def run_entry(entry_script_name: str, payload_for) -> dict:
     runtime = javascript_runtime()
-    environment = package_environment()
-    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as request_file:
-        json.dump(payload, request_file)
-    try:
-        completed = subprocess.run([*runtime, str(environment / entry_script_name), request_file.name], capture_output=True, text=True)
-    finally:
-        pathlib.Path(request_file.name).unlink(missing_ok=True)
+    if not has_packages():
+        raise RendererUnavailable(f"the renderer's packages are not prepared; run {SETUP_COMMAND}")
+    with tempfile.TemporaryDirectory(prefix="office-render-") as scratch:
+        request_path = pathlib.Path(scratch) / "request.json"
+        request_path.write_text(json.dumps(payload_for(pathlib.Path(scratch))), encoding="utf-8")
+        completed = subprocess.run([*runtime, str(RENDER_DIRECTORY / entry_script_name), str(request_path)], capture_output=True, text=True)
     if completed.returncode != 0:
         raise RenderFailed(completed.stderr.strip()[-1200:] or "the renderer exited without a message")
     return json.loads(completed.stdout.strip().splitlines()[-1])
@@ -267,7 +224,12 @@ def draw_preview(preview_path: pathlib.Path, page_selector: str, preview_fonts: 
 
 
 def render_document_pdf(request: DocumentPdfRequest) -> pathlib.Path:
-    payload = {
+    run_entry(DOCUMENT_ENTRY_SCRIPT_NAME, lambda scratch: document_payload(request, scratch))
+    return request.output_path
+
+
+def document_payload(request: DocumentPdfRequest, scratch: pathlib.Path) -> dict:
+    return {
         "html": request.html,
         "css": request.css,
         "output": str(request.output_path.resolve()),
@@ -277,10 +239,8 @@ def render_document_pdf(request: DocumentPdfRequest) -> pathlib.Path:
         "margin": request.margin,
         "footer": request.footer,
         "fontFamilies": list(dict.fromkeys(font.family for font in request.fonts)),
-        "fonts": [font_request(font) for font in request.fonts],
+        "fonts": [font_request(font, scratch) for font in request.fonts],
     }
-    run_entry(DOCUMENT_ENTRY_SCRIPT_NAME, payload)
-    return request.output_path
 
 
 def optional_path(output: dict, key: str) -> pathlib.Path | None:

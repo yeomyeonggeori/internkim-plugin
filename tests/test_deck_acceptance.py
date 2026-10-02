@@ -130,7 +130,7 @@ class WithoutRendererTest(unittest.TestCase):
         self.assertEqual(envelope["status"], "error")
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["RENDERER_UNAVAILABLE"])
         self.assertIn("node 18 or newer", envelope["summary"])
-        self.assertIn("install bun, or node 18 or newer", envelope["issues"][0]["suggestion"])
+        self.assertIn("office setup", envelope["issues"][0]["suggestion"])
         self.assertEqual(written, [])
         self.assertNotEqual(json.loads(checked.stdout)["status"], "error", checked.stdout)
 

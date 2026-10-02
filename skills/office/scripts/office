@@ -10,10 +10,9 @@ from office_guide import formats_text, guide_text, guide_verbs
 from core.office_result import DEPENDENCIES_UNAVAILABLE, UNKNOWN_COMMAND, OfficeFailure, failure_result, print_result, run_command
 from core.office_schema import closest_name
 from core.office_setup import SETUP_SUMMARY, setup_result
-from skill_runtime import dependency_environment_path, ensure_requirements
+from skill_runtime import ensure_requirements, environment_path
 
 
-SKILL_NAME = "office"
 SCRIPTS_PATH = pathlib.Path(__file__).resolve().parent
 PYTHON_COMMAND_SUMMARY = "run a task-local Python script with the office packages"
 GUIDE_COMMAND_SUMMARY = "print a format's commands, input fields and issue codes"
@@ -117,21 +116,20 @@ def format_commands_suggestion(format_name: str) -> str | None:
 
 
 def reject_unprepared_environment():
-    environment_path = dependency_environment_path(SKILL_NAME)
-    raise OfficeFailure(DEPENDENCIES_UNAVAILABLE.issue(f"the office Python environment at {environment_path} is not prepared", str(environment_path)))
+    raise OfficeFailure(DEPENDENCIES_UNAVAILABLE.issue(f"the office Python environment at {environment_path(SCRIPTS_PATH)} is not prepared", str(environment_path(SCRIPTS_PATH))))
 
 
 def run_python(arguments: list[str]) -> int:
     if not arguments:
         print("usage: office python <script.py> [arguments]", file=sys.stderr)
         return 2
-    if not ensure_requirements(SKILL_NAME):
+    if not ensure_requirements(SCRIPTS_PATH):
         return run_command(reject_unprepared_environment)
     os.execve(sys.executable, [sys.executable, *arguments], script_environment(None))
 
 
 def run_office_command(command: Command, arguments: list[str]) -> int:
-    if command.needs_packages and not ensure_requirements(SKILL_NAME):
+    if command.needs_packages and not ensure_requirements(SCRIPTS_PATH):
         return run_command(reject_unprepared_environment)
     os.execve(sys.executable, [sys.executable, "-c", MODULE_LAUNCHER, str(SCRIPTS_PATH), command.module, *arguments], script_environment(command))
 

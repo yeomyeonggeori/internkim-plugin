@@ -39,7 +39,7 @@ A standardized form belongs to paperwork even when it ships as .docx or PDF: its
 
 **Fonts.** The skill ships its fonts and draws every page with them, so a page looks the same on any host; `<skill>/scripts/office guide` lists each family and its kind. A font a file names that the skill does not ship is drawn with the shipped family of its kind. A .docx or .pptx carries the shipped fonts it uses, so the recipient needs nothing installed; a workbook cannot carry fonts and keeps Office's own. Pass a font path only when the user supplies a font file.
 
-**Dependencies.** `<skill>/scripts/office setup` prepares everything the commands read, and no other command installs anything. A command that reports `DEPENDENCIES_UNAVAILABLE`, `RENDERER_UNAVAILABLE` or `OCR_UNAVAILABLE` names the setup to run; when that setup cannot write its cache, tell the user the skill was not prepared. Never run pip or uv yourself, and keep dependency caches apart from source documents.
+**Dependencies.** `<skill>/scripts/office setup` prepares everything the commands read, and no other command installs anything. A command that reports `DEPENDENCIES_UNAVAILABLE`, `RENDERER_UNAVAILABLE` or `OCR_UNAVAILABLE` names the setup to run; when that setup cannot write into the skill directory, tell the user the skill was not prepared. Never run pip or uv yourself, and keep dependency caches apart from source documents.
 
 **Tool server.** Only company forms (`company_info_*`, `company_document_*`) and reading an attached file (`read`) call InternKim's tool server. Every other command runs locally.
 

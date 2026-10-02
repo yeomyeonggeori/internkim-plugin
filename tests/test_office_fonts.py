@@ -3,6 +3,8 @@ import re
 import sys
 import unittest
 
+from bundle_fixture import bundled_files
+
 
 OFFICE_SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 sys.path.insert(0, str(OFFICE_SCRIPTS_PATH))
@@ -16,7 +18,7 @@ FAMILY_NOTES = ("OFL.txt", "README.md")
 
 
 def shipped_font_files() -> set[Path]:
-    return {path for path in FONT_DIRECTORY.rglob("*") if path.is_file() and path.name not in FAMILY_NOTES}
+    return {path for path in bundled_files(FONT_DIRECTORY) if path.name not in FAMILY_NOTES}
 
 
 def registered_font_files() -> set[Path]:

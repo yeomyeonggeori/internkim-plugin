@@ -1,55 +1,77 @@
 #!/usr/bin/env python3
-import hashlib
 import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 
 
-SKILL_CACHE_DIRECTORY_NAME = "internkim-skills"
-PREPARED_CACHE_HOME = Path(__file__).resolve().parents[2] / ".prepared"
+SCRIPTS_DIRECTORY = Path(__file__).resolve().parent
+ENVIRONMENT_DIRECTORY_NAME = ".venv"
+REQUIREMENTS_FILE_NAME = "requirements.txt"
+LOCK_FILE_NAME = "pylock.toml"
+REQUIRES_PYTHON_PATTERN = re.compile(r'^requires-python = ">=(\d+)\.(\d+)"$', re.MULTILINE)
 
 
 class PreparationFailed(Exception):
     pass
 
 
-def ensure_requirements(skill_name):
-    requirements_path = requirements_file()
-    if not has_requirements(requirements_path):
+def ensure_requirements(directory=SCRIPTS_DIRECTORY):
+    if not has_requirements(directory):
         return True
-    environment_path = dependency_environment_path(skill_name)
-    if is_running_in(environment_path):
+    if is_running_in(environment_path(directory)):
         return True
-    if not is_prepared(environment_path, requirements_path):
+    if not is_prepared(directory):
         return False
-    reexecute_python(environment_path / "bin" / "python")
+    reexecute_python(environment_path(directory) / "bin" / "python")
     return False
 
 
-def prepare_requirements(skill_name):
-    requirements_path = requirements_file()
-    environment_path = dependency_environment_path(skill_name)
-    if not has_requirements(requirements_path) or is_prepared(environment_path, requirements_path):
+def prepare_environment(directory=SCRIPTS_DIRECTORY):
+    if not has_requirements(directory) or is_prepared(directory):
         return False
-    python_path = environment_path / "bin" / "python"
-    create_dependency_environment(python_path, environment_path)
-    install_requirements_if_needed(python_path, requirements_path, environment_path)
+    lock = lock_path(directory)
+    if not lock.exists():
+        raise PreparationFailed(f"{lock} is missing; compile it from {REQUIREMENTS_FILE_NAME} with the command its header records")
+    environment = environment_path(directory)
+    if environment.exists():
+        shutil.rmtree(environment)
+    run_uv(["uv", "venv", "--quiet", "--python", interpreter_for(lock), str(environment)])
+    run_uv(["uv", "pip", "sync", "--quiet", "--compile-bytecode", "--python", str(environment / "bin" / "python"), str(lock)])
+    shutil.copyfile(lock, environment / LOCK_FILE_NAME)
     return True
 
 
-def requirements_file():
-    return Path(__file__).with_name("requirements.txt")
+def environment_path(directory=SCRIPTS_DIRECTORY):
+    return directory / ENVIRONMENT_DIRECTORY_NAME
 
 
-def has_requirements(requirements_path):
-    return requirements_path.exists() and requirements_path.read_text(encoding="utf-8").strip() != ""
+def lock_path(directory=SCRIPTS_DIRECTORY):
+    return directory / LOCK_FILE_NAME
 
 
-def is_prepared(environment_path, requirements_path, *options):
-    return (environment_path / "bin" / "python").exists() and requirements_marker(environment_path, requirements_path, *options).exists()
+def has_requirements(directory):
+    requirements = directory / REQUIREMENTS_FILE_NAME
+    return requirements.exists() and requirements.read_text(encoding="utf-8").strip() != ""
+
+
+def is_prepared(directory):
+    environment = environment_path(directory)
+    installed_lock = environment / LOCK_FILE_NAME
+    lock = lock_path(directory)
+    if not (environment / "bin" / "python").exists() or not installed_lock.exists() or not lock.exists():
+        return False
+    return installed_lock.read_bytes() == lock.read_bytes()
+
+
+def interpreter_for(lock):
+    match = REQUIRES_PYTHON_PATTERN.search(lock.read_text(encoding="utf-8"))
+    if match is None or sys.version_info[:2] >= (int(match.group(1)), int(match.group(2))):
+        return sys.executable
+    return f">={match.group(1)}.{match.group(2)}"
 
 
 def reexecute_python(python_path):
@@ -60,61 +82,21 @@ def reexecute_python(python_path):
     )
 
 
-def create_dependency_environment(python_path, environment_path):
-    if python_path.exists():
-        return
-    run_uv(["uv", "venv", "--python", sys.executable, str(environment_path)], "uv venv failed")
-
-
-def install_requirements_if_needed(python_path, requirements_path, environment_path, *options):
-    marker_path = requirements_marker(environment_path, requirements_path, *options)
-    if marker_path.exists():
-        return
-    install_requirements(python_path, requirements_path, *options)
-    marker_path.write_text("ok\n", encoding="utf-8")
-
-
-def requirements_marker(environment_path, requirements_path, *options):
-    return environment_path / f".requirements-{requirements_hash(requirements_path, *options)}.installed"
-
-
-def requirements_hash(requirements_path, *options):
-    digest = hashlib.sha256(requirements_path.read_bytes())
-    for option in options:
-        digest.update(b"\0" + (Path(option).read_bytes() if Path(option).is_file() else option.encode()))
-    return digest.hexdigest()[:16]
-
-
-def install_requirements(python_path, requirements_path, *options):
-    run_uv(
-        ["uv", "pip", "install", "--quiet", "--compile-bytecode", "--python", str(python_path), "-r", str(requirements_path), *options],
-        "uv pip install failed",
-    )
-
-
-def run_uv(command, failure_message):
+def run_uv(command):
     try:
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=uv_environment(), check=False)
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=uv_environment(os.environ), check=False)
     except FileNotFoundError as error:
         raise PreparationFailed("uv is not on PATH") from error
     if result.returncode != 0:
-        raise PreparationFailed((result.stderr or result.stdout or failure_message).strip())
+        raise PreparationFailed((result.stderr or result.stdout or f"{' '.join(command[:3])} failed").strip())
 
 
-def uv_environment():
-    environment = os.environ.copy()
-    environment["UV_CACHE_DIR"] = str(usable_uv_cache_path(environment))
-    environment["UV_LINK_MODE"] = "copy"
-    return environment
-
-
-def usable_uv_cache_path(environment):
+def uv_environment(environment):
+    prepared = {**environment, "UV_LINK_MODE": "copy"}
     configured_cache = environment.get("UV_CACHE_DIR", "").strip()
-    candidates = [Path(configured_cache)] if configured_cache else []
-    for candidate in [*candidates, skill_cache_path(environment) / "uv"]:
-        if is_writable_directory(candidate):
-            return candidate
-    raise PreparationFailed("neither UV_CACHE_DIR nor the skill cache is a writable directory for uv's package cache")
+    if configured_cache and not is_writable_directory(Path(configured_cache)):
+        del prepared["UV_CACHE_DIR"]
+    return prepared
 
 
 def is_writable_directory(path):
@@ -125,60 +107,28 @@ def is_writable_directory(path):
     return os.access(path, os.W_OK)
 
 
-def dependency_environment_path(skill_name):
-    return skill_cache_path(os.environ) / "environments" / safe_name(skill_name)
-
-
-def skill_cache_path(environment):
-    return cache_home_path(environment) / SKILL_CACHE_DIRECTORY_NAME
-
-
-def writable_skill_cache_path(environment):
-    return writable_cache_home_path(environment) / SKILL_CACHE_DIRECTORY_NAME
-
-
-def cache_home_path(environment):
-    if PREPARED_CACHE_HOME.is_dir():
-        return PREPARED_CACHE_HOME
-    return writable_cache_home_path(environment)
-
-
-def writable_cache_home_path(environment):
-    configured_cache_home = environment.get("XDG_CACHE_HOME", "").strip()
-    if configured_cache_home != "":
-        return Path(configured_cache_home)
-    return Path.home() / ".cache"
-
-
-def is_running_in(environment_path):
-    return Path(sys.prefix).resolve() == environment_path.resolve()
-
-
-def safe_name(value):
-    normalized = re.sub(r"[^a-zA-Z0-9_.-]+", "-", value.strip()).strip("-")
-    if normalized == "":
-        return "default"
-    return normalized.lower()
+def is_running_in(environment):
+    return Path(sys.prefix).resolve() == environment.resolve()
 
 
 def setup_command():
     return f"python3 {Path(__file__).resolve()} setup"
 
 
-def setup_envelope(skill_name):
+def setup_envelope():
     try:
-        prepared = prepare_requirements(skill_name)
+        prepared = prepare_environment()
     except PreparationFailed as reason:
         issue = {
-            "code": "DEPENDENCIES_UNAVAILABLE",
+            "code": "SETUP_FAILED",
             "severity": "error",
-            "message": f"{skill_name}: the Python packages could not be prepared: {reason}",
-            "location": str(requirements_file()),
+            "message": f"the Python environment could not be prepared: {reason}",
+            "location": "python environment",
             "suggestion": "put uv on PATH and allow network access, then rerun setup",
         }
-        return {"status": "error", "summary": f"{skill_name} is not prepared", "issues": [issue]}, 1
-    step = {"name": "python environment", "state": "prepared" if prepared else "found", "path": str(dependency_environment_path(skill_name))}
-    return {"status": "ok", "summary": f"{skill_name} is ready", "issues": [], "details": {"steps": [step]}}, 0
+        return {"status": "error", "summary": issue["message"], "issues": [issue], "details": {"steps": []}}, 1
+    step = {"name": "python environment", "state": "prepared" if prepared else "found", "path": str(environment_path())}
+    return {"status": "ok", "summary": f"{SCRIPTS_DIRECTORY.parent.name} is ready", "issues": [], "details": {"steps": [step]}}, 0
 
 
 def print_envelope(envelope, stream):
@@ -186,19 +136,15 @@ def print_envelope(envelope, stream):
 
 
 def main():
-    skill_name = Path(__file__).parents[1].name
     if sys.argv[1:2] == ["setup"]:
-        envelope, exit_code = setup_envelope(skill_name)
+        envelope, exit_code = setup_envelope()
         print_envelope(envelope, sys.stdout)
         sys.exit(exit_code)
     if len(sys.argv) < 3 or sys.argv[1] != "python":
         print("usage: skill_runtime.py setup\n       skill_runtime.py python <script.py> [args...]", file=sys.stderr)
         sys.exit(2)
-    envelope, exit_code = setup_envelope(skill_name)
-    if exit_code != 0:
-        print_envelope(envelope, sys.stderr)
-        sys.exit(exit_code)
-    if not ensure_requirements(skill_name):
+    if not ensure_requirements():
+        print(f"error: the Python environment is not prepared; run {setup_command()} once", file=sys.stderr)
         sys.exit(1)
     os.execv(sys.executable, [sys.executable, *sys.argv[2:]])
 

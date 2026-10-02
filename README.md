@@ -64,13 +64,16 @@ JSON result with a status and coded issues, and `scripts/office guide <format>`
 prints the fields every input takes and every code a command reports, generated
 from the validators themselves.
 
-Setup writes the environments, the renderer's packages and the unpacked fonts
-to `.prepared` beside the skill directories when that directory exists, as it
-does after InternKim's host install, and otherwise to `XDG_CACHE_HOME`, falling
-back to `~/.cache` when it is unset. Commands read from the same place and
-write what they derive while running, such as font subsets, to `XDG_CACHE_HOME`.
-A host with a shared package cache points `UV_CACHE_DIR` at it. Neither is
-required, and the skills read no variable named after the host that runs them.
+Setup installs into the skill directory itself, each piece beside the code
+that reads it and pinned by a committed lock: `pylock.toml` for Python, which
+the command in its header compiles from `requirements.txt`, and
+`package-lock.json` for the renderer. `office setup` prints where each piece
+went. A piece installed from an older lock counts as missing, so setup after an
+update rebuilds what changed and a command never runs against a stale one.
+Commands only read these pieces, so a requester who cannot write to the skill
+directory can still use it. A host with a shared package cache points
+`UV_CACHE_DIR` at it, and the skills read no variable named after the host
+that runs them.
 
 ## Tool server
 

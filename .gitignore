@@ -4,3 +4,7 @@ __pycache__/
 
 # editor swap files
 .*.sw?
+
+# prepared by each skill's setup, never committed or bundled
+node_modules/
+skills/office/assets/fonts/.unpacked/

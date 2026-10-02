@@ -4,38 +4,31 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-from skill_runtime import PreparationFailed, create_dependency_environment, dependency_environment_path, install_requirements_if_needed, is_prepared
+from skill_runtime import PreparationFailed, environment_path, is_prepared, prepare_environment
 
 
 OCR_PATH = Path(__file__).resolve().parent
-ENVIRONMENT_NAME = "office-ocr"
-REQUIREMENTS_PATH = OCR_PATH / "ocr-requirements.txt"
-OVERRIDE_OPTIONS = ("--override", str(OCR_PATH / "ocr-overrides.txt"))
 HELPER_PATH = OCR_PATH / "ocr_lines.py"
-ENGINE_READY_MARKER = ".engine-ready"
+ENGINE_READY_MARKER = "engine-models.ready"
 OCR_DOWNLOAD_SIZE = "about 150 MB"
 
 
 def ocr_environment() -> Path:
-    return dependency_environment_path(ENVIRONMENT_NAME)
+    return environment_path(OCR_PATH)
 
 
 def ocr_python() -> Path | None:
-    environment = ocr_environment()
-    if not is_prepared(environment, REQUIREMENTS_PATH, *OVERRIDE_OPTIONS) or not (environment / ENGINE_READY_MARKER).exists():
+    if not is_prepared(OCR_PATH) or not (ocr_environment() / ENGINE_READY_MARKER).exists():
         return None
-    return environment / "bin" / "python"
+    return ocr_environment() / "bin" / "python"
 
 
 def prepare_ocr_environment() -> str:
     if ocr_python() is not None:
         return "found"
-    environment = ocr_environment()
-    python_path = environment / "bin" / "python"
-    create_dependency_environment(python_path, environment)
-    install_requirements_if_needed(python_path, REQUIREMENTS_PATH, environment, *OVERRIDE_OPTIONS)
-    fetch_engine_models(python_path)
-    (environment / ENGINE_READY_MARKER).write_text("ok\n", encoding="utf-8")
+    prepare_environment(OCR_PATH)
+    fetch_engine_models(ocr_environment() / "bin" / "python")
+    (ocr_environment() / ENGINE_READY_MARKER).write_text("ok\n", encoding="utf-8")
     return "prepared"
 
 
