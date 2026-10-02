@@ -199,7 +199,7 @@ SHARED_PARTS = (
     ".eyebrow: a short kicker above the title",
     ".lead: one subtitle line under the title",
     ".takeaway: the conclusion band under the body",
-    ".source: the source line, placed in the footer beside the page number",
+    ".source: the source line, drawn in small type just above the footer; the footer itself always shows the deck name and the page number",
     "<em>: words in the accent color; .up and .down color a change; .pick highlights one item",
     "<aside class=\"notes\">: the speaker notes",
 )

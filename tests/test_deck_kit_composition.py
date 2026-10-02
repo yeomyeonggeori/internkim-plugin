@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -32,6 +33,7 @@ COMPOSED_DECK = """<!doctype html>
   <p class="value">23곳</p>
   <p class="label">3분기 신규 고객사, 2분기 14곳 대비</p>
   <p class="takeaway">이탈 3곳을 제외한 순 증가는 20곳입니다</p>
+  <p class="source">출처: 사내 실적 집계</p>
 </section>
 <section data-layout="chart">
   <h2>매출의 절반 이상은 클라우드에서 나왔습니다</h2>
@@ -65,7 +67,10 @@ svg { display: block; width: 1200px; height: 400px; }
 </style></head><body>
 <section><h2>원이 타원으로 늘어났습니다</h2><svg viewBox="0 0 200 200"><circle cx="100" cy="100" r="80" fill="#1a56db"/></svg></section>
 </body></html>"""
+DECK_LABEL = "주식회사 예시랩 2026년 3분기 실적 보고"
 SQUARE_TOLERANCE = 0.02
+KIT_STYLESHEET = (SCRIPTS_PATH.parent / "assets" / "deck-kit" / "deck-kit.css").read_text(encoding="utf-8")
+HANGUL_TRACKING = float(re.search(r"\.kit-hangul \{ letter-spacing: (-?[\d.]+)em; \}", KIT_STYLESHEET).group(1))
 KPI_FOOTERS = ("2분기 36.2억 원 대비 +5.1억 원", "2분기 8.2% 대비 +3.3%p", "2분기 14곳 대비 +9곳", "7월 12.4억 → 8월 13.1억 → 9월 15.8억 원")
 KPI_LABELS = ("3분기 매출, 목표 40억 원 대비 103% 달성", "영업이익률", "신규 고객사", "9월 매출, 분기 중 최대")
 
@@ -122,6 +127,14 @@ class ComposedDeckTest(unittest.TestCase):
             tops = self.block_tops(1, texts)
             self.assertLessEqual(max(tops) - min(tops), ALIGNMENT_TOLERANCE, dict(zip(texts, tops)))
 
+    def test_a_title_tracks_hangul_looser_than_the_numbers_beside_it(self):
+        title = next(block for block in self.layout["slides"][1]["blocks"] if block_text(block).startswith("매출·수익성"))
+        runs = [run for paragraph in title["paragraphs"] for run in paragraph["runs"] if run["text"].strip()]
+        hangul = {run["letterSpacingPx"] / run["sizePx"] for run in runs if run["text"] in ("매출", "모두", "나아졌습니다")}
+        digits = {run["letterSpacingPx"] / run["sizePx"] for run in runs if run["text"] == "2"}
+        self.assertEqual({round(share, 3) for share in hangul}, {HANGUL_TRACKING}, runs)
+        self.assertLess(max(digits), HANGUL_TRACKING, runs)
+
     def test_a_kpi_label_that_wraps_past_two_lines_is_reported_with_its_line_count(self):
         messages = self.issue_messages("LABEL_TOO_LONG", 2)
         self.assertEqual(len(messages), 1, self.envelope["issues"])
@@ -133,6 +146,11 @@ class ComposedDeckTest(unittest.TestCase):
         label = self.block_box(2, "3분기 신규 고객사, 2분기 14곳 대비")
         self.assertGreater(label["left"], value_top["right"], (value_top, label))
         self.assertEqual(self.issue_messages("HORIZONTAL_DEAD_ZONE", 3), [])
+
+    def test_a_slide_source_sits_above_a_footer_that_still_names_the_deck(self):
+        source = self.block_box(2, "출처: 사내 실적 집계")
+        deck = self.block_box(2, DECK_LABEL)
+        self.assertLess(source["bottom"], deck["top"], (source, deck))
 
     def test_a_donut_is_drawn_as_a_circle_in_the_slide_and_in_the_native_chart(self):
         chart = self.layout["slides"][3]["charts"][0]

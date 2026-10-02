@@ -3,6 +3,7 @@
   const growSteps = [1.3, 1.2, 1.1, 1];
   const growingLayouts = new Set(["kpi", "cards", "comparison", "table"]);
   const overflowTolerance = 2;
+  const titleLineMaximum = 3;
   const balanceSteps = 7;
   const clauseEndPattern = /[,，、·:;]$/;
   const phraseBreakPenalty = 0.35;
@@ -31,6 +32,9 @@
   const matrixGapShare = 2;
   const capacityPartNames = [["h1, h2", "title"], [".lead", "lead"], [".eyebrow", "eyebrow"], [".takeaway", "takeaway"], [".card", "card"], [".kpi", "kpi"], [".column", "column"], [".step", "step"], [".kit-steps", "steps"], [".insight", "insight"], ["ol, ul", "list"], ["table", "table"], ["figure", "chart"], ["blockquote", "quote"], [".kit-diagram", "diagram"]];
   const hangulPattern = /[\u1100-\u11FF\u3130-\u318F\uAC00-\uD7AF]/;
+  const hangulRunPattern = /([\u1100-\u11FF\u3130-\u318F\uAC00-\uD7AF]+)/;
+  const tightTrackingShare = -0.012;
+  const untrackedSelector = "aside, svg, script, style";
   const unitWordPattern = /^[\uAC00-\uD7AF][^\s\d\uAC00-\uD7AF]*$/;
   const keptInlineSelector = "em, strong, b, i, mark, small, span, a";
   const phrasingSelector = "em, strong, b, i, mark, a, span, code, sub, sup";
@@ -91,14 +95,10 @@
     slides().forEach((slide) => {
       if (footerlessLayouts.has(slide.getAttribute("data-layout")) || directChildren(slide, "kit-footer").length) return;
       const footer = element("footer", "kit-footer");
-      const source = directChildren(slide, "source")[0];
-      if (source) {
-        footer.appendChild(source);
-      } else {
-        const label = element("span", "source");
-        label.textContent = deckLabel;
-        footer.appendChild(label);
-      }
+      directChildren(slide, "source").forEach((source) => footer.appendChild(source));
+      const label = element("span", "kit-deck");
+      label.textContent = deckLabel;
+      footer.appendChild(label);
       const page = element("span", "kit-page");
       page.textContent = String(all.indexOf(slide) + 1).padStart(2, "0");
       footer.appendChild(page);
@@ -498,6 +498,30 @@
     });
   }
 
+  function isTightlyTracked(element) {
+    const style = getComputedStyle(element);
+    const spacing = parseFloat(style.letterSpacing);
+    const size = parseFloat(style.fontSize);
+    return spacing / size < tightTrackingShare;
+  }
+
+  function trackHangulRun(textNode) {
+    const pieces = textNode.textContent.split(hangulRunPattern).filter(Boolean);
+    if (!pieces.some((piece) => hangulPattern.test(piece))) return;
+    textNode.replaceWith(...pieces.map((piece) => {
+      if (!hangulPattern.test(piece)) return document.createTextNode(piece);
+      const run = element("span", "kit-hangul");
+      run.textContent = piece;
+      return run;
+    }));
+  }
+
+  function trackHangul() {
+    slides().forEach((slide) => {
+      textNodesIn(slide, untrackedSelector).filter((node) => node.parentElement && !node.parentElement.classList.contains("kit-hangul") && isTightlyTracked(node.parentElement)).forEach(trackHangulRun);
+    });
+  }
+
   function isNumericColumn(cells) {
     const data = cells.filter((cell) => cell.tagName === "TD" && cell.textContent.trim());
     const numeric = data.filter((cell) => numericCellPattern.test(cell.textContent.trim()));
@@ -667,6 +691,27 @@
     for (const title of Array.from(slide.children).filter((child) => ["H1", "H2"].includes(child.tagName))) await balanceTitle(title, slide, layOut);
   }
 
+  function lineCountOf(element) {
+    const tops = textNodesIn(element, null).flatMap((node) => {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      return Array.from(range.getClientRects()).map((rect) => (rect.top + rect.bottom) / 2);
+    });
+    const lines = [];
+    tops.sort((first, second) => first - second).forEach((center) => {
+      if (!lines.length || center - lines[lines.length - 1] > overflowTolerance * 4) lines.push(center);
+    });
+    return lines.length;
+  }
+
+  function titlesRunLong(slide) {
+    return Array.from(slide.children).some((child) => ["H1", "H2"].includes(child.tagName) && lineCountOf(child) > titleLineMaximum);
+  }
+
+  function fits(slide) {
+    return !slide.clientHeight || (!overflows(slide) && !titlesRunLong(slide));
+  }
+
   function canGrow(slide) {
     return growingLayouts.has(slide.getAttribute("data-layout")) || slide.classList.contains("kit-carded");
   }
@@ -736,7 +781,7 @@
     for (const step of growSteps) {
       slide.style.setProperty("--grow", String(step));
       await settle(slide, layOut);
-      if (!slide.clientHeight || !overflows(slide)) return true;
+      if (fits(slide)) return true;
     }
     slide.style.removeProperty("--grow");
     slide.classList.add("kit-full");
@@ -749,7 +794,7 @@
     for (const step of fitSteps) {
       slide.style.setProperty("--fit", String(step));
       await settle(slide, layOut);
-      if (!slide.clientHeight || !overflows(slide)) return;
+      if (fits(slide)) return;
       if (step === fitSteps[0]) slide.setAttribute(capacityAttribute, JSON.stringify(slideCapacity(slide)));
     }
   }
@@ -1355,6 +1400,7 @@
     addQuoteMarks();
     markNumericCells();
     keepMixedWords();
+    trackHangul();
     document.querySelectorAll("section[data-layout] figure[data-chart]").forEach(renderChart);
     slides().forEach(composeChartSide);
   }
