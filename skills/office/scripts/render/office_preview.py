@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 import html
 from pathlib import Path
 
-from core.office_result import WARNING, Issue, IssueKind
+from core.office_result import SETUP_COMMAND, WARNING, Issue, IssueKind
 from render.renderer import RenderFailed, RendererUnavailable, RenderedPages, draw_preview
 
 
@@ -13,7 +13,7 @@ PREVIEW_FILE_NAME = "preview.html"
 PAGE_SELECTOR = "section[data-page]"
 
 PREVIEW_APPROXIMATED = IssueKind("PREVIEW_APPROXIMATED", WARNING, "the preview leaves out or simplifies something the file has; the message names what", "check those parts in the file itself, or say they were not seen")
-PAGES_NOT_RENDERED = IssueKind("PAGES_NOT_RENDERED", WARNING, "only the preview HTML was written; the renderer could not draw page images from it", "install bun or node 18 and run again, or read preview.html for structure and say the pages were not seen")
+PAGES_NOT_RENDERED = IssueKind("PAGES_NOT_RENDERED", WARNING, "only the preview HTML was written; the renderer could not draw page images from it", f"run {SETUP_COMMAND} and run again, or read preview.html for structure and say the pages were not seen")
 
 BLANK_PAGE = IssueKind("BLANK_PAGE", WARNING, "a page shows nothing in its body; the message names each such page", "delete the page break, empty paragraphs or far-off cell that adds the page, then render again")
 

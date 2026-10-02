@@ -90,6 +90,8 @@ class OfficeFailure(Exception):
 
 
 DOCUMENTS_FOLDER = "~/documents"
+SETUP_COMMAND = "office setup"
+SETUP_SUGGESTION = f"run {SETUP_COMMAND} once; it needs uv, bun or node 18, and network access, and InternKim's host install runs it"
 
 VALUE_FILL_IN = "<value>"
 LABEL_FILL_IN = "<label>"
@@ -107,7 +109,8 @@ INVALID_JSON = IssueKind("INVALID_JSON", ERROR, "an input file is not valid JSON
 PERMISSION_DENIED = IssueKind("PERMISSION_DENIED", ERROR, "the command may not read or write this path", f"write the output under {DOCUMENTS_FOLDER} instead")
 PATH_UNUSABLE = IssueKind("PATH_UNUSABLE", ERROR, "a path cannot be written or read as given: it names a folder where a file belongs, runs through a file as if it were a folder, is too long, or lies on a read-only disk", f"pass a file path inside a writable folder, such as {DOCUMENTS_FOLDER}/<name>")
 WRONG_OUTPUT_FORMAT = IssueKind("WRONG_OUTPUT_FORMAT", ERROR, "the output path's extension names a format this command does not write", "name the output with the extension the message names")
-DEPENDENCIES_UNAVAILABLE = IssueKind("DEPENDENCIES_UNAVAILABLE", ERROR, "the office Python packages could not be installed", "check network access and that uv is on PATH, then rerun")
+DEPENDENCIES_UNAVAILABLE = IssueKind("DEPENDENCIES_UNAVAILABLE", ERROR, "the office Python environment is not prepared, so nothing ran", SETUP_SUGGESTION)
+SETUP_FAILED = IssueKind("SETUP_FAILED", ERROR, "office setup could not prepare a piece the skill needs", "fix what the message names, such as putting uv or bun on PATH or allowing network access, then rerun office setup")
 BOLD_FONT_UNAVAILABLE = IssueKind("BOLD_FONT_UNAVAILABLE", WARNING, "no bold face was found beside the font file passed as the font path, so headings render without bold", "put the Bold file beside it, named like the regular one with Bold, or leave the font path out to use a bundled family")
 MISSING_FIELD = IssueKind("MISSING_FIELD", ERROR, "a required field is absent or empty", "add the field; {guide} lists every field")
 UNKNOWN_FIELD = IssueKind("UNKNOWN_FIELD", ERROR, "a field is not part of this structure", "remove the field or correct its spelling; {guide} lists every field")
@@ -127,6 +130,7 @@ COMMAND_ISSUE_KINDS = (
     PATH_UNUSABLE,
     WRONG_OUTPUT_FORMAT,
     DEPENDENCIES_UNAVAILABLE,
+    SETUP_FAILED,
     BOLD_FONT_UNAVAILABLE,
     MISSING_FIELD,
     UNKNOWN_FIELD,

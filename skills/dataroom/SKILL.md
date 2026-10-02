@@ -31,7 +31,9 @@ and intended audience do not determine where it belongs.
    --category <code> --title <title> --summary <fact> --date <YYYY-MM-DD>`.
    The helper preserves the original, hashes it, writes its metadata sidecar,
    derives `.derived/<sha256>/content.txt` and regenerates catalogs. Inspect
-   its skipped derivations. Dependencies are managed by `skill_runtime.py`.
+   its skipped derivations. Its packages come from
+   `python3 SKILL_DIR/scripts/skill_runtime.py setup`, which InternKim's host
+   install runs; the helper names that command when they are missing.
 3. Call `company_document_upload` with the same `categoryCode` and `sha256`.
    PUT the original to the returned signed URL. Upload `content.txt` separately
    with that `fileName`; upload additional derived parts as needed.

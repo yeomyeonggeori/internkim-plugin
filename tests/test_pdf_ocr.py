@@ -59,7 +59,7 @@ class ScannedStatementTest(unittest.TestCase):
         envelope = run_office(["convert", "scanned-statement.pdf", "scan.pptx", "--ocr"], self.directory)
         self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("INVALID_VALUE", "--ocr")])
 
-    def test_an_engine_that_cannot_be_installed_is_named_and_the_page_still_answers(self):
+    def test_an_engine_that_is_not_prepared_is_named_with_its_setup_and_the_page_still_answers(self):
         with tempfile.TemporaryDirectory() as cache:
             environment = {**os.environ, "XDG_CACHE_HOME": cache, "PATH": str(Path(sys.executable).parent)}
             office_environment = skill_cache_path(environment) / "environments" / safe_name("office")
@@ -69,7 +69,7 @@ class ScannedStatementTest(unittest.TestCase):
         self.assertNotIn("Traceback", completed.stderr)
         envelope = json.loads(completed.stdout)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["OCR_UNAVAILABLE", "PAGE_WITHOUT_TEXT"])
-        self.assertIn("installing the OCR engine", envelope["issues"][0]["message"])
+        self.assertIn("office setup --with-ocr", envelope["issues"][0]["message"])
         self.assertNotIn("--ocr", envelope["issues"][1]["suggestion"])
 
 

@@ -10,15 +10,10 @@ import tempfile
 import pdfplumber
 import pypdfium2
 
-from pdf.pdf_definitions import OCR_DOWNLOAD_SIZE
-from skill_runtime import create_dependency_environment, dependency_environment_path, install_requirements_if_needed
+from pdf.ocr.ocr_environment import HELPER_PATH, ocr_python
+from pdf.pdf_definitions import OCR_SETUP_COMMAND
 
 
-OCR_PATH = Path(__file__).resolve().parent
-ENVIRONMENT_NAME = "office-ocr"
-REQUIREMENTS_PATH = OCR_PATH / "ocr-requirements.txt"
-OVERRIDES_PATH = OCR_PATH / "ocr-overrides.txt"
-HELPER_PATH = OCR_PATH / "ocr_lines.py"
 RENDER_SCALE = 3
 FONT_SHARE_OF_LINE_BOX = 0.7
 
@@ -48,6 +43,8 @@ def read_pages_by_ocr(data: bytes, page_numbers: list[int]) -> dict[int, list[Oc
     if not page_numbers:
         return {}
     python_path = ocr_python()
+    if python_path is None:
+        raise OcrUnavailable(f"the OCR engine is not prepared; run {OCR_SETUP_COMMAND}")
     with tempfile.TemporaryDirectory(prefix="office-ocr-") as directory:
         image_paths = render_pages(data, page_numbers, Path(directory))
         output_path = Path(directory) / "lines.json"
@@ -56,17 +53,6 @@ def read_pages_by_ocr(data: bytes, page_numbers: list[int]) -> dict[int, list[Oc
             raise OcrUnavailable(f"the OCR engine stopped: {last_line(completed.stderr)}")
         pages = json.loads(output_path.read_text(encoding="utf-8"))
     return {number: [line_in_points(line) for line in lines] for number, lines in zip(page_numbers, pages)}
-
-
-def ocr_python() -> Path:
-    environment_path = dependency_environment_path(ENVIRONMENT_NAME)
-    python_path = environment_path / "bin" / "python"
-    try:
-        create_dependency_environment(python_path, environment_path)
-        install_requirements_if_needed(python_path, REQUIREMENTS_PATH, environment_path, "--override", str(OVERRIDES_PATH))
-    except (RuntimeError, OSError) as error:
-        raise OcrUnavailable(f"installing the OCR engine ({OCR_DOWNLOAD_SIZE}) failed: {last_line(str(error))}") from error
-    return python_path
 
 
 def render_pages(data: bytes, page_numbers: list[int], directory: Path) -> list[Path]:

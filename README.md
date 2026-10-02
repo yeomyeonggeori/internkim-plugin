@@ -49,22 +49,28 @@ works and what to do in a client that cannot.
 
 ## Requirements
 
-Python 3 and [uv](https://docs.astral.sh/uv/) on `PATH`. A skill that bundles
-scripts declares its own dependencies in `scripts/requirements.txt` and installs
-them into an environment it creates on first use, so nothing has to be prepared
-in advance. `office` needs [Bun](https://bun.sh) or Node 18 to draw pages, which
-it does without a browser.
+Python 3 and [uv](https://docs.astral.sh/uv/) on `PATH`, and for `office`
+[Bun](https://bun.sh) or Node 18, which draws pages without a browser. A skill
+that bundles scripts declares its Python packages in `scripts/requirements.txt`
+and reads them from an environment prepared once, ahead of use:
+`scripts/office setup` for `office`, where `--with-ocr` adds the OCR engine,
+and `python3 scripts/skill_runtime.py setup` for the others. InternKim's host
+install runs these. Elsewhere, run them once by hand. No other command installs
+anything; one whose environment is missing names the setup to run.
 
 `office` runs every command through one entry, `scripts/office <format>
-<verb>`, which prepares that environment first; `scripts/office --help` lists
-the commands. Each command prints one JSON result with a status and coded
-issues, and `scripts/office guide <format>` prints the fields every input takes
-and every code a command reports, generated from the validators themselves.
+<verb>`, and `scripts/office --help` lists the commands. Each command prints one
+JSON result with a status and coded issues, and `scripts/office guide <format>`
+prints the fields every input takes and every code a command reports, generated
+from the validators themselves.
 
-Those environments, the package cache and any host-supplied fonts live under
-`XDG_CACHE_HOME`, falling back to `~/.cache` when it is unset. A host with a
-shared package cache points `UV_CACHE_DIR` at it. Neither is required, and the
-skills read no variable named after the host that runs them.
+Setup writes the environments, the renderer's packages and the unpacked fonts
+to `.prepared` beside the skill directories when that directory exists, as it
+does after InternKim's host install, and otherwise to `XDG_CACHE_HOME`, falling
+back to `~/.cache` when it is unset. Commands read from the same place and
+write what they derive while running, such as font subsets, to `XDG_CACHE_HOME`.
+A host with a shared package cache points `UV_CACHE_DIR` at it. Neither is
+required, and the skills read no variable named after the host that runs them.
 
 ## Tool server
 

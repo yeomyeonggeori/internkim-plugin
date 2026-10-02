@@ -8,7 +8,7 @@ import os
 import pathlib
 
 from fonts.truetype import ENGLISH_UNITED_STATES, FAMILY_NAME_ID, FULL_NAME_ID, SUBFAMILY_NAME_ID, TYPOGRAPHIC_FAMILY_NAME_ID, UNICODE_BMP_ENCODING, WINDOWS_PLATFORM, has_korean_code_page, license_allows_embedding
-from skill_runtime import skill_cache_path
+from skill_runtime import skill_cache_path, writable_skill_cache_path
 
 
 FONT_DIRECTORY = pathlib.Path(__file__).resolve().parents[2] / "assets" / "fonts"
@@ -284,11 +284,31 @@ def renderer_fonts() -> list[dict]:
 @functools.lru_cache(maxsize=None)
 def unpacked_font(asset: pathlib.Path) -> pathlib.Path:
     data = asset.read_bytes()
+    prepared, writable = (unpacked_font_path(cache, asset, data) for cache in (skill_cache_path(os.environ), writable_skill_cache_path(os.environ)))
+    if prepared.exists():
+        return prepared
+    if not writable.exists():
+        write_unpacked_font(data, writable)
+    return writable
+
+
+def unpacked_font_path(cache: pathlib.Path, asset: pathlib.Path, data: bytes) -> pathlib.Path:
     suffix = ".otf" if data[WOFF2_FLAVOR_OFFSET:WOFF2_FLAVOR_OFFSET + 4] == OPENTYPE_FLAVOR else ".ttf"
-    target = skill_cache_path(os.environ) / "fonts" / "bundled" / hashlib.sha256(data).hexdigest()[:16] / f"{asset.stem}{suffix}"
-    if not target.exists():
-        write_unpacked_font(data, target)
-    return target
+    return cache / "fonts" / "bundled" / hashlib.sha256(data).hexdigest()[:16] / f"{asset.stem}{suffix}"
+
+
+def prepare_bundled_fonts() -> str:
+    written = [prepare_font(family.asset(face)) for family in FAMILIES for face in family.faces]
+    return "prepared" if any(written) else "found"
+
+
+def prepare_font(asset: pathlib.Path) -> bool:
+    data = asset.read_bytes()
+    target = unpacked_font_path(skill_cache_path(os.environ), asset, data)
+    if target.exists():
+        return False
+    write_unpacked_font(data, target)
+    return True
 
 
 def write_unpacked_font(data: bytes, target: pathlib.Path) -> None:

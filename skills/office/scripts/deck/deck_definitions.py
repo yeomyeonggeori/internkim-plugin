@@ -7,7 +7,7 @@ from deck.deck_kit import DEFAULT_THEME, chart_types, slide_size, theme_palettes
 from deck.layout_thresholds import LABEL_LINE_MAXIMUM, REPEATED_FIGURE_MINIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
 from core.office_operations import OPERATION_ISSUE_KINDS
 from core.template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
-from core.office_result import ERROR, WARNING, Issue, IssueKind
+from core.office_result import ERROR, SETUP_COMMAND, WARNING, Issue, IssueKind
 from core.office_schema import ListOf
 from deck.pptx_edit_definitions import OPERATIONS
 from render.renderer import RENDER_ISSUE_KINDS
@@ -126,7 +126,7 @@ IMAGE_ISSUE_KINDS = (IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND)
 LAYOUT_AUDIT_ISSUE_KINDS = (CONTENT_OVERFLOW.kind, OUT_OF_FRAME.kind, TEXT_OVERLAP.kind, IMAGE_DISTORTED.kind)
 
 PICTURE_UNREADABLE = IssueKind("PICTURE_UNREADABLE", ERROR, f"an image file given to an operation is not a {PICTURE_FORMATS_TEXT} picture", f"pass the path of a {PICTURE_FORMATS_TEXT} file")
-PPTX_NOT_RENDERED = IssueKind("PPTX_NOT_RENDERED", WARNING, "the renderer could not draw the slides, so nobody looked at them", "install bun or node 18 and run again, or say the slides were checked by measurement only and not seen")
+PPTX_NOT_RENDERED = IssueKind("PPTX_NOT_RENDERED", WARNING, "the renderer could not draw the slides, so nobody looked at them", f"run {SETUP_COMMAND} and run again, or say the slides were checked by measurement only and not seen")
 
 APPLY_ISSUE_KINDS = (PICTURE_UNREADABLE,)
 PPTX_CHECK_ISSUE_KINDS = (PPTX_NOT_RENDERED,)

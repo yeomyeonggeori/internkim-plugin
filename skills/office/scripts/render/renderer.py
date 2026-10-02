@@ -11,8 +11,8 @@ import subprocess
 import tempfile
 
 from fonts.registry import renderer_fonts
-from core.office_result import INPUT_NOT_FOUND, IssueKind, OfficeFailure, WARNING, ERROR
-from skill_runtime import skill_cache_path
+from core.office_result import INPUT_NOT_FOUND, SETUP_COMMAND, SETUP_SUGGESTION, IssueKind, OfficeFailure, WARNING, ERROR
+from skill_runtime import skill_cache_path, writable_skill_cache_path
 
 
 RENDER_DIRECTORY = pathlib.Path(__file__).resolve().parent
@@ -28,7 +28,8 @@ PAGE_NUMBER_FOOTER = '<div style="display:flex;width:100%;justify-content:center
 
 RUNTIME_REQUIREMENT = f"bun, or node {NODE_MAJOR_VERSION_MINIMUM} or newer"
 RUNTIME_MISSING = f"neither bun nor node {NODE_MAJOR_VERSION_MINIMUM} or newer is installed"
-RENDERER_UNAVAILABLE = IssueKind("RENDERER_UNAVAILABLE", ERROR, f"{RUNTIME_MISSING}, or the renderer's packages could not be installed, so nothing was drawn or written", f"install {RUNTIME_REQUIREMENT}, and run again")
+PACKAGES_INSTALLED_MARKER = ".installed"
+RENDERER_UNAVAILABLE = IssueKind("RENDERER_UNAVAILABLE", ERROR, f"{RUNTIME_MISSING}, or the renderer's packages are not prepared, so nothing was drawn or written", SETUP_SUGGESTION)
 RENDER_FAILED = IssueKind("RENDER_FAILED", ERROR, "the renderer stopped before drawing every page", "read the message for the page or element that stopped it")
 LAYOUT_NOT_MAPPED = IssueKind("LAYOUT_NOT_MAPPED", WARNING, "part of a page's layout could not be matched to its HTML, so its boxes were not measured", "report the element the message names; the page images are still drawn")
 STYLE_NOT_DRAWN = IssueKind("STYLE_NOT_DRAWN", WARNING, "an inline style declaration the renderer cannot read was left out, as a browser leaves out an invalid one", "remove the style attribute: the kit styles every part, data-accent on <body> sets a brand color, and theme tokens go in a <style> on :root")
@@ -111,7 +112,7 @@ def single_face_path(font: FontFile) -> pathlib.Path:
         return font.path
     from fonts.font_files import extract_face
 
-    extracted_path = skill_cache_path(os.environ) / "fonts" / f"{font.path.stem}-face{font.index}.ttf"
+    extracted_path = writable_skill_cache_path(os.environ) / "fonts" / f"{font.path.stem}-face{font.index}.ttf"
     if not extracted_path.exists():
         extract_face(font.path, font.index, extracted_path)
     return extracted_path
@@ -143,23 +144,47 @@ def node_major_version(node_path: str) -> int:
     return int(match.group(1)) if match else 0
 
 
+def package_directory() -> pathlib.Path:
+    return skill_cache_path(os.environ) / "render" / hashlib.sha256(PACKAGE_MANIFEST.read_bytes()).hexdigest()[:16]
+
+
+def has_packages(packages: pathlib.Path) -> bool:
+    return (packages / PACKAGES_INSTALLED_MARKER).exists()
+
+
 def package_environment() -> pathlib.Path:
-    manifest = PACKAGE_MANIFEST.read_bytes()
-    environment = skill_cache_path(os.environ) / "render" / hashlib.sha256(manifest).hexdigest()[:16]
-    if not (environment / "node_modules" / "@takumi-rs" / "core").exists():
-        install_packages(environment, manifest)
-    return script_directory(environment, {script.name: script.read_bytes() for script in sorted(RENDER_DIRECTORY.glob("*.mjs"))})
+    packages = package_directory()
+    if not has_packages(packages):
+        raise RendererUnavailable(f"the renderer's packages are not prepared; run {SETUP_COMMAND}")
+    return staged_scripts(packages, writable_skill_cache_path(os.environ) / "render" / packages.name / "scripts")
 
 
-def script_directory(environment: pathlib.Path, scripts: dict[str, bytes]) -> pathlib.Path:
-    digest = hashlib.sha256(b"".join(name.encode() + b"\0" + content for name, content in sorted(scripts.items()))).hexdigest()[:16]
-    directory = environment / "scripts" / digest
+def renderer_scripts() -> dict[str, bytes]:
+    return {script.name: script.read_bytes() for script in sorted(RENDER_DIRECTORY.glob("*.mjs"))}
+
+
+def scripts_digest(scripts: dict[str, bytes]) -> str:
+    return hashlib.sha256(b"".join(name.encode() + b"\0" + content for name, content in sorted(scripts.items()))).hexdigest()[:16]
+
+
+def staged_scripts(packages: pathlib.Path, fallback_parent: pathlib.Path) -> pathlib.Path:
+    scripts = renderer_scripts()
+    digest = scripts_digest(scripts)
+    prepared = packages / "scripts" / digest
+    if prepared.exists():
+        return prepared
+    return stage_scripts(fallback_parent / digest, scripts, packages / "node_modules")
+
+
+def stage_scripts(directory: pathlib.Path, scripts: dict[str, bytes], node_modules: pathlib.Path) -> pathlib.Path:
     if directory.exists():
         return directory
     directory.parent.mkdir(parents=True, exist_ok=True)
     staging = pathlib.Path(tempfile.mkdtemp(dir=directory.parent))
     for name, content in scripts.items():
         (staging / name).write_bytes(content)
+    if node_modules.parent != directory.parent.parent:
+        (staging / "node_modules").symlink_to(node_modules, target_is_directory=True)
     try:
         staging.rename(directory)
     except OSError:
@@ -167,15 +192,26 @@ def script_directory(environment: pathlib.Path, scripts: dict[str, bytes]) -> pa
     return directory
 
 
-def install_packages(environment: pathlib.Path, manifest: bytes) -> None:
-    environment.mkdir(parents=True, exist_ok=True)
-    (environment / "package.json").write_bytes(manifest)
+def prepare_renderer() -> str:
+    javascript_runtime()
+    packages = package_directory()
+    state = "found" if has_packages(packages) else "prepared"
+    if state == "prepared":
+        install_packages(packages)
+    staged_scripts(packages, packages / "scripts")
+    return state
+
+
+def install_packages(packages: pathlib.Path) -> None:
+    packages.mkdir(parents=True, exist_ok=True)
+    (packages / "package.json").write_bytes(PACKAGE_MANIFEST.read_bytes())
     installer = [shutil.which("bun"), "install", "--production"] if shutil.which("bun") else [shutil.which("npm"), "install", "--omit=dev", "--no-audit", "--no-fund"]
     if not installer[0]:
         raise RendererUnavailable("neither bun nor npm is installed to fetch the renderer's packages")
-    completed = subprocess.run(installer, cwd=environment, capture_output=True, text=True)
+    completed = subprocess.run(installer, cwd=packages, capture_output=True, text=True)
     if completed.returncode != 0:
         raise RendererUnavailable(f"installing the renderer's packages failed: {completed.stderr.strip()[-400:]}")
+    (packages / PACKAGES_INSTALLED_MARKER).write_text("ok\n", encoding="utf-8")
 
 
 def request_json(request: RenderRequest) -> dict:

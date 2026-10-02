@@ -9,7 +9,7 @@ from pypdf import PdfReader
 from core.office_inputs import add_password_argument, office_file, require_unlocked_pdf, unlocked_pdf_bytes
 from pdf.ocr.pdf_ocr import OcrUnavailable, read_pages_by_ocr
 from pdf.pdf_tables import line_texts, page_tables, stream_tables
-from pdf.pdf_definitions import OCR_DOWNLOAD_SIZE, OCR_UNAVAILABLE, PAGE_READ_BY_OCR, PAGE_WITHOUT_TEXT, page_reading_suggestion
+from pdf.pdf_definitions import OCR_NEED, OCR_UNAVAILABLE, PAGE_READ_BY_OCR, PAGE_WITHOUT_TEXT, page_reading_suggestion
 from core.office_result import Issue, OfficeArgumentParser, Result, run_command
 
 
@@ -100,7 +100,7 @@ def parse_arguments():
     parser.add_argument("pdf_path", type=office_file("pdf"))
     parser.add_argument("--start", type=int, default=1, help="first page number to show, counting from 1")
     parser.add_argument("--limit", type=int, default=DEFAULT_PAGE_LIMIT, help=f"most pages to show, default {DEFAULT_PAGE_LIMIT}")
-    parser.add_argument("--ocr", action="store_true", help=f"read pages that have no text layer from their image by OCR; the first use installs the OCR engine, {OCR_DOWNLOAD_SIZE}")
+    parser.add_argument("--ocr", action="store_true", help=f"read pages that have no text layer from their image by OCR; {OCR_NEED}")
     add_password_argument(parser)
     return parser.parse_args()
 

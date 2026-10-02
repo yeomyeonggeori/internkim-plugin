@@ -9,12 +9,13 @@ from core.office_commands import COMMANDS, FORMATS, Command, find_command, find_
 from office_guide import formats_text, guide_text, guide_verbs
 from core.office_result import DEPENDENCIES_UNAVAILABLE, UNKNOWN_COMMAND, OfficeFailure, failure_result, print_result, run_command
 from core.office_schema import closest_name
-from skill_runtime import ensure_requirements
+from core.office_setup import SETUP_SUMMARY, setup_result
+from skill_runtime import dependency_environment_path, ensure_requirements
 
 
 SKILL_NAME = "office"
 SCRIPTS_PATH = pathlib.Path(__file__).resolve().parent
-PYTHON_COMMAND_SUMMARY = "run a task-local Python script with the office packages installed"
+PYTHON_COMMAND_SUMMARY = "run a task-local Python script with the office packages"
 GUIDE_COMMAND_SUMMARY = "print a format's commands, input fields and issue codes"
 MODULE_LAUNCHER = "import runpy, sys; sys.path[0] = sys.argv.pop(1); runpy.run_module(sys.argv.pop(1), run_name='__main__', alter_sys=True)"
 
@@ -27,6 +28,8 @@ def main(arguments: list[str]) -> int:
         return print_guide(arguments[1:])
     if arguments[0] == "python":
         return run_python(arguments[1:])
+    if arguments[0] == "setup":
+        return run_command(lambda: setup_result(arguments[1:]))
     command = find_command(arguments)
     if command is None:
         return run_command(lambda: reject_unknown_command(arguments[:2]))
@@ -40,11 +43,13 @@ def usage() -> str:
         "       office convert <input> <output>",
         "       office guide <format> [verb [operation]]",
         "       office python <script.py> [arguments]",
+        "       office setup [--with-ocr]",
         "",
     ]
     lines.extend(f"  {command.name.ljust(width)}  {command.summary}" for command in COMMANDS)
     lines.append(f"  {'guide'.ljust(width)}  {GUIDE_COMMAND_SUMMARY}")
     lines.append(f"  {'python'.ljust(width)}  {PYTHON_COMMAND_SUMMARY}")
+    lines.append(f"  {'setup'.ljust(width)}  {SETUP_SUMMARY}")
     lines.extend(["", "Each command's own --help lists its arguments."])
     return "\n".join(lines)
 
@@ -111,8 +116,9 @@ def format_commands_suggestion(format_name: str) -> str | None:
     return f"run one of {', '.join(commands)}" if commands else None
 
 
-def reject_missing_dependencies():
-    raise OfficeFailure(DEPENDENCIES_UNAVAILABLE.issue("office dependencies could not be installed"))
+def reject_unprepared_environment():
+    environment_path = dependency_environment_path(SKILL_NAME)
+    raise OfficeFailure(DEPENDENCIES_UNAVAILABLE.issue(f"the office Python environment at {environment_path} is not prepared", str(environment_path)))
 
 
 def run_python(arguments: list[str]) -> int:
@@ -120,13 +126,13 @@ def run_python(arguments: list[str]) -> int:
         print("usage: office python <script.py> [arguments]", file=sys.stderr)
         return 2
     if not ensure_requirements(SKILL_NAME):
-        return 1
+        return run_command(reject_unprepared_environment)
     os.execve(sys.executable, [sys.executable, *arguments], script_environment(None))
 
 
 def run_office_command(command: Command, arguments: list[str]) -> int:
     if command.needs_packages and not ensure_requirements(SKILL_NAME):
-        return run_command(reject_missing_dependencies)
+        return run_command(reject_unprepared_environment)
     os.execve(sys.executable, [sys.executable, "-c", MODULE_LAUNCHER, str(SCRIPTS_PATH), command.module, *arguments], script_environment(command))
 
 

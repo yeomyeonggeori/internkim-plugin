@@ -64,7 +64,7 @@ class OfficeEntryTest(unittest.TestCase):
         self.assertEqual(unlisted_commands, [])
 
     def test_every_referenced_command_exists(self):
-        command_names = {command.name for command in office_command_table()} | {"python", "guide"}
+        command_names = {command.name for command in office_command_table()} | {"python", "guide", "setup"}
         command_names |= {f"guide {format_name}" for format_name in office_format_names()}
         referenced_names = set()
         for document_path in (SKILLS_PATH / "office").rglob("*.md"):

@@ -13,7 +13,7 @@ from lxml import etree
 
 from fonts.registry import FAMILIES, MONOSPACE, SERIF_BODY, BundledFamily, BundledFace, face_facts
 from fonts.truetype import HANGUL_CHARSET
-from skill_runtime import skill_cache_path
+from skill_runtime import writable_skill_cache_path
 
 
 WORD_NAMESPACE = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -164,7 +164,7 @@ def named_faces(name: str) -> list[NamedFace]:
 def embedding_data(face: NamedFace, characters: frozenset[str]) -> bytes:
     text = "".join(sorted(EDITING_CHARACTERS | characters))
     digest = hashlib.sha256(f"{face.family.directory}/{face.face.file_name}\0{text}".encode()).hexdigest()[:24]
-    cached = skill_cache_path(os.environ) / "fonts" / "embedded" / f"{pathlib.Path(face.face.file_name).stem}-{digest}.ttf"
+    cached = writable_skill_cache_path(os.environ) / "fonts" / "embedded" / f"{pathlib.Path(face.face.file_name).stem}-{digest}.ttf"
     if not cached.exists():
         write_subset(face.family.path(face.face), text, cached)
     return cached.read_bytes()

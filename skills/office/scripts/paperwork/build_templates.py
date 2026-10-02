@@ -4,7 +4,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from skill_runtime import ensure_requirements
 from paperwork.paperwork_design import (
     COLOR_INK,
     DOCX_PAGE_MARGIN_INCHES,
@@ -331,8 +330,6 @@ BUILDERS = {
 
 
 def main():
-    if not ensure_requirements("office"):
-        raise RuntimeError("paperwork dependencies are unavailable after bootstrap")
     templates_directory = Path(__file__).resolve().parents[2] / "assets" / "templates"
     templates_directory.mkdir(parents=True, exist_ok=True)
     requested = sys.argv[1:] or sorted(BUILDERS)

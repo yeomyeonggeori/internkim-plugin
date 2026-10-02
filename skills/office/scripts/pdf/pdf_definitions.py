@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from core.office_result import BOLD_FONT_UNAVAILABLE, ERROR, WARNING, IssueKind
+from core.office_result import BOLD_FONT_UNAVAILABLE, ERROR, SETUP_COMMAND, WARNING, IssueKind
 from doc.doc_definitions import GLYPH_NOT_COVERED
+from pdf.ocr.ocr_environment import OCR_DOWNLOAD_SIZE
 from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE
 from core.office_schema import Boolean, CellValue, Choice, Field, ListOf, Number, Record, Text
 from fonts.font_files import FONT_NAME_MEANING, FONT_PATH_MEANING
@@ -44,10 +45,11 @@ KOREAN_FONT_NOT_EMBEDDED = IssueKind("KOREAN_FONT_NOT_EMBEDDED", WARNING, "Korea
 
 PAGE_NOT_IN_DOCUMENT = IssueKind("PAGE_NOT_IN_DOCUMENT", ERROR, "--pages names a page the PDF does not have", "run pdf read to see the page count, then pass pages inside it")
 
-OCR_DOWNLOAD_SIZE = "about 150 MB"
-PAGE_WITHOUT_TEXT = IssueKind("PAGE_WITHOUT_TEXT", WARNING, "a PDF page has no text layer: it is a scan or a picture", f"rerun the command with --ocr to read those pages' text (the first OCR run downloads the engine, {OCR_DOWNLOAD_SIZE}), or render them with pdf render --pages and read each PNG with your own image tool")
+OCR_SETUP_COMMAND = f"{SETUP_COMMAND} --with-ocr"
+OCR_NEED = f"it needs the OCR engine that {OCR_SETUP_COMMAND} prepares, {OCR_DOWNLOAD_SIZE}"
+PAGE_WITHOUT_TEXT = IssueKind("PAGE_WITHOUT_TEXT", WARNING, "a PDF page has no text layer: it is a scan or a picture", f"rerun the command with --ocr to read those pages' text ({OCR_NEED}), or render them with pdf render --pages and read each PNG with your own image tool")
 PAGE_READ_BY_OCR = IssueKind("PAGE_READ_BY_OCR", WARNING, "the text of a page without a text layer was read from its image by OCR: a space between words can be missing and a character can be misread", "tell the user which pages came from OCR, and confirm names, amounts and dates that matter with them before relying on them")
-OCR_UNAVAILABLE = IssueKind("OCR_UNAVAILABLE", WARNING, "the OCR engine could not be installed or run, so pages without a text layer were not read", "say which pages could not be read and why; the message names what failed, usually no network on the first OCR run")
+OCR_UNAVAILABLE = IssueKind("OCR_UNAVAILABLE", WARNING, "the OCR engine is not prepared or could not run, so pages without a text layer were not read", f"say which pages could not be read and why; the message names what is missing, usually the engine that {OCR_SETUP_COMMAND} prepares")
 
 WRITE_ISSUE_KINDS = (BOLD_FONT_UNAVAILABLE, GLYPH_NOT_COVERED, RENDERER_UNAVAILABLE, RENDER_FAILED)
 RENDER_ISSUE_KINDS = (PAGE_NOT_IN_DOCUMENT,)
@@ -83,4 +85,4 @@ def page_reading_suggestion(pdf_path, pages: str, rerun_command: str | None) -> 
     rendering = f"run office pdf render {pdf_path} --pages {pages} --scale 2 and read each page PNG with your own image tool"
     if rerun_command is None:
         return f"{rendering}, or tell the user these pages could not be read"
-    return f"rerun with --ocr to read their text: {rerun_command} --ocr (the first OCR run downloads the engine, {OCR_DOWNLOAD_SIZE}); or {rendering}"
+    return f"rerun with --ocr to read their text: {rerun_command} --ocr ({OCR_NEED}); or {rendering}"
