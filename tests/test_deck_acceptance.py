@@ -12,7 +12,7 @@ sys.path.insert(0, str(SCRIPTS_PATH))
 
 from deck.acceptance import FIX_ROUNDS_ALLOWED, judge_build  # noqa: E402
 from deck.deck_definitions import MISSING_SPEAKER_NOTES, TEXT_OVERLAP  # noqa: E402
-from render_fixture import can_render  # noqa: E402
+from render_fixture import bare_environment, can_render  # noqa: E402
 
 
 OVERLAP = TEXT_OVERLAP.issue("two text blocks cover each other", "slide 3")
@@ -116,8 +116,7 @@ class BuildHelpTest(unittest.TestCase):
 
 class WithoutRendererTest(unittest.TestCase):
     def run_without_renderer(self, directory: str, *arguments: str) -> subprocess.CompletedProcess:
-        environment = {"HOME": directory, "PATH": f"{Path(sys.executable).parent}:/usr/bin:/bin"}
-        return subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", *arguments], capture_output=True, text=True, cwd=directory, env=environment)
+        return subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", *arguments], capture_output=True, text=True, cwd=directory, env=bare_environment(directory))
 
     def test_the_build_refuses_and_names_what_to_install_while_the_check_still_runs(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -24,7 +24,6 @@ declares. Each names the tools it calls in its own `tool-references`.
 | `messages` | Reads, posts, edits and removes conversation messages |
 | `mail` | Connects a mailbox, then reads, searches and sends mail |
 | `office` | Creates, edits and validates `.docx`, PDF, `.xlsx` and decks, and fills company forms on letterhead; only the forms and reading attachments need the server |
-| `website` | Scaffolds, builds, previews and publishes a site |
 | `company-data` | Reads and records company profile, metrics and records |
 | `web-search` | Searches the public web and fetches pages |
 
@@ -53,8 +52,8 @@ works and what to do in a client that cannot.
 Python 3 and [uv](https://docs.astral.sh/uv/) on `PATH`. A skill that bundles
 scripts declares its own dependencies in `scripts/requirements.txt` and installs
 them into an environment it creates on first use, so nothing has to be prepared
-in advance. `website` also needs [Bun](https://bun.sh), and `office` needs Bun
-or Node 18 to draw pages, which it does without a browser.
+in advance. `office` needs [Bun](https://bun.sh) or Node 18 to draw pages, which
+it does without a browser.
 
 `office` runs every command through one entry, `scripts/office <format>
 <verb>`, which prepares that environment first; `scripts/office --help` lists
@@ -62,11 +61,10 @@ the commands. Each command prints one JSON result with a status and coded
 issues, and `scripts/office guide <format>` prints the fields every input takes
 and every code a command reports, generated from the validators themselves.
 
-Those environments, the package cache, the bundled fonts unpacked for drawing
-and the font subsets a `.docx` carries live under `XDG_CACHE_HOME`, falling
-back to `~/.cache` when it is unset. A host with a shared package cache points
-`UV_CACHE_DIR` at it. Neither is required, and the skills read no variable
-named after the host that runs them.
+Those environments, the package cache and any host-supplied fonts live under
+`XDG_CACHE_HOME`, falling back to `~/.cache` when it is unset. A host with a
+shared package cache points `UV_CACHE_DIR` at it. Neither is required, and the
+skills read no variable named after the host that runs them.
 
 ## Tool server
 
@@ -123,6 +121,6 @@ a host.
 
 ## License
 
-[Apache-2.0](LICENSE), except the fonts under `skills/office/assets/fonts/`,
-which are under the SIL Open Font License 1.1. Each family's folder holds its
-license text as `OFL.txt` and a README naming the release it came from.
+[Apache-2.0](LICENSE), except the Paperlogy fonts under
+`skills/office/assets/fonts/paperlogy/`, which are under the
+[SIL Open Font License 1.1](skills/office/assets/fonts/paperlogy/OFL-1.1.txt).

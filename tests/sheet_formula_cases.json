@@ -314,5 +314,8 @@
 ["=INDIRECT(\"D!B2:B3\")", null, null],
 ["=OFFSET(D!A1,1,1)", "n", "2"],
 ["=SUM(INDIRECT(\"D!B1:B4\"))", "n", "10"],
-["=HYPERLINK(\"https://example.com\")", "str", "https://example.com"]
+["=HYPERLINK(\"https://example.com\")", "str", "https://example.com"],
+["=SUM(\"5\",1)", "n", "6"],
+["=D!C1&#N/A", "e", "#N/A"],
+["=IF(FALSE,ROMAN(1),2)", "n", "2"]
 ]

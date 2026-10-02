@@ -19,6 +19,7 @@ from core.office_commands import COMMANDS, FORMATS  # noqa: E402
 from office_guide import guide_text  # noqa: E402
 from core.office_result import COMMAND_ISSUE_KINDS, IssueKind, command_result  # noqa: E402
 from core.office_schema import CellValue, Field, ListOf, Number, Record, Text, Variant  # noqa: E402
+from render_fixture import bare_environment  # noqa: E402
 
 
 def load_definitions(office_format):
@@ -37,7 +38,7 @@ def run_office(arguments, working_directory):
         capture_output=True,
         text=True,
         cwd=working_directory,
-        env={"HOME": str(working_directory), "PATH": f"{Path(sys.executable).parent}:/usr/bin:/bin"},
+        env=bare_environment(working_directory),
     )
     return completed, json.loads(completed.stdout)
 

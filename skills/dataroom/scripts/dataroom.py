@@ -15,28 +15,23 @@ from pathlib import Path
 
 from skill_runtime import ensure_requirements
 
-STANDARD_DOMAINS = [
-    ("00-public", 0, "published copies: brand, press, certifications, the public deck"),
-    ("01-corporate", 1, "articles, registry, business registration"),
-    ("02-governance", 3, "shareholder register, board minutes, cap table, term sheets, litigation"),
-    ("03-finance", 2, "statements, audits, budgets, tax, banking"),
-    ("04-contracts", 2, "customer, supplier, NDA, lease; one folder per counterparty"),
-    ("05-people", 1, "org chart, work rules, policies"),
-    ("06-hr-records", 3, "employment contracts, payroll, reviews"),
-    ("07-ip", 1, "patents, trademarks, licences"),
-    ("08-product", 1, "product documents, roadmap, architecture"),
-    ("09-marketing", 1, "brand assets, references"),
-    ("10-operations", 1, "processes, supply chain, facilities"),
-    ("11-compliance", 1, "certifications, permits, security policy"),
-    ("12-fundraising", 2, "investor material, investor correspondence"),
-    ("13-media", 1, "photos, video"),
-]
+TEMPLATE = json.loads((Path(__file__).resolve().parent.parent / "assets/template.json").read_text())
+
+
+def category_path(category, categories):
+    folder = category["code"] + "-" + category["slug"]
+    if category["parent"] is None:
+        return folder
+    parent = next(item for item in categories if item["code"] == category["parent"])
+    return parent["code"] + "-" + parent["slug"] + "/" + folder
+
+
 README_LINES = [
     "# Data room",
     "",
     "- Start a session from `company.json` and `INDEX.md`.",
     "- Find with `company_document_search`, or `dataroom search` in a tree,",
-    "  narrowed by `path` when browsing a domain or a year. Never list the tree.",
+    "  narrowed by `path` when browsing a category. Never list the tree.",
     "- Read the sidecar before the original, and the original only when the sidecar",
     "  cannot answer.",
     "- Never edit an existing document; add one with `supersedes`.",
@@ -48,12 +43,11 @@ README_LINES = [
 ]
 KINDS = ("contract", "policy", "report", "deck", "dataset", "image", "video")
 STATUSES = ("current", "superseded", "draft")
-REQUIRED_FIELDS = ("id", "title", "kind", "domain", "date", "status", "summary", "language")
+REQUIRED_FIELDS = ("id", "title", "kind", "categoryCode", "date", "status", "summary", "language")
 SUMMARY_LIMIT = 200
 DIRECTORY_LIMIT = 40
 INBOX_LIMIT_DAYS = 7
 OPENING_LIMIT = 3000
-YEAR_SPLIT_DOMAINS = ("finance", "contracts", "media")
 TEXT_SUFFIXES = (".md", ".markdown", ".txt")
 IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".tif", ".tiff", ".bmp", ".heic")
 VIDEO_SUFFIXES = (".mp4", ".mov", ".mkv", ".webm", ".avi")
@@ -120,7 +114,7 @@ def add_ingest_parser(subparsers):
     parser = subparsers.add_parser("ingest", help="file a document with its sidecar and derived text")
     parser.add_argument("directory")
     parser.add_argument("file")
-    parser.add_argument("--domain", required=True)
+    parser.add_argument("--category", required=True, help="exact leaf mnemonic code, or X")
     parser.add_argument("--title")
     parser.add_argument("--kind", choices=KINDS)
     parser.add_argument("--date", help="YYYY-MM-DD, the date the document speaks from")
@@ -131,7 +125,6 @@ def add_ingest_parser(subparsers):
     parser.add_argument("--id")
     parser.add_argument("--period")
     parser.add_argument("--source")
-    parser.add_argument("--clearance", type=int, help="the requester's clearance; a higher domain takes a submission in inbox/")
     parser.set_defaults(handler=run_ingest)
 
 
@@ -160,8 +153,7 @@ def run_init(arguments):
     if (root / "company.json").exists():
         raise Failure(f"{root} already holds a data room")
     root.mkdir(parents=True, exist_ok=True)
-    (root / "inbox").mkdir(exist_ok=True)
-    for folder, _, _ in STANDARD_DOMAINS:
+    for folder, _ in category_folders(root, TEMPLATE["categories"]):
         (root / folder / "archive").mkdir(parents=True, exist_ok=True)
         (root / folder / "catalog.jsonl").touch()
     (root / "README.md").write_text("\n".join(README_LINES), encoding="utf-8")
@@ -173,7 +165,7 @@ def run_init(arguments):
 def build_company(arguments):
     names = dict(parse_name(entry, arguments.locale) for entry in arguments.name)
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "slug": arguments.slug,
         "country": arguments.country,
         "locale": arguments.locale,
@@ -181,7 +173,7 @@ def build_company(arguments):
         "currencyCode": arguments.currency,
         "business": arguments.business,
         "profile": {"name": names},
-        "dataroom": {"domains": []},
+        "dataroom": TEMPLATE,
     }
 
 
@@ -203,22 +195,26 @@ def load_company(root):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def domain_folders(root):
-    folders = [(folder, clearance) for folder, clearance, _ in STANDARD_DOMAINS]
-    for extra in load_company(root).get("dataroom", {}).get("domains", []):
-        folders.append((extra["name"], int(extra["clearance"])))
-    return folders
+def category_folders(root, categories=None):
+    if categories is None:
+        company = load_company(root)
+        if company.get("schemaVersion") != 2:
+            raise Failure("legacy data rooms need semantic reclassification; their permissions cannot be converted by folder name")
+        categories = company["dataroom"]["categories"]
+    parent_codes = {category["parent"] for category in categories}
+    return [(category_path(category, categories), category["code"])
+            for category in categories if category["code"] not in parent_codes]
 
 
-def domain_name(folder):
-    return re.sub(r"^\d\d-", "", folder)
+def category_code(folder):
+    return folder.rsplit("/", 1)[-1].split("-", 1)[0]
 
 
-def resolve_domain(root, requested):
-    for folder, clearance in domain_folders(root):
-        if requested in (folder, domain_name(folder)):
-            return folder, clearance
-    raise Failure(f"no domain named {requested}")
+def resolve_category(root, requested):
+    for folder, code in category_folders(root):
+        if requested == code:
+            return folder
+    raise Failure(f"no filing category named {requested}")
 
 
 def run_ingest(arguments):
@@ -226,11 +222,10 @@ def run_ingest(arguments):
     source = Path(arguments.file).resolve()
     if not source.is_file():
         raise Failure(f"{source} is not a file")
-    folder, clearance = resolve_domain(root, arguments.domain)
-    is_submission = arguments.clearance is not None and arguments.clearance < clearance
+    folder = resolve_category(root, arguments.category)
     document_date = arguments.date or file_date(source)
     kind = arguments.kind or KIND_BY_SUFFIX.get(source.suffix.lower(), "report")
-    destination_directory = destination_directory_for(root, folder, kind, document_date, is_submission)
+    destination_directory = destination_directory_for(root, folder)
     destination = destination_directory / f"{document_date}-{document_slug(arguments.title, source)}{source.suffix.lower()}"
     if destination.exists():
         raise Failure(f"{destination} exists; nothing is overwritten, pass another --title or --date")
@@ -240,31 +235,15 @@ def run_ingest(arguments):
     if arguments.supersedes:
         mark_superseded(root, arguments.supersedes)
     write_generated_files(root)
-    report_ingest(root, destination, fields, is_submission, notes)
+    report_ingest(root, destination, fields, notes)
 
 
 def file_date(source):
     return datetime.date.fromtimestamp(source.stat().st_mtime).isoformat()
 
 
-def destination_directory_for(root, folder, kind, document_date, is_submission):
-    if is_submission:
-        return root / "inbox"
-    name = domain_name(folder)
-    if name not in YEAR_SPLIT_DOMAINS:
-        return root / folder
-    year = document_date[:4]
-    if name != "media":
-        return root / folder / year
-    return root / folder / media_subfolder(kind) / year
-
-
-def media_subfolder(kind):
-    if kind == "image":
-        return "photos"
-    if kind == "video":
-        return "videos"
-    return "other"
+def destination_directory_for(root, folder):
+    return root / folder
 
 
 def document_slug(title, source):
@@ -281,7 +260,7 @@ def build_fields(root, arguments, source, folder, kind, document_date):
         "id": arguments.id or unique_id(root, folder, document_date, document_slug(arguments.title, source), source),
         "title": arguments.title or source.stem,
         "kind": kind,
-        "domain": domain_name(folder),
+        "categoryCode": category_code(folder),
         "date": document_date,
     }
     if arguments.period:
@@ -300,7 +279,7 @@ def build_fields(root, arguments, source, folder, kind, document_date):
 
 def unique_id(root, folder, document_date, slug, source):
     taken = {document.fields.get("id") for document in all_documents(root) if document.fields}
-    base = f"{domain_name(folder)}-{document_date[:4]}-{slug}"
+    base = f"{category_code(folder)}-{document_date[:4]}-{slug}"
     for candidate in (base, f"{base}-{source.suffix.lower().lstrip('.')}"):
         if candidate not in taken:
             return candidate
@@ -308,16 +287,7 @@ def unique_id(root, folder, document_date, slug, source):
 
 
 def file_document(source, destination, fields, summary):
-    if source.suffix.lower() in TEXT_SUFFIXES:
-        return file_text_document(source, destination, fields, summary)
     return file_binary_document(source, destination, fields, summary)
-
-
-def file_text_document(source, destination, fields, summary):
-    _, body = split_frontmatter(source.read_text(encoding="utf-8", errors="replace"))
-    fields["summary"] = summary or opening_line(body) or fields["title"]
-    destination.write_text(dump_frontmatter(fields) + body, encoding="utf-8")
-    return [] if summary else ["summary drafted from the opening; review it"]
 
 
 def file_binary_document(source, destination, fields, summary):
@@ -330,6 +300,8 @@ def file_binary_document(source, destination, fields, summary):
         destination.unlink()
         shutil.rmtree(derived_directory, ignore_errors=True)
         raise
+    derived_directory.mkdir(parents=True, exist_ok=True)
+    (derived_directory / "content.txt").write_text(derivation["text"], encoding="utf-8")
     fields["summary"] = summary or opening_line(derivation["text"]) or fields["title"]
     sidecar_path(destination).write_text(dump_frontmatter(fields) + sidecar_body(fields, derivation, derived_directory), encoding="utf-8")
     notes = list(derivation["notes"])
@@ -363,6 +335,8 @@ def sidecar_body(fields, derivation, derived_directory):
 
 def derive(path, kind, derived_directory):
     suffix = path.suffix.lower()
+    if suffix in TEXT_SUFFIXES:
+        return derivation(path.read_text(encoding="utf-8", errors="replace"), [])
     if suffix == ".pdf":
         return derive_pdf(path, derived_directory)
     if suffix == ".pptx":
@@ -603,10 +577,8 @@ def mark_superseded(root, superseded_id):
     raise Failure(f"--supersedes {superseded_id} names nothing")
 
 
-def report_ingest(root, destination, fields, is_submission, notes):
+def report_ingest(root, destination, fields, notes):
     print(f"filed {destination.relative_to(root)} as {fields['id']}")
-    if is_submission:
-        print(f"submission: waits in inbox/ for domain {fields['domain']} until a cleared member raises it")
     for note in notes:
         print(f"note: {note}")
 
@@ -621,9 +593,9 @@ class Document:
 
 def all_documents(root):
     documents = []
-    for folder, _ in domain_folders(root):
+    for folder, _ in category_folders(root):
         documents += folder_documents(root, root / folder)
-    return documents + folder_documents(root, root / "inbox")
+    return documents
 
 
 def folder_documents(root, folder_path):
@@ -645,8 +617,6 @@ def is_sidecar(path):
 
 
 def document_for(root, path):
-    if path.suffix.lower() in TEXT_SUFFIXES:
-        return Document(root, path, path, False)
     return Document(root, path, sidecar_path(path), True)
 
 
@@ -717,17 +687,16 @@ def run_index(arguments):
 
 def write_generated_files(root):
     written = []
-    domain_hashes = []
+    category_hashes = []
     index_rows = []
-    for folder, clearance in domain_folders(root):
+    for folder, code in category_folders(root):
         documents = folder_documents(root, root / folder)
         catalog_hash = frontmatter_hash(documents)
         write_catalog(root / folder / "catalog.jsonl", folder, catalog_hash, documents)
         written.append(root / folder / "catalog.jsonl")
-        domain_hashes.append(catalog_hash)
-        index_rows.append(index_row(folder, str(clearance), documents))
-    index_rows.append(index_row("inbox", "-", folder_documents(root, root / "inbox")))
-    index_hash = hashlib.sha256("".join(domain_hashes).encode("ascii")).hexdigest()
+        category_hashes.append(catalog_hash)
+        index_rows.append(index_row(folder, code, documents))
+    index_hash = hashlib.sha256("".join(category_hashes).encode("ascii")).hexdigest()
     (root / "INDEX.md").write_text(index_text(index_rows, index_hash), encoding="utf-8")
     return written + [root / "INDEX.md"]
 
@@ -741,14 +710,14 @@ def write_catalog(catalog_path, folder, catalog_hash, documents):
     catalog_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def index_row(label, clearance, documents):
+def index_row(label, code, documents):
     dates = [document.fields.get("date", "") for document in documents if document.fields]
     last_change = max((date for date in dates if date), default="")
-    return f"| {label} | {clearance} | {len(documents)} | {last_change} |"
+    return f"| {label} | {code} | {len(documents)} | {last_change} |"
 
 
 def index_text(rows, index_hash):
-    lines = ["# Index", "", "| Domain | Clearance | Documents | Last change |", "|---|---|---|---|"]
+    lines = ["# Index", "", "| Category | Code | Documents | Last change |", "|---|---|---|---|"]
     lines += rows
     lines += ["", f"<!-- frontmatter-hash: {index_hash} -->", ""]
     return "\n".join(lines)
@@ -799,17 +768,12 @@ def field_failures(document):
 
 
 def placement_failures(root, document):
-    folder = document.path.split("/", 1)[0]
-    declared = document.fields.get("domain")
-    known = {domain_name(name) for name, _ in domain_folders(root)}
-    if folder == "inbox":
-        return [] if declared in known else [f"{document.path}: domain {declared} names no domain"]
-    failures = []
-    if declared != domain_name(folder):
-        failures.append(f"{document.path}: domain {declared} disagrees with path {folder}")
-    if folder == "00-public" and not isinstance(document.fields.get("published"), dict):
-        failures.append(f"{document.path}: 00-public document without published")
-    return failures
+    code = document.fields.get("categoryCode")
+    folders = dict((code, folder) for folder, code in category_folders(root))
+    expected = folders.get(code)
+    if expected is None or not document.path.startswith(expected + "/"):
+        return [f"{document.path}: category {code} disagrees with its path"]
+    return []
 
 
 def hash_failures(root, document):
@@ -857,22 +821,22 @@ def directory_failures(root):
 def inbox_failures(root):
     oldest_allowed = datetime.date.today() - datetime.timedelta(days=INBOX_LIMIT_DAYS)
     failures = []
-    for document in folder_documents(root, root / "inbox"):
+    for document in folder_documents(root, root / "X-inbox"):
         arrived = datetime.date.fromtimestamp((root / document.path).stat().st_mtime)
         if arrived < oldest_allowed:
-            failures.append(f"{document.path}: submission older than {INBOX_LIMIT_DAYS} days in inbox/")
+            failures.append(f"{document.path}: unclassified for over {INBOX_LIMIT_DAYS} days in X-inbox/")
     return failures
 
 
 def generated_file_failures(root):
     failures = []
-    domain_hashes = []
-    for folder, _ in domain_folders(root):
+    category_hashes = []
+    for folder, _ in category_folders(root):
         expected = frontmatter_hash(folder_documents(root, root / folder))
-        domain_hashes.append(expected)
+        category_hashes.append(expected)
         if catalog_hash(root / folder / "catalog.jsonl") != expected:
             failures.append(f"{folder}/catalog.jsonl: stale generated file")
-    expected_index = hashlib.sha256("".join(domain_hashes).encode("ascii")).hexdigest()
+    expected_index = hashlib.sha256("".join(category_hashes).encode("ascii")).hexdigest()
     if index_hash(root / "INDEX.md") != expected_index:
         failures.append("INDEX.md: stale generated file")
     return failures

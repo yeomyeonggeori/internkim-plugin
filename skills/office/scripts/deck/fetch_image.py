@@ -38,7 +38,7 @@ class Candidate:
     def to_json(self) -> dict:
         return {
             "path": str(self.path),
-            "referencePath": reference_path(self.path),
+            "referencePath": self.path.name,
             "width": self.width,
             "height": self.height,
             "aspectRatio": round(self.width / self.height, 2),
@@ -110,32 +110,9 @@ def parse_arguments(arguments: list[str]) -> tuple[str, str, int]:
     return parsed.query, output, max(1, parsed.count)
 
 
-def anchor_site_output(output_value: str) -> pathlib.Path:
-    output_path = pathlib.Path(output_value)
-    as_posix = output_path.as_posix()
-    if "app/public/" not in as_posix:
-        return output_path
-    suffix = as_posix.split("app/public/", 1)[-1]
-    probe = pathlib.Path.cwd()
-    for _ in range(6):
-        if probe.name == "app" and (probe / "public").is_dir():
-            return probe / "public" / suffix
-        if (probe / "app" / "public").is_dir():
-            return probe / "app" / "public" / suffix
-        probe = probe.parent
-    return output_path
-
-
-def reference_path(output_path: pathlib.Path) -> str:
-    as_posix = output_path.as_posix()
-    if "public/" in as_posix:
-        return "/" + as_posix.split("public/", 1)[-1]
-    return as_posix
-
-
 def main() -> Result:
     query, output_value, count = parse_arguments(sys.argv[1:])
-    output_path = anchor_site_output(output_value)
+    output_path = pathlib.Path(output_value)
     try:
         results = search_openverse(query)
     except (OSError, ValueError) as error:

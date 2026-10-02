@@ -19,10 +19,7 @@ def ensure_requirements(skill_name):
         return False
     environment_path = dependency_environment_path(skill_name)
     python_path = environment_path / "bin" / "python"
-    if is_current_python(python_path):
-        return True
-
-    if python_satisfies_requirements(Path(sys.executable), requirements_path):
+    if is_running_in(environment_path):
         return True
 
     try:
@@ -34,34 +31,6 @@ def ensure_requirements(skill_name):
 
     reexecute_python(python_path)
     return False
-
-
-def python_satisfies_requirements(python_path, requirements_path):
-    code = """
-import importlib.metadata
-import re
-import sys
-from pathlib import Path
-
-for raw_requirement in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
-    requirement = raw_requirement.split("#", 1)[0].strip()
-    if requirement == "":
-        continue
-    package_name = re.split(r"\\s*(?:==|>=|<=|~=|!=|>|<|\\[|;)", requirement, 1)[0].strip()
-    if package_name == "":
-        continue
-    try:
-        importlib.metadata.distribution(package_name)
-    except importlib.metadata.PackageNotFoundError:
-        sys.exit(1)
-"""
-    result = subprocess.run(
-        [str(python_path), "-c", code, str(requirements_path)],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        check=False,
-    )
-    return result.returncode == 0
 
 
 def reexecute_python(python_path):
@@ -155,8 +124,8 @@ def cache_home_path(environment):
     return Path.home() / ".cache"
 
 
-def is_current_python(python_path):
-    return Path(sys.executable).absolute() == python_path.absolute()
+def is_running_in(environment_path):
+    return Path(sys.prefix).resolve() == environment_path.resolve()
 
 
 def safe_name(value):

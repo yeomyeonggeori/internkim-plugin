@@ -10,6 +10,7 @@ from openpyxl import load_workbook
 
 from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, run_office, run_office_python
 from pdf_fixture import SCANNED_STATEMENT_PDF, statement_pdf_code
+from skill_runtime import dependency_environment_path, safe_name, skill_cache_path
 
 
 AMOUNTS = ["금액", "1,440,000", "540,000", "1,192,500", "432,000", "420,000", "4,024,500"]
@@ -61,6 +62,9 @@ class ScannedStatementTest(unittest.TestCase):
     def test_an_engine_that_cannot_be_installed_is_named_and_the_page_still_answers(self):
         with tempfile.TemporaryDirectory() as cache:
             environment = {**os.environ, "XDG_CACHE_HOME": cache, "PATH": str(Path(sys.executable).parent)}
+            office_environment = skill_cache_path(environment) / "environments" / safe_name("office")
+            office_environment.parent.mkdir(parents=True)
+            office_environment.symlink_to(dependency_environment_path("office"))
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "pdf", "read", "scanned-statement.pdf", "--ocr"], capture_output=True, text=True, cwd=self.directory, env=environment)
         self.assertNotIn("Traceback", completed.stderr)
         envelope = json.loads(completed.stdout)
