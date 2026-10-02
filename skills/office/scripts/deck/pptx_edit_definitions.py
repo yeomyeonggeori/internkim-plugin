@@ -5,7 +5,10 @@ import re
 
 from charts.kinds import DECK_CHART_KINDS
 from charts.look import LABEL_FLAGS
-from core.office_result import Issue
+from core.office_operations import OPERATION_ISSUE_KINDS
+from core.office_result import ERROR, SETUP_COMMAND, WARNING, Issue, IssueKind
+from core.template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
+from core.text_checks import TEXT_CHECK_ISSUE_KINDS
 from core.office_theme import THEME_SLOTS
 from core.office_schema import Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, wrong_type
 from deck.pptx_connectors import ARROW_ENDS, CONNECTOR_KINDS, DEFAULT_ARROW, DEFAULT_WIDTH_POINTS, ELBOW_KIND, STRAIGHT_KIND
@@ -13,6 +16,40 @@ from deck.pptx_lengths import LENGTH_EXAMPLES, Length
 from deck.table_styles import TABLE_STYLE_NAMES
 from core.units import EMU_PER_INCH, EMU_PER_POINT
 from core.image_formats import PICTURE_FORMATS_TEXT
+
+
+OVERLAP_RATIO = 0.12
+DISTORTION_TOLERANCE = 0.05
+BACKGROUND_SHARE_OF_SLIDE = 0.7
+DECK_LOCATION = "deck"
+
+
+@dataclass(frozen=True)
+class ReviewCheck:
+    kind: IssueKind
+
+    def issue(self, text: str, location: str | None = None, suggestion: object = None) -> Issue:
+        return self.kind.issue(text, location, suggestion)
+
+    def deck_issue(self, text: str) -> Issue:
+        return self.issue(text, DECK_LOCATION)
+
+
+def review_check(code: str, meaning: str, suggestion: str) -> ReviewCheck:
+    return ReviewCheck(IssueKind(code, WARNING, meaning, suggestion))
+
+
+CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is larger than its box, so it is clipped or spills out", "cut or split what the message names, or give it a larger box; a build suggestion says how many rows, items or characters fit at full type size")
+OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "keep every part on the slide: split or cut what pushes it off, as a build suggestion counts, or move or resize it inside the slide's edges")
+TEXT_OVERLAP = review_check("TEXT_OVERLAP", "two pieces of text cover each other", "separate the two text blocks or shorten the one that spills")
+IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "put the photo in a cover or image slide, which crops it to its frame, or give its box the image's own ratio")
+SLIDE_COUNT_MISMATCH = IssueKind("SLIDE_COUNT_MISMATCH", ERROR, "the slide count differs from --slide-count", "add or remove slides until the count matches the request")
+PICTURE_UNREADABLE = IssueKind("PICTURE_UNREADABLE", ERROR, f"an image file given to an operation is not a {PICTURE_FORMATS_TEXT} picture", f"pass the path of a {PICTURE_FORMATS_TEXT} file")
+PPTX_NOT_RENDERED = IssueKind("PPTX_NOT_RENDERED", WARNING, "the renderer could not draw the slides, so nobody looked at them", f"run {SETUP_COMMAND} and run again, or say the slides were checked by measurement only and not seen")
+
+LAYOUT_AUDIT_ISSUE_KINDS = (CONTENT_OVERFLOW.kind, OUT_OF_FRAME.kind, TEXT_OVERLAP.kind, IMAGE_DISTORTED.kind)
+APPLY_ISSUE_KINDS = (PICTURE_UNREADABLE,)
+PPTX_CHECK_ISSUE_KINDS = (PPTX_NOT_RENDERED,)
 
 
 SHAPE_PATH_PATTERN = re.compile(r"\d+(\.\d+)*")
@@ -342,4 +379,15 @@ OPERATIONS = Variant(
     f"a length is EMU ({EMU_PER_INCH} per inch, {EMU_PER_POINT} per point) or text with a unit such as {LENGTH_EXAMPLES} of the slide",
     "op",
     TEXT_OPERATIONS + ELEMENT_OPERATIONS + ARRANGE_OPERATIONS + INSERT_OPERATIONS + TABLE_AND_CHART_OPERATIONS + SLIDE_OPERATIONS + SECTION_OPERATIONS + DECK_OPERATIONS,
+)
+
+GUIDE_INPUTS = (
+    ("apply", "pptx", "the operations", ListOf(OPERATIONS, non_empty=True)),
+    ("merge", "pptx", "the values", MERGE_VALUES),
+)
+GUIDE_ISSUES = (
+    ("apply", "pptx", OPERATION_ISSUE_KINDS + APPLY_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS),
+    ("check", "pptx", (SLIDE_COUNT_MISMATCH,) + TEXT_CHECK_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS + PPTX_CHECK_ISSUE_KINDS),
+    ("render", "pptx", PPTX_CHECK_ISSUE_KINDS),
+    ("merge", "pptx", PACKAGE_MERGE_ISSUE_KINDS),
 )

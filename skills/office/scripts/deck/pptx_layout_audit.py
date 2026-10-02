@@ -6,8 +6,7 @@ import math
 
 from pptx.oxml.ns import qn
 
-from deck.deck_definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_OVERLAP, ReviewCheck
-from deck.layout_thresholds import BACKGROUND_SHARE_OF_SLIDE, DISTORTION_TOLERANCE, OVERLAP_RATIO
+from deck.pptx_edit_definitions import BACKGROUND_SHARE_OF_SLIDE, CONTENT_OVERFLOW, DISTORTION_TOLERANCE, IMAGE_DISTORTED, OUT_OF_FRAME, OVERLAP_RATIO, TEXT_OVERLAP, ReviewCheck
 from core.office_result import Issue
 from deck.pptx_geometry import SLIDE_FRAME, Box, Frame, child_frame, local_box
 from deck.pptx_inheritance import slide_context

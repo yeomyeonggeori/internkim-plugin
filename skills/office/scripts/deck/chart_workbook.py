@@ -4,7 +4,7 @@ import io
 import zipfile
 
 from deck.pptx_package import xml_document
-from deck.pptx_text import text_content
+from core.xml_text import text_content
 from core.excel_limits import DEFAULT_SHEET_NAME, column_letter
 
 

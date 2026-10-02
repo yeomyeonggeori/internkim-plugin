@@ -10,7 +10,7 @@ from pptx.util import Pt
 from core.office_operations import OPERATION_NOT_APPLICABLE, Change
 from core.office_result import INPUT_NOT_FOUND, INVALID_VALUE, OfficeFailure
 from deck.pptx_animation import remove_animations_of
-from deck.deck_definitions import PICTURE_UNREADABLE
+from deck.pptx_edit_definitions import PICTURE_UNREADABLE
 from deck.pptx_geometry import ROTATION_UNITS_PER_DEGREE, Box, local_box, transform_of
 from deck.pptx_inheritance import slide_context
 from deck.pptx_relationships import carry_relationships, drop_unreferenced, relationship_ids

@@ -5,7 +5,7 @@ from pathlib import Path
 from pptx import Presentation
 from pptx.oxml.ns import qn
 
-from deck.deck_definitions import PPTX_NOT_RENDERED, SLIDE_COUNT_MISMATCH
+from deck.pptx_edit_definitions import PPTX_NOT_RENDERED, SLIDE_COUNT_MISMATCH
 from render.office_preview import drawn_page_details
 from core.office_arguments import route_arguments
 from core.office_outputs import preview_directory

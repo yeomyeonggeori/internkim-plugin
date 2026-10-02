@@ -4,7 +4,8 @@ from dataclasses import dataclass
 import json
 import pathlib
 
-from deck.deck_definitions import CHART_UNDERFILLED, CONTENT_OVERFLOW, DRAWING_DISTORTED, FOOTER_CROSSED, IMAGE_DISTORTED, LABEL_TOO_LONG, OUT_OF_FRAME, REPEATED_FIGURE, TEXT_COVERED, TEXT_OVERLAP, TINY_TEXT, TITLE_TOO_LONG
+from deck.deck_definitions import CHART_UNDERFILLED, DRAWING_DISTORTED, FOOTER_CROSSED, LABEL_TOO_LONG, REPEATED_FIGURE, TEXT_COVERED, TINY_TEXT, TITLE_TOO_LONG
+from deck.pptx_edit_definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_OVERLAP
 from deck.deck_kit import kit_length, slide_size
 from deck.kit_fixes import capacity_fix, photo_fix, placement_fix, size_fix, text_fix
 from deck.layout_thresholds import LABEL_LINE_MAXIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM

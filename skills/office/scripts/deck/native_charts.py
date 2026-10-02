@@ -9,7 +9,8 @@ from core.excel_limits import DEFAULT_SHEET_NAME
 from deck.chart_workbook import cell_reference, chart_workbook_bytes, number_text
 from core.css_color import most_contrasting, parse_css_color
 from deck.pptx_package import xml_document
-from deck.pptx_text import SlideScale, TextContext, attribute, color_xml, run_properties_xml, text_content
+from core.xml_text import text_content
+from deck.pptx_text import SlideScale, TextContext, attribute, color_xml, run_properties_xml
 
 
 CHART_NAMESPACES = (

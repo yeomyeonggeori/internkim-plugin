@@ -2,18 +2,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import html
-import re
 
 from core.css_color import Color, parse_css_color
 from fonts.pptx_embedding import RunFont, run_font
 from deck.pptx_package import PRESENTATION_HEIGHT_EMU, PRESENTATION_WIDTH_EMU
 from core.text_script import is_east_asian
 from core.units import EMU_PER_POINT
+from core.xml_text import text_content
 
 
 LINE_WIDTH_SLACK_RATIO = 0.01
 AUTOSPACE_GAP_EM = 0.25
-INVALID_XML_CHARACTERS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 LANGUAGE_TAGS = {"ko": "ko-KR", "en": "en-US", "ja": "ja-JP", "zh": "zh-CN"}
 BASELINE_SHIFTS = {"super": "30000", "sub": "-25000"}
 KERNING_FROM_ONE_POINT = "100"
@@ -206,10 +205,6 @@ def color_xml(color: Color, opacity: float) -> str:
     alpha = color.alpha * opacity
     alpha_xml = f'<a:alpha val="{round(alpha * 100000)}"/>' if alpha < 1 else ""
     return f'<a:srgbClr val="{color.hex_value}">{alpha_xml}</a:srgbClr>'
-
-
-def text_content(text: str) -> str:
-    return html.escape(INVALID_XML_CHARACTERS.sub("", text), quote=False)
 
 
 def attribute(text: str) -> str:

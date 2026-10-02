@@ -11,7 +11,8 @@ OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from deck.acceptance import FIX_ROUNDS_ALLOWED, judge_build  # noqa: E402
-from deck.deck_definitions import MISSING_SPEAKER_NOTES, TEXT_OVERLAP  # noqa: E402
+from deck.deck_definitions import MISSING_SPEAKER_NOTES  # noqa: E402
+from deck.pptx_edit_definitions import TEXT_OVERLAP  # noqa: E402
 from render_fixture import bare_environment, can_render  # noqa: E402
 
 

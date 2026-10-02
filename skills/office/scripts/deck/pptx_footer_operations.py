@@ -11,7 +11,7 @@ from deck.pptx_animation import remove_animations_of
 from deck.pptx_element_operations import next_shape_identifier
 from deck.pptx_shape_kinds import placeholder_of, placeholder_type
 from deck.pptx_targets import PptxEditing, live_slides, resolve_slide
-from deck.pptx_text import text_content
+from core.xml_text import text_content
 
 
 FOOTER_FIELDS = {"footer": "ftr", "slideNumber": "sldNum", "date": "dt"}

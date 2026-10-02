@@ -91,7 +91,7 @@ class Tool:
 KINDS = (
     Kind("docx", ".docx", (".docx", ".docm", ".dotx", ".dotm"), "Word documents", "doc.doc_definitions"),
     Kind("xlsx", ".xlsx", (".xlsx", ".xlsm", ".xltx", ".xltm"), "Excel workbooks", "sheet.sheet_definitions"),
-    Kind("pptx", ".pptx", (".pptx", ".pptm", ".potx", ".potm"), "PowerPoint decks, as delivered", "deck.deck_definitions"),
+    Kind("pptx", ".pptx", (".pptx", ".pptm", ".potx", ".potm"), "PowerPoint decks, as delivered", "deck.pptx_edit_definitions"),
     Kind("pdf", ".pdf", (".pdf",), "PDF files", "pdf.pdf_definitions"),
     Kind("md", ".md", (".md", ".markdown"), "Markdown, the source a document is written in", "doc.doc_definitions"),
     Kind("csv", ".csv .tsv", (".csv", ".tsv"), "delimited rows", "sheet.sheet_definitions"),

@@ -5,46 +5,20 @@ from dataclasses import dataclass
 from fonts.registry import DECK, default_family
 from deck.deck_kit import DEFAULT_THEME, chart_types, icon_names, kit_names, slide_size, theme_palettes
 from deck.layout_thresholds import EMPTY_REGION_SHARE_MAXIMUM, LABEL_LINE_MAXIMUM, MARK_BREADTH_MINIMUM, REPEATED_FIGURE_MINIMUM, ROUND_SLOT_MINIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
-from core.office_operations import OPERATION_ISSUE_KINDS
-from core.template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
 from core.office_commands import EVERY_KIND
-from core.office_result import ERROR, SETUP_COMMAND, WARNING, Issue, IssueKind
-from core.office_schema import ListOf
-from deck.pptx_edit_definitions import OPERATIONS
+from core.office_result import ERROR, WARNING, IssueKind
+from deck.pptx_edit_definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, SLIDE_COUNT_MISMATCH, TEXT_OVERLAP, review_check
 from render.renderer import RENDER_ISSUE_KINDS
 from core.text_checks import PLACEHOLDER_LEFT, TEXT_CHECK_ISSUE_KINDS
-from core.image_formats import PICTURE_FORMATS_TEXT
-
-
-DECK_LOCATION = "deck"
-
-
-@dataclass(frozen=True)
-class ReviewCheck:
-    kind: IssueKind
-
-    def issue(self, text: str, location: str | None = None, suggestion: object = None) -> Issue:
-        return self.kind.issue(text, location, suggestion)
-
-    def deck_issue(self, text: str) -> Issue:
-        return self.issue(text, DECK_LOCATION)
-
-
-def review_check(code: str, meaning: str, suggestion: str) -> ReviewCheck:
-    return ReviewCheck(IssueKind(code, WARNING, meaning, suggestion))
 
 
 SLIDE_BLANK = review_check("SLIDE_BLANK", "the slide render shows no content", "check that the slide's content is not hidden or outside the frame")
-CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is larger than its box, so it is clipped or spills out", "cut or split what the message names, or give it a larger box; a build suggestion says how many rows, items or characters fit at full type size")
-OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "keep every part on the slide: split or cut what pushes it off, as a build suggestion counts, or move or resize it inside the slide's edges")
-TEXT_OVERLAP = review_check("TEXT_OVERLAP", "two pieces of text cover each other", "separate the two text blocks or shorten the one that spills")
 TEXT_COVERED = review_check("TEXT_COVERED", "a box painted over text hides part of it", "follow the suggestion, which names the cause: rows, items or text that do not fit, or a custom style that moves a part over another")
 FOOTER_CROSSED = review_check("FOOTER_CROSSED", "slide content reaches into the footer band", "shorten or split the content so it ends above the footer")
 TITLE_TOO_LONG = review_check("TITLE_TOO_LONG", f"a slide title runs past {TITLE_LINE_MAXIMUM} lines", "state the conclusion in one short sentence and move the detail into the body or the speaker notes")
 LABEL_TOO_LONG = review_check("LABEL_TOO_LONG", f"a .label wraps past {LABEL_LINE_MAXIMUM} lines, and every card in its row keeps that height empty to stay aligned", "shorten the label to the name of the measure and put the detail in the change line under it or in the speaker notes")
 REPEATED_FIGURE = review_check("REPEATED_FIGURE", f"one slide shows the same figure, a number with its unit, {REPEATED_FIGURE_MINIMUM} or more times", "show each figure once where it carries the point: give the .insight or card a different fact, such as the change or the comparison, or set a donut's data-center to another number")
 TINY_TEXT = review_check("TINY_TEXT", f"rendered text is smaller than {SMALLEST_TEXT_SHARE_OF_WIDTH * slide_size()[0]:g}px on a {slide_size()[0]}px slide ({SMALLEST_TEXT_SHARE_OF_WIDTH:.2%} of its width)", "shorten the slide so the kit does not shrink its type; the suggestion says how much fits at full size")
-IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "put the photo in a cover or image slide, which crops it to its frame, or give its box the image's own ratio")
 CHART_UNDERFILLED = review_check("CHART_UNDERFILLED", f"a chart's marks fill too little of the room it is given: bars cover less than {MARK_BREADTH_MINIMUM:.0%} of their axis, or a donut or pie is under {ROUND_SLOT_MINIMUM:.0%} of its slot's longer side", "drop custom styles that size the chart's figure, bars or ring and let the kit fit the chart to its data; two or three values read best beside an .insight")
 DRAWING_DISTORTED = review_check("DRAWING_DISTORTED", "a drawing that must keep its proportions, such as a donut or pie chart, is stretched into another shape", "give the chart a slot the kit can square, such as a chart slide without extra parts beside the figure; a donut or pie is always drawn as a circle")
 
@@ -84,7 +58,6 @@ FIRST_SLIDE_NOT_COVER = IssueKind("FIRST_SLIDE_NOT_COVER", WARNING, "the deck do
 OUTLINE_LAYOUT_MISPLACED = IssueKind("OUTLINE_LAYOUT_MISPLACED", WARNING, "a cover layout sits after slide 1, or a closing layout before the last slide", "keep cover for slide 1 and closing for the last slide, and give this slide the layout its content calls for, such as section for a divider or statement for one message")
 CLOSING_WITHOUT_ACTION = IssueKind("CLOSING_WITHOUT_ACTION", WARNING, "the closing slide holds no part that carries a decision or a next step, such as a thank-you title alone", "put the decision asked for or the next steps in the parts office guide deck names for the closing, under the title")
 LAST_SLIDE_NOT_CLOSING = IssueKind("LAST_SLIDE_NOT_CLOSING", WARNING, "a deck of three or more slides does not end on a closing slide", 'end with data-layout="closing": the decision asked for or the next steps')
-SLIDE_COUNT_MISMATCH = IssueKind("SLIDE_COUNT_MISMATCH", ERROR, "the slide count differs from --slide-count", "add or remove slides until the count matches the request")
 SLIDE_WITHOUT_CONTENT = IssueKind("SLIDE_WITHOUT_CONTENT", ERROR, "a slide has no visible text, image or chart", "give the slide its content or delete it")
 CHART_DATA_INVALID = IssueKind("CHART_DATA_INVALID", ERROR, "a chart's data attributes do not parse or do not line up", "give data-labels and data-values (or data-series) the same number of plain numbers")
 IMAGE_NOT_FOUND = IssueKind("IMAGE_NOT_FOUND", ERROR, "an image is remote or its file does not exist, so the slide would show an empty box", "download it with office image and point src at the local file, or remove the image")
@@ -130,13 +103,8 @@ IMAGE_SEARCH_FAILED = IssueKind("IMAGE_SEARCH_FAILED", ERROR, "the image search 
 NO_IMAGE_FOUND = IssueKind("NO_IMAGE_FOUND", ERROR, "no usable public-domain image matched", "try a simpler English query or skip imagery")
 
 IMAGE_ISSUE_KINDS = (IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND)
-LAYOUT_AUDIT_ISSUE_KINDS = (CONTENT_OVERFLOW.kind, OUT_OF_FRAME.kind, TEXT_OVERLAP.kind, IMAGE_DISTORTED.kind)
 
-PICTURE_UNREADABLE = IssueKind("PICTURE_UNREADABLE", ERROR, f"an image file given to an operation is not a {PICTURE_FORMATS_TEXT} picture", f"pass the path of a {PICTURE_FORMATS_TEXT} file")
-PPTX_NOT_RENDERED = IssueKind("PPTX_NOT_RENDERED", WARNING, "the renderer could not draw the slides, so nobody looked at them", f"run {SETUP_COMMAND} and run again, or say the slides were checked by measurement only and not seen")
 
-APPLY_ISSUE_KINDS = (PICTURE_UNREADABLE,)
-PPTX_CHECK_ISSUE_KINDS = (PPTX_NOT_RENDERED,)
 
 @dataclass(frozen=True)
 class ItemLimits:
@@ -307,16 +275,8 @@ GUIDE_SECTIONS = (
     ("slides", "Icons (optional)", icon_lines),
 )
 
-GUIDE_INPUTS = (
-    ("apply", "pptx", "the operations", ListOf(OPERATIONS, non_empty=True)),
-    ("merge", "pptx", "the values", MERGE_VALUES),
-)
 GUIDE_ISSUES = (
     ("create", "slides", SOURCE_CHECK_ISSUE_KINDS + BUILD_ISSUE_KINDS + REVIEW_ISSUE_KINDS),
     ("check", "slides", SOURCE_CHECK_ISSUE_KINDS),
-    ("apply", "pptx", OPERATION_ISSUE_KINDS + APPLY_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS),
-    ("check", "pptx", (SLIDE_COUNT_MISMATCH,) + TEXT_CHECK_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS + PPTX_CHECK_ISSUE_KINDS),
-    ("render", "pptx", PPTX_CHECK_ISSUE_KINDS),
-    ("merge", "pptx", PACKAGE_MERGE_ISSUE_KINDS),
     ("image", EVERY_KIND, IMAGE_ISSUE_KINDS),
 )
