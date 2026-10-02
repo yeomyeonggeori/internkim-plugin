@@ -36,7 +36,7 @@ A standardized form belongs to `merge <jurisdiction>/<form>` even when it ships 
 
 **File naming.** Documents, PDFs, and workbooks live at `~/documents/<title>.<ext>`, with any Markdown source beside them. Decks live in `artifacts/<deck-slug>/` and deliver from `artifacts/<deck-slug>/build/`. Company forms go to the storage directory their registration returns.
 
-**Results.** Every command prints one JSON result: `status` is ok, warning, or error, and each issue carries a stable `code`, a `location`, a `suggestion` sentence, and `fix`: operations to pass as they are to `apply` on the same file once any `<value>` is filled in. `<skill>/scripts/office guide <kind>` indexes what a kind of file takes and its codes, `guide <verb> <kind>` gives one command's fields and one line per operation, and `guide <verb> <kind> <operation>` that operation's fields.
+**Results.** Every command prints one JSON result: `status` is ok, warning, or error, and each issue carries a stable `code`, a `location`, a `suggestion` sentence, and `fix`: operations to pass as they are to `apply` on the same file once any `<value>` is filled in. `<skill>/scripts/office guide <kind>` indexes a kind of file's commands and codes, `guide <verb> <kind>` one command's fields, and `guide <verb> <kind> <operation>` one operation's.
 
 **Verify before attaching.** Run `check` on the final file and look at the pages `render` draws. Pass the source names, dates, totals, and key labels as `--required-text`. Read every warning, revise real problems, then attach only the accepted final output. Say what visual uncertainty remains.
 
