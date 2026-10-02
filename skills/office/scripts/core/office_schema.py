@@ -299,6 +299,19 @@ NAME_SYNONYMS = {
     "text1": ("dk1",),
     "text2": ("dk2",),
     "hyperlink": ("hlink",),
+    "sheet": ("xlsx",),
+    "spreadsheet": ("xlsx",),
+    "workbook": ("xlsx",),
+    "excel": ("xlsx",),
+    "doc": ("docx",),
+    "document": ("docx",),
+    "word": ("docx",),
+    "deck": ("slides", "pptx"),
+    "presentation": ("slides", "pptx"),
+    "slide": ("slides", "pptx"),
+    "slides": ("pptx",),
+    "powerpoint": ("pptx",),
+    "ppt": ("pptx",),
 }
 
 

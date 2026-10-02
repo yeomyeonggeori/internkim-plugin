@@ -278,6 +278,35 @@ class GuideTest(unittest.TestCase):
                 self.assertEqual(completed.returncode, 1)
                 self.assertEqual(json.loads(completed.stdout)["issues"][0]["suggestion"], suggestion)
 
+    def test_a_format_named_in_everyday_words_names_the_kind_it_means(self):
+        cases = (
+            (["sheet"], "xlsx", "office guide xlsx"),
+            (["apply", "sheet"], "xlsx", "office guide apply xlsx"),
+            (["apply", "spreadsheet"], "xlsx", "office guide apply xlsx"),
+            (["check", "excel"], "xlsx", "office guide check xlsx"),
+            (["document"], "docx", "office guide docx"),
+            (["apply", "word"], "docx", "office guide apply docx"),
+            (["deck"], "slides", "office guide slides"),
+            (["create", "presentation"], "slides", "office guide create slides"),
+            (["apply", "deck"], "pptx", "office guide apply pptx"),
+            (["render", "slides"], "pptx", "office guide render pptx"),
+            (["read", "powerpoint"], "pptx", "office guide read pptx"),
+        )
+        for arguments, kind, suggestion in cases:
+            with self.subTest(arguments=arguments):
+                completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", *arguments], capture_output=True, text=True)
+                issue = json.loads(completed.stdout)["issues"][0]
+                self.assertEqual(issue["suggestion"], suggestion)
+                self.assertIn(f"did you mean {kind!r}?", issue["message"])
+
+    def test_a_kind_written_where_a_file_belongs_names_the_kind_it_means(self):
+        with tempfile.TemporaryDirectory() as working_directory:
+            _, envelope = run_office(["read", "spreadsheet"], working_directory)
+        issue = envelope["issues"][0]
+        self.assertEqual(issue["code"], "WRONG_INPUT_FORMAT")
+        self.assertIn("did you mean 'xlsx'?", issue["message"])
+        self.assertIn("office read <file>.xlsx", issue["suggestion"])
+
     def test_the_index_of_a_kind_names_operations_without_their_fields(self):
         index = self.guide("xlsx")
         self.assertIn("add_chart", index)

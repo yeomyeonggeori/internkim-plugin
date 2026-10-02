@@ -18,6 +18,7 @@ from core.office_commands import (
 )
 from core.office_inputs import DAMAGED_PACKAGE, DOCX, LEGACY_OFFICE, OTHER, PDF, PPTX, XLSB, XLSX, detected_kind, redirect_suggestion
 from core.office_result import FILE_DAMAGED, INVALID_ARGUMENTS, WRONG_INPUT_FORMAT, OfficeFailure
+from core.office_schema import closest_name, guess_text
 
 
 FORM_NAME = re.compile(r"[a-z]+/[a-z0-9]+(?:-[a-z0-9]+)*")
@@ -119,7 +120,7 @@ def unrouted_issue(verb: Verb, subject: str):
     accepted = ", ".join(dict.fromkeys(route_label(route) for route in verb_routes(verb.name)))
     path = Path(subject).expanduser()
     if not path.is_file() or path.stat().st_size == 0:
-        return WRONG_INPUT_FORMAT.issue(f"office {verb.name} has nothing to do with {subject}", subject, f"office {verb.name} takes {accepted}")
+        return absent_subject_issue(verb, subject, accepted)
     actual = detected_kind(str(path))
     if actual == DAMAGED_PACKAGE:
         return FILE_DAMAGED.issue(f"{subject} is {actual.description}", subject)
@@ -130,3 +131,18 @@ def unrouted_issue(verb: Verb, subject: str):
     if verb.name == "create" and sniffed_kind(path):
         return WRONG_INPUT_FORMAT.issue(message, subject, f"{subject} already exists as a file to read, or to turn into another format: office read {subject}, or office convert {subject} <output>")
     return WRONG_INPUT_FORMAT.issue(message, subject, f"office {verb.name} takes {accepted}")
+
+
+def absent_subject_issue(verb: Verb, subject: str, accepted: str):
+    message = f"office {verb.name} has nothing to do with {subject}"
+    routes = {route.kind: route for route in verb_routes(verb.name)}
+    meant = None if Path(subject).suffix else closest_name(subject, list(routes))
+    if meant is None:
+        return WRONG_INPUT_FORMAT.issue(message, subject, f"office {verb.name} takes {accepted}")
+    guess = "" if meant == subject else guess_text(meant)
+    return WRONG_INPUT_FORMAT.issue(f"{message}{guess}", subject, f"office {verb.name} takes the file itself, and its extension picks the kind: office {verb.name} {subject_placeholder(routes[meant])}")
+
+
+def subject_placeholder(route: Route) -> str:
+    label = route_label(route)
+    return f"<file>{label}" if label.startswith(".") else label

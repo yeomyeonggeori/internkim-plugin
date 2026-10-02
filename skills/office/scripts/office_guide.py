@@ -7,7 +7,7 @@ from fonts.registry import FAMILIES, face_facts
 from core.office_commands import EVERY_KIND, KINDS, VERBS, Kind, Route, Verb, find_kind, find_route, find_verb, kind_routes, route_label, verb_routes
 from core.office_help import route_accepts, verb_help_text
 from core.office_result import COMMAND_ISSUE_KINDS, UNKNOWN_COMMAND, VALUE_FILL_IN, IssueKind, OfficeFailure
-from core.office_schema import Field, Record, Shape, Variant, closest_name
+from core.office_schema import Field, Record, Shape, Variant, closest_name, guess_text
 
 
 USAGE = "usage: office guide [verb] [kind] [operation]"
@@ -50,9 +50,13 @@ def require_route(verb: Verb, kind_name: str) -> Route:
 
 
 def reject_unknown_topic(written: str, names: list[str], prefix: str):
+    raise OfficeFailure(unknown_name_issue(f"{prefix}: no topic {written!r}", written, names, prefix))
+
+
+def unknown_name_issue(message: str, written: str, names: list[str], prefix: str):
     match = closest_name(written, names)
     suggestion = f"{prefix} {match}" if match else f"one of: {', '.join(names)}" if names else prefix
-    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"{prefix}: no topic {written!r}", written, suggestion))
+    return UNKNOWN_COMMAND.issue(f"{message}{guess_text(match)}", written, suggestion)
 
 
 def index_text() -> str:
@@ -146,10 +150,8 @@ def operation_text(route: Route, operation: str) -> str:
         if record is not None:
             return "\n".join([f"office {route.verb} {route_label(route)}, {variant.discriminator} \"{record.name}\": {record.description}", *field_lines(record.fields, "  "), *nested_structure_lines(record)])
     names = [record.name for variant in variants for record in variant.records]
-    prefix = f"office guide {route.verb} {route.kind}"
-    match = closest_name(operation, names)
-    suggestion = f"{prefix} {match}" if match else f"one of: {', '.join(names)}" if names else prefix
-    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"office {route.verb} {route_label(route)} has no operation {operation!r}", operation, suggestion))
+    message = f"office {route.verb} {route_label(route)} has no operation {operation!r}"
+    raise OfficeFailure(unknown_name_issue(message, operation, names, f"office guide {route.verb} {route.kind}"))
 
 
 def nested_structure_lines(record: Record) -> list[str]:
