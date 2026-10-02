@@ -1,56 +1,56 @@
-# 회의록 (Meeting Minutes)
+# Meeting Minutes (회의록)
 
 output: pdf
-filename: 회의록_<회의명>_<YYYYMMDD>.pdf
+filename: 회의록_<meeting name>_<YYYYMMDD>.pdf
 
 ## Purpose
 
-회의에서 논의된 안건과 결정사항, 실행 항목을 기록하는 문서. 결재 승인이 아닌 기록·공유 목적이므로 approvalLine은 사용하지 않는다.
+A record of the agenda, decisions and action items of a meeting. It is for recording and sharing, not for approval, so it has no approvalLine.
 
 ## Required fields
 
-- meta: 회의명, 일시, 장소, 참석자, 작성자
-- sections: 안건 / 논의 내용 / 결정사항(bullets) / 실행 항목
-- items: 실행 항목이 있으면 항목·담당·기한 표로 작성(없으면 생략)
-- signature: 작성자 본인, stamp false
-- approvalLine은 사용하지 않는다
+- meta: 회의명 (meeting name), 일시 (date and time), 장소 (place), 참석자 (attendees), 작성자 (author)
+- sections: 안건 (agenda) / 논의 내용 (discussion) / 결정사항 (decisions, bullets) / 실행 항목 (action items)
+- items: when there are action items, a table of item, owner and due date (omit when there are none)
+- signature: the author, stamp false
+- No approvalLine
 
 ## Document JSON skeleton
 
 ```json
 {
   "title": "회 의 록",
-  "documentNumber": "MM-<YYYYMMDD>-<순번>",
+  "documentNumber": "MM-<YYYYMMDD>-<sequence>",
   "profile": { ...company profile... },
   "meta": [
-    { "label": "회의명", "value": "<회의명>" },
+    { "label": "회의명", "value": "<meeting name>" },
     { "label": "일시", "value": "<YYYY-MM-DD HH:MM>" },
-    { "label": "장소", "value": "<장소 또는 화상회의 링크>" },
-    { "label": "참석자", "value": "<이름1, 이름2, ...>" },
-    { "label": "작성자", "value": "<성명>" }
+    { "label": "장소", "value": "<place or video call link>" },
+    { "label": "참석자", "value": "<name 1, name 2, ...>" },
+    { "label": "작성자", "value": "<name>" }
   ],
   "sections": [
-    { "title": "1. 안건", "bullets": ["<안건 1>", "<안건 2>"] },
-    { "title": "2. 논의 내용", "paragraphs": ["<안건별 논의 요약>"] },
-    { "title": "3. 결정사항", "bullets": ["<결정사항 1>", "<결정사항 2>"] },
+    { "title": "1. 안건", "bullets": ["<agenda item 1>", "<agenda item 2>"] },
+    { "title": "2. 논의 내용", "paragraphs": ["<summary of the discussion per agenda item>"] },
+    { "title": "3. 결정사항", "bullets": ["<decision 1>", "<decision 2>"] },
     { "title": "4. 실행 항목", "paragraphs": [] }
   ],
   "items": {
     "headers": ["항목", "담당", "기한"],
     "aligns": ["L", "L", "L"],
-    "rows": [["<실행 항목>", "<담당자>", "<YYYY-MM-DD>"]]
+    "rows": [["<action item>", "<owner>", "<YYYY-MM-DD>"]]
   },
-  "signature": { "date": "<YYYY년 M월 D일>", "line": "작성자 <성명>", "stamp": false }
+  "signature": { "date": "<YYYY년 M월 D일>", "line": "작성자 <name>", "stamp": false }
 }
 ```
 
 ## Fixed wording
 
-- 고정 문구 없음. 회의 내용을 사실대로 요약해 각 섹션에 채운다.
+- None. Fill each section with a factual summary of the meeting.
 
 ## Rules
 
-- approvalLine은 절대 추가하지 않는다.
-- 실행 항목이 있으면 4번 섹션 아래 items 표(항목·담당·기한)로 작성하고, 실행 항목이 없으면 items 블록을 생략한다.
-- 참석자·결정사항·담당자·기한은 요청자가 제공한 사실만 사용하고, 없는 정보는 지어내지 말고 요청자에게 확인한다.
-- title은 "회 의 록"처럼 글자 사이 공백을 넣는다.
+- Never add an approvalLine.
+- When there are action items, write them as the items table (item, owner, due date) under section 4; with none, omit the items block.
+- Use only the attendees, decisions, owners and due dates the requester gave; never invent missing information, ask the requester.
+- Space the title's characters apart: "회 의 록".

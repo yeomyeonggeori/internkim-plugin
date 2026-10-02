@@ -1,19 +1,19 @@
-# 재직증명서 (Certificate of Employment)
+# Certificate of Employment (재직증명서)
 
 output: pdf
-filename: 재직증명서_<성명>_<YYYYMMDD>.pdf
+filename: 재직증명서_<name>_<YYYYMMDD>.pdf
 
 ## Purpose
 
-현재 재직 중인 임직원의 재직 사실을 증명하는 대내외 제출용 문서. 제출처(용도)가 있는 경우가 많으므로 확인한다.
+A certificate that a current employee works at the company, submitted inside or outside the company. It is usually requested for a particular recipient or purpose, so confirm it.
 
 ## Required fields
 
-- documentNumber: company_document_register가 반환한 번호를 "제 <YYYY>-<NNN>호" 형식으로 표기한다 (예: 제 2026-013호)
-- meta 인적사항(4): 성명, 생년월일, 주소, 소속(부서)
-- meta 재직사항(4): 직위(직급), 담당업무, 재직기간, 제출용도
-- 재직기간은 "<입사일> ~ 현재 재직 중" 형식으로 표기 (아직 재직 중이므로 종료일이 없음)
-- signature: 발급일 + "회사명 대표이사 대표자명", stamp true
+- documentNumber: the number company_document_register returns, written as "제 <YYYY>-<NNN>호" (e.g. 제 2026-013호)
+- meta, personal details (4): 성명 (name), 생년월일 (date of birth), 주소 (address), 소속 (department)
+- meta, employment details (4): 직위 (position or grade), 담당업무 (duties), 재직기간 (employment period), 제출용도 (purpose of submission)
+- 재직기간 is written "<start date> ~ 현재 재직 중" (still employed, so there is no end date)
+- signature: issue date + "<company name> 대표이사 <representative name>", stamp true
 
 ## Document JSON skeleton
 
@@ -23,17 +23,17 @@ filename: 재직증명서_<성명>_<YYYYMMDD>.pdf
   "documentNumber": "제 <YYYY>-<NNN>호",
   "profile": { ...company profile... },
   "meta": [
-    { "label": "성명", "value": "<성명>" },
+    { "label": "성명", "value": "<name>" },
     { "label": "생년월일", "value": "<YYYY-MM-DD>" },
-    { "label": "주소", "value": "<주소>" },
-    { "label": "소속", "value": "<부서명>" },
-    { "label": "직위", "value": "<직위>" },
-    { "label": "담당업무", "value": "<담당업무>" },
-    { "label": "재직기간", "value": "<입사일> ~ 현재 재직 중" },
-    { "label": "제출용도", "value": "<제출처 또는 용도>" }
+    { "label": "주소", "value": "<address>" },
+    { "label": "소속", "value": "<department>" },
+    { "label": "직위", "value": "<position>" },
+    { "label": "담당업무", "value": "<duties>" },
+    { "label": "재직기간", "value": "<start date> ~ 현재 재직 중" },
+    { "label": "제출용도", "value": "<where it is submitted, or its purpose>" }
   ],
   "notes": ["위와 같이 재직하고 있음을 증명합니다."],
-  "signature": { "date": "<YYYY년 M월 D일>", "line": "<회사명> 대표이사 <대표자명>", "stamp": true },
+  "signature": { "date": "<YYYY년 M월 D일>", "line": "<company name> 대표이사 <representative name>", "stamp": true },
   "footer": "본 증명서는 발급일 기준 재직 사실을 증명합니다."
 }
 ```
@@ -41,17 +41,17 @@ filename: 재직증명서_<성명>_<YYYYMMDD>.pdf
 ## Fixed wording
 
 - notes: "위와 같이 재직하고 있음을 증명합니다."
-- 재직기간의 종료 시점은 항상 "현재 재직 중"으로 고정한다 (재직증명서는 퇴사자에게 발급하지 않는다).
+- 재직기간 always ends in "현재 재직 중" (a certificate of employment is never issued to someone who has left).
 
-## Density gate (deliver 전 자기검사)
+## Density gate (self-check before delivery)
 
-- 인적사항 4개(성명·생년월일·주소·소속)가 meta에 전부 있는가?
-- 재직사항 4개(직위·담당업무·재직기간·제출용도)가 meta에 전부 있는가?
-- notes에 "위와 같이 재직하고 있음을 증명합니다."가 있는가?
-- signature에 stamp: true가 있는가?
+- Are all four personal details (성명, 생년월일, 주소, 소속) in meta?
+- Are all four employment details (직위, 담당업무, 재직기간, 제출용도) in meta?
+- Do the notes hold "위와 같이 재직하고 있음을 증명합니다."?
+- Does the signature have stamp: true?
 
 ## Rules
 
-- 성명, 생년월일, 주소, 소속, 직위, 담당업무, 입사일, 용도가 없으면 지어내지 말고 요청자에게 확인한다.
-- 근로기준법 제39조에 따라 근로자가 요구한 사항만 기재한다 — 요구하지 않은 급여·평가·계약조건 등은 절대 넣지 않는다.
-- title은 "재 직 증 명 서"처럼 글자 사이 공백을 넣는다.
+- When the name, date of birth, address, department, position, duties, start date or purpose is missing, never invent it; ask the requester.
+- Under Article 39 of the Labor Standards Act (근로기준법 제39조), state only what the employee asked for; never include salary, evaluations, contract terms or anything else not asked for.
+- Space the title's characters apart: "재 직 증 명 서".

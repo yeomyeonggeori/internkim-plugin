@@ -1,45 +1,45 @@
-# 거래명세서 (Transaction Statement)
+# Transaction Statement (거래명세서)
 
 output: pdf
-filename: 거래명세서_<공급받는자>_<YYYYMMDD>.pdf
+filename: 거래명세서_<buyer>_<YYYYMMDD>.pdf
 
 ## Purpose
 
-완료된 거래 내역을 공급자와 공급받는자 사이에 기록으로 남기는 대외 문서. 견적서와 달리 확정 거래의 실제 품목·수량·금액을 옮겨 적고, 수령 확인을 받는 것이 실무 관례다.
+An external document that records a completed transaction between the supplier and the buyer (공급받는자). Unlike a quotation, it copies the actual items, quantities and amounts of a settled transaction, and Korean practice has the receiver confirm receipt on it.
 
 ## Required fields
 
-- recipient: 공급받는자 회사명 필수, 담당자명은 있으면 함께. 공급받는자 사업자등록번호를 받았으면 회사명 다음 줄에 추가한다.
-- 공급자 상세(사업자등록번호·업태·종목·대표자)는 별도 표를 만들지 않는다 — profile.legalAttributes가 letterhead에 이미 인쇄된다.
-- meta: 거래일자 필수, meta 마지막 행에 인수자 확인란을 반드시 넣는다
-- items: 품명·규격·수량·단위·단가는 요청자 제공 값만 사용, 1행 이상
-- items.totals: 공급가액 합계 → 세액 합계 → 총 합계 순서
-- signature: 공급자 측 발행일 + "회사명 대표이사 대표자명", stamp true. 인수자 확인은 signature가 아니라 meta 마지막 행으로 넣는다(스키마는 signature를 하나만 지원한다).
+- recipient: the buyer's company name is required, with the contact's name when given. When the buyer's business registration number (사업자등록번호) was given, add it on the line after the company name.
+- The supplier's details (사업자등록번호 business registration number, 업태 business type, 종목 business item, 대표자 representative) get no table of their own: profile.legalAttributes already prints them on the letterhead.
+- meta: 거래일자 (transaction date) is required, and the last meta row is always the receiver's confirmation box (인수자)
+- items: use only the 품명 (item), 규격 (spec), 수량 (quantity), 단위 (unit) and 단가 (unit price) the requester gave, at least one row
+- items.totals: 공급가액 합계 (supply total) → 세액 합계 (tax total) → 총 합계 (grand total), in that order
+- signature: the supplier's issue date + "<company name> 대표이사 <representative name>", stamp true. The receiver's confirmation goes in the last meta row, not in signature (the schema supports only one signature).
 
 ## Document JSON skeleton
 
 ```json
 {
   "title": "거 래 명 세 서",
-  "documentNumber": "T-<YYYYMMDD>-<순번>",
+  "documentNumber": "T-<YYYYMMDD>-<sequence>",
   "profile": { ...company profile... },
-  "recipient": { "label": "공급받는자", "lines": ["<공급받는자 회사명>", "<담당자명> 님"] },
+  "recipient": { "label": "공급받는자", "lines": ["<buyer company name>", "<contact name> 님"] },
   "meta": [
     { "label": "거래일자", "value": "<YYYY-MM-DD>" },
-    { "label": "인수자", "value": "<인수자명>  (서명 또는 인)" }
+    { "label": "인수자", "value": "<receiver name>  (서명 또는 인)" }
   ],
   "items": {
     "headers": ["품명", "규격", "수량", "단위", "단가", "공급가액", "세액"],
     "aligns": ["L", "L", "R", "C", "R", "R", "R"],
-    "rows": [["<품명>", "<규격>", "<수량>", "<단위>", "<단가>", "<공급가액>", "<세액>"]],
+    "rows": [["<item>", "<spec>", "<quantity>", "<unit>", "<unit price>", "<supply amount>", "<tax>"]],
     "totals": [
-      { "label": "공급가액 합계", "value": "<금액>원" },
-      { "label": "세액 합계", "value": "<금액>원" },
-      { "label": "총 합계 (부가세 포함)", "value": "<금액>원" }
+      { "label": "공급가액 합계", "value": "<amount>원" },
+      { "label": "세액 합계", "value": "<amount>원" },
+      { "label": "총 합계 (부가세 포함)", "value": "<amount>원" }
     ]
   },
   "notes": ["위와 같이 계산합니다."],
-  "signature": { "date": "<YYYY년 M월 D일>", "line": "<회사명> 대표이사 <대표자명>", "stamp": true },
+  "signature": { "date": "<YYYY년 M월 D일>", "line": "<company name> 대표이사 <representative name>", "stamp": true },
   "footer": "본 명세서는 실제 거래 내역과 일치함을 확인합니다."
 }
 ```
@@ -47,18 +47,18 @@ filename: 거래명세서_<공급받는자>_<YYYYMMDD>.pdf
 ## Fixed wording
 
 - notes: "위와 같이 계산합니다."
-- 인수자 확인란은 meta 마지막 행에서 절대 빠지지 않는다. 인수자명을 못 받았으면 이름 자리는 비워 두고 "(서명 또는 인)"만 남긴다.
+- The receiver's confirmation box never drops out of the last meta row. When the receiver's name was not given, leave the name blank and keep only "(서명 또는 인)".
 
-## Density gate (deliver 전 자기검사)
+## Density gate (self-check before delivery)
 
-- 거래일자가 meta에 있는가?
-- 품목표가 7열(품명·규격·수량·단위·단가·공급가액·세액)인가?
-- meta 마지막 행이 인수자 확인란("(서명 또는 인)")인가?
-- signature는 공급자 측("회사명 대표이사 대표자명")이고 stamp: true인가?
+- Is 거래일자 in meta?
+- Does the item table have 7 columns (품명, 규격, 수량, 단위, 단가, 공급가액, 세액)?
+- Is the last meta row the receiver's confirmation box ("(서명 또는 인)")?
+- Is the signature the supplier's ("<company name> 대표이사 <representative name>") with stamp: true?
 
 ## Rules
 
-- 금액은 천단위 콤마, 합계 값에만 "원"을 붙인다. 부가세 별도·포함을 반드시 명시한다.
-- 세액은 공급가액의 10%로 계산하고 합계가 행 합과 일치하는지 검산한다.
-- 공급받는자 명, 품명·단가·수량·거래일자가 없으면 지어내지 말고 요청자에게 확인한다.
-- title은 "거 래 명 세 서"처럼 글자 사이 공백을 넣는다.
+- Write amounts with thousands separators and put "원" only on the total values. Always state whether VAT is excluded or included.
+- Calculate tax as 10% of the supply amount and check that the totals equal the sum of the rows.
+- When the buyer's name, item, unit price, quantity or transaction date is missing, never invent it; ask the requester.
+- Space the title's characters apart: "거 래 명 세 서".

@@ -1,37 +1,37 @@
-# 휴가신청서 (Leave Request)
+# Leave Request (휴가신청서)
 
 output: pdf
-filename: 휴가신청서_<신청자>_<YYYYMMDD>.pdf
+filename: 휴가신청서_<applicant>_<YYYYMMDD>.pdf
 
 ## Purpose
 
-임직원이 휴가 사용을 신청하고 담당자·승인권자의 결재를 받는 대내 문서.
+An internal document in which an employee applies for leave and gets it approved by the person in charge and the approver.
 
 ## Required fields
 
 - approvalLine: ["담당", "승인"]
-- meta: 신청자, 소속/직위, 휴가종류, 휴가기간, 사유, 비상연락처
-- 휴가종류는 요청자가 밝힌 종류(연차/반차/병가/경조 등) 그대로 사용
-- signature: 신청일 + 신청자 성명, stamp false
+- meta: 신청자 (applicant), 소속/직위 (department and position), 휴가종류 (type of leave), 휴가기간 (leave period), 사유 (reason), 비상연락처 (emergency contact)
+- 휴가종류 uses the type the requester named (연차 annual, 반차 half-day, 병가 sick, 경조 family event, and so on) as it is
+- signature: application date + the applicant's name, stamp false
 
 ## Document JSON skeleton
 
 ```json
 {
   "title": "휴 가 신 청 서",
-  "documentNumber": "LR-<YYYYMMDD>-<순번>",
+  "documentNumber": "LR-<YYYYMMDD>-<sequence>",
   "profile": { ...company profile... },
   "approvalLine": ["담당", "승인"],
   "meta": [
-    { "label": "신청자", "value": "<성명>" },
-    { "label": "소속/직위", "value": "<부서명> / <직위>" },
+    { "label": "신청자", "value": "<name>" },
+    { "label": "소속/직위", "value": "<department> / <position>" },
     { "label": "휴가종류", "value": "<연차/반차/병가/경조 등>" },
-    { "label": "휴가기간", "value": "<YYYY-MM-DD> ~ <YYYY-MM-DD> (<일수>일)" },
-    { "label": "사유", "value": "<사유>" },
-    { "label": "비상연락처", "value": "<연락처>" }
+    { "label": "휴가기간", "value": "<YYYY-MM-DD> ~ <YYYY-MM-DD> (<days>일)" },
+    { "label": "사유", "value": "<reason>" },
+    { "label": "비상연락처", "value": "<phone>" }
   ],
   "notes": ["위와 같이 휴가를 신청합니다."],
-  "signature": { "date": "<YYYY년 M월 D일>", "line": "신청자 <성명>", "stamp": false },
+  "signature": { "date": "<YYYY년 M월 D일>", "line": "신청자 <name>", "stamp": false },
   "footer": ""
 }
 ```
@@ -39,11 +39,11 @@ filename: 휴가신청서_<신청자>_<YYYYMMDD>.pdf
 ## Fixed wording
 
 - notes: "위와 같이 휴가를 신청합니다."
-- approvalLine은 항상 ["담당", "승인"] 두 칸으로 고정한다.
+- approvalLine is always the two boxes ["담당", "승인"].
 
 ## Rules
 
-- 신청자, 휴가종류, 휴가기간, 사유가 없으면 지어내지 말고 요청자에게 확인한다.
-- 휴가기간의 일수는 시작일·종료일로부터 정확히 계산하고 근무일/휴일 산정 기준이 회사 규정과 다르면 요청자에게 확인한다.
-- 휴가신청서는 stamp를 사용하지 않는다 (신청자 본인 서명이므로 signature.stamp는 항상 false).
-- title은 "휴 가 신 청 서"처럼 글자 사이 공백을 넣는다.
+- When the applicant, type of leave, leave period or reason is missing, never invent it; ask the requester.
+- Count the days of the leave period exactly from its start and end dates, and when the way working days and holidays are counted differs from company rules, confirm with the requester.
+- A leave request never uses a stamp (the applicant signs it, so signature.stamp is always false).
+- Space the title's characters apart: "휴 가 신 청 서".

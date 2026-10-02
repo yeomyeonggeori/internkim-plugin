@@ -1,48 +1,48 @@
-# 업무협약서 (특허청 MOU 체결 매뉴얼 표준 조항 기반)
+# Memorandum of Understanding (업무협약서), based on the standard clauses of the Korean Intellectual Property Office's MOU manual (특허청 MOU 체결 매뉴얼)
 
 output: docx
-filename: 업무협약서_<상대방기관명>_<YYYYMMDD>.docx
+filename: 업무협약서_<counterpart organization>_<YYYYMMDD>.docx
 
 ## Purpose
 
-두 기관이 특정 분야에서 협력하기로 한 취지를 문서화하는 업무협약(MOU). 이 문서는 BUNDLED 템플릿(`mou`)에서 만들어지며, 표준 제1조~제9조 전문이 이미 템플릿에 들어 있다. 구체적인 권리·의무를 정하는 본계약이 아니라 상호 협력 의지를 확인하는 문서라는 성격은 제9조(법적 구속력)에 그대로 남는다 — context JSON 값만 채우면 된다.
+A memorandum of understanding (MOU) recording that two organizations intend to cooperate in a given field. It is made from the BUNDLED template (`mou`), which already holds the full standard Articles 1 to 9. Article 9 (legal effect) keeps its nature as a document confirming the will to cooperate, not a main contract fixing concrete rights and duties. Only the context JSON values need filling.
 
-## Required fields (요청자에게 확인)
+## Required fields (confirm with the requester)
 
-- 당사자 쌍방 정보: 기관A·기관B 각각 기관명, 대표자
-- 협력 취지(양 기관이 왜 협력하는지)
-- 전체 협력분야 개요(cooperationItems) 및 기관A·기관B가 각각 이행할 사항(orgARoles/orgBRoles) — 구체적으로 각호 열거, 지어내지 않는다
-- 유효기간(기본 2년)
-- 서명일자
+- Both parties: for organization A and organization B, the name and the representative
+- The purpose of the cooperation (why the two organizations cooperate)
+- An outline of the whole field of cooperation (cooperationItems) and what organization A and organization B each carry out (orgARoles/orgBRoles), listed item by item, never invented
+- Term (2 years by default)
+- Signing date
 
-## Included clauses (템플릿에 이미 포함됨)
+## Included clauses (already in the template)
 
-- 전문 — 양 기관 인식 문구
-- 제1조 (목적)
-- 제2조 (협력분야) — 전체 협력분야 목록(`cooperationItems`) + 기관A 역할(`orgARoles`) + 기관B 역할(`orgBRoles`) 각각 호 형식으로 나열
-- 제3조 (홍보)
-- 제4조 (실무협의회 구성 및 운영)
-- 제5조 (비밀유지) — 존속기간 3년(고정)
-- 제6조 (비용부담)
-- 제7조 (협의조정)
-- 제8조 (협약의 효력) — 유효기간 `termYears`
-- 제9조 (법적 구속력) — "다만 제5조 비밀유지는 그러하지 아니하다" 예외 포함
-- 말미 — 서명문, 체결일자, 양 기관 대표 서명란
+- Preamble: the two organizations' shared understanding
+- 제1조 (목적), purpose
+- 제2조 (협력분야), fields of cooperation: the whole list (`cooperationItems`), organization A's roles (`orgARoles`) and organization B's roles (`orgBRoles`), each as numbered items
+- 제3조 (홍보), publicity
+- 제4조 (실무협의회 구성 및 운영), working committee
+- 제5조 (비밀유지), confidentiality: survives 3 years (fixed)
+- 제6조 (비용부담), costs
+- 제7조 (협의조정), consultation
+- 제8조 (협약의 효력), effect: term `termYears`
+- 제9조 (법적 구속력), legal effect: including the exception "다만 제5조 비밀유지는 그러하지 아니하다" (except Article 5, confidentiality)
+- Closing: signing statement, signing date, signature blocks for both representatives
 
 ## Context JSON skeleton
 
 ```json
 {
-  "orgAName": "<기관A 기관명>",
-  "orgARepresentative": "<기관A 대표자>",
-  "orgBName": "<기관B 기관명>",
-  "orgBRepresentative": "<기관B 대표자>",
-  "purpose": "<협력 취지>",
+  "orgAName": "<organization A name>",
+  "orgARepresentative": "<organization A representative>",
+  "orgBName": "<organization B name>",
+  "orgBRepresentative": "<organization B representative>",
+  "purpose": "<purpose of the cooperation>",
   "termYears": "2",
   "contractDate": "<YYYY년 M월 D일>",
-  "cooperationItems": ["<협력분야 1>", "<협력분야 2>"],
-  "orgARoles": ["<기관A 역할 1>", "<기관A 역할 2>"],
-  "orgBRoles": ["<기관B 역할 1>", "<기관B 역할 2>"]
+  "cooperationItems": ["<field of cooperation 1>", "<field of cooperation 2>"],
+  "orgARoles": ["<organization A role 1>", "<organization A role 2>"],
+  "orgBRoles": ["<organization B role 1>", "<organization B role 2>"]
 }
 ```
 
@@ -53,16 +53,16 @@ filename: 업무협약서_<상대방기관명>_<YYYYMMDD>.docx
 }
 ```
 
-## context 값 검사 (deliver 전 자기검사)
+## Context value check (self-check before delivery)
 
-- `cooperationItems`, `orgARoles`, `orgBRoles`가 요청자가 제공한 내용만으로 채워졌는가? 빈 배열이면 `paperwork fill`이 거부한다.
-- 기관명·대표자가 기관A/기관B 방향에 맞게 정확히 들어갔는가?
-- `termYears`가 요청자 제공값이거나 기본값(2년)인가?
-- `purpose`, `contractDate`가 요청 내용과 일치하는가?
+- Are `cooperationItems`, `orgARoles` and `orgBRoles` filled only with what the requester gave? `paperwork fill` refuses an empty array.
+- Are the names and representatives on the right side, organization A or B?
+- Is `termYears` the requester's value or the default (2 years)?
+- Do `purpose` and `contractDate` match the request?
 
 ## Rules
 
-- 협력분야는 기관A·기관B 각자의 역할로 나누어 구체적으로 열거하고, 요청자가 제공하지 않은 역할을 지어내지 않는다.
-- 제9조 법적 구속력 제한 조항은 MOU 관례상 반드시 포함되며 템플릿에서 삭제할 수 없다. 요청자가 법적 구속력을 부여하고 싶어하면(사실상 계약을 원하면) MOU가 아니라 계약서 스킬(service-agreement 등)을 안내한다.
-- 당사자명, 유효기간 등은 요청자가 제공한 값만 사용하고, 없으면 기본값(유효기간 2년)을 쓰거나 빈 문자열로 남긴다.
-- 법률 검토용 초안임을 전달 답변에 한 줄 언급. 없는 정보는 지어내지 말고 빈 문자열 처리.
+- List the fields of cooperation concretely, split into organization A's and organization B's roles, and never invent a role the requester did not give.
+- The Article 9 clause limiting legal effect is always included by MOU convention and cannot be removed from the template. When the requester wants it legally binding (in effect, wants a contract), point them to a contract form (service-agreement and the like) instead of an MOU.
+- Use only the party names, term and other values the requester gave; when missing, use the default (a 2-year term) or leave an empty string.
+- Say in one line of the reply that delivers it that this is a draft for legal review. Never invent missing information; leave an empty string.

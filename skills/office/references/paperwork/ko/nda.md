@@ -1,55 +1,55 @@
-# 비밀유지협약서 (중소벤처기업부 표준비밀유지협약서 기반)
+# Non-Disclosure Agreement (비밀유지협약서), based on the Ministry of SMEs and Startups' standard NDA (중소벤처기업부 표준비밀유지협약서)
 
 output: docx
-filename: 비밀유지협약서_<상대방명>_<YYYYMMDD>.docx
+filename: 비밀유지협약서_<counterpart>_<YYYYMMDD>.docx
 
 ## Purpose
 
-중소벤처기업부가 마련·권고하는 표준비밀유지협약서(NDA). 이 문서는 BUNDLED 템플릿(`nda`)에서 만들어지며, 표준 제1조~제13조 전문이 이미 템플릿에 들어 있다. 요청자가 명시적으로 뺀 조항이 없는 한 조항을 줄이지 않는다 — context JSON 값만 채우면 된다.
+The standard non-disclosure agreement (NDA) prepared and recommended by the Ministry of SMEs and Startups. It is made from the BUNDLED template (`nda`), which already holds the full standard Articles 1 to 13. Never cut a clause unless the requester explicitly removed it. Only the context JSON values need filling.
 
-## Required fields (요청자에게 확인)
+## Required fields (confirm with the requester)
 
-- 당사자 쌍방 정보: "갑"·"을" 각각 기관명(상호), 주소, 대표자
-- 편면(일방만 정보 제공)인지 상호(양측 모두 정보제공자·정보수령자가 될 수 있음)인지 — 기본은 상호형
-- 본 업무 요지(비밀정보가 오가는 사업·거래의 내용)
-- 협약 유효기간(기본 5년)과 종료 후 비밀유지의무 존속기간(기본 3년)
-- 위약벌 조항 포함 여부와 금액(손해배상만으로 할지, 위약벌을 더할지)
-- 관할법원
+- Both parties: for "갑" (party A) and "을" (party B), the organization or trade name, address and representative
+- One-way (only one side provides information) or mutual (either side may disclose and receive); mutual by default
+- The gist of the underlying work (the business or deal in which confidential information changes hands)
+- The agreement's term (5 years by default) and how long the confidentiality duty survives after it ends (3 years by default)
+- Whether to include a penalty clause, and its amount (damages alone, or a penalty on top)
+- The court with jurisdiction
 
-## Included clauses (템플릿에 이미 포함됨)
+## Included clauses (already in the template)
 
-- 전문 — 갑·을 당사자 표시 및 협약 체결 취지
-- 제1조 (협약의 목적)
-- 제2조 (비밀정보의 정의)
-- 제3조 (비밀의 표시) — 서면/구두 제공 시 표시·고지 의무
-- 제4조 (비밀 유지 기간 등) — 협약 유효기간·비밀유지 존속기간
-- 제5조 (정보의 사용용도 및 정보취급자 제한)
-- 제6조 (비밀유지의무) — 비밀정보 제외사유 1~6호 전부 포함
-- 제7조 (손해배상, 위약벌) — `penaltyAmount`를 채우면 위약벌 문장이 추가되고, 비워두면 손해배상 조항만 남는다
-- 제8조 (비밀정보의 반환 등)
-- 제9조 (권리의 부존재 등)
-- 제10조 (권리의무의 양도, 협약의 변경)
-- 제11조 (협약의 분리가능성)
-- 제12조 (분쟁의 해결) — 조정 불성립 시 `jurisdiction` 관할법원
-- 제13조 (보칙)
-- 말미 — 체결일자, 갑/을 서명란(명칭·주소·대표자)
+- Preamble: 갑 and 을 as parties, and the purpose of the agreement
+- 제1조 (협약의 목적), purpose
+- 제2조 (비밀정보의 정의), definition of confidential information
+- 제3조 (비밀의 표시), marking: the duty to mark or announce information given in writing or orally
+- 제4조 (비밀 유지 기간 등), term: the agreement's term and the survival period
+- 제5조 (정보의 사용용도 및 정보취급자 제한), use and who may handle it
+- 제6조 (비밀유지의무), duty of confidentiality: all six exclusions, items 1 to 6
+- 제7조 (손해배상, 위약벌), damages and penalty: a filled `penaltyAmount` adds the penalty sentence; empty, only the damages clause remains
+- 제8조 (비밀정보의 반환 등), return of information
+- 제9조 (권리의 부존재 등), no rights granted
+- 제10조 (권리의무의 양도, 협약의 변경), assignment and amendment
+- 제11조 (협약의 분리가능성), severability
+- 제12조 (분쟁의 해결), disputes: the `jurisdiction` court when mediation fails
+- 제13조 (보칙), supplementary provisions
+- Closing: signing date, signature blocks for 갑 and 을 (name, address, representative)
 
 ## Context JSON skeleton
 
 ```json
 {
-  "partyAName": "<갑 기관명>",
-  "partyAAddress": "<갑 주소>",
-  "partyARepresentative": "<갑 대표자>",
-  "partyBName": "<을 기관명>",
-  "partyBAddress": "<을 주소>",
-  "partyBRepresentative": "<을 대표자>",
-  "purpose": "<본 업무 요지>",
+  "partyAName": "<갑 organization name>",
+  "partyAAddress": "<갑 address>",
+  "partyARepresentative": "<갑 representative>",
+  "partyBName": "<을 organization name>",
+  "partyBAddress": "<을 address>",
+  "partyBRepresentative": "<을 representative>",
+  "purpose": "<gist of the underlying work>",
   "termYears": "5",
   "survivalYears": "3",
-  "jurisdiction": "<관할법원>",
+  "jurisdiction": "<court with jurisdiction>",
   "contractDate": "<YYYY년 M월 D일>",
-  "penaltyAmount": "<위약벌 금액, 없으면 빈 문자열>"
+  "penaltyAmount": "<penalty amount, or an empty string when there is none>"
 }
 ```
 
@@ -60,15 +60,15 @@ filename: 비밀유지협약서_<상대방명>_<YYYYMMDD>.docx
 }
 ```
 
-## context 값 검사 (deliver 전 자기검사)
+## Context value check (self-check before delivery)
 
-- 요청자가 준 갑·을 명칭·주소·대표자가 정확히 들어갔는가? 못 받은 값은 지어내지 말고 빈 문자열로 남겼는가?
-- `termYears`/`survivalYears`가 요청자 제공값이거나 기본값(5년/3년)인가?
-- `penaltyAmount`는 요청자가 금액을 준 경우에만 채웠는가? 안 준 값을 임의로 채우지 않았는가?
-- `jurisdiction`, `contractDate`, `purpose`가 요청 내용과 일치하는가?
+- Are the names, addresses and representatives of 갑 and 을 the requester gave written exactly? Are values not received left as empty strings rather than invented?
+- Are `termYears`/`survivalYears` the requester's values or the defaults (5 years / 3 years)?
+- Is `penaltyAmount` filled only when the requester gave an amount, and never filled at will?
+- Do `jurisdiction`, `contractDate` and `purpose` match the request?
 
 ## Rules
 
-- 갑/을을 임의로 정보제공자 또는 정보수령자로 고정하지 말 것 — 기본은 상호형(양측 모두 정보제공자·정보수령자가 될 수 있음)이며, 요청자가 편면(일방만 제공)을 요구하면 그 취지를 답변에서 안내한다(템플릿 문구 자체는 상호형 고정).
-- `penaltyAmount`는 요청자가 금액을 제공한 경우에만 채운다. 금액을 받지 못하면 빈 문자열로 두어 위약벌 문장을 자동으로 뺀다.
-- 법률 검토용 초안임을 전달 답변에 한 줄 언급. 없는 정보(주소·대표자·관할법원 등)는 지어내지 말고 빈 문자열 처리.
+- Never fix 갑 or 을 as the disclosing or receiving party on your own. The default is mutual (either side may disclose and receive); when the requester wants one-way (only one side provides), explain that in the reply (the template's wording itself stays mutual).
+- Fill `penaltyAmount` only when the requester gave an amount. Without one, leave it an empty string so the penalty sentence drops out.
+- Say in one line of the reply that delivers it that this is a draft for legal review. Never invent missing information (address, representative, court and the like); leave an empty string.

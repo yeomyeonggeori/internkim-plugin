@@ -1,57 +1,57 @@
-# 품의서 (Approval Request)
+# Approval Request (품의서)
 
 output: pdf
-filename: 품의서_<제목요약>_<YYYYMMDD>.pdf
+filename: 품의서_<short subject>_<YYYYMMDD>.pdf
 
 ## Purpose
 
-사내 의사결정을 요청하는 내부 결재 문서. 목적·내역·기대 효과를 담아 결재권자의 승인을 받는다.
+An internal approval document that asks for a decision inside the company. It sets out the purpose, the details and the expected benefit for the approvers to sign off.
 
 ## Required fields
 
-- approvalLine: ["담당", "검토", "대표"] 고정
-- meta: 기안자(소속 포함, 예: "경영지원팀 홍길동"), 기안일자, 제목
-- sections: 목적 / 내역 / 기대 효과 3단 구성
-- items: 금액이 발생하는 안건은 내역을 표로 작성(금액 없으면 생략)
-- signature: 기안자 본인, stamp true
+- approvalLine: always ["담당", "검토", "대표"]
+- meta: 기안자 (drafter, with team, e.g. "경영지원팀 홍길동"), 기안일자 (draft date), 제목 (subject)
+- sections: three parts, 목적 (purpose) / 내역 (details) / 기대 효과 (expected benefit)
+- items: a request that involves money writes its details as a table (omit when there is no amount)
+- signature: the drafter, stamp true
 
 ## Document JSON skeleton
 
 ```json
 {
   "title": "품 의 서",
-  "documentNumber": "AR-<YYYYMMDD>-<순번>",
+  "documentNumber": "AR-<YYYYMMDD>-<sequence>",
   "profile": { ...company profile... },
   "approvalLine": ["담당", "검토", "대표"],
   "meta": [
-    { "label": "기안자", "value": "<소속> <성명>" },
+    { "label": "기안자", "value": "<team> <name>" },
     { "label": "기안일자", "value": "<YYYY-MM-DD>" },
-    { "label": "제목", "value": "<품의 제목>" }
+    { "label": "제목", "value": "<subject of the request>" }
   ],
   "sections": [
-    { "title": "1. 목적", "paragraphs": ["<품의를 올리는 배경과 목적>"] },
-    { "title": "2. 내역", "paragraphs": ["<금액이 없는 안건의 세부 내용>"] },
-    { "title": "3. 기대 효과", "paragraphs": ["<승인 시 기대되는 효과>"] }
+    { "title": "1. 목적", "paragraphs": ["<background and purpose of the request>"] },
+    { "title": "2. 내역", "paragraphs": ["<details of a request without amounts>"] },
+    { "title": "3. 기대 효과", "paragraphs": ["<benefit expected once approved>"] }
   ],
   "items": {
     "headers": ["항목", "내용", "금액"],
     "aligns": ["L", "L", "R"],
-    "rows": [["<항목>", "<내용>", "<금액>원"]],
-    "totals": [{ "label": "합계", "value": "<금액>원" }]
+    "rows": [["<item>", "<description>", "<amount>원"]],
+    "totals": [{ "label": "합계", "value": "<amount>원" }]
   },
   "notes": ["위와 같이 품의하오니 재가 바랍니다."],
-  "signature": { "date": "<YYYY년 M월 D일>", "line": "기안자 <성명>", "stamp": true }
+  "signature": { "date": "<YYYY년 M월 D일>", "line": "기안자 <name>", "stamp": true }
 }
 ```
 
 ## Fixed wording
 
 - notes: "위와 같이 품의하오니 재가 바랍니다."
-- approvalLine은 항상 ["담당", "검토", "대표"] 순서로 고정한다.
+- approvalLine is always ["담당", "검토", "대표"], in that order.
 
 ## Rules
 
-- 금액이 발생하는 안건은 "2. 내역"을 문단 대신 items 표로 작성하고, 금액이 없으면 items 블록 자체를 생략한다.
-- 금액은 천단위 콤마 + "원"으로 표기하고, 부가세 포함/별도 여부를 명시한다.
-- 기안자·금액·일자·결정사항 등은 요청자가 제공한 사실만 사용하고, 없는 정보는 지어내지 말고 요청자에게 확인한다.
-- title은 "품 의 서"처럼 글자 사이 공백을 넣는다.
+- A request that involves money writes "2. 내역" as the items table instead of paragraphs; with no amount, omit the items block entirely.
+- Write amounts with thousands separators and "원", and state whether VAT is included or excluded.
+- Use only the drafter, amounts, dates and decisions the requester gave; never invent missing information, ask the requester.
+- Space the title's characters apart: "품 의 서".
