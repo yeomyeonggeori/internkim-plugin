@@ -33,6 +33,13 @@ COMPOSED_DECK = """<!doctype html>
   <p class="label">3분기 신규 고객사, 2분기 14곳 대비</p>
   <p class="takeaway">이탈 3곳을 제외한 순 증가는 20곳입니다</p>
 </section>
+<section data-layout="chart">
+  <h2>매출의 절반 이상은 클라우드에서 나왔습니다</h2>
+  <figure data-chart="donut" data-labels="클라우드, 온프레미스, 컨설팅" data-values="52, 31, 17" data-unit="%" data-center-label="클라우드">
+    <figcaption>2026년 3분기 제품별 매출 비중, 단위 %</figcaption>
+  </figure>
+  <div class="insight"><p class="value">52%</p><p>클라우드 비중</p></div>
+</section>
 <section data-layout="closing">
   <h2>4분기에는 매출 48억 원을 목표로 합니다</h2>
   <ol><li>개발자 5명 채용</li><li>11월 일본 시장 파일럿</li></ol>
@@ -49,6 +56,16 @@ h2 { margin: 0 0 60px; font-size: 54px; }
 </style></head><body>
 <section><h2>오른쪽 절반이 비어 있습니다</h2><div class="panel">23곳</div></section>
 </body></html>"""
+STRETCHED_DRAWING_DECK = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>늘어난 원</title>
+<style>
+body { margin: 0; font-family: sans-serif; }
+section { width: 1600px; height: 900px; box-sizing: border-box; padding: 80px; background: #fff; }
+h2 { margin: 0 0 40px; font-size: 54px; }
+svg { display: block; width: 1200px; height: 400px; }
+</style></head><body>
+<section><h2>원이 타원으로 늘어났습니다</h2><svg viewBox="0 0 200 200"><circle cx="100" cy="100" r="80" fill="#1a56db"/></svg></section>
+</body></html>"""
+SQUARE_TOLERANCE = 0.02
 KPI_FOOTERS = ("2분기 36.2억 원 대비 +5.1억 원", "2분기 8.2% 대비 +3.3%p", "2분기 14곳 대비 +9곳", "7월 12.4억 → 8월 13.1억 → 9월 15.8억 원")
 KPI_LABELS = ("3분기 매출, 목표 40억 원 대비 103% 달성", "영업이익률", "신규 고객사", "9월 매출, 분기 중 최대")
 
@@ -116,6 +133,41 @@ class ComposedDeckTest(unittest.TestCase):
         label = self.block_box(2, "3분기 신규 고객사, 2분기 14곳 대비")
         self.assertGreater(label["left"], value_top["right"], (value_top, label))
         self.assertEqual(self.issue_messages("HORIZONTAL_DEAD_ZONE", 3), [])
+
+    def test_a_donut_is_drawn_as_a_circle_in_the_slide_and_in_the_native_chart(self):
+        chart = self.layout["slides"][3]["charts"][0]
+        width = chart["box"]["right"] - chart["box"]["left"]
+        height = chart["box"]["bottom"] - chart["box"]["top"]
+        self.assertAlmostEqual(width / height, 1, delta=SQUARE_TOLERANCE, msg=chart["box"])
+        self.assertEqual(self.issue_messages("DRAWING_DISTORTED", 4), [])
+
+    def test_the_legend_and_the_insight_fill_the_column_beside_a_donut(self):
+        legend = max(self.block_boxes(3, "클라우드"), key=lambda box: box["left"])
+        insight = self.block_box(3, "클라우드 비중")
+        caption = self.block_box(3, "2026년 3분기 제품별 매출 비중, 단위 %")
+        chart = self.layout["slides"][3]["charts"][0]["box"]
+        self.assertGreater(legend["left"], chart["right"], (legend, chart))
+        self.assertLessEqual(abs(legend["top"] - chart["top"]), 48, (legend, chart))
+        self.assertLessEqual(abs(insight["bottom"] - caption["bottom"]), 48, (insight, caption))
+
+    def test_a_figure_shown_three_times_on_one_slide_is_reported(self):
+        messages = self.issue_messages("REPEATED_FIGURE", 4)
+        self.assertEqual(len(messages), 1, self.envelope["issues"])
+        self.assertIn("52% is shown 3 times", messages[0])
+        self.assertEqual(self.issue_messages("REPEATED_FIGURE", 2), [])
+
+
+@unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+class StretchedDrawingTest(unittest.TestCase):
+    def test_a_round_drawing_stretched_out_of_its_view_box_is_a_defect(self):
+        with tempfile.TemporaryDirectory() as directory:
+            envelope = build(Path(directory) / "stretched", STRETCHED_DRAWING_DECK)
+        if envelope["details"]["review"]["renderSource"] != "layout":
+            self.skipTest("the renderer could not run on this host")
+        messages = [issue["message"] for issue in envelope["issues"] if issue["code"] == "DRAWING_DISTORTED"]
+        self.assertEqual(len(messages), 1, envelope["issues"])
+        self.assertIn("renders at ratio 3", messages[0])
+        self.assertIn("DRAWING_DISTORTED", {defect["code"] for defect in envelope["details"]["acceptance"]["defects"]})
 
 
 @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")

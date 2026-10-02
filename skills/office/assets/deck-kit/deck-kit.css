@@ -302,10 +302,19 @@ section[data-layout="table"] tr.pick td.kit-number:last-child { color: var(--acc
 section[data-layout="chart"].kit-with-insight { --n: 3; }
 section[data-layout="chart"] > figure { grid-column: 1 / span 2; display: flex; flex-direction: column; gap: 16px; }
 section[data-layout="chart"]:not(.kit-with-insight) > figure { grid-column: 1 / -1; }
-section[data-layout="chart"] > .insight { grid-column: 3; align-self: center; display: flex; flex-direction: column; gap: 18px; margin-left: 32px; padding: 44px 40px; border-radius: var(--radius); background: var(--surface); }
-section[data-layout="chart"] > .insight > .value { color: var(--accent); }
-section[data-layout="chart"] > .insight > :where(p:not(.value, .label)) { font-size: calc(23px * var(--fit)); color: var(--ink-soft); line-height: 1.6; }
+section[data-layout="chart"] .insight { display: flex; flex-direction: column; gap: 18px; padding: 44px 40px; border-radius: var(--radius); background: var(--surface); }
+section[data-layout="chart"] > .insight { grid-column: 3; align-self: start; margin: 48px 0 0 32px; }
+section[data-layout="chart"] .insight > .value { color: var(--accent); }
+section[data-layout="chart"] .insight > :where(p:not(.value, .label)) { font-size: calc(23px * var(--fit)); color: var(--ink-soft); line-height: 1.6; }
 section[data-layout] figure[data-chart] > figcaption { font-size: calc(var(--size-small) * var(--fit)); color: var(--muted); }
+section[data-layout="chart"] > figure { margin-bottom: 24px; }
+section[data-layout="chart"] .insight > :where(p:not(.value, .label)):last-child { margin-top: auto; padding-top: 24px; border-top: 1px solid var(--line); }
+section[data-layout="chart"].kit-round-side { --n: 2; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); column-gap: 72px; }
+section[data-layout="chart"].kit-round-side > figure { grid-column: 1; }
+section[data-layout="chart"].kit-round-side .kit-donut { grid-template-columns: minmax(0, 1fr); }
+section[data-layout="chart"].kit-round-side .kit-donut-ring.kit-squared { justify-self: start; }
+section[data-layout="chart"] > .kit-side { grid-column: 2; display: flex; flex-direction: column; gap: 32px; margin: 48px 0 24px; }
+section[data-layout="chart"] > .kit-side > .insight { flex: 1; margin: 0; }
 
 section[data-layout="quote"] { grid-template-rows: minmax(0, 1fr) auto auto minmax(0, 1fr) auto var(--footer-height); }
 section[data-layout="quote"] > blockquote { grid-row: 2; display: flex; flex-direction: column; gap: 44px; margin: 0; font-size: calc(60px * var(--fit)); font-weight: 700; line-height: 1.36; letter-spacing: -0.03em; max-width: 1240px; }
@@ -383,6 +392,7 @@ section[data-layout="image"] > :where(:not(img, aside, .eyebrow, h2, .lead, .tak
 .kit-chart-line .kit-data-label.kit-below { padding: 16px 0 0; }
 .kit-donut { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 56px; }
 .kit-donut-ring { position: relative; height: 100%; min-height: 0; }
+.kit-donut-ring.kit-squared { justify-self: center; }
 .kit-donut-center { position: absolute; left: 0; top: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .kit-donut-center > b { font-size: calc(64px * var(--fit)); font-weight: 800; letter-spacing: -0.03em; color: var(--ink); line-height: 1.15; }
 .kit-donut-center > span { font-size: calc(22px * var(--fit)); font-weight: 600; color: var(--muted); }

@@ -14,6 +14,7 @@ HORIZONTAL_DEAD_ZONE_BODY_HEIGHT_RATIO = 0.55
 FULL_WIDTH_RATIO = 0.95
 TITLE_LINE_MAXIMUM = 3
 LABEL_LINE_MAXIMUM = 2
+REPEATED_FIGURE_MINIMUM = 3
 BACKGROUND_SHARE_OF_SLIDE = 0.7
 
 
@@ -27,5 +28,6 @@ def renderer_thresholds() -> dict[str, float]:
         "deadZoneShareOfSlide": VERTICAL_DEAD_ZONE_HEIGHT_RATIO,
         "titleLineMaximum": TITLE_LINE_MAXIMUM,
         "labelLineMaximum": LABEL_LINE_MAXIMUM,
+        "repeatedFigureMinimum": REPEATED_FIGURE_MINIMUM,
         "backgroundShareOfSlide": BACKGROUND_SHARE_OF_SLIDE,
     }

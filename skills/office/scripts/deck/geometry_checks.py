@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import json
 import pathlib
 
-from deck.deck_definitions import CONTENT_OVERFLOW, FOOTER_CROSSED, GEOMETRY_NOT_MEASURED, IMAGE_DISTORTED, LABEL_TOO_LONG, OUT_OF_FRAME, TEXT_COVERED, TEXT_OVERLAP, TINY_TEXT, TITLE_TOO_LONG
+from deck.deck_definitions import CONTENT_OVERFLOW, DRAWING_DISTORTED, FOOTER_CROSSED, GEOMETRY_NOT_MEASURED, IMAGE_DISTORTED, LABEL_TOO_LONG, OUT_OF_FRAME, REPEATED_FIGURE, TEXT_COVERED, TEXT_OVERLAP, TINY_TEXT, TITLE_TOO_LONG
 from deck.deck_kit import kit_length, slide_size
 from deck.design_warnings import append_deck_warning
 from deck.kit_fixes import capacity_fix, photo_fix, placement_fix, size_fix, text_fix
@@ -17,7 +17,7 @@ FINDINGS_NAMED_PER_ISSUE = 3
 SLIDE_HEIGHT = slide_size()[1]
 FOOTER_HEIGHT_RATIO = kit_length("footer-height") / SLIDE_HEIGHT
 FOOTER_REACH_RATIO = 2 * FOOTER_HEIGHT_RATIO
-SELF_EXPLAINED_CHECKS = (TITLE_TOO_LONG, LABEL_TOO_LONG)
+SELF_EXPLAINED_CHECKS = (TITLE_TOO_LONG, LABEL_TOO_LONG, REPEATED_FIGURE, DRAWING_DISTORTED)
 
 
 @dataclass(frozen=True)
@@ -153,6 +153,10 @@ def describe_long_label(finding: dict[str, object]) -> str:
     return f"{element_label(finding)} wraps to {finding['lines']} lines; keep a label to {finding['maximum']}"
 
 
+def describe_repeated_figure(finding: dict[str, object]) -> str:
+    return f"{finding['figure']} is shown {finding['count']} times, in {', '.join(finding['places'])}"
+
+
 def describe_distorted_image(finding: dict[str, object]) -> str:
     return f"{element_label(finding)} renders at ratio {finding['renderedRatio']} but is {finding['naturalRatio']}"
 
@@ -169,7 +173,9 @@ GEOMETRY_FINDINGS = (
     (FOOTER_CROSSED, "footerCrossings", describe_footer_crossing, "{count} parts of the slide reach into the footer"),
     (TITLE_TOO_LONG, "longTitles", describe_long_title, f"{{count}} titles run past {TITLE_LINE_MAXIMUM} lines"),
     (LABEL_TOO_LONG, "longLabels", describe_long_label, f"{{count}} labels run past {LABEL_LINE_MAXIMUM} lines"),
+    (REPEATED_FIGURE, "repeatedFigures", describe_repeated_figure, "{count} figures are repeated on the slide"),
     (IMAGE_DISTORTED, "distortedImages", describe_distorted_image, "{count} images are stretched"),
+    (DRAWING_DISTORTED, "distortedDrawings", describe_distorted_image, "{count} drawings are stretched out of their own proportions"),
     (TINY_TEXT, "smallText", describe_small_text, "{count} text elements are smaller than the slide can show legibly"),
 )
 

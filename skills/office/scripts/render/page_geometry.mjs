@@ -1,7 +1,7 @@
 export const capacityAttribute = "data-kit-capacity";
 
 export function measurePageGeometry(pages, thresholds) {
-  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, labelLineMaximum, backgroundShareOfSlide, deadZoneShareOfSlide } = thresholds;
+  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, labelLineMaximum, repeatedFigureMinimum, backgroundShareOfSlide, deadZoneShareOfSlide } = thresholds;
 
   const isMeasurable = (element) => {
     const style = getComputedStyle(element);
@@ -107,6 +107,25 @@ export function measurePageGeometry(pages, thresholds) {
       })
       .filter(({ renderedRatio, naturalRatio }) => Math.abs(renderedRatio / naturalRatio - 1) > aspectRatioTolerance)
       .map(({ image, renderedRatio, naturalRatio }) => ({ ...describe(image), renderedRatio: roundRatio(renderedRatio), naturalRatio: roundRatio(naturalRatio) }));
+
+  const viewBoxRatio = (svg) => {
+    const [, , width, height] = (svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
+    return width > 0 && height > 0 ? width / height : null;
+  };
+
+  const keepsProportions = (svg) => (svg.getAttribute("preserveAspectRatio") || "xMidYMid meet").trim() !== "none";
+
+  const distortedDrawings = (page) =>
+    Array.from(page.querySelectorAll("svg"))
+      .filter((svg) => isMeasurable(svg) && keepsProportions(svg) && viewBoxRatio(svg))
+      .map((svg) => {
+        const rect = svg.getBoundingClientRect();
+        return { svg, renderedRatio: rect.height > 0 ? rect.width / rect.height : 0, naturalRatio: viewBoxRatio(svg) };
+      })
+      .filter(({ renderedRatio, naturalRatio }) => renderedRatio > 0 && Math.abs(renderedRatio / naturalRatio - 1) > aspectRatioTolerance)
+      .map(({ svg, renderedRatio, naturalRatio }) => ({ host: svg.closest("[data-native-chart]") || svg, renderedRatio: roundRatio(renderedRatio), naturalRatio: roundRatio(naturalRatio) }))
+      .filter((drawing, index, drawings) => drawings.findIndex((other) => other.host === drawing.host) === index)
+      .map(({ host, renderedRatio, naturalRatio }) => ({ ...describe(host), renderedRatio, naturalRatio }));
 
   const smallText = (page) => {
     const minimum = page.getBoundingClientRect().width * smallestTextShareOfWidth;
@@ -245,6 +264,32 @@ export function measurePageGeometry(pages, thresholds) {
       .filter(({ lines }) => lines > labelLineMaximum)
       .map(({ label, lines }) => ({ ...describe(label), lines, maximum: labelLineMaximum }));
 
+  const figurePattern = /^[+\-−±]?[₩$€£¥]?\d[\d,]*(?:\.\d+)?(?:\s?[^\s\d]{1,4}){0,2}$/;
+
+  const isSeriesPart = (element) => Boolean(element.closest("table, footer, [data-series][data-point]"));
+
+  const isRunningText = (element) => {
+    const parent = element.parentElement;
+    if (!parent || !getComputedStyle(element).display.startsWith("inline")) return false;
+    const parentDisplay = getComputedStyle(parent).display;
+    return !parentDisplay.includes("flex") && !parentDisplay.includes("grid") && parent.textContent.trim() !== element.textContent.trim();
+  };
+
+  const shownFigures = (page) =>
+    elementsOf(page)
+      .slice(1)
+      .filter((element) => ownTextRects(element).length > 0 && !isSeriesPart(element) && !isRunningText(element))
+      .map((element) => ({ element, figure: (element.textContent || "").replace(/\s+/g, " ").trim() }))
+      .filter(({ figure }) => figurePattern.test(figure));
+
+  const repeatedFigures = (page) => {
+    const shown = new Map();
+    shownFigures(page).forEach(({ element, figure }) => shown.set(figure, [...(shown.get(figure) || []), element]));
+    return Array.from(shown.entries())
+      .filter(([, elements]) => elements.length >= repeatedFigureMinimum)
+      .map(([figure, elements]) => ({ figure, count: elements.length, places: elements.map((element) => describe(element.closest("[class]") || element).selector) }));
+  };
+
   const contentRects = (page, elements = elementsOf(page).slice(1)) => {
     const frame = page.getBoundingClientRect();
     const slideArea = frame.width * frame.height;
@@ -382,11 +427,13 @@ export function measurePageGeometry(pages, thresholds) {
     outOfFrame: elementsOutsideFrame(page).map((element) => ({ ...describe(element), rect: describeRect(element.getBoundingClientRect()) })),
     overlaps: overlappingText(page),
     distortedImages: distortedImages(page),
+    distortedDrawings: distortedDrawings(page),
     smallText: smallText(page),
     coveredText: coveredText(page),
     footerCrossings: footerCrossings(page),
     longTitles: longTitles(page),
     longLabels: longLabels(page),
+    repeatedFigures: repeatedFigures(page),
     capacity: JSON.parse(page.getAttribute(capacityAttribute) || "[]"),
   }));
 }

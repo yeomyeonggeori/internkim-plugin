@@ -1300,6 +1300,34 @@
     };
   }
 
+  function composeChartSide(slide) {
+    const insight = directChildren(slide, "insight")[0];
+    const legend = slide.querySelector(":scope > figure .kit-donut-legend");
+    if (!insight || !legend) return;
+    const side = element("div", "kit-side");
+    slide.insertBefore(side, insight);
+    side.append(legend, insight);
+    slide.classList.add("kit-round-side");
+  }
+
+  async function squareRings(slide, layOut) {
+    const rings = Array.from(slide.querySelectorAll(".kit-donut-ring"));
+    if (!rings.length) return;
+    rings.forEach((ring) => {
+      ring.classList.remove("kit-squared");
+      ["width", "height"].forEach((name) => ring.style.removeProperty(name));
+    });
+    if (layOut) await layOut(slide);
+    rings.forEach((ring) => {
+      const box = ring.getBoundingClientRect();
+      const side = `${Math.floor(Math.min(box.width, box.height))}px`;
+      ring.style.setProperty("width", side);
+      ring.style.setProperty("height", side);
+      ring.classList.add("kit-squared");
+    });
+    if (layOut) await layOut(slide);
+  }
+
   function moveThemeToRoot() {
     const theme = document.body.getAttribute("data-theme");
     if (!theme) return;
@@ -1328,6 +1356,7 @@
     markNumericCells();
     keepMixedWords();
     document.querySelectorAll("section[data-layout] figure[data-chart]").forEach(renderChart);
+    slides().forEach(composeChartSide);
   }
 
   async function render(layOut) {
@@ -1335,6 +1364,7 @@
     for (const slide of slides()) {
       await fitSlide(slide, layOut);
       await balanceTitles(slide, layOut);
+      await squareRings(slide, layOut);
       drawConnectors(slide);
     }
   }
