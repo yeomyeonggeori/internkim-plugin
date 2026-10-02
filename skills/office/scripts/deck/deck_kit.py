@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import functools
 import json
-import pathlib
 import re
+from core.skill_paths import ASSETS_PATH
 
 
-KIT_PATH = pathlib.Path(__file__).resolve().parents[2] / "assets" / "deck-kit"
+KIT_PATH = ASSETS_PATH / "deck-kit"
 KIT_STYLESHEET_PATH = KIT_PATH / "deck-kit.css"
 KIT_SCRIPT_PATH = KIT_PATH / "deck-kit.js"
 ICONS_PATH = KIT_PATH / "icons"

@@ -7,11 +7,11 @@ from core.office_result import INVALID_VALUE, MISSING_FIELD, OfficeFailure
 from core.office_routing import FORM_NAME
 from core.office_schema import closest_name
 from paperwork.jurisdictions import Jurisdiction, find_jurisdiction, jurisdiction_codes
+from core.skill_paths import ASSETS_PATH, REFERENCES_PATH
 
 
-SKILL_PATH = Path(__file__).resolve().parents[2]
-SPECIFICATIONS_PATH = SKILL_PATH / "references" / "paperwork"
-TEMPLATES_ROOT = SKILL_PATH / "assets" / "templates"
+SPECIFICATIONS_PATH = REFERENCES_PATH / "paperwork"
+TEMPLATES_ROOT = ASSETS_PATH / "templates"
 
 
 @dataclass(frozen=True)

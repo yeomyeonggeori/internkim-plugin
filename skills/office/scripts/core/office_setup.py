@@ -9,9 +9,9 @@ from core.office_result import SETUP_COMMAND, SETUP_FAILED, OfficeArgumentParser
 from pdf.ocr.ocr_environment import ocr_environment, prepare_ocr_environment
 from render.renderer import NODE_MODULES, RendererUnavailable, prepare_renderer
 from skill_runtime import PreparationFailed, environment_path, prepare_environment
+from core.skill_paths import SCRIPTS_PATH
 
 
-SCRIPTS_PATH = Path(__file__).resolve().parents[1]
 SETUP_SUMMARY = next(tool.summary for tool in TOOLS if tool.name == "setup")
 
 

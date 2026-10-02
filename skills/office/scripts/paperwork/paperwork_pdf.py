@@ -15,9 +15,10 @@ from doc.document_pdf import DocumentFonts, covering_fonts, draw
 from paperwork.paperwork_design import COLOR_BORDER, COLOR_HEADER_FILL, COLOR_INK, COLOR_MUTED, COLOR_RULE, PDF_PAGE_MARGIN_MILLIMETERS, SIZE_BODY, SIZE_FOOTER, SIZE_LETTERHEAD_DETAIL, SIZE_LETTERHEAD_NAME, SIZE_TITLE
 from paperwork.jurisdictions import Jurisdiction, Labels
 from render.renderer import DocumentPdfRequest, FontFile, render_document_pdf as render_pdf
+from core.skill_paths import ASSETS_PATH
 
 
-CSS_TEMPLATE_PATH = Path(__file__).with_name("paperwork.css")
+CSS_TEMPLATE_PATH = ASSETS_PATH / "paperwork" / "paperwork.css"
 BOTTOM_MARGIN_MILLIMETERS = 20.0
 ALIGNMENTS = {"L": "align-left", "C": "align-center", "R": "align-right"}
 

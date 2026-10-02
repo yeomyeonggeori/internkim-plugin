@@ -20,11 +20,11 @@ from fonts.font_files import bold_sibling
 from render.renderer import PAGE_NUMBER_FOOTER, RENDER_FAILED, RENDERER_UNAVAILABLE, DocumentPdfRequest, FontFile, RenderFailed, RendererUnavailable, render_document_pdf as render_pdf
 from core.page_sizes import DEFAULT_PAPER, Paper
 from core.units import CSS_PIXELS_PER_INCH
+from core.skill_paths import ASSETS_PATH
 
 
-SCRIPTS_PATH = Path(__file__).resolve().parent
 CHOSEN_FAMILY = "Document"
-CSS_PATH = SCRIPTS_PATH / "document_pdf.css"
+CSS_PATH = ASSETS_PATH / "document-pdf" / "document-pdf.css"
 SIDE_MARGIN_PIXELS = 64
 DEFAULT_DOTS_PER_INCH = 96
 
