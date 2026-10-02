@@ -10,15 +10,15 @@ import tempfile
 import pdfplumber
 import pypdfium2
 
-from core.office_commands import OCR_SETUP_COMMAND
-from pdf.ocr.ocr_environment import HELPER_PATH, ocr_python
+from pdf.ocr.ocr_environment import HELPER_PATH, ocr_environment, ocr_python
+from core.office_result import DEPENDENCIES_UNAVAILABLE, OfficeFailure
 
 
 RENDER_SCALE = 3
 FONT_SHARE_OF_LINE_BOX = 0.7
 
 
-class OcrUnavailable(Exception):
+class OcrFailed(Exception):
     pass
 
 
@@ -44,13 +44,13 @@ def read_pages_by_ocr(data: bytes, page_numbers: list[int]) -> dict[int, list[Oc
         return {}
     python_path = ocr_python()
     if python_path is None:
-        raise OcrUnavailable(f"the OCR engine is not prepared; run {OCR_SETUP_COMMAND}")
+        raise OfficeFailure(DEPENDENCIES_UNAVAILABLE.issue(f"the OCR engine at {ocr_environment()} is not prepared", str(ocr_environment())))
     with tempfile.TemporaryDirectory(prefix="office-ocr-") as directory:
         image_paths = render_pages(data, page_numbers, Path(directory))
         output_path = Path(directory) / "lines.json"
         completed = subprocess.run([str(python_path), str(HELPER_PATH), str(output_path), *map(str, image_paths)], capture_output=True, text=True, check=False)
         if completed.returncode != 0:
-            raise OcrUnavailable(f"the OCR engine stopped: {last_line(completed.stderr)}")
+            raise OcrFailed(f"the OCR engine stopped: {last_line(completed.stderr)}")
         pages = json.loads(output_path.read_text(encoding="utf-8"))
     return {number: [line_in_points(line) for line in lines] for number, lines in zip(page_numbers, pages)}
 

@@ -23,8 +23,8 @@ from doc.blocks.markdown import Image
 from core.office_inputs import KINDS_BY_NAME, PDF, office_file, require_unlocked_pdf
 from core.office_result import INVALID_VALUE, Issue, OfficeFailure, Result, run_command
 from core.office_inputs import read_text_input, unlocked_pdf_bytes
-from pdf.pdf_definitions import OCR_UNAVAILABLE, PAGE_READ_BY_OCR, page_reading_suggestion
-from pdf.ocr.pdf_ocr import OcrUnavailable, pages_without_words, read_pages_by_ocr
+from pdf.pdf_definitions import OCR_FAILED, PAGE_READ_BY_OCR, page_reading_suggestion
+from pdf.ocr.pdf_ocr import OcrFailed, pages_without_words, read_pages_by_ocr
 from convert.pdf_to_blocks import read_pdf_blocks
 from convert.pdf_workbook import read_pdf_tables, table_details, write_pdf_workbook
 from convert.pdf_to_pptx import NO_TEXT_LAYER_REASON, write_pdf_slides
@@ -243,8 +243,8 @@ def scanned_page_lines(conversion: Conversion) -> dict:
     scanned = pages_without_words(data)
     try:
         lines = read_pages_by_ocr(data, scanned)
-    except OcrUnavailable as reason:
-        conversion.issues.append(OCR_UNAVAILABLE.issue(str(reason), f"pages {','.join(map(str, scanned))}"))
+    except OcrFailed as reason:
+        conversion.issues.append(OCR_FAILED.issue(str(reason), f"pages {','.join(map(str, scanned))}"))
         return {}
     read = [number for number, page_lines in lines.items() if page_lines]
     if read:

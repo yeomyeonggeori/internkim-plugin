@@ -8,9 +8,6 @@ import shlex
 BATCH_MODES = ("all", "best-effort", "stop-on-error")
 WHERE_KINDS = ("formula", "error", "number", "text", "empty")
 EVERY_KIND = "*"
-SETUP_COMMAND = "office setup"
-OCR_SETUP_COMMAND = f"{SETUP_COMMAND} --with-ocr"
-OCR_NEED = f"it needs the OCR engine that {OCR_SETUP_COMMAND} prepares, about 150 MB"
 SHELL_SPECIAL = re.compile(r"[\s'\"\\$`;&|()*?!#~]")
 
 
@@ -128,8 +125,7 @@ FLAGS = (
     Flag("--revisions", "list every tracked change with its id, type, author, date, block and text"),
     Flag("--styles", "also list every paragraph and table style name the document defines"),
     Flag("--detail", "add each paragraph's runs with where every style value comes from, fills, outlines, crops and animated shape ids"),
-    Flag("--ocr", f"read pages that have no text layer from their image by OCR; {OCR_NEED}"),
-    Flag("--with-ocr", "also prepare the OCR engine that read --ocr and convert --ocr use, about 150 MB"),
+    Flag("--ocr", "read pages that have no text layer from their image by OCR"),
     Flag("--password", "the password that opens the PDF, when it has one", "PASSWORD"),
     Flag("--output-directory", "where the images go; default <name>-preview beside the file", "DIRECTORY"),
     Flag("--no-preview", "measure only, without drawing the pages"),
@@ -222,7 +218,7 @@ EXTENSION_ALIASES = {"markdown": "md", "htm": "html", "xlsm": "xlsx"}
 
 TOOLS = (
     Tool("guide", "guide [verb] [kind] [operation]", "print what a verb or kind takes: fields, operations, rules and issue codes"),
-    Tool("setup", "setup [--with-ocr]", "install the Python environment and the renderer into the skill, and with --with-ocr the OCR engine; nothing else installs anything"),
+    Tool("setup", "setup", "install the Python environment, the renderer and the OCR engine into the skill, about 450 MB on disk; nothing else installs anything"),
     Tool("python", "python <script.py> [arguments]", "run a task-local Python script with the office packages"),
 )
 
