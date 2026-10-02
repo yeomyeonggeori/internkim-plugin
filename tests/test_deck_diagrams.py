@@ -62,10 +62,10 @@ class DiagramBuildTest(unittest.TestCase):
             deck_path = Path(directory) / "diagrams"
             deck_path.mkdir()
             (deck_path / "slides.html").write_text(DIAGRAM_DECK, encoding="utf-8")
-            envelope = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path).stdout)
+            envelope = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path).stdout)
             pptx_path = deck_path / "build" / "diagrams.pptx"
-            check = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "check", str(pptx_path)], capture_output=True, text=True).stdout)
-            read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "read", str(pptx_path)], capture_output=True, text=True).stdout)
+            check = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "check", str(pptx_path)], capture_output=True, text=True).stdout)
+            read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "read", str(pptx_path)], capture_output=True, text=True).stdout)
             layers = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
         self.assertTrue(envelope["details"]["acceptance"]["acceptable"], envelope["summary"])
         self.assertEqual([slide["boxesKeptAsPicture"] for slide in layers["slides"][1:6]], [0] * 5)

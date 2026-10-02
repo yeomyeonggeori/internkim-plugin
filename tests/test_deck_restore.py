@@ -47,7 +47,7 @@ class RestoreTest(unittest.TestCase):
             delivered_path.parent.mkdir()
             delivered_path.write_text(deck_html_text(source_path), encoding="utf-8")
             restored_path = deck_path / "restored.html"
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "restore", str(delivered_path), str(restored_path)], capture_output=True, text=True)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "convert", str(delivered_path), str(restored_path)], capture_output=True, text=True)
             self.assertEqual(json.loads(completed.stdout)["status"], "ok", completed.stdout)
             restored = restored_path.read_text(encoding="utf-8")
         self.assertEqual(squeezed(restored), squeezed(AUTHORED_DECK))

@@ -11,7 +11,7 @@ SUMMARY_ROWS = [["item", "value"], ["total", 780], ["growth", 0.1], ["peak", 120
 class StructureRuleTest(WorkbookFixture):
     def validate(self, sheets):
         self.create_workbook([{**sheet, "freezePanes": "", "autoFilter": False} for sheet in sheets])
-        envelope = run_office(["sheet", "validate", "book.xlsx"], self.directory)
+        envelope = run_office(["check", "book.xlsx"], self.directory)
         return [(issue["code"], issue["location"]) for issue in envelope["issues"]]
 
     def test_a_data_table_needs_a_frozen_header_and_a_filter(self):
@@ -32,7 +32,7 @@ class StructureRuleTest(WorkbookFixture):
         self.create_workbook([{"title": "Sales", "rows": rows}])
         pivot = {"op": "add_pivot_table", "range": "A1:C25", "row": "product", "column": "region", "values": ["amount"]}
         self.assertEqual(self.apply([pivot])["status"], "ok")
-        envelope = run_office(["sheet", "validate", "book.xlsx"], self.directory)
+        envelope = run_office(["check", "book.xlsx"], self.directory)
         self.assertEqual(envelope["issues"], [])
 
 

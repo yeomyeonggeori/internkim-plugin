@@ -8,7 +8,8 @@ import unittest
 from doc_fixture import SCRIPTS_PATH, run_office, write_json
 
 
-from paperwork.amounts import grand_total, korean_amount_in_words, korean_number_words, truncate_to_won, row_amount, supply_total, value_added_tax
+from paperwork.amounts import korean_amount_in_words, korean_number_words
+from paperwork.jurisdictions import find_jurisdiction
 
 
 def quote(supply_total_text="1,000,000원", vat_text="100,000원", grand_total_text="1,100,000원", words="일금 일백일십만원정 (₩1,100,000) (부가세 포함)"):
@@ -43,16 +44,16 @@ def fifteen_won_rows(row_vats, vat_total, grand_total="48"):
 
 
 class AmountArithmeticTest(unittest.TestCase):
-    def test_every_amount_drops_the_fraction_below_one_won(self):
-        self.assertEqual(truncate_to_won(Decimal("0.9")), 0)
-        self.assertEqual(truncate_to_won(Decimal("-0.9")), 0)
-        self.assertEqual(value_added_tax(1_009), 100)
-        self.assertEqual(value_added_tax(1_010), 101)
-        self.assertEqual(row_amount(Decimal("1.5"), Decimal("333")), 499)
+    def test_a_korean_amount_drops_the_fraction_below_one_won(self):
+        money = find_jurisdiction("kr").money
+        self.assertEqual(money.rounded(Decimal("0.9")), 0)
+        self.assertEqual(money.rounded(Decimal("-0.9")), 0)
+        self.assertEqual(money.rounded(Decimal("1.5") * Decimal("333")), 499)
 
-    def test_totals_follow_from_the_rows(self):
-        supply = supply_total([500_000, 500_000])
-        self.assertEqual((supply, value_added_tax(supply), grand_total(supply, value_added_tax(supply))), (1_000_000, 100_000, 1_100_000))
+    def test_an_international_amount_rounds_half_up_to_the_cent(self):
+        money = find_jurisdiction("intl").money
+        self.assertEqual(money.rounded(Decimal("0.125")), Decimal("0.13"))
+        self.assertEqual(money.rounded(Decimal("2.674")), Decimal("2.67"))
 
 
 class KoreanWordsTest(unittest.TestCase):
@@ -75,9 +76,9 @@ class CheckCommandTest(unittest.TestCase):
     def tearDown(self):
         self.temporary_directory.cleanup()
 
-    def check(self, document):
-        write_json(self.directory / "quote.json", document)
-        return run_office(["paperwork", "check", "quote.json"], self.directory)
+    def check(self, document, form="kr/quote"):
+        write_json(self.directory / "quote.json", {"form": form, **document})
+        return run_office(["check", "quote.json"], self.directory)
 
     def test_a_correct_quote_passes(self):
         envelope = self.check(quote(words="일금 일백일십만원정 (₩1,100,000) (부가세 포함)"))
@@ -140,14 +141,28 @@ class CheckCommandTest(unittest.TestCase):
     def test_an_input_without_amounts_warns(self):
         self.assertEqual([issue["code"] for issue in self.check({"title": "회의록"})["issues"]], ["NO_AMOUNTS_FOUND"])
 
+    def test_values_that_name_no_form_are_refused(self):
+        write_json(self.directory / "quote.json", quote())
+        envelope = run_office(["check", "quote.json"], self.directory)
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("MISSING_FIELD", "values.form")])
+
+    def test_an_international_form_checks_tax_only_at_the_rate_it_states(self):
+        rows = {"headers": ["Item", "Qty", "Unit price", "Amount"], "rows": [["Hours", "3", "33.335", "100.01"]], "totals": [{"label": "Subtotal", "value": "100.01"}, {"label": "Tax", "value": "7"}, {"label": "Total", "value": "107.01"}]}
+        unstated = self.check({"items": rows}, form="intl/invoice")
+        self.assertEqual((unstated["issues"], unstated["details"]["vatRatePercent"]), ([], None))
+        self.assertNotIn("VAT_MISMATCH", {fact["code"] for fact in unstated["details"]["facts"]})
+        stated = self.check({"items": rows, "taxRatePercent": 8}, form="intl/invoice")
+        self.assertEqual(mismatches(stated), {"VAT_MISMATCH": (8, 7)})
+        self.assertEqual(stated["details"]["vatRatePercent"], 8)
+
     def test_the_guide_lists_the_command_rules_and_codes(self):
-        guide = run_guide("paperwork")
-        for text in ("office paperwork check", "truncates toward zero", "VAT_MISMATCH", "AMOUNT_IN_WORDS_MISMATCH"):
+        guide = run_guide("form")
+        for text in ("office check <values.json>", "truncates toward zero", "rounds half up", "VAT_MISMATCH", "AMOUNT_IN_WORDS_MISMATCH"):
             self.assertIn(text, guide)
 
 
-def run_guide(format_name):
-    return subprocess.run([sys.executable, str(SCRIPTS_PATH / "office"), "guide", format_name], capture_output=True, text=True, check=True).stdout
+def run_guide(topic):
+    return subprocess.run([sys.executable, str(SCRIPTS_PATH / "office"), "guide", topic], capture_output=True, text=True, check=True).stdout
 
 
 if __name__ == "__main__":

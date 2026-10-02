@@ -206,10 +206,10 @@ class BuiltNativeChartTest(unittest.TestCase):
             deck_path = Path(directory) / "charts"
             deck_path.mkdir()
             (deck_path / "slides.html").write_text(NEW_CHART_TYPES_DECK, encoding="utf-8")
-            built = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path).stdout)
+            built = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path).stdout)
             pptx_path = Path(built["details"]["outputs"]["pptx"])
-            read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "read", str(pptx_path)], capture_output=True, text=True).stdout)
-            checked = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "check", str(pptx_path)], capture_output=True, text=True, cwd=deck_path).stdout)
+            read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "read", str(pptx_path)], capture_output=True, text=True).stdout)
+            checked = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "check", str(pptx_path)], capture_output=True, text=True, cwd=deck_path).stdout)
         self.assertTrue(built["details"]["acceptance"]["acceptable"], built["summary"])
         charts = [shape["chart"] for slide in read["details"]["slides"] for shape in slide["shapes"] if shape["kind"] == "chart"]
         self.assertEqual([chart["type"] for chart in charts], ["column_clustered+line_markers", "area_stacked", "xy_scatter", "column_stacked_100"])
@@ -221,10 +221,10 @@ class BuiltNativeChartTest(unittest.TestCase):
     def test_a_built_deck_carries_native_charts_read_back_and_previewed(self):
         with tempfile.TemporaryDirectory() as directory:
             deck_path = copy_sample_deck(SAMPLE_DECKS_PATH / "product-proposal", Path(directory))
-            built = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path).stdout)
+            built = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path).stdout)
             pptx_path = Path(built["details"]["outputs"]["pptx"])
-            read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "read", str(pptx_path)], capture_output=True, text=True).stdout)
-            checked = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "check", str(pptx_path)], capture_output=True, text=True, cwd=deck_path).stdout)
+            read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "read", str(pptx_path)], capture_output=True, text=True).stdout)
+            checked = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "check", str(pptx_path)], capture_output=True, text=True, cwd=deck_path).stdout)
             layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
             backgrounds = {number: read_png(deck_path / "build" / "review" / "pptx-layers" / f"background.{number:03}.png") for number, slide in enumerate(layout["slides"], start=1) if slide.get("charts")}
             preview = (deck_path / checked["details"]["preview"]).read_text(encoding="utf-8")

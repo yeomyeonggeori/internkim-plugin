@@ -17,7 +17,7 @@ def plan_add_connector(editing: PptxEditing, operation: dict, location: str) -> 
     first = resolve_shape(editing, operation, location, "from")
     second = resolve_shape(editing, operation, location, "to")
     if first.element is second.element:
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}.to: a connector joins two different shapes", f"{location}.to", "name another shape from deck read"))
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}.to: a connector joins two different shapes", f"{location}.to", "name another shape from office read"))
 
     def change() -> str:
         route = facing_route(current_box(editing, first), current_box(editing, second))

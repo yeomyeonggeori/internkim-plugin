@@ -45,7 +45,7 @@ class PdfImageTest(unittest.TestCase):
             deck_path = Path(directory)
             (deck_path / "slides.html").write_text(DECK, encoding="utf-8")
             write_photo(deck_path / "images" / "shelves.png")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build"], capture_output=True, text=True, cwd=deck_path)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pdf", "slides.html"], capture_output=True, text=True, cwd=deck_path)
             envelope = json.loads(completed.stdout)
             images = [image for image in embedded_images(Path(envelope["outputPath"])) if image["width"] > 100]
         self.assertTrue(images, envelope["summary"])
@@ -58,7 +58,7 @@ class PdfImageTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             deck_path = Path(directory)
             (deck_path / "slides.html").write_text(DECK.replace('<img src="images/shelves.png" alt="진열대">', ""), encoding="utf-8")
-            envelope = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build"], capture_output=True, text=True, cwd=deck_path).stdout)
+            envelope = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pdf", "slides.html"], capture_output=True, text=True, cwd=deck_path).stdout)
             page = pypdfium2.PdfDocument(envelope["outputPath"])[0].render(scale=4 / 3).to_pil().convert("L")
         panel = page.getpixel((1500, 300))
         ring_point = (round(1600 - 342 * 0.7071), round(900 - 342 * 0.7071))
@@ -73,7 +73,7 @@ class PdfImageTest(unittest.TestCase):
             deck_path = Path(directory)
             (deck_path / "slides.html").write_text(DECK.replace('<section data-layout="statement">', chart + '<section data-layout="statement">'), encoding="utf-8")
             write_photo(deck_path / "images" / "shelves.png")
-            subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path)
+            subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path)
             layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
         chart = layout["slides"][1]["charts"][0]
         self.assertEqual((chart["series"][0]["values"], chart["units"]), ([1200, 1350], ["만원"]))

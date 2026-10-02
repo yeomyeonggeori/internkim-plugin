@@ -3,15 +3,14 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass, field, replace
-import json
 import mimetypes
 from pathlib import Path
 import tempfile
 
 from doc.block_writers import file_data_uri, html_document, markdown_text
-from convert.convert_definitions import (
-    CONVERSION_APPROXIMATED, PAGE_WITHOUT_TEXT, ROUTES, TABLE_NOT_FOUND, UNSUPPORTED_CONVERSION, Route, find_route, normalized_extension,
-)
+from convert.convert_definitions import CONVERSION_APPROXIMATED, PAGE_WITHOUT_TEXT, TABLE_NOT_FOUND, UNSUPPORTED_CONVERSION
+from core.office_arguments import route_arguments
+from core.office_commands import KINDS, Conversion as ConversionRoute, command_text, conversion_sources, conversion_targets, find_conversion, find_route, normalized_extension
 from docx.shared import Pt
 from fonts.docx_embedding import save_document
 from fonts.registry import BODY_SIZE_POINTS
@@ -19,15 +18,13 @@ from doc.docx_markdown import DEFAULT_DOCUMENT_FONT, markdown_document
 from convert.docx_to_blocks import read_docx_blocks
 from doc.export_document import export_pdf
 from convert.html_to_blocks import read_html_blocks
-from doc.latex_math import math_issues
 from render.office_preview import PAGE_SELECTOR, Preview, write_preview
-from doc.markdown_blocks import Image, parse_markdown
-from doc.markdown_charts import require_valid_charts
-from core.office_inputs import KINDS_BY_NAME, PDF, add_password_argument, office_file, require_unlocked_pdf
-from core.office_result import INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
+from doc.markdown_blocks import Image
+from core.office_inputs import KINDS_BY_NAME, PDF, office_file, require_unlocked_pdf
+from core.office_result import INVALID_VALUE, Issue, OfficeFailure, Result, run_command
 from core.office_inputs import read_text_input, unlocked_pdf_bytes
-from pdf.pdf_definitions import OCR_NEED, OCR_UNAVAILABLE, PAGE_READ_BY_OCR, page_reading_suggestion
-from pdf.ocr.pdf_ocr import OcrUnavailable, pages_without_words, read_pages_by_ocr
+from pdf.pdf_definitions import OCR_FAILED, PAGE_READ_BY_OCR, page_reading_suggestion
+from pdf.ocr.pdf_ocr import OcrFailed, pages_without_words, read_pages_by_ocr
 from convert.pdf_to_blocks import read_pdf_blocks
 from convert.pdf_workbook import read_pdf_tables, table_details, write_pdf_workbook
 from convert.pdf_to_pptx import NO_TEXT_LAYER_REASON, write_pdf_slides
@@ -38,7 +35,7 @@ from doc.render_docx import docx_preview
 from sheet.render_xlsx import xlsx_preview
 from deck.check_pptx import SLIDE_SELECTOR, preview_fonts
 from convert.spreadsheet_import import legacy_workbook_to_xlsx
-from convert.table_conversions import DELIMITERS, delimited_to_workbook, workbook_to_delimited
+from convert.table_conversions import DELIMITERS, workbook_to_delimited
 
 
 OCR_ROUTES = (("pdf", "docx"), ("pdf", "md"), ("pdf", "xlsx"))
@@ -59,14 +56,14 @@ class Conversion:
 
 
 def main() -> Result:
-    arguments = parse_arguments()
-    input_path = Path(arguments.input_path).expanduser()
-    output_path = Path(arguments.output_path).expanduser()
+    arguments = route_arguments("convert")
+    input_path = Path(arguments.input).expanduser()
+    output_path = Path(arguments.output).expanduser()
     if not input_path.is_file():
         raise FileNotFoundError(2, "no such file", str(input_path))
     route = require_route(input_path, output_path)
     require_ocr_route(route, arguments.ocr)
-    require_readable_source(arguments.input_path, route.source, arguments.password)
+    require_readable_source(arguments.input, route.source, arguments.password)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     conversion = Conversion(input_path, output_path, arguments.sheet, arguments.password, arguments.ocr)
     CONVERTERS[(route.source, route.target)](conversion)
@@ -83,39 +80,37 @@ def require_readable_source(input_path: str, source: str, password: str | None) 
         require_unlocked_pdf(input_path, password)
 
 
-def require_ocr_route(route: Route, ocr: bool) -> None:
+def require_ocr_route(route: ConversionRoute, ocr: bool) -> None:
     if ocr and (route.source, route.target) not in OCR_ROUTES:
         raise OfficeFailure(INVALID_VALUE.issue(f"--ocr reads scanned pages only for pdf to docx, md or xlsx, not {route.source} to {route.target}", "--ocr", suggestion="drop --ocr, or convert the PDF to .docx, .md or .xlsx"))
 
 
-def require_route(input_path: Path, output_path: Path) -> Route:
+def require_route(input_path: Path, output_path: Path) -> ConversionRoute:
     source, target = normalized_extension(input_path.suffix), normalized_extension(output_path.suffix)
-    route = find_route(source, target)
+    route = find_conversion(source, target)
     if route is not None:
         return route
-    targets = [candidate.target for candidate in ROUTES if candidate.source == source]
-    suggestion = f".{source} converts to {', '.join('.' + target for target in targets)}" if targets else f"inputs this command reads: {', '.join(sorted({'.' + candidate.source for candidate in ROUTES}))}"
-    raise OfficeFailure(UNSUPPORTED_CONVERSION.issue(f"no route converts .{source} to .{target}", f"{input_path.name} -> {output_path.name}", suggestion=suggestion))
+    raise OfficeFailure(UNSUPPORTED_CONVERSION.issue(f"no route converts .{source} to .{target}", f"{input_path.name} -> {output_path.name}", suggestion=route_suggestion(input_path, output_path, source)))
 
 
-def markdown_blocks(conversion: Conversion) -> list:
-    blocks = parse_markdown(read_text(conversion.input_path))
-    require_valid_charts(blocks, conversion.input_path.name)
-    conversion.issues.extend(math_issues(blocks, normalized_extension(conversion.output_path.suffix)))
-    return blocks
+def route_suggestion(input_path: Path, output_path: Path, source: str) -> str:
+    kind = next((kind.name for kind in KINDS if input_path.suffix.lower() in kind.extensions), None)
+    creating = find_route("create", kind) if kind else None
+    if creating is not None and output_path.suffix.lower() in creating.outputs:
+        return command_text(["office", "create", str(output_path), str(input_path)])
+    targets = conversion_targets(source)
+    if targets:
+        return f".{source} converts to {', '.join('.' + target for target in targets)}"
+    return f"inputs this command reads: {', '.join('.' + candidate for candidate in conversion_sources())}"
 
 
-def markdown_to_docx(conversion: Conversion) -> None:
-    write_docx(conversion, markdown_blocks(conversion), conversion.input_path.parent)
 
 
-def markdown_to_html(conversion: Conversion) -> None:
-    blocks = [embedded(block, conversion.input_path.parent) for block in markdown_blocks(conversion)]
-    conversion.output_path.write_text(html_document(blocks, conversion.input_path.stem), encoding="utf-8")
 
 
-def markdown_to_pdf(conversion: Conversion) -> None:
-    conversion.issues.extend(export_pdf(markdown_blocks(conversion), conversion.output_path, conversion.input_path.parent, ""))
+
+
+
 
 
 def docx_to_pdf(conversion: Conversion) -> None:
@@ -129,13 +124,6 @@ def workbook_to_pdf(conversion: Conversion) -> None:
     conversion.issues.extend(draw_workbook_pdf(conversion, conversion.input_path, conversion.sheet))
 
 
-def delimited_to_pdf(conversion: Conversion) -> None:
-    delimiter = DELIMITERS[normalized_extension(conversion.input_path.suffix)]
-    with tempfile.TemporaryDirectory(prefix="office-convert-") as directory:
-        workbook_path = Path(directory) / f"{conversion.input_path.stem}.xlsx"
-        conversion.issues.extend(delimited_to_workbook(conversion.input_path, workbook_path, delimiter))
-        print_issues = draw_workbook_pdf(conversion, workbook_path, None)
-    conversion.issues.extend(CONVERSION_APPROXIMATED.issue(issue.message, conversion.input_path.name, f"convert it to .xlsx, run sheet apply with {json.dumps(list(issue.fix), ensure_ascii=False)}, then convert the workbook to .pdf") for issue in print_issues)
 
 
 def draw_workbook_pdf(conversion: Conversion, workbook_path: Path, sheet: str | None) -> list[Issue]:
@@ -255,8 +243,8 @@ def scanned_page_lines(conversion: Conversion) -> dict:
     scanned = pages_without_words(data)
     try:
         lines = read_pages_by_ocr(data, scanned)
-    except OcrUnavailable as reason:
-        conversion.issues.append(OCR_UNAVAILABLE.issue(str(reason), f"pages {','.join(map(str, scanned))}"))
+    except OcrFailed as reason:
+        conversion.issues.append(OCR_FAILED.issue(str(reason), f"pages {','.join(map(str, scanned))}"))
         return {}
     read = [number for number, page_lines in lines.items() if page_lines]
     if read:
@@ -303,9 +291,6 @@ def workbook_to_text(conversion: Conversion) -> None:
     conversion.issues.extend(issues)
 
 
-def text_to_workbook(conversion: Conversion) -> None:
-    delimiter = DELIMITERS[normalized_extension(conversion.input_path.suffix)]
-    conversion.issues.extend(delimited_to_workbook(conversion.input_path, conversion.output_path, delimiter))
 
 
 def legacy_workbook(conversion: Conversion) -> None:
@@ -352,15 +337,6 @@ def report_dropped(conversion: Conversion, dropped: dict) -> None:
         conversion.issues.append(CONVERSION_APPROXIMATED.issue(f"dropped {listed}; layout, fonts and colors are not carried", conversion.input_path.name))
 
 
-def embedded(block, source_directory: Path):
-    if not isinstance(block, Image):
-        return block
-    image_path = source_directory / block.source
-    if block.source.startswith(("http://", "https://", "data:")) or not image_path.is_file():
-        return block
-    return replace(block, source=file_data_uri(image_path.read_bytes(), image_path.name))
-
-
 def with_data_source(block, media: dict):
     if not isinstance(block, Image):
         return block
@@ -379,9 +355,6 @@ def decoded(block, media_directory: Path):
 
 
 CONVERTERS = {
-    ("md", "docx"): markdown_to_docx,
-    ("md", "html"): markdown_to_html,
-    ("md", "pdf"): markdown_to_pdf,
     ("docx", "pdf"): docx_to_pdf,
     ("xlsx", "pdf"): workbook_to_pdf,
     ("pptx", "pdf"): presentation_to_pdf,
@@ -395,25 +368,12 @@ CONVERTERS = {
     ("pdf", "pptx"): pdf_to_presentation,
     ("xlsx", "csv"): workbook_to_text,
     ("xlsx", "tsv"): workbook_to_text,
-    ("csv", "xlsx"): text_to_workbook,
-    ("tsv", "xlsx"): text_to_workbook,
-    ("csv", "pdf"): delimited_to_pdf,
-    ("tsv", "pdf"): delimited_to_pdf,
     ("xls", "xlsx"): legacy_workbook,
     ("ods", "xlsx"): legacy_workbook,
     ("xlsb", "xlsx"): legacy_workbook,
     ("pdf", "xlsx"): pdf_to_workbook,
 }
 
-
-def parse_arguments():
-    parser = OfficeArgumentParser()
-    parser.add_argument("input_path", help="the file to convert")
-    parser.add_argument("output_path", help="the file to write; its extension names the target format")
-    parser.add_argument("--sheet", help="xlsx to csv, tsv or pdf: convert only this sheet; default every sheet, one file each for csv and tsv")
-    parser.add_argument("--ocr", action="store_true", help=f"pdf to docx, md or xlsx: read pages that have no text layer from their image by OCR; {OCR_NEED}")
-    add_password_argument(parser)
-    return parser.parse_args()
 
 
 if __name__ == "__main__":

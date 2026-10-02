@@ -22,9 +22,9 @@ class ConversionFixture(unittest.TestCase):
 
 
 class DelimitedRouteTest(ConversionFixture):
-    def test_the_sheet_reference_sends_a_csv_through_convert_before_any_guide(self):
+    def test_the_sheet_reference_sends_a_csv_through_create_before_any_guide(self):
         reference = (SCRIPTS_PATH.parent / "references" / "sheet.md").read_text(encoding="utf-8")
-        self.assertLess(reference.index("office convert <data.csv>"), reference.index("office guide sheet"))
+        self.assertLess(reference.index("office create ~/documents/<title>.xlsx <data.csv>"), reference.index("office guide"))
         self.assertNotIn("Python's `csv`", reference)
         self.assertNotIn("newest", reference)
 
@@ -33,19 +33,19 @@ class DelimitedRouteTest(ConversionFixture):
         for name in ("유니코드.tsv", "유니코드.csv"):
             with self.subTest(name=name):
                 (self.directory / name).write_bytes(exported)
-                self.assertEqual(run_office(["convert", name, "유니코드.xlsx"], self.directory)["status"], "ok")
-                values = run_office(["sheet", "read", "유니코드.xlsx"], self.directory)["details"]["range"]["values"]
+                self.assertEqual(run_office(["create", "유니코드.xlsx", name], self.directory)["status"], "ok")
+                values = run_office(["read", "유니코드.xlsx"], self.directory)["details"]["range"]["values"]
                 self.assertEqual(values, [["지역", "실적"], ["서울", 6200]])
 
     def test_a_converted_csv_takes_a_summary_sheet_from_one_apply(self):
         (self.directory / "판매.csv").write_text("월,지역,실적\n2026-04,서울,6200\n2026-04,경기,4140\n2026-05,서울,6280\n", encoding="utf-8")
-        self.assertEqual(run_office(["convert", "판매.csv", "판매.xlsx"], self.directory)["status"], "ok")
+        self.assertEqual(run_office(["create", "판매.xlsx", "판매.csv"], self.directory)["status"], "ok")
         (self.directory / "ops.json").write_text("""[
             {"op": "add_sheet", "name": "요약"},
             {"op": "set_range", "sheet": "요약", "cell": "A1", "values": [["지역", "실적"], ["서울", "=SUMIFS(판매!C:C,판매!B:B,A2)"]]}
         ]""", encoding="utf-8")
-        self.assertEqual(run_office(["sheet", "apply", "판매.xlsx", "ops.json"], self.directory)["status"], "ok")
-        values = run_office(["sheet", "read", "판매.xlsx", "--sheet", "요약"], self.directory)["details"]["range"]["values"]
+        self.assertEqual(run_office(["apply", "판매.xlsx", "ops.json"], self.directory)["status"], "ok")
+        values = run_office(["read", "판매.xlsx", "--sheet", "요약"], self.directory)["details"]["range"]["values"]
         self.assertEqual(values, [["지역", "실적"], ["서울", 12480]])
 
 

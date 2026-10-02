@@ -202,7 +202,7 @@ class ReportFilterTest(PivotFixture):
         self.assertIn('<pageFields count="2"><pageField fld="2" hier="-1"/><pageField fld="3" hier="-1"/></pageFields><dataFields', table)
         self.assertIn('<pivotField axis="axisPage" showAll="0"><items count="3"><item x="0"/><item x="1"/><item t="default"/></items></pivotField>', table)
         self.assertEqual(len(self.reloaded_pivot().pageFields), 2)
-        self.assertEqual(run_office(["sheet", "validate", "book.xlsx"], self.directory)["status"], "ok")
+        self.assertEqual(run_office(["check", "book.xlsx"], self.directory)["status"], "ok")
 
 
 class PivotRefusalTest(PivotFixture):
@@ -234,7 +234,7 @@ class PivotPersistenceTest(PivotFixture):
         self.apply([{"op": "set_cell", "sheet": "Orders", "cell": "I2", "value": "later"}])
         self.assertIn('groupInterval="2000"', self.part("xl/pivotCache/pivotCacheDefinition2.xml"))
         self.assertIn('<top10 val="2" filterVal="2"/>', self.part("xl/pivotTables/pivotTable2.xml"))
-        rendered = run_office(["sheet", "render", "book.xlsx", "--sheet", "Pivot"], self.directory)
+        rendered = run_office(["render", "book.xlsx", "--sheet", "Pivot"], self.directory)
         self.assertEqual(rendered["status"], "ok", rendered)
         preview = (self.directory / "book-preview" / "preview.html").read_text(encoding="utf-8")
         for text in ("Qtr1 Total", "Sum of margin", "(All)"):
@@ -260,9 +260,9 @@ class TextValuesTest(PivotFixture):
 
     def test_check_reports_a_pivot_whose_value_cells_are_empty(self):
         self.pivot(row="region", values=["amount"])
-        self.assertNotIn("PIVOT_VALUES_EMPTY", [issue["code"] for issue in run_office(["sheet", "check", "book.xlsx"], self.directory)["issues"]])
+        self.assertNotIn("PIVOT_VALUES_EMPTY", [issue["code"] for issue in run_office(["check", "book.xlsx"], self.directory)["issues"]])
         self.apply([{"op": "clear_range", "sheet": "Pivot", "range": "B4:B7"}])
-        issues = [issue for issue in run_office(["sheet", "check", "book.xlsx"], self.directory)["issues"] if issue["code"] == "PIVOT_VALUES_EMPTY"]
+        issues = [issue for issue in run_office(["check", "book.xlsx"], self.directory)["issues"] if issue["code"] == "PIVOT_VALUES_EMPTY"]
         self.assertEqual([issue["location"] for issue in issues], ["Pivot!A3:B7"])
         self.assertIn("Orders!A1:G7", issues[0]["message"])
 

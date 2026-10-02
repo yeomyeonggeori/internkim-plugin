@@ -47,7 +47,7 @@ class ReferenceExampleTest(unittest.TestCase):
         reference = DECK_REFERENCE_PATH.read_text(encoding="utf-8")
         self.assertEqual(len(html_blocks(reference)), 1)
         self.assertEqual(layouts_in(reference_deck()), ["chart", "closing", "cover"])
-        guide = subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", "deck"], capture_output=True, text=True, check=True).stdout
+        guide = subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", "slides"], capture_output=True, text=True, check=True).stdout
         self.assertTrue(all(f"\n  {name} " in guide for name in KIT_LAYOUT_NAMES))
 
     def test_the_sample_decks_show_every_kit_layout(self):
@@ -61,10 +61,10 @@ class ReferenceExampleTest(unittest.TestCase):
             deck_path.mkdir()
             (deck_path / "slides.html").write_text(deck_source, encoding="utf-8")
             write_referenced_images(deck_source, deck_path)
-            arguments = ["deck", "build", "--format", "all", "--slide-count", str(deck_source.count("<section"))]
+            arguments = ["create", "build/reference.pptx", "slides.html", "--slide-count", str(deck_source.count("<section"))]
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *arguments], capture_output=True, text=True, cwd=deck_path)
             envelope = json.loads(completed.stdout)
-            check = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "check", str(deck_path / "build" / "reference.pptx")], capture_output=True, text=True).stdout)
+            check = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "check", str(deck_path / "build" / "reference.pptx")], capture_output=True, text=True).stdout)
         self.assertTrue(envelope["details"]["acceptance"]["acceptable"], envelope["summary"])
         self.assertEqual([issue["code"] for issue in check["issues"]], [])
 
@@ -88,9 +88,9 @@ class CardGridTest(unittest.TestCase):
             deck_path = Path(directory) / "grid"
             deck_path.mkdir()
             (deck_path / "slides.html").write_text(FOUR_CARD_DECK, encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path)
             envelope = json.loads(completed.stdout)
-            read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "read", str(deck_path / "build" / "grid.pptx"), "--slides", "2"], capture_output=True, text=True).stdout)
+            read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "read", str(deck_path / "build" / "grid.pptx"), "--pages", "2"], capture_output=True, text=True).stdout)
         self.assertTrue(envelope["details"]["acceptance"]["acceptable"], envelope["summary"])
         boxes = sorted((shape["box"] for shape in read["details"]["slides"][0]["shapes"] if shape["kind"] == "shape"), key=lambda box: box["w"] * box["h"], reverse=True)[:4]
         self.assertEqual(len({box["x"] for box in boxes}), 2, boxes)

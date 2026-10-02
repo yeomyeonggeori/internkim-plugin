@@ -53,7 +53,7 @@ def linked_runs(target: ShapeTarget, text: str, location: str):
         start = joined.find(text)
         if start >= 0:
             return runs, start, start + len(text)
-    raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.text: {target.label} has no paragraph holding {text!r}", f"{location}.text", "give text exactly as deck read shows it, inside one paragraph"))
+    raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.text: {target.label} has no paragraph holding {text!r}", f"{location}.text", "give text exactly as office read shows it, inside one paragraph"))
 
 
 def link_run(target: ShapeTarget, run, url: str | None, destination) -> None:

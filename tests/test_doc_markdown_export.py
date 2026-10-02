@@ -33,8 +33,8 @@ class MarkdownExportTest(unittest.TestCase):
                 "[소개](https://example.com/about) 참고\n\n![차트](chart.png)\n\n![없음](missing.png)\n\n- 하나\n  - 둘\n    - 셋\n- 넷\n",
                 encoding="utf-8",
             )
-            envelope = run_office(["doc", "export", "source.md", "--output", "source.docx"], directory)
-            blocks = run_office(["doc", "read", "source.docx"], directory)["details"]["blocks"]
+            envelope = run_office(["create", "source.docx", "source.md"], directory)
+            blocks = run_office(["read", "source.docx"], directory)["details"]["blocks"]
             with zipfile.ZipFile(directory / "source.docx") as archive:
                 relationships = archive.read("word/_rels/document.xml.rels").decode()
                 document_xml = archive.read("word/document.xml").decode()
@@ -65,7 +65,7 @@ class LineAndRuleTest(unittest.TestCase):
         self.temporary_directory.cleanup()
 
     def export(self, output_name):
-        envelope = run_office(["doc", "export", "제안서.md", "--output", output_name], self.directory)
+        envelope = run_office(["create", output_name, "제안서.md"], self.directory)
         self.assertNotEqual(envelope["status"], "error", envelope["issues"])
 
     def document_xml(self, name):
@@ -74,7 +74,7 @@ class LineAndRuleTest(unittest.TestCase):
 
     def test_lines_written_one_under_another_stay_one_paragraph_with_line_breaks(self):
         self.export("제안서.docx")
-        texts = [block.get("text") for block in run_office(["doc", "read", "제안서.docx"], self.directory)["details"]["blocks"]]
+        texts = [block.get("text") for block in run_office(["read", "제안서.docx"], self.directory)["details"]["blocks"]]
         self.assertIn("수신처: 주식회사 샘플상사 (담당: 최견본 팀장)\n제안사: 주식회사 예시랩\n작성일: 2026년 10월 1일", texts)
         self.assertIn("본문 첫 문단입니다.", texts)
         self.assertIn("본문 둘째 문단입니다.", texts)
@@ -97,7 +97,7 @@ class LineAndRuleTest(unittest.TestCase):
         self.assertNotIn("---", lines)
 
     def test_html_carries_the_break_and_the_rule(self):
-        run_office(["convert", "제안서.md", "제안서.html"], self.directory)
+        run_office(["create", "제안서.html", "제안서.md"], self.directory)
         page = (self.directory / "제안서.html").read_text(encoding="utf-8")
         self.assertIn("최견본 팀장)<br><strong>제안사:</strong>", page)
         self.assertIn("<hr>", page)
@@ -114,7 +114,7 @@ class MathTest(unittest.TestCase):
         self.temporary_directory.cleanup()
 
     def export(self, output_name):
-        return run_office(["doc", "export", "수식.md", "--output", output_name], self.directory)
+        return run_office(["create", output_name, "수식.md"], self.directory)
 
     def test_math_becomes_word_equations_and_unreadable_latex_is_named(self):
         envelope = self.export("수식.docx")
@@ -130,15 +130,15 @@ class MathTest(unittest.TestCase):
 
     def test_a_formula_word_cannot_hold_is_named_for_docx_and_still_typeset_in_the_pdf(self):
         (self.directory / "평균.md").write_text("분기 평균은 $\\bar{x} = 3$ 이다.\n", encoding="utf-8")
-        word = run_office(["doc", "export", "평균.md", "--output", "평균.docx"], self.directory)
+        word = run_office(["create", "평균.docx", "평균.md"], self.directory)
         self.assertEqual([issue["code"] for issue in word["issues"]], ["MATH_NOT_CONVERTED"])
         self.assertIn("no Word equation form", word["issues"][0]["message"])
-        pdf = run_office(["doc", "export", "평균.md", "--output", "평균.pdf"], self.directory)
+        pdf = run_office(["create", "평균.pdf", "평균.md"], self.directory)
         self.assertEqual(pdf["issues"], [])
 
     def test_broken_latex_is_named_with_its_reason_and_never_raised(self):
         (self.directory / "깨진.md").write_text("제곱은 $x^$ 이고 근은 $\\sqrt$ 이다.\n", encoding="utf-8")
-        envelope = run_office(["doc", "export", "깨진.md", "--output", "깨진.docx"], self.directory)
+        envelope = run_office(["create", "깨진.docx", "깨진.md"], self.directory)
         self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("MATH_NOT_CONVERTED", "x^"), ("MATH_NOT_CONVERTED", "\\sqrt")])
         for issue in envelope["issues"]:
             self.assertNotIn("()", issue["message"])
@@ -176,7 +176,7 @@ class CodeBlockTest(unittest.TestCase):
         self.temporary_directory.cleanup()
 
     def export(self, output_name):
-        envelope = run_office(["doc", "export", "절차.md", "--output", output_name], self.directory)
+        envelope = run_office(["create", output_name, "절차.md"], self.directory)
         self.assertEqual(envelope["status"], "ok", envelope["issues"])
 
     def test_a_code_fence_is_read_as_written_and_written_back_as_a_fence(self):
@@ -200,7 +200,7 @@ class CodeBlockTest(unittest.TestCase):
         text = pdf_text("절차.pdf", self.directory)
         self.assertNotIn("```", text)
         self.assertIn("make build", text)
-        run_office(["convert", "절차.md", "절차.html"], self.directory)
+        run_office(["create", "절차.html", "절차.md"], self.directory)
         self.assertIn("<pre><code>cd /srv/app\nmake build   # 빌드\n    ./deploy --env production</code></pre>", (self.directory / "절차.html").read_text(encoding="utf-8"))
 
 

@@ -77,7 +77,7 @@ class FreeHtmlGateTest(unittest.TestCase):
     def test_a_deck_without_the_kit_is_held_to_the_measured_bar(self):
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / "slides.html").write_text(FREE_HTML_DECK, encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build"], capture_output=True, text=True, cwd=directory)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.pdf", "slides.html"], capture_output=True, text=True, cwd=directory)
             acceptance = json.loads(completed.stdout)["details"]["acceptance"]
         self.assertFalse(acceptance["acceptable"])
         self.assertTrue(acceptance["verdict"].startswith("FIX ROUND 1"))
@@ -87,42 +87,43 @@ class FreeHtmlGateTest(unittest.TestCase):
     def test_a_build_with_its_streams_merged_still_prints_one_json_document(self):
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / "slides.html").write_text(FREE_HTML_DECK, encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, cwd=directory)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.pdf", "slides.html"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, cwd=directory)
         self.assertIn("acceptance", json.loads(completed.stdout)["details"])
 
 
 class BuildHelpTest(unittest.TestCase):
     def test_help_prints_usage_and_never_builds(self):
-        for verb in ("build", "image"):
-            with self.subTest(verb), tempfile.TemporaryDirectory() as directory:
-                completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", verb, "--help"], capture_output=True, text=True, cwd=directory)
+        for arguments in (["create", "--help"], ["create", "build/deck.pdf", "slides.html", "--help"], ["image", "--help"]):
+            with self.subTest(arguments), tempfile.TemporaryDirectory() as directory:
+                completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *arguments], capture_output=True, text=True, cwd=directory)
                 self.assertEqual(completed.returncode, 0, completed.stderr)
                 self.assertIn("usage:", completed.stdout)
                 self.assertEqual(list(Path(directory).iterdir()), [])
 
     def test_build_help_names_only_its_flags(self):
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--help"], capture_output=True, text=True)
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/deck.pdf", "slides.html", "--help"], capture_output=True, text=True)
         self.assertNotIn("FORMATS", completed.stdout)
+        self.assertIn("--slide-count", completed.stdout)
 
-    def test_an_unknown_format_is_refused_before_anything_renders(self):
+    def test_an_output_the_deck_cannot_be_is_refused_before_anything_renders(self):
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / "slides.html").write_text('<body data-theme="editorial"><section data-layout="statement"><h2>배송이 빨라집니다</h2></section></body>', encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "keynote"], capture_output=True, text=True, cwd=directory)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.keynote", "slides.html"], capture_output=True, text=True, cwd=directory)
             envelope = json.loads(completed.stdout)
             self.assertEqual(completed.returncode, 1)
-            self.assertIn("UNKNOWN_FORMAT", {issue["code"] for issue in envelope["issues"]})
+            self.assertEqual([issue["code"] for issue in envelope["issues"]], ["WRONG_OUTPUT_FORMAT"])
             self.assertFalse((Path(directory) / "build").exists())
 
 
 class WithoutRendererTest(unittest.TestCase):
     def run_without_renderer(self, directory: str, *arguments: str) -> subprocess.CompletedProcess:
-        return subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", *arguments], capture_output=True, text=True, cwd=directory, env=bare_environment(directory))
+        return subprocess.run([sys.executable, str(OFFICE_ENTRY), *arguments], capture_output=True, text=True, cwd=directory, env=bare_environment(directory))
 
     def test_the_build_refuses_and_names_what_to_install_while_the_check_still_runs(self):
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / "slides.html").write_text(KIT_DECK, encoding="utf-8")
-            built = self.run_without_renderer(directory, "build", "--format", "pptx")
-            checked = self.run_without_renderer(directory, "check")
+            built = self.run_without_renderer(directory, "create", "build/deck.pptx", "slides.html")
+            checked = self.run_without_renderer(directory, "check", "slides.html")
             written = sorted(path.name for path in Path(directory).rglob("*") if path.suffix in {".pdf", ".pptx", ".html"} and path.name != "slides.html")
         envelope = json.loads(built.stdout)
         self.assertEqual(built.returncode, 1)

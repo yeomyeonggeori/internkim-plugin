@@ -6,11 +6,12 @@ import io
 import pdfplumber
 from pypdf import PdfReader
 
-from core.office_inputs import add_password_argument, office_file, require_unlocked_pdf, unlocked_pdf_bytes
-from pdf.ocr.pdf_ocr import OcrUnavailable, read_pages_by_ocr
+from core.office_arguments import route_arguments
+from core.office_inputs import require_unlocked_pdf, unlocked_pdf_bytes
+from pdf.ocr.pdf_ocr import OcrFailed, read_pages_by_ocr
 from pdf.pdf_tables import line_texts, page_tables, stream_tables
-from pdf.pdf_definitions import OCR_NEED, OCR_UNAVAILABLE, PAGE_READ_BY_OCR, PAGE_WITHOUT_TEXT, page_reading_suggestion
-from core.office_result import Issue, OfficeArgumentParser, Result, run_command
+from pdf.pdf_definitions import OCR_FAILED, PAGE_READ_BY_OCR, PAGE_WITHOUT_TEXT, page_reading_suggestion
+from core.office_result import Issue, Result, run_command
 
 
 DEFAULT_PAGE_LIMIT = 50
@@ -19,12 +20,12 @@ TEXT_CHARACTER_LIMIT = 6000
 
 def main() -> Result:
     arguments = parse_arguments()
-    require_unlocked_pdf(arguments.pdf_path, arguments.password)
-    reader = PdfReader(arguments.pdf_path, password=arguments.password)
+    require_unlocked_pdf(arguments.file, arguments.password)
+    reader = PdfReader(arguments.file, password=arguments.password)
     page_count = len(reader.pages)
     first_index = max(arguments.start - 1, 0)
     shown = reader.pages[first_index:first_index + arguments.limit]
-    data = unlocked_pdf_bytes(arguments.pdf_path, arguments.password)
+    data = unlocked_pdf_bytes(arguments.file, arguments.password)
     with pdfplumber.open(io.BytesIO(data)) as layout:
         pages = [describe_page(page, layout.pages[first_index + offset], first_index + offset + 1) for offset, page in enumerate(shown)]
     issues: list[Issue] = []
@@ -38,15 +39,15 @@ def main() -> Result:
         "pages": pages,
     }
     issues += scanned_page_issues(arguments, pages)
-    return Result(summary=f"read {len(pages)} of {page_count} pages from {arguments.pdf_path}", output_path=arguments.pdf_path, issues=tuple(issues), details=details)
+    return Result(summary=f"read {len(pages)} of {page_count} pages from {arguments.file}", output_path=arguments.file, issues=tuple(issues), details=details)
 
 
 def pages_read_by_ocr(data: bytes, pages: list[dict]) -> tuple[list[dict], list[Issue]]:
     scanned = [page["page"] for page in pages if not page["hasText"]]
     try:
         lines = read_pages_by_ocr(data, scanned)
-    except OcrUnavailable as reason:
-        return pages, [OCR_UNAVAILABLE.issue(str(reason), f"pages {listed(scanned)}")]
+    except OcrFailed as reason:
+        return pages, [OCR_FAILED.issue(str(reason), f"pages {listed(scanned)}")]
     pages = [with_ocr_text(page, lines[page["page"]]) if page["page"] in lines else page for page in pages]
     read = [page["page"] for page in pages if page.get("readByOcr")]
     return pages, [PAGE_READ_BY_OCR.issue(f"pages {listed(read)} were read by OCR", f"pages {listed(read)}")] if read else []
@@ -65,8 +66,8 @@ def scanned_page_issues(arguments, pages: list[dict]) -> list[Issue]:
     scanned = listed([page["page"] for page in pages if not page["hasText"] and not page.get("readByOcr")])
     if not scanned:
         return []
-    rerun_command = None if arguments.ocr else f"office pdf read {arguments.pdf_path}"
-    return [PAGE_WITHOUT_TEXT.issue(f"pages {scanned} have no text layer", f"pages {scanned}", suggestion=page_reading_suggestion(arguments.pdf_path, scanned, rerun_command))]
+    rerun_command = None if arguments.ocr else f"office read {arguments.file}"
+    return [PAGE_WITHOUT_TEXT.issue(f"pages {scanned} have no text layer", f"pages {scanned}", suggestion=page_reading_suggestion(arguments.file, scanned, rerun_command))]
 
 
 def listed(numbers: list[int]) -> str:
@@ -96,13 +97,7 @@ def limited(text: str) -> str:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser()
-    parser.add_argument("pdf_path", type=office_file("pdf"))
-    parser.add_argument("--start", type=int, default=1, help="first page number to show, counting from 1")
-    parser.add_argument("--limit", type=int, default=DEFAULT_PAGE_LIMIT, help=f"most pages to show, default {DEFAULT_PAGE_LIMIT}")
-    parser.add_argument("--ocr", action="store_true", help=f"read pages that have no text layer from their image by OCR; {OCR_NEED}")
-    add_password_argument(parser)
-    return parser.parse_args()
+    return route_arguments("read", "pdf", start=1, limit=DEFAULT_PAGE_LIMIT)
 
 
 if __name__ == "__main__":

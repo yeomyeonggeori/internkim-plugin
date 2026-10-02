@@ -4,52 +4,24 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from core.office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
+from core.office_arguments import route_arguments
+from core.office_result import Result, read_json_file, run_command
 from core.office_schema import require_valid
 from core.page_sizes import DEFAULT_PAPER, PAPER_BY_NAME
-from core.office_outputs import output_file
 from core.units import millimetres_to_pixels
 from doc.document_pdf import DocumentFonts, PageLayout, render_document_pdf
 from doc.markdown_blocks import Heading, ListItem, Paragraph, Table
 from pdf.pdf_definitions import PDF_SPECIFICATION
 
 
-def read_specification(arguments):
-    if arguments.spec:
-        specification = read_json_file(arguments.spec)
-        location = "spec"
-    elif has_inline_content(arguments):
-        specification = build_specification(arguments)
-        location = "arguments"
-    else:
-        raise OfficeFailure(INVALID_ARGUMENTS.issue("provide at least --title, --heading, --paragraph, or --bullet; or pass --spec <file>"))
-    require_valid(PDF_SPECIFICATION, specification, location)
+def read_specification(specification_path: str) -> dict:
+    specification = read_json_file(specification_path)
+    require_valid(PDF_SPECIFICATION, specification, "spec")
     return specification
-
-
-def has_inline_content(arguments):
-    return bool(arguments.title or arguments.subtitle or arguments.heading or arguments.paragraph or arguments.bullet)
 
 
 def optional_text(value):
     return (value or "").strip()
-
-
-def build_specification(arguments):
-    sections = []
-    for heading_text in arguments.heading:
-        sections.append({"title": heading_text, "paragraphs": [], "bullets": []})
-    if not sections and (arguments.paragraph or arguments.bullet):
-        sections.append({"title": "", "paragraphs": [], "bullets": []})
-    if sections:
-        last_section = sections[-1]
-        last_section["paragraphs"] = arguments.paragraph
-        last_section["bullets"] = arguments.bullet
-    return {
-        "title": arguments.title or "",
-        "subtitle": arguments.subtitle or "",
-        "sections": sections,
-    }
 
 
 def specification_blocks(specification: dict) -> list:
@@ -104,22 +76,11 @@ def write_pdf(specification: dict, output_path: Path) -> list:
     return render_document_pdf(blocks, output_path, Path.cwd(), title, document_fonts(specification), page_layout(specification))
 
 
-def parse_arguments():
-    parser = OfficeArgumentParser()
-    parser.add_argument("output_path", type=output_file(".pdf"), help="Path to the output .pdf file")
-    parser.add_argument("--title", metavar="TEXT", default="", help="Document title")
-    parser.add_argument("--subtitle", metavar="TEXT", default="", help="Document subtitle (optional)")
-    parser.add_argument("--heading", action="append", default=[], metavar="TEXT", help="Add a section heading (repeatable)")
-    parser.add_argument("--paragraph", action="append", default=[], metavar="TEXT", help="Add a paragraph (repeatable)")
-    parser.add_argument("--bullet", action="append", default=[], metavar="TEXT", help="Add a bullet item (repeatable)")
-    parser.add_argument("--spec", metavar="JSON_PATH", help="JSON spec file for rich PDFs (tables, multi-section layouts)")
-    return parser.parse_args()
-
 
 def main():
-    arguments = parse_arguments()
-    specification = read_specification(arguments)
-    output_path = Path(os.path.expanduser(arguments.output_path))
+    arguments = route_arguments("create", "pdf")
+    specification = read_specification(arguments.source)
+    output_path = Path(os.path.expanduser(arguments.output))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     issues = write_pdf(specification, output_path)
     return Result(summary=f"created {output_path}", output_path=str(output_path), issues=tuple(issues))

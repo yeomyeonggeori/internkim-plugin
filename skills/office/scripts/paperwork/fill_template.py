@@ -1,49 +1,32 @@
-#!/usr/bin/env python3
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 from doc.merge_docx import merge_template
 from fonts.docx_embedding import embed_named_fonts
-from core.office_result import DOCUMENTS_FOLDER, MISSING_FIELD, PERMISSION_DENIED, WRONG_TYPE, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
-from core.office_outputs import output_file
+from core.office_result import MISSING_FIELD, OfficeFailure
 from paperwork.template_context import caller_fields, complete_context, list_fields, merge_values, non_empty_fields
-from paperwork.template_fields import TEMPLATES_PATH, template_names
+from paperwork.template_fields import TEMPLATES_PATH
 
 
 UNKNOWN_VALUE_GUIDANCE = 'fill EVERY field; use "미정" (to be decided) only when the requester truly did not provide the value'
 
 
-def main() -> Result:
-    arguments = parse_arguments()
-    context = load_context(arguments.template_name, arguments.context_path)
-    output_path = Path(os.path.expanduser(arguments.output_path))
-    template_path = str(TEMPLATES_PATH / f"{arguments.template_name}.docx")
-    try:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        merge_template(template_path, merge_values(arguments.template_name, context), str(output_path))
-        embed_named_fonts(output_path)
-    except PermissionError as error:
-        raise OfficeFailure(PERMISSION_DENIED.issue(
-            f"cannot write to {output_path} (permission denied)",
-            location=error.filename,
-            suggestion=f"rerun the SAME command with the output changed to {DOCUMENTS_FOLDER}/{output_path.parent.name}/{output_path.name}",
-        )) from error
-    return Result(summary=f"filled {arguments.template_name} into {output_path}", output_path=str(output_path))
+def fill_template(template_name: str, context: dict, output_path: Path) -> None:
+    completed = load_context(template_name, context)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    merge_template(str(TEMPLATES_PATH / f"{template_name}.docx"), merge_values(template_name, completed), str(output_path))
+    embed_named_fonts(output_path)
 
 
 def context_hint(template_name: str) -> str:
     fields = {field: "<value>" for field in caller_fields(template_name)}
     fields.update({field: ["<item>"] for field in list_fields(template_name)})
-    return f"context JSON for {template_name} must contain: {json.dumps(fields, ensure_ascii=False)}"
+    return f"the values of kr/{template_name} must contain: {json.dumps(fields, ensure_ascii=False)}"
 
 
-def load_context(template_name: str, context_path: str) -> dict:
-    context = read_json_file(context_path)
-    if not isinstance(context, dict):
-        raise OfficeFailure(WRONG_TYPE.issue("context: expected an object", "context", suggestion=context_hint(template_name)))
+def load_context(template_name: str, context: dict) -> dict:
     completed = complete_context(template_name, context)
     problems = missing_value_problems(template_name, completed, context_hint(template_name))
     if problems:
@@ -54,25 +37,14 @@ def load_context(template_name: str, context_path: str) -> dict:
 def missing_value_problems(template_name: str, context: dict, hint: str) -> list:
     suggestion = f"{UNKNOWN_VALUE_GUIDANCE}. {hint}"
     missing_values = [
-        MISSING_FIELD.issue(f"context.{field}: required field is missing", f"context.{field}", suggestion=suggestion)
+        MISSING_FIELD.issue(f"values.{field}: required field is missing", f"values.{field}", suggestion=suggestion)
         for field in non_empty_fields(template_name)
         if str(context.get(field, "")).strip() == ""
     ]
     missing_lists = [
-        MISSING_FIELD.issue(f"context.{field}: must be a non-empty array", f"context.{field}", suggestion=suggestion)
+        MISSING_FIELD.issue(f"values.{field}: must be a non-empty array", f"values.{field}", suggestion=suggestion)
         for field in list_fields(template_name)
         if not isinstance(context.get(field), list) or not context[field]
     ]
     return missing_values + missing_lists
 
-
-def parse_arguments():
-    parser = OfficeArgumentParser()
-    parser.add_argument("template_name", choices=template_names(), help="Template name")
-    parser.add_argument("context_path", help="Path to the context JSON file")
-    parser.add_argument("output_path", type=output_file(".docx"), help="Path to the output .docx file")
-    return parser.parse_args()
-
-
-if __name__ == "__main__":
-    raise SystemExit(run_command(main))

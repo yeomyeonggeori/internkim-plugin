@@ -16,7 +16,7 @@ class DocumentBatchModeTest(DocumentFixture):
 
     def apply(self, operations, *options):
         write_json(self.directory / "ops.json", operations)
-        return run_office(["doc", "apply", "fixture.docx", "ops.json", *options], self.directory)
+        return run_office(["apply", "fixture.docx", "ops.json", *options], self.directory)
 
     def paragraphs(self):
         return [text for _, text in block_texts(self.directory, "fixture.docx")[1:3]]

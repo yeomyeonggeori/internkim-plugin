@@ -148,7 +148,7 @@ def comment_author(editing: DocxEditing, operation: dict, location: str) -> str:
         return operation["author"]
     if editing.tracking is not None and editing.tracking.author:
         return editing.tracking.author
-    raise OfficeFailure(MISSING_FIELD.issue(f"{location}.author: a comment needs the name of the person it is from", f"{location}.author", suggestion="give author, or run doc apply with --track --author"))
+    raise OfficeFailure(MISSING_FIELD.issue(f"{location}.author: a comment needs the name of the person it is from", f"{location}.author", suggestion="give author, or run office apply with --track --author"))
 
 
 def plan_add_comment(editing: DocxEditing, operation: dict, location: str) -> Change:
@@ -174,7 +174,7 @@ def anchor_span(paragraph_element, operation: dict, location: str) -> tuple[int,
     occurrence = operation.get("occurrence") or 1
     if occurrence > len(starts):
         found = f"occurs {len(starts)} times" if starts else "does not occur"
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.find: {find!r} {found} in block {operation['block']}", f"{location}.find", suggestion=f"copy the exact text from doc read: {text[:120]!r}"))
+        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.find: {find!r} {found} in block {operation['block']}", f"{location}.find", suggestion=f"copy the exact text from office read: {text[:120]!r}"))
     start = starts[occurrence - 1]
     return start, start + len(find)
 
@@ -214,7 +214,7 @@ def find_comment(editing: DocxEditing, identifier: int, location: str):
     found = None if comments is None else next((comment for comment in comments.iterchildren(qn("w:comment")) if comment.get(qn("w:id")) == str(identifier)), None)
     if found is None:
         available = [] if comments is None else [comment.get(qn("w:id")) for comment in comments.iterchildren(qn("w:comment"))]
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.comment: comment {identifier} does not exist", f"{location}.comment", suggestion=f"use a comment id doc read lists: {', '.join(available) or 'the document has no comments'}"))
+        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.comment: comment {identifier} does not exist", f"{location}.comment", suggestion=f"use a comment id office read lists: {', '.join(available) or 'the document has no comments'}"))
     return found
 
 

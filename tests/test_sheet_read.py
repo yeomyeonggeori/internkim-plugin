@@ -51,10 +51,10 @@ class ReadTest(WorkbookFixture):
         super().setUp()
         run_office_python(FIXTURE_WORKBOOK, self.directory)
         write_json(self.directory / "ops.json", [{"op": "recalculate"}])
-        run_office(["sheet", "apply", "fixture.xlsx", "ops.json"], self.directory)
+        run_office(["apply", "fixture.xlsx", "ops.json"], self.directory)
 
     def read(self, *arguments):
-        envelope = run_office(["sheet", "read", "fixture.xlsx", *arguments], self.directory)
+        envelope = run_office(["read", "fixture.xlsx", *arguments], self.directory)
         self.assertEqual(envelope["status"], "ok", envelope)
         return envelope["details"]
 
@@ -96,7 +96,7 @@ class ReadTest(WorkbookFixture):
 
     def test_stats_skip_a_title_row_above_the_header(self):
         self.create_workbook([{"title": "S", "heading": "2026 실적", "rows": [["담당", "1월", "2월"], ["이샘플", 10, 20], ["박예시", 30, 40]]}])
-        selected = run_office(["sheet", "read", "book.xlsx", "--stats"], self.directory)["details"]["range"]
+        selected = run_office(["read", "book.xlsx", "--stats"], self.directory)["details"]["range"]
         self.assertEqual(selected["headerRow"], 2)
         self.assertEqual([(column["header"], column.get("sum")) for column in selected["stats"]], [("담당", None), ("1월", 40), ("2월", 60)])
 
@@ -106,13 +106,13 @@ class ReadTest(WorkbookFixture):
         self.assertEqual(stats[0]["types"], {"number": 3, "uncomputed": 1})
 
     def test_cols_narrow_the_range_to_the_named_columns(self):
-        selected = self.read("--range", "A1:D3", "--cols", "A,C:D")["range"]
+        selected = self.read("--range", "A1:D3", "--columns", "A,C:D")["range"]
         self.assertEqual(selected["columns"], ["A", "C", "D"])
         self.assertEqual(selected["values"][0], ["item", None, 120])
 
     def test_a_column_span_written_right_to_left_is_refused(self):
-        envelope = run_office(["sheet", "read", "fixture.xlsx", "--range", "A1:D3", "--cols", "D:A"], self.directory)
-        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("INVALID_VALUE", "--cols")])
+        envelope = run_office(["read", "fixture.xlsx", "--range", "A1:D3", "--columns", "D:A"], self.directory)
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("INVALID_VALUE", "--columns")])
         self.assertIn("A:D", envelope["issues"][0]["suggestion"])
 
     def test_formats_show_what_is_styled(self):
@@ -123,14 +123,14 @@ class ReadTest(WorkbookFixture):
         self.assertEqual(formats["columnWidths"], {"A": 22})
 
     def test_rows_beyond_the_limit_are_left_out_and_flagged(self):
-        selected = self.read("--max-rows", "2")["range"]
+        selected = self.read("--limit", "2")["range"]
         self.assertEqual((len(selected["values"]), selected["truncated"]), (2, True))
 
     def test_another_sheet_is_chosen_by_name(self):
         self.assertEqual(self.read("--sheet", "Notes")["range"]["values"], [["memo"]])
 
     def test_an_unknown_sheet_is_refused_with_the_names_that_exist(self):
-        envelope = run_office(["sheet", "read", "fixture.xlsx", "--sheet", "Missing"], self.directory)
+        envelope = run_office(["read", "fixture.xlsx", "--sheet", "Missing"], self.directory)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["TARGET_NOT_FOUND"])
         self.assertIn("Sales, Notes", envelope["issues"][0]["message"])
 
@@ -139,7 +139,7 @@ class LibraryWarningTest(WorkbookFixture):
     def test_reading_a_workbook_with_sparklines_prints_only_the_result(self):
         self.create_workbook([{"title": "S", "rows": [["name", "1월", "2월", "3월", "trend"], ["a", 1, 2, 3, None], ["b", 3, 2, 1, None]]}])
         self.assertEqual(self.apply([{"op": "add_sparklines", "range": "B2:D3", "target": "E2:E3"}])["status"], "ok")
-        for command in (["sheet", "read"], ["sheet", "check"], ["sheet", "validate"]):
+        for command in (["read"], ["check"], ["check"]):
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *command, "book.xlsx"], capture_output=True, text=True, cwd=self.directory)
             self.assertEqual(completed.stderr, "", command)
 

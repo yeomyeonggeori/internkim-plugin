@@ -20,7 +20,7 @@ def note_part_and_element(editing: DocxEditing, operation: dict, location: str):
     note = next((note for note in notes if int(note.get(qn("w:id"))) == operation["note"]), None)
     if note is None:
         listed = ", ".join(note.get(qn("w:id")) for note in notes) or "none"
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.note: the document has no {kind} {operation['note']}; it has {listed}", f"{location}.note", suggestion="doc read lists notes with their kind and id"))
+        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.note: the document has no {kind} {operation['note']}; it has {listed}", f"{location}.note", suggestion="office read lists notes with their kind and id"))
     return part, root, note
 
 

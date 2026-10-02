@@ -4,14 +4,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from core.office_commands import TOOLS
 from core.office_result import SETUP_COMMAND, SETUP_FAILED, OfficeArgumentParser, Result
-from pdf.ocr.ocr_environment import OCR_DOWNLOAD_SIZE, ocr_environment, prepare_ocr_environment
+from pdf.ocr.ocr_environment import ocr_environment, prepare_ocr_environment
 from render.renderer import NODE_MODULES, RendererUnavailable, prepare_renderer
 from skill_runtime import PreparationFailed, environment_path, prepare_environment
 
 
 SCRIPTS_PATH = Path(__file__).resolve().parents[1]
-SETUP_SUMMARY = "install the Python environment and the renderer's packages into the skill, and with --with-ocr the OCR engine; every other command only reads them"
+SETUP_SUMMARY = next(tool.summary for tool in TOOLS if tool.name == "setup")
 
 
 @dataclass(frozen=True)
@@ -22,9 +23,9 @@ class SetupStep:
 
 
 def setup_result(arguments: list[str]) -> Result:
-    parsed = parse_arguments(arguments)
     finished = []
-    for step in setup_steps(parsed.with_ocr):
+    parse_arguments(arguments)
+    for step in setup_steps():
         try:
             state = step.prepare()
         except (PreparationFailed, RendererUnavailable) as reason:
@@ -38,14 +39,12 @@ def setup_details(finished: list[dict]) -> dict:
     return {"steps": finished}
 
 
-def setup_steps(with_ocr: bool) -> list[SetupStep]:
-    steps = [
+def setup_steps() -> list[SetupStep]:
+    return [
         SetupStep("python environment", prepare_python_environment, environment_path(SCRIPTS_PATH)),
         SetupStep("renderer packages", prepare_renderer, NODE_MODULES),
+        SetupStep("ocr engine", prepare_ocr_environment, ocr_environment()),
     ]
-    if with_ocr:
-        steps.append(SetupStep("ocr engine", prepare_ocr_environment, ocr_environment()))
-    return steps
 
 
 def prepare_python_environment() -> str:
@@ -54,5 +53,4 @@ def prepare_python_environment() -> str:
 
 def parse_arguments(arguments: list[str]):
     parser = OfficeArgumentParser(prog=SETUP_COMMAND, description=SETUP_SUMMARY[0].upper() + SETUP_SUMMARY[1:] + ".")
-    parser.add_argument("--with-ocr", action="store_true", help=f"also prepare the OCR engine that pdf read --ocr and convert --ocr use, {OCR_DOWNLOAD_SIZE}")
     return parser.parse_args(arguments)

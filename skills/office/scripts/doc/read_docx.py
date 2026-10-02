@@ -11,8 +11,8 @@ from doc.docx_package import open_document
 from doc.docx_reference_operations import bookmark_names, describe_notes
 from doc.docx_revisions import collect_revisions
 from doc.docx_text import visible_text
-from core.office_inputs import office_file
-from core.office_result import OfficeArgumentParser, Result, run_command
+from core.office_arguments import route_arguments
+from core.office_result import Result, run_command
 
 
 MATH_TAG = "{http://schemas.openxmlformats.org/officeDocument/2006/math}oMath"
@@ -23,7 +23,7 @@ TEXT_CHARACTER_LIMIT = 4000
 
 def main() -> Result:
     arguments = parse_arguments()
-    document = open_document(arguments.document_path)
+    document = open_document(arguments.file)
     elements = body_block_elements(document)
     shown = elements[arguments.start:arguments.start + arguments.limit]
     blocks = [describe_block(element, document, arguments.start + offset) for offset, element in enumerate(shown)]
@@ -51,7 +51,7 @@ def main() -> Result:
     details["revisionCount"] = len(revisions)
     if arguments.revisions:
         details["revisions"] = [revision.to_json() for revision in revisions]
-    return Result(summary=f"read {len(blocks)} of {len(elements)} blocks from {arguments.document_path}", output_path=arguments.document_path, details=details)
+    return Result(summary=f"read {len(blocks)} of {len(elements)} blocks from {arguments.file}", output_path=arguments.file, details=details)
 
 
 def style_names(document, style_type) -> list[str]:
@@ -124,13 +124,7 @@ def limited(text: str) -> str:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser()
-    parser.add_argument("document_path", type=office_file("docx"))
-    parser.add_argument("--start", type=int, default=0, help="first block index to show")
-    parser.add_argument("--revisions", action="store_true", help="list every tracked change with its id, type, author, date, block and text")
-    parser.add_argument("--limit", type=int, default=DEFAULT_BLOCK_LIMIT, help=f"most blocks to show, default {DEFAULT_BLOCK_LIMIT}")
-    parser.add_argument("--styles", action="store_true", help="also list every paragraph and table style name the document defines")
-    return parser.parse_args()
+    return route_arguments("read", "docx", start=0, limit=DEFAULT_BLOCK_LIMIT)
 
 
 if __name__ == "__main__":

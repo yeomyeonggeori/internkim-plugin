@@ -77,14 +77,14 @@ class HostWithoutFontsTest(unittest.TestCase):
 
     def test_a_deck_draws_korean_with_bundled_fonts(self):
         (self.directory / "slides.html").write_text(DECK_SOURCE, encoding="utf-8")
-        envelope = self.run_office("deck", "build", "--format", "pdf")
+        envelope = self.run_office("create", "build/deck.pdf", "slides.html")
         self.assert_bundled_pdf(self.directory / envelope["outputPath"], KOREAN_TEXT)
 
     def test_a_document_draws_korean_with_bundled_fonts(self):
         document = Document()
         document.add_paragraph(KOREAN_TEXT)
         document.save(self.directory / "문서.docx")
-        envelope = self.run_office("doc", "render", "문서.docx")
+        envelope = self.run_office("render", "문서.docx")
         self.assert_bundled_preview(envelope)
         self.assert_bundled_pdf(self.directory / envelope["details"]["pdf"], KOREAN_TEXT)
 
@@ -92,12 +92,13 @@ class HostWithoutFontsTest(unittest.TestCase):
         workbook = Workbook()
         workbook.active["A1"] = KOREAN_TEXT
         workbook.save(self.directory / "표.xlsx")
-        envelope = self.run_office("sheet", "render", "표.xlsx")
+        envelope = self.run_office("render", "표.xlsx")
         self.assert_bundled_preview(envelope)
         self.assert_bundled_pdf(self.directory / envelope["details"]["pdf"], KOREAN_TEXT)
 
     def test_pdf_create_draws_korean_with_bundled_fonts(self):
-        envelope = self.run_office("pdf", "create", "보고서.pdf", "--title", KOREAN_TEXT, "--paragraph", "본문 문장입니다.")
+        (self.directory / "spec.json").write_text(json.dumps({"title": KOREAN_TEXT, "sections": [{"paragraphs": ["본문 문장입니다."]}]}, ensure_ascii=False), encoding="utf-8")
+        envelope = self.run_office("create", "보고서.pdf", "spec.json")
         self.assert_bundled_pdf(self.directory / "보고서.pdf", KOREAN_TEXT)
         self.assertEqual(envelope["status"], "ok")
 

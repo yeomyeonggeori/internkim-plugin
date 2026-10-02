@@ -105,7 +105,7 @@ section { width: 1600px; height: 900px; box-sizing: border-box; padding: 80px; b
 
 def build(directory: Path, source: str, output_format: str) -> dict:
     (directory / "slides.html").write_text(source, encoding="utf-8")
-    completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", output_format], capture_output=True, text=True, cwd=directory)
+    completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.{output_format}", "slides.html"], capture_output=True, text=True, cwd=directory)
     return json.loads(completed.stdout)
 
 
@@ -161,8 +161,9 @@ class BalancedKitTest(unittest.TestCase):
         cls.directory = tempfile.TemporaryDirectory()
         cls.deck_path = Path(cls.directory.name) / "balance"
         cls.deck_path.mkdir()
-        cls.envelope = build(cls.deck_path, BALANCED_DECK, "all")
+        build(cls.deck_path, BALANCED_DECK, "pptx")
         cls.layout = json.loads((cls.deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
+        cls.envelope = build(cls.deck_path, BALANCED_DECK, "pdf")
 
     @classmethod
     def tearDownClass(cls):

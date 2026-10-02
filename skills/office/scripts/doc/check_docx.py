@@ -11,12 +11,13 @@ from doc.docx_content_checks import chart_empty_issues, field_result_issues, hea
 from doc.docx_defaults import KOREAN_LANGUAGE
 from doc.docx_language import east_asia_font_issues, effective_east_asia_language
 from doc.docx_package import open_document
+from doc.docx_quality_checks import quality_findings
 from doc.docx_page_checks import stranded_heading_issues
 from doc.docx_reference_operations import bookmark_names
 from doc.docx_revisions import collect_revisions, describe_pending
 from doc.docx_blocks import PARAGRAPH_TAG, body_block_elements, element_text, heading_level
-from core.office_inputs import office_file
-from core.office_result import VALUE_FILL_IN, Issue, OfficeArgumentParser, Result, run_command
+from core.office_arguments import route_arguments
+from core.office_result import VALUE_FILL_IN, Issue, Result, run_command
 from core.text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
 from core.text_script import has_hangul
 
@@ -28,10 +29,16 @@ CONTENTS_HEADING_DEPTH = 3
 
 
 def main() -> Result:
-    arguments = parse_arguments()
-    document = open_document(arguments.document_path)
+    arguments = route_arguments("check", "docx")
+    document = open_document(arguments.file)
+    quality_issues, details = quality_findings(document, arguments.required_text, arguments.forbidden_text)
+    issues = distinct(content_issues(document, arguments.file) + quality_issues)
+    return Result(summary=f"checked {arguments.file}: {len(issues)} issues", output_path=arguments.file, issues=tuple(issues), details=details)
+
+
+def content_issues(document, document_path: str) -> list[Issue]:
     elements = body_block_elements(document)
-    issues = (
+    return (
         placeholder_issues(elements)
         + part_placeholder_issues(document)
         + reference_issues(document, elements)
@@ -44,9 +51,12 @@ def main() -> Result:
         + heading_issues(document, elements)
         + unresolved_comment_issues(document, elements)
         + field_result_issues(elements, fields_update_on_open(document))
-        + stranded_heading_issues(arguments.document_path)
+        + stranded_heading_issues(document_path)
     )
-    return Result(summary=f"checked {arguments.document_path}: {len(issues)} issues", output_path=arguments.document_path, issues=tuple(issues))
+
+
+def distinct(issues: list[Issue]) -> list[Issue]:
+    return list({(issue.kind.code, issue.message, issue.location): issue for issue in issues}.values())
 
 
 def placeholder_issues(elements: list) -> list[Issue]:
@@ -165,11 +175,6 @@ def tracked_change_issues(document, elements: list) -> list[Issue]:
         return []
     return [TRACKED_CHANGES_PRESENT.issue(f"the document holds tracked changes: {describe_pending(revisions)}", "document")]
 
-
-def parse_arguments():
-    parser = OfficeArgumentParser()
-    parser.add_argument("document_path", type=office_file("docx"))
-    return parser.parse_args()
 
 
 if __name__ == "__main__":

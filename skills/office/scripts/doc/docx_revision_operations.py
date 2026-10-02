@@ -32,11 +32,11 @@ def select_revisions(editing: DocxEditing, operation: dict, location: str) -> li
         raise OfficeFailure(MISSING_FIELD.issue(f"{location}: give all: true, ids, author, type, or block", location))
     revisions = collect_revisions(editing.document.element.body, editing.elements)
     if not revisions:
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}: the document has no tracked changes", location, suggestion="doc read --revisions lists them"))
+        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}: the document has no tracked changes", location, suggestion="office read --revisions lists them"))
     require_known_ids(revisions, operation.get("ids") or [], location)
     selected = [revision for revision in revisions if matches(revision, operation)]
     if not selected:
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}: no tracked change matches; {describe_pending(revisions)}", location, suggestion="doc read --revisions lists every id, author and type"))
+        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}: no tracked change matches; {describe_pending(revisions)}", location, suggestion="office read --revisions lists every id, author and type"))
     return selected
 
 
@@ -44,7 +44,7 @@ def require_known_ids(revisions: list[Revision], identifiers: list[str], locatio
     known = {revision.identifier for revision in revisions}
     unknown = [identifier for identifier in identifiers if identifier not in known]
     if unknown:
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.ids: {', '.join(unknown)} do not exist; ids run r1-r{len(revisions)}", f"{location}.ids", suggestion=f"use ids from doc read --revisions: r1-r{len(revisions)}"))
+        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.ids: {', '.join(unknown)} do not exist; ids run r1-r{len(revisions)}", f"{location}.ids", suggestion=f"use ids from office read --revisions: r1-r{len(revisions)}"))
 
 
 def matches(revision: Revision, operation: dict) -> bool:

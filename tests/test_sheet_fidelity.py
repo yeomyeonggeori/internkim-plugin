@@ -77,8 +77,7 @@ class RoundTripTest(WorkbookFixture):
         self.assertIn("<xm:sqref>F6</xm:sqref>", package(self.directory / "rich.xlsx")[data_part].decode())
 
     def test_appending_rows_keeps_the_same_content(self):
-        write_json(self.directory / "rows.json", [["r9", 1, 2, 3]])
-        envelope = run_office(["sheet", "edit", "rich.xlsx", "--sheet", "Data", "--rows", "rows.json"], self.directory)
+        envelope = self.apply([{"op": "append_rows", "sheet": "Data", "rows": [["r9", 1, 2, 3]]}], name="rich.xlsx")
         self.assertEqual(envelope["status"], "ok", envelope)
         self.assertIn(SPARKLINE_URI, self.sheet_xml())
 

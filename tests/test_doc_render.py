@@ -62,7 +62,7 @@ class DocumentPreviewTest(unittest.TestCase):
         cls.temporary_directory = tempfile.TemporaryDirectory()
         cls.directory = Path(cls.temporary_directory.name)
         run_office_python(REPORT, cls.directory)
-        cls.envelope = run_office(["doc", "render", "보고서.docx"], cls.directory)
+        cls.envelope = run_office(["render", "보고서.docx"], cls.directory)
         cls.html = (cls.directory / "보고서-preview" / "preview.html").read_text(encoding="utf-8")
         cls.pages = page_sections(cls.html)
 
@@ -153,7 +153,7 @@ class PreviewDefectTest(unittest.TestCase):
         cls.temporary_directory = tempfile.TemporaryDirectory()
         cls.directory = Path(cls.temporary_directory.name)
         run_office_python(GRIDLESS_TABLE_AND_BLANK_PAGE, cls.directory)
-        cls.envelope = run_office(["doc", "render", "빈쪽.docx"], cls.directory)
+        cls.envelope = run_office(["render", "빈쪽.docx"], cls.directory)
         cls.html = (cls.directory / "빈쪽-preview" / "preview.html").read_text(encoding="utf-8")
 
     @classmethod
@@ -190,13 +190,13 @@ class WatermarkAndPageNumberingTest(unittest.TestCase):
         run_office_python(TWO_SECTIONS_AND_A_LOGO, cls.directory)
         cls.apply([{"op": "set_footer", "text": "- {PAGE} -", "align": "center"}, {"op": "insert_section_break", "after": 2}])
         cls.apply([{"op": "set_page_setup", "section": 1, "pageNumberStart": 7}, {"op": "set_watermark", "image": "logo.png"}])
-        cls.envelope = run_office(["doc", "render", "구역.docx"], cls.directory)
+        cls.envelope = run_office(["render", "구역.docx"], cls.directory)
         cls.pages = page_sections((cls.directory / "구역-preview" / "preview.html").read_text(encoding="utf-8"))
 
     @classmethod
     def apply(cls, operations):
         (cls.directory / "ops.json").write_text(json.dumps(operations, ensure_ascii=False), encoding="utf-8")
-        envelope = run_office(["doc", "apply", "구역.docx", "ops.json"], cls.directory)
+        envelope = run_office(["apply", "구역.docx", "ops.json"], cls.directory)
         assert envelope["status"] == "ok", envelope
 
     @classmethod
@@ -217,9 +217,9 @@ class WatermarkAndPageNumberingTest(unittest.TestCase):
 
     def test_a_picture_watermark_keeps_its_colors_without_washout_and_takes_a_scale(self):
         (self.directory / "plain.json").write_text(json.dumps([{"op": "set_watermark", "image": "logo.png", "washout": False, "scale": 50}]), encoding="utf-8")
-        envelope = run_office(["doc", "apply", "구역.docx", "plain.json", "--output", "원색.docx"], self.directory)
+        envelope = run_office(["apply", "구역.docx", "plain.json", "--output", "원색.docx"], self.directory)
         self.assertEqual(envelope["status"], "ok", envelope["issues"])
-        run_office(["doc", "render", "원색.docx"], self.directory)
+        run_office(["render", "원색.docx"], self.directory)
         _, _, body = page_sections((self.directory / "원색-preview" / "preview.html").read_text(encoding="utf-8"))[0]
         source = re.search(r'<img src="data:image/png;base64,([^"]+)" style="([^"]*)"', body)
         self.assertEqual(washed_pixel(source.group(1)), (29, 78, 216))
@@ -227,7 +227,7 @@ class WatermarkAndPageNumberingTest(unittest.TestCase):
 
     def test_a_watermark_takes_text_or_an_image_but_not_both(self):
         (self.directory / "both.json").write_text(json.dumps([{"op": "set_watermark", "text": "대외비", "image": "logo.png"}]), encoding="utf-8")
-        envelope = run_office(["doc", "apply", "구역.docx", "both.json", "--dry-run"], self.directory)
+        envelope = run_office(["apply", "구역.docx", "both.json", "--dry-run"], self.directory)
         self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("INVALID_VALUE", "ops[0]")])
 
 
@@ -267,17 +267,17 @@ class PaginationTest(unittest.TestCase):
         self.directory = Path(self.temporary_directory.name)
 
     def page_texts(self, name):
-        run_office(["doc", "render", name], self.directory)
+        run_office(["render", name], self.directory)
         html = (self.directory / f"{Path(name).stem}-preview" / "preview.html").read_text(encoding="utf-8")
         return [re.sub(r"<[^>]+>", "", body) for _, _, body in page_sections(html)]
 
     def test_a_heading_left_at_a_page_bottom_is_reported_with_keep_with_next_as_its_fix(self):
         run_office_python(STRANDED_HEADING, self.directory)
-        issues = [issue for issue in run_office(["doc", "check", "떨어진제목.docx"], self.directory)["issues"] if issue["code"] == "HEADING_STRANDED"]
+        issues = [issue for issue in run_office(["check", "떨어진제목.docx"], self.directory)["issues"] if issue["code"] == "HEADING_STRANDED"]
         self.assertEqual([(issue["location"], issue["fix"]) for issue in issues], [("block 24", [{"op": "set_paragraph_format", "block": 24, "keepWithNext": True}])])
         (self.directory / "fix.json").write_text(json.dumps(issues[0]["fix"]), encoding="utf-8")
-        self.assertEqual(run_office(["doc", "apply", "떨어진제목.docx", "fix.json"], self.directory)["status"], "ok")
-        self.assertNotIn("HEADING_STRANDED", [issue["code"] for issue in run_office(["doc", "check", "떨어진제목.docx"], self.directory)["issues"]])
+        self.assertEqual(run_office(["apply", "떨어진제목.docx", "fix.json"], self.directory)["status"], "ok")
+        self.assertNotIn("HEADING_STRANDED", [issue["code"] for issue in run_office(["check", "떨어진제목.docx"], self.directory)["issues"]])
         pages = self.page_texts("떨어진제목.docx")
         self.assertIn("다음 단계", pages[1])
         self.assertNotIn("다음 단계", pages[0])

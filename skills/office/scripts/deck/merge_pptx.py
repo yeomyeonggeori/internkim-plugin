@@ -7,9 +7,9 @@ import zipfile
 
 from lxml import etree
 
+from core.office_arguments import route_arguments
 from core.office_operations import save_atomically
-from core.office_inputs import office_file
-from core.office_result import OfficeArgumentParser, Result, read_json_file, run_command
+from core.office_result import Result, read_json_file, run_command
 from core.office_schema import require_valid
 from core.template_merge import MERGE_VALUES, MergeReport, TextMarkup, fill_markup_part, write_package
 from core.office_outputs import same_kind_output
@@ -23,13 +23,13 @@ DRAWING_MARKUP = TextMarkup(f"{{{DRAWING_NAMESPACE}}}tr", f"{{{DRAWING_NAMESPACE
 
 def main() -> Result:
     arguments = parse_arguments()
-    values = read_json_file(arguments.values_path)
+    values = read_json_file(arguments.values)
     require_valid(MERGE_VALUES, values, "values")
-    template_path = os.path.expanduser(arguments.template_path)
+    template_path = os.path.expanduser(arguments.template)
     report = MergeReport(values)
     parts = merged_parts(template_path, report)
     report.require_complete()
-    output_path = os.path.expanduser(same_kind_output(arguments.output_path, arguments.template_path))
+    output_path = os.path.expanduser(same_kind_output(arguments.output, arguments.template))
     save_atomically(lambda path: write_package(template_path, parts, path), output_path)
     return Result(summary=f"filled {report.filled} placeholders into {output_path}", output_path=output_path, issues=report.unused_issues(), details={"placeholders": sorted(report.placeholder_names)})
 
@@ -66,11 +66,7 @@ def drawing(tag: str) -> str:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser()
-    parser.add_argument("template_path", type=office_file("pptx"), help="the .pptx template")
-    parser.add_argument("values_path", help="JSON object mapping each placeholder name to its value")
-    parser.add_argument("output_path", help="the filled .pptx to write")
-    return parser.parse_args()
+    return route_arguments("merge", "pptx")
 
 
 if __name__ == "__main__":

@@ -36,7 +36,7 @@ def crowded_deck(row_count: int, sentence_count: int) -> str:
 
 def build(directory: Path, source: str) -> dict:
     (directory / "slides.html").write_text(source, encoding="utf-8")
-    completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build"], capture_output=True, text=True, cwd=directory)
+    completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.pdf", "slides.html"], capture_output=True, text=True, cwd=directory)
     return json.loads(completed.stdout)
 
 
@@ -90,7 +90,7 @@ class KitAdviceTest(unittest.TestCase):
         self.assertEqual((unplaced.suggestion, unplaced.fix), (OUT_OF_FRAME.kind.suggestion, ()))
 
     def test_the_guide_names_kit_actions_for_layout_defects(self):
-        guide = subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", "deck", "build"], capture_output=True, text=True, check=True).stdout
+        guide = subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", "create", "slides"], capture_output=True, text=True, check=True).stdout
         fix_of = {code: fix for code, fix in re.findall(r"^\s+([A-Z_]+) \(\w+\): .*?Fix: (.*)$", guide, re.MULTILINE)}
         self.assertIn("cover or image slide", fix_of["IMAGE_DISTORTED"])
         self.assertIn("how many rows, items or characters fit", fix_of["CONTENT_OVERFLOW"])

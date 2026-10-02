@@ -155,7 +155,7 @@ def anchored_runs(paragraph_element, find: str, operation: dict, location: str) 
     text = "".join(run_text(run) for run in live_runs(paragraph_element))
     start = text.find(find)
     if start < 0:
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.find: {find!r} does not occur in block {operation['block']}", f"{location}.find", suggestion=f"copy the exact text from doc read: {text[:120]!r}"))
+        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.find: {find!r} does not occur in block {operation['block']}", f"{location}.find", suggestion=f"copy the exact text from office read: {text[:120]!r}"))
     split_runs_at(paragraph_element, (start, start + len(find)))
     return runs_between(paragraph_element, start, start + len(find))
 

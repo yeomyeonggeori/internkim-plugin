@@ -11,7 +11,7 @@ MONTHS = [["month", "sales", "margin"], ["Jan", 120, 0.21], ["Feb", 150, 0.24], 
 
 class RenderedPagesTest(WorkbookFixture):
     def render(self):
-        envelope = run_office(["sheet", "render", "book.xlsx"], self.directory)
+        envelope = run_office(["render", "book.xlsx"], self.directory)
         self.assertNotEqual(envelope["status"], "error", envelope)
         return envelope, (self.directory / "book-preview" / "preview.html").read_text(encoding="utf-8")
 
@@ -88,13 +88,13 @@ class RenderedPagesTest(WorkbookFixture):
         header = [f"항목{index}" for index in range(1, 13)]
         self.create_workbook([{"title": "넓은표", "rows": [header, list(range(1, 13))], "columnWidths": {letter: 18 for letter in "ABCDEFGHIJKL"}}])
         rendered, _ = self.render()
-        checked = run_office(["sheet", "check", "book.xlsx"], self.directory)
+        checked = run_office(["check", "book.xlsx"], self.directory)
         for envelope in (rendered, checked):
             issue = next(issue for issue in envelope["issues"] if issue["code"] == "SHEET_PRINTS_WIDE")
             self.assertEqual((issue["location"], issue["fix"]), ("넓은표", [{"op": "set_page_setup", "sheet": "넓은표", "fitToWidth": 1}]))
         self.assertNotIn("PREVIEW_APPROXIMATED", [issue["code"] for issue in rendered["issues"]])
         self.assertEqual(self.apply(issue["fix"])["status"], "ok")
-        self.assertNotIn("SHEET_PRINTS_WIDE", [issue["code"] for issue in run_office(["sheet", "check", "book.xlsx"], self.directory)["issues"]])
+        self.assertNotIn("SHEET_PRINTS_WIDE", [issue["code"] for issue in run_office(["check", "book.xlsx"], self.directory)["issues"]])
         self.assertEqual(self.render()[0]["details"]["pageCount"], 1)
 
     def test_a_width_the_author_spread_over_pages_is_left_alone(self):
@@ -106,7 +106,7 @@ class RenderedPagesTest(WorkbookFixture):
     def test_a_chart_cut_at_the_page_edge_is_offered_a_place_under_the_tables(self):
         self.create_workbook([{"title": "Sales", "rows": MONTHS}])
         self.apply([{"op": "add_chart", "type": "line", "range": "A1:B5", "anchor": "F2", "width": 20}])
-        issue = next(issue for issue in run_office(["sheet", "check", "book.xlsx"], self.directory)["issues"] if issue["code"] == "SHEET_PRINTS_WIDE")
+        issue = next(issue for issue in run_office(["check", "book.xlsx"], self.directory)["issues"] if issue["code"] == "SHEET_PRINTS_WIDE")
         self.assertIn('edit_chart "anchor": "A7"', issue["suggestion"])
 
     def test_fit_to_one_page_tall_and_printed_gridlines_shape_the_pages(self):
@@ -143,7 +143,7 @@ class PercentChartTest(WorkbookFixture):
         self.assertIn('<showVal val="1"/>', columns)
         self.assertIn('<showCatName val="1"/><showSerName val="0"/><showPercent val="1"/>', self.chart_xml(2))
         self.assertIn('<grouping val="percentStacked"/>', self.chart_xml(3))
-        run_office(["sheet", "render", "book.xlsx"], self.directory)
+        run_office(["render", "book.xlsx"], self.directory)
         svgs = re.findall(r"<svg.*?</svg>", (self.directory / "book-preview" / "preview.html").read_text(encoding="utf-8"), flags=re.DOTALL)
         heights = [float(height) for height in re.findall(r'<rect x="[\d.]+" y="[\d.]+" width="[\d.]+" height="([\d.]+)" fill="#', svgs[0])[1:]]
         self.assertAlmostEqual(heights[0] + heights[3], heights[1] + heights[4], delta=0.2)
@@ -180,7 +180,7 @@ class StyleRuleTest(WorkbookFixture):
         rules = [rule for formatting in sheet.conditional_formatting for rule in formatting.rules]
         self.assertEqual([rule.type for rule in rules], ["beginsWith", "endsWith", "containsBlanks", "colorScale"])
         self.assertEqual([(cfvo.type, cfvo.val) for cfvo in rules[3].colorScale.cfvo], [("num", 0.0), ("num", 50.0), ("num", 100.0)])
-        run_office(["sheet", "render", "book.xlsx"], self.directory)
+        run_office(["render", "book.xlsx"], self.directory)
         compact = (self.directory / "book-preview" / "preview.html").read_text(encoding="utf-8").replace(": ", ":")
         for drawn in ("text-decoration:line-through;display:inline-block;transform:rotate(-45deg)", "rotate(30deg)", "background:#95b3d7", "background:#c6efce", "background:#ffeb9c", "background:#d9d9d9", "background:#fee1e1"):
             with self.subTest(drawn=drawn):

@@ -11,7 +11,6 @@ from sheet.workbook_access import cell_rows, column_index, formula_text, json_va
 from sheet.workbook_values import EXCEL_ERROR_CODES
 
 
-WHERE_KINDS = ("formula", "error", "number", "text", "empty")
 GENERAL = "General"
 STAT_DIGITS = 10
 
@@ -23,13 +22,13 @@ def selected_columns(text: str | None, bounds: tuple[int, int, int, int]) -> lis
     offsets = []
     for piece in text.split(","):
         first, _, last = piece.strip().partition(":")
-        start, end = column_index(first, "--cols"), column_index(last or first, "--cols")
+        start, end = column_index(first, "--columns"), column_index(last or first, "--columns")
         if start > end:
-            raise OfficeFailure(INVALID_VALUE.issue(f"--cols: {piece.strip()!r} runs from right to left, so it names no column", "--cols", f"write it left to right: {get_column_letter(end)}:{get_column_letter(start)}"))
+            raise OfficeFailure(INVALID_VALUE.issue(f"--columns: {piece.strip()!r} runs from right to left, so it names no column", "--columns", f"write it left to right: {get_column_letter(end)}:{get_column_letter(start)}"))
         offsets.extend(range(start - bounds[1], end - bounds[1] + 1))
     outside = [offset for offset in offsets if not 0 <= offset < width]
     if outside:
-        raise OfficeFailure(INVALID_VALUE.issue(f"--cols: {text!r} reaches outside the range's columns {get_column_letter(bounds[1])} to {get_column_letter(bounds[3])}", "--cols"))
+        raise OfficeFailure(INVALID_VALUE.issue(f"--columns: {text!r} reaches outside the range's columns {get_column_letter(bounds[1])} to {get_column_letter(bounds[3])}", "--columns"))
     return offsets
 
 

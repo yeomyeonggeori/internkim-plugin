@@ -13,21 +13,21 @@ from core.units import millimetres_to_pixels
 from doc.block_writers import file_data_uri
 from doc.document_pdf import DocumentFonts, covering_fonts, draw
 from paperwork.paperwork_design import COLOR_BORDER, COLOR_HEADER_FILL, COLOR_INK, COLOR_MUTED, COLOR_RULE, PDF_PAGE_MARGIN_MILLIMETERS, SIZE_BODY, SIZE_FOOTER, SIZE_LETTERHEAD_DETAIL, SIZE_LETTERHEAD_NAME, SIZE_TITLE
+from paperwork.jurisdictions import Jurisdiction, Labels
 from render.renderer import DocumentPdfRequest, FontFile, render_document_pdf as render_pdf
 
 
 CSS_TEMPLATE_PATH = Path(__file__).with_name("paperwork.css")
 BOTTOM_MARGIN_MILLIMETERS = 20.0
 ALIGNMENTS = {"L": "align-left", "C": "align-center", "R": "align-right"}
-SEAL_MARK = "(인)"
 
 
-def render_paperwork_pdf(document: dict, output_path: Path) -> list[Issue]:
+def render_paperwork_pdf(document: dict, jurisdiction: Jurisdiction, output_path: Path) -> list[Issue]:
     issues: list[Issue] = []
     font_path = str(document.get("fontPath", "")).strip()
     fonts = covering_fonts(DocumentFonts(Path(font_path) if font_path else None), json.dumps(document, ensure_ascii=False), issues)
     footer_text = text_of(document.get("footer"))
-    draw(output_path, lambda drawn_path: render_numbering_only_when_paged(paperwork_html(document), drawn_path, text_of(document["title"]), fonts, footer_text))
+    draw(output_path, lambda drawn_path: render_numbering_only_when_paged(paperwork_html(document, jurisdiction), drawn_path, text_of(document["title"]), fonts, footer_text))
     return issues
 
 
@@ -86,20 +86,21 @@ def hex_color(color: tuple[int, int, int]) -> str:
     return "#" + "".join(f"{channel:02X}" for channel in color)
 
 
-def paperwork_html(document: dict) -> str:
+def paperwork_html(document: dict, jurisdiction: Jurisdiction) -> str:
     profile = document.get("profile", {})
+    labels = jurisdiction.labels
     parts = (
-        letterhead_html(profile),
+        letterhead_html(profile, labels),
         approval_html(document.get("approvalLine") or []),
-        title_html(document),
-        recipient_html(document.get("recipient")),
+        title_html(document, labels),
+        recipient_html(document.get("recipient"), labels),
         meta_html(document.get("meta") or []),
         items_html(document.get("items")),
         "".join(section_html(section) for section in document.get("sections") or []),
         notes_html(document.get("notes") or []),
-        signature_html(document.get("signature"), profile),
+        signature_html(document.get("signature"), profile, labels),
     )
-    return '<div class="page">' + "\n".join(part for part in parts if part) + "</div>"
+    return f'<div class="page" lang="{jurisdiction.language}">' + "\n".join(part for part in parts if part) + "</div>"
 
 
 def text_of(value: object) -> str:
@@ -121,31 +122,31 @@ def company_display_name(profile: dict) -> str:
     return text_of(profile.get("name") or profile.get("companyName")) if isinstance(profile, dict) else ""
 
 
-def letterhead_html(profile: dict) -> str:
-    details = "".join(f'<p class="detail">{html.escape(line)}</p>' for line in letterhead_detail_lines(profile))
+def letterhead_html(profile: dict, labels: Labels) -> str:
+    details = "".join(f'<p class="detail">{html.escape(line)}</p>' for line in letterhead_detail_lines(profile, labels))
     company = f'<div class="company"><p class="name">{html.escape(company_display_name(profile))}</p>{details}</div>'
     return f'<header class="letterhead">{image_html(profile.get("logoPath"), "logo")}{company}</header>'
 
 
-def letterhead_detail_lines(profile: dict) -> list[str]:
-    identity = [*legal_identity(profile), *representative_identity(profile)]
+def letterhead_detail_lines(profile: dict, labels: Labels) -> list[str]:
+    identity = [*legal_identity(profile, labels), *representative_identity(profile, labels)]
     contact = "  ".join(part for part in (text_of(profile.get(field)) for field in ("phone", "email", "website")) if part)
     return [line for line in ("  ".join(identity), text_of(profile.get("address")), contact) if line]
 
 
-def legal_identity(profile: dict) -> list[str]:
+def legal_identity(profile: dict, labels: Labels) -> list[str]:
     attributes = profile.get("legalAttributes")
     pairs = [(text_of(attribute.get("label")), text_of(attribute.get("value"))) for attribute in (attributes if isinstance(attributes, list) else [])[:2] if isinstance(attribute, dict)]
     labeled = [f"{label} {value}" for label, value in pairs if label and value]
     registration = text_of(profile.get("registrationNumber"))
-    return labeled or ([f"사업자등록번호 {registration}"] if registration else [])
+    return labeled or ([f"{labels.registration_number} {registration}"] if registration else [])
 
 
-def representative_identity(profile: dict) -> list[str]:
+def representative_identity(profile: dict, labels: Labels) -> list[str]:
     representative = text_of(profile.get("representative"))
     if not representative:
         return []
-    return [f"{text_of(profile.get('representativeTitle')) or '대표'} {representative}"]
+    return [f"{text_of(profile.get('representativeTitle')) or labels.representative_title} {representative}"]
 
 
 def approval_html(labels: list) -> str:
@@ -156,17 +157,17 @@ def approval_html(labels: list) -> str:
     return f'<div class="approval"><table><tr>{headers}</tr><tr>{boxes}</tr></table></div>'
 
 
-def title_html(document: dict) -> str:
+def title_html(document: dict, labels: Labels) -> str:
     number = text_of(document.get("documentNumber"))
-    number_line = f'<p class="document-number">문서번호 {html.escape(number)}</p>' if number else ""
+    number_line = f'<p class="document-number">{html.escape(labels.document_number)} {html.escape(number)}</p>' if number else ""
     return f'<div class="title-block"><h1>{escaped(document["title"])}</h1>{number_line}</div>'
 
 
-def recipient_html(recipient: object) -> str:
+def recipient_html(recipient: object, labels: Labels) -> str:
     if not isinstance(recipient, dict) or not recipient.get("lines"):
         return ""
     lines = "".join(f'<p class="line">{escaped(line)}</p>' for line in recipient["lines"])
-    return f'<div class="recipient"><p class="label">{escaped(recipient.get("label", "수신")) or "수신"}</p>{lines}</div>'
+    return f'<div class="recipient"><p class="label">{escaped(recipient.get("label")) or html.escape(labels.recipient)}</p>{lines}</div>'
 
 
 def meta_html(rows: list) -> str:
@@ -220,12 +221,13 @@ def notes_html(notes: list) -> str:
     return f'<div class="notes">{"".join(f"<p>{escaped(note)}</p>" for note in notes)}</div>' if notes else ""
 
 
-def signature_html(signature: object, profile: dict) -> str:
+def signature_html(signature: object, profile: dict, labels: Labels) -> str:
     if not isinstance(signature, dict):
         return ""
     date = text_of(signature.get("date"))
     date_line = f'<p class="date">{html.escape(date)}</p>' if date else ""
     line = text_of(signature.get("line"))
     stamp = image_html(profile.get("stampPath"), "stamp") if signature.get("stamp") and isinstance(profile, dict) else ""
-    signer = f'<div class="signer"><span>{html.escape(line)}</span><span class="seal">{SEAL_MARK}{stamp}</span></div>' if line else ""
+    seal = f'<span class="seal">{html.escape(labels.seal_mark)}{stamp}</span>' if labels.seal_mark or stamp else ""
+    signer = f'<div class="signer"><span>{html.escape(line)}</span>{seal}</div>' if line else ""
     return f'<div class="signature">{date_line}{signer}</div>'

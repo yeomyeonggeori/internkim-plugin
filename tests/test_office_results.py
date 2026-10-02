@@ -15,15 +15,14 @@ OFFICE_ENTRY = SCRIPTS_PATH / "office"
 
 sys.path.insert(0, str(SCRIPTS_PATH))
 
-from core.office_commands import COMMANDS, FORMATS  # noqa: E402
-from office_guide import guide_text  # noqa: E402
+from core.office_commands import VERBS, definitions_modules  # noqa: E402
 from core.office_result import COMMAND_ISSUE_KINDS, IssueKind, command_result  # noqa: E402
 from core.office_schema import CellValue, Field, ListOf, Number, Record, Text, Variant  # noqa: E402
 from render_fixture import bare_environment, can_render  # noqa: E402
 
 
-def load_definitions(office_format):
-    return importlib.import_module(office_format.definitions_module)
+def every_definitions():
+    return [importlib.import_module(name) for name in definitions_modules()]
 
 
 def defined_issue_kinds(module):
@@ -45,8 +44,8 @@ def run_office(arguments, working_directory):
 
 def all_known_codes():
     codes = {kind.code for kind in COMMAND_ISSUE_KINDS}
-    for office_format in FORMATS:
-        codes.update(kind.code for kind in defined_issue_kinds(load_definitions(office_format)))
+    for definitions in every_definitions():
+        codes.update(kind.code for kind in defined_issue_kinds(definitions))
     return codes
 
 
@@ -54,9 +53,9 @@ class ResultEnvelopeTest(unittest.TestCase):
     def test_every_command_answers_a_bad_call_with_the_envelope(self):
         known_codes = all_known_codes()
         with tempfile.TemporaryDirectory() as working_directory:
-            for command in COMMANDS:
-                with self.subTest(command=command.name):
-                    completed, envelope = run_office([command.format_name, command.verb], working_directory)
+            for verb in VERBS:
+                with self.subTest(verb=verb.name):
+                    completed, envelope = run_office([verb.name], working_directory)
                     self.assertEqual(set(envelope), {"status", "summary", "outputPath", "issues"})
                     self.assertEqual(envelope["status"], "error")
                     self.assertEqual(completed.returncode, 1)
@@ -88,23 +87,34 @@ class ResultEnvelopeTest(unittest.TestCase):
 
     def test_an_unknown_command_is_an_issue(self):
         with tempfile.TemporaryDirectory() as working_directory:
-            _, envelope = run_office(["doc", "shred"], working_directory)
-            _, retired = run_office(["deck", "validate", "slides.html"], working_directory)
+            _, envelope = run_office(["shred", "book.xlsx"], working_directory)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["UNKNOWN_COMMAND"])
-        self.assertIn("deck check", retired["issues"][0]["suggestion"])
+
+    def test_a_retired_command_names_the_command_that_replaced_it(self):
+        cases = {
+            ("deck", "build", "--format", "pptx", "--name", "review"): "office create build/review.pptx slides.html",
+            ("sheet", "validate", "book.xlsx"): "office check book.xlsx",
+            ("paperwork", "fill", "nda", "values.json", "nda.docx"): "office merge kr/nda values.json nda.docx",
+            ("doc", "export", "report.md", "--output", "report.pdf"): "office create report.pdf report.md",
+            ("deck", "restore", "deck.html", "slides.html"): "office convert deck.html slides.html",
+        }
+        with tempfile.TemporaryDirectory() as working_directory:
+            for arguments, replacement in cases.items():
+                with self.subTest(arguments=arguments[:2]):
+                    completed, envelope = run_office(list(arguments), working_directory)
+                    self.assertEqual(completed.returncode, 1)
+                    self.assertEqual([issue["code"] for issue in envelope["issues"]], ["UNKNOWN_COMMAND"])
+                    self.assertEqual(envelope["issues"][0]["suggestion"], replacement)
 
     def test_a_mistyped_format_or_verb_names_the_command_it_meant(self):
         with tempfile.TemporaryDirectory() as working_directory:
-            _, format_typo = run_office(["dek", "build"], working_directory)
-            _, verb_typo = run_office(["deck", "biuld"], working_directory)
-        for envelope in (format_typo, verb_typo):
-            self.assertEqual(envelope["status"], "error")
-            self.assertEqual(envelope["issues"][0]["code"], "UNKNOWN_COMMAND")
-            self.assertIn("office deck build", envelope["issues"][0]["suggestion"])
+            _, envelope = run_office(["crete", "deck.pdf", "slides.html"], working_directory)
+        self.assertEqual(envelope["issues"][0]["code"], "UNKNOWN_COMMAND")
+        self.assertIn("office create", envelope["issues"][0]["suggestion"])
 
     def test_a_mistyped_flag_names_the_flag_it_meant(self):
         with tempfile.TemporaryDirectory() as working_directory:
-            completed, envelope = run_office(["deck", "build", "--slide-cont", "3"], working_directory)
+            completed, envelope = run_office(["create", "deck.pdf", "slides.html", "--slide-cont", "3"], working_directory)
         self.assertEqual(completed.returncode, 1)
         issue = envelope["issues"][0]
         self.assertEqual((issue["code"], issue["location"]), ("INVALID_ARGUMENTS", "--slide-cont"))
@@ -112,8 +122,8 @@ class ResultEnvelopeTest(unittest.TestCase):
 
     def test_issue_codes_are_unique(self):
         kinds = set(COMMAND_ISSUE_KINDS)
-        for office_format in FORMATS:
-            kinds.update(defined_issue_kinds(load_definitions(office_format)))
+        for definitions in every_definitions():
+            kinds.update(defined_issue_kinds(definitions))
         codes = [kind.code for kind in kinds]
         duplicates = sorted({code for code in codes if codes.count(code) > 1})
         self.assertEqual(duplicates, [])
@@ -131,12 +141,14 @@ class OutputPathTest(unittest.TestCase):
             (working_directory / "folder.xlsx").mkdir()
             (working_directory / "plain").write_text("not a folder", encoding="utf-8")
             (working_directory / "notes.md").write_text("# 제목\n\n본문\n", encoding="utf-8")
+            (working_directory / "notes.html").write_text("<h1>제목</h1>", encoding="utf-8")
+            (working_directory / "rows.csv").write_text("a,b\n", encoding="utf-8")
             long_name = "n" * 300
             cases = {
-                ("sheet", "create", "folder.xlsx", "--row", "a,b"): ("PATH_UNUSABLE", "folder.xlsx"),
-                ("sheet", "create", "plain/book.xlsx", "--row", "a,b"): ("PATH_UNUSABLE", "plain"),
-                ("doc", "export", "notes.md", "--output", "plain/notes.docx"): ("PATH_UNUSABLE", "plain"),
-                ("convert", "notes.md", f"{long_name}.docx"): ("PATH_UNUSABLE", f"{long_name}.docx"),
+                ("create", "folder.xlsx", "rows.csv"): ("PATH_UNUSABLE", "folder.xlsx"),
+                ("create", "plain/book.xlsx", "rows.csv"): ("PATH_UNUSABLE", "plain"),
+                ("create", "plain/notes.docx", "notes.md"): ("PATH_UNUSABLE", "plain"),
+                ("convert", "notes.html", f"{long_name}.docx"): ("PATH_UNUSABLE", f"{long_name}.docx"),
             }
             for arguments, expected in cases.items():
                 with self.subTest(arguments=arguments[:3]):
@@ -146,52 +158,57 @@ class OutputPathTest(unittest.TestCase):
     def test_a_drawn_pdf_whose_name_the_disk_refuses_is_one_envelope_naming_it(self):
         with tempfile.TemporaryDirectory() as directory:
             long_name = f"{'n' * 300}.pdf"
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "pdf", "create", long_name, "--title", "제목"], capture_output=True, text=True, cwd=directory)
+            (Path(directory) / "spec.json").write_text('{"title": "제목"}', encoding="utf-8")
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", long_name, "spec.json"], capture_output=True, text=True, cwd=directory)
             envelope = json.loads(completed.stdout)
             self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("PATH_UNUSABLE", long_name)])
-            self.assertEqual(list(Path(directory).iterdir()), [])
+            self.assertEqual([path.name for path in Path(directory).iterdir()], ["spec.json"])
 
     def test_an_output_whose_extension_names_another_format_is_refused_before_writing(self):
         with tempfile.TemporaryDirectory() as directory:
             working_directory = Path(directory)
+            (working_directory / "rows.csv").write_text("a,b\n", encoding="utf-8")
+            (working_directory / "notes.md").write_text("# 제목\n", encoding="utf-8")
             cases = {
-                ("sheet", "create", "표.csv", "--row", "a,b"): "표.xlsx",
-                ("pdf", "create", "보고서.docx", "--title", "제목"): "보고서.pdf",
-                ("doc", "create", "보고서.pdf", "--title", "제목", "--paragraph", "본문"): "보고서.docx",
-                ("deck", "image", "harbor cranes", "images/harbor.gif"): "images/harbor.jpg",
+                ("create", "표.docx", "rows.csv"): "표.xlsx",
+                ("create", "보고서.pptx", "notes.md"): "보고서.docx",
+                ("image", "harbor cranes", "images/harbor.gif"): "images/harbor.jpg",
             }
             for arguments, meant in cases.items():
                 with self.subTest(arguments=arguments[:3]):
                     completed, envelope = run_office(list(arguments), working_directory)
                     self.assertEqual([issue["code"] for issue in envelope["issues"]], ["WRONG_OUTPUT_FORMAT"])
                     self.assertIn(meant, envelope["issues"][0]["suggestion"])
-            self.assertEqual(sorted(path.name for path in working_directory.iterdir()), [])
+            self.assertEqual(sorted(path.name for path in working_directory.iterdir()), ["notes.md", "rows.csv"])
 
     def test_apply_and_merge_write_the_kind_of_file_they_read(self):
         with tempfile.TemporaryDirectory() as directory:
             working_directory = Path(directory)
-            self.assertEqual(run_office(["sheet", "create", "book.xlsx", "--row", "a,b"], working_directory)[1]["status"], "ok")
+            (working_directory / "rows.csv").write_text("a,b\n", encoding="utf-8")
+            self.assertEqual(run_office(["create", "book.xlsx", "rows.csv"], working_directory)[1]["status"], "ok")
             (working_directory / "ops.json").write_text('[{"op": "set_cell", "cell": "A2", "value": 1}]', encoding="utf-8")
             (working_directory / "values.json").write_text("{}", encoding="utf-8")
-            for arguments in (["sheet", "apply", "book.xlsx", "ops.json", "--output", "book.csv"], ["sheet", "merge", "book.xlsx", "values.json", "filled.pdf"]):
+            for arguments in (["apply", "book.xlsx", "ops.json", "--output", "book.csv"], ["merge", "book.xlsx", "values.json", "filled.pdf"]):
                 with self.subTest(command=arguments[:2]):
                     _, envelope = run_office(arguments, working_directory)
                     self.assertEqual([issue["code"] for issue in envelope["issues"]], ["WRONG_OUTPUT_FORMAT"])
-            self.assertEqual(sorted(path.name for path in working_directory.iterdir()), ["book.xlsx", "ops.json", "values.json"])
+            self.assertEqual(sorted(path.name for path in working_directory.iterdir()), ["book.xlsx", "ops.json", "rows.csv", "values.json"])
 
     def test_an_empty_image_query_is_refused_before_any_search(self):
         with tempfile.TemporaryDirectory() as directory:
-            _, envelope = run_office(["deck", "image", " ", "images/photo.jpg"], Path(directory))
+            _, envelope = run_office(["image", " ", "images/photo.jpg"], Path(directory))
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["INVALID_ARGUMENTS"])
 
-    def test_an_edit_without_a_path_never_picks_a_file_by_itself(self):
+    def test_an_apply_without_a_path_never_picks_a_file_by_itself(self):
         with tempfile.TemporaryDirectory() as directory:
             working_directory = Path(directory)
             (working_directory / "documents").mkdir()
-            self.assertEqual(run_office(["sheet", "create", "documents/book.xlsx", "--row", "a,b"], working_directory)[1]["status"], "ok")
+            (working_directory / "rows.csv").write_text("a,b\n", encoding="utf-8")
+            (working_directory / "ops.json").write_text('[{"op": "append_rows", "rows": [[1, 2]]}]', encoding="utf-8")
+            self.assertEqual(run_office(["create", "documents/book.xlsx", "rows.csv"], working_directory)[1]["status"], "ok")
             original = (working_directory / "documents" / "book.xlsx").read_bytes()
-            for arguments in (["sheet", "edit", "--row", "1,2"], ["doc", "edit", "--paragraph", "본문"], ["pdf", "edit", "--heading", "제목"]):
-                with self.subTest(command=arguments[:2]):
+            for arguments in (["apply", "ops.json"], ["apply"], ["apply", "documents"]):
+                with self.subTest(command=arguments):
                     _, envelope = run_office(arguments, working_directory)
                     self.assertEqual([issue["code"] for issue in envelope["issues"]], ["INVALID_ARGUMENTS"])
             self.assertEqual((working_directory / "documents" / "book.xlsx").read_bytes(), original)
@@ -206,64 +223,74 @@ class OutputPathTest(unittest.TestCase):
 
 
 class GuideTest(unittest.TestCase):
-    def guide(self, format_name, *verbs):
-        return subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", format_name, *verbs], capture_output=True, text=True, check=True).stdout
+    def guide(self, *topics):
+        return subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", *topics], capture_output=True, text=True, check=True).stdout
 
-    def guide_with_every_verb(self, office_format):
-        verbs = [command.verb for command in COMMANDS if command.format_name == office_format.name and command.verb]
-        operation_guides = [
-            guide_text(office_format, label.split()[1], record.name)
-            for label, shape in load_definitions(office_format).GUIDE_INPUTS
-            for structure in shape.structures() if isinstance(structure, Variant)
-            for record in structure.records
-        ]
-        return "\n".join([self.guide(office_format.name), *(self.guide(office_format.name, verb) for verb in verbs), *operation_guides])
+    def guided_inputs(self):
+        for definitions in every_definitions():
+            for verb, kind, _, shape in getattr(definitions, "GUIDE_INPUTS", ()):
+                yield verb, kind, shape
 
-    def test_the_guide_lists_every_code_its_format_defines(self):
-        for office_format in FORMATS:
-            with self.subTest(format=office_format.name):
-                guide_text = self.guide(office_format.name)
-                missing = [kind.code for kind in defined_issue_kinds(load_definitions(office_format)) if kind.code not in guide_text]
-                self.assertEqual(missing, [])
+    def test_the_guide_lists_every_code_a_route_defines(self):
+        for definitions in every_definitions():
+            for verb, kind, kinds in getattr(definitions, "GUIDE_ISSUES", ()):
+                with self.subTest(route=f"{verb} {kind}"):
+                    text = self.guide(verb) if kind == "*" else self.guide(verb, kind)
+                    self.assertEqual([issue.code for issue in kinds if issue.code not in text], [])
+
+    def test_every_defined_code_is_listed_by_some_route(self):
+        listed = {issue.code for definitions in every_definitions() for _, _, kinds in getattr(definitions, "GUIDE_ISSUES", ()) for issue in kinds}
+        defined = {kind.code for definitions in every_definitions() for kind in defined_issue_kinds(definitions)}
+        every_command = {kind.code for kind in COMMAND_ISSUE_KINDS}
+        self.assertTrue(every_command <= set(re.findall(r"[A-Z_]{4,}", self.guide())))
+        self.assertEqual(sorted(defined - listed - every_command), [])
 
     def test_the_guide_lists_every_field_the_validators_accept(self):
-        for office_format in FORMATS:
-            with self.subTest(format=office_format.name):
-                guide_text = self.guide_with_every_verb(office_format)
-                for _, shape in load_definitions(office_format).GUIDE_INPUTS:
-                    for structure in shape.structures():
-                        records = structure.records if isinstance(structure, Variant) else (structure,)
-                        for record in records:
-                            for field in record.fields:
-                                self.assertRegex(guide_text, rf"\n\s+{re.escape(field.name)}\s")
-
+        for verb, kind, shape in self.guided_inputs():
+            with self.subTest(route=f"{verb} {kind}"):
+                texts = [self.guide(verb, kind)]
+                for structure in shape.structures():
+                    if isinstance(structure, Variant):
+                        texts.extend(self.guide(verb, kind, record.name) for record in structure.records)
+                guide_text = "\n".join(texts)
+                for structure in shape.structures():
+                    records = structure.records if isinstance(structure, Variant) else (structure,)
+                    for record in records:
+                        for field in record.fields:
+                            self.assertRegex(guide_text, rf"\n\s+{re.escape(field.name)}\s")
 
     def test_one_operation_prints_only_its_fields(self):
-        text = self.guide("sheet", "apply", "add_chart")
+        text = self.guide("apply", "xlsx", "add_chart")
         self.assertIn('op "add_chart"', text)
         self.assertIn("\n  range (", text)
         self.assertNotIn("set_cell", text)
 
     def test_an_unknown_topic_answers_with_the_envelope_and_the_close_name(self):
-        for arguments, suggestion in ((["sheat"], "office guide sheet"), (["sheet", "aply"], "office guide sheet apply"), (["sheet", "apply", "add_chrt"], "office guide sheet apply add_chart")):
+        cases = (
+            (["xlsz"], "office guide xlsx"),
+            (["aply"], "office guide apply"),
+            (["apply", "xlx"], "office guide apply xlsx"),
+            (["apply", "xlsx", "add_chrt"], "office guide apply xlsx add_chart"),
+        )
+        for arguments, suggestion in cases:
             with self.subTest(arguments=arguments):
                 completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", *arguments], capture_output=True, text=True)
                 self.assertEqual(completed.returncode, 1)
                 self.assertEqual(json.loads(completed.stdout)["issues"][0]["suggestion"], suggestion)
 
-    def test_the_index_names_operations_without_their_fields(self):
-        index = self.guide("sheet")
+    def test_the_index_of_a_kind_names_operations_without_their_fields(self):
+        index = self.guide("xlsx")
         self.assertIn("add_chart", index)
         self.assertNotIn("secondaryAxis", index)
 
     def test_a_first_read_stays_short_and_an_operation_gives_its_fields(self):
-        index, apply_guide = self.guide("sheet"), self.guide("sheet", "apply")
+        index, apply_guide = self.guide("xlsx"), self.guide("apply", "xlsx")
         self.assertLess(len(index), 6000)
         self.assertLess(len(apply_guide), 8000)
         self.assertIn('op "add_pivot_table": summarize', apply_guide)
         self.assertNotIn("secondaryAxis", apply_guide)
-        self.assertIn("office guide sheet apply <op> lists one op's fields", apply_guide)
-        self.assertIn("secondaryAxis (true or false)", self.guide("sheet", "apply", "add_chart"))
+        self.assertIn("office guide apply xlsx <op> lists one op's fields", apply_guide)
+        self.assertIn("secondaryAxis (true or false)", self.guide("apply", "xlsx", "add_chart"))
         self.assertIn("CIRCULAR_REFERENCE (error)", apply_guide)
 
 
@@ -305,7 +332,7 @@ class SchemaTest(unittest.TestCase):
 
 class PaperworkSkeletonTest(unittest.TestCase):
     def test_every_spec_skeleton_passes_the_renderer_schema(self):
-        definitions = load_definitions(next(office_format for office_format in FORMATS if office_format.name == "paperwork"))
+        definitions = importlib.import_module("paperwork.paperwork_definitions")
         problems = []
         for spec_path in sorted((OFFICE_PATH / "references" / "paperwork").rglob("*.md")):
             for block in re.findall(r"```json\n(.*?)```", spec_path.read_text(encoding="utf-8"), re.S):

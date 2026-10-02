@@ -8,9 +8,9 @@ from lxml import etree
 from openpyxl.utils import get_column_letter
 
 from sheet.formula_cache import cache_formula_values
+from core.office_arguments import route_arguments
 from core.office_operations import apply_batch, save_atomically
-from core.office_inputs import office_file
-from core.office_result import OfficeArgumentParser, Result, read_json_file, run_command
+from core.office_result import Result, read_json_file, run_command
 from core.office_schema import require_valid
 from sheet.formula_references import ROW_AXIS, parse_end, rebuild_reference, reference_parts, same_sheet, unquote_sheet_name
 from sheet.sheet_operations import SHEET_OPERATIONS, load_editing, save_editing
@@ -27,12 +27,12 @@ PRESERVE_SPACE = "{http://www.w3.org/XML/1998/namespace}space"
 
 def main() -> Result:
     arguments = parse_arguments()
-    values = read_json_file(arguments.values_path)
+    values = read_json_file(arguments.values)
     require_valid(MERGE_VALUES, values, "values")
-    output_path = os.path.expanduser(same_kind_output(arguments.output_path, arguments.template_path))
+    output_path = os.path.expanduser(same_kind_output(arguments.output, arguments.template))
     report = MergeReport(values)
     with tempfile.TemporaryDirectory() as directory:
-        template_path, list_names = expanded_template(os.path.expanduser(arguments.template_path), values, os.path.join(directory, "template.xlsx"))
+        template_path, list_names = expanded_template(os.path.expanduser(arguments.template), values, os.path.join(directory, "template.xlsx"))
         for list_name in list_names:
             report.mark_used(list_name)
         parts = merged_parts(template_path, report)
@@ -221,11 +221,7 @@ def serialize(element) -> bytes:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser()
-    parser.add_argument("template_path", type=office_file("xlsx"), help="the .xlsx template")
-    parser.add_argument("values_path", help="JSON object mapping each placeholder name to its value")
-    parser.add_argument("output_path", help="the filled .xlsx to write")
-    return parser.parse_args()
+    return route_arguments("merge", "xlsx")
 
 
 if __name__ == "__main__":

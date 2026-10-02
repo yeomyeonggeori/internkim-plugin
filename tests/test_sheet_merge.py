@@ -29,7 +29,7 @@ class SheetMergeTest(WorkbookFixture):
 
     def merge(self, values):
         write_json(self.directory / "values.json", values)
-        return run_office(["sheet", "merge", "quote.xlsx", "values.json", "filled.xlsx"], self.directory)
+        return run_office(["merge", "quote.xlsx", "values.json", "filled.xlsx"], self.directory)
 
     def test_a_whole_cell_placeholder_takes_the_value_type_and_formulas_recompute(self):
         envelope = self.merge({"customer": {"name": "박예시"}, "manager": "최견본", "amount": 1200000, "issued": "2026-10-01", "items": [{"name": "연간 유지보수"}]})
@@ -38,7 +38,7 @@ class SheetMergeTest(WorkbookFixture):
         self.assertEqual((cells["B3"]["type"], cells["B3"]["value"]), (None, "1200000"))
         self.assertEqual(cells["B4"]["value"], "1320000")
         self.assertEqual(cells["B5"]["type"], "inlineStr")
-        read = run_office(["sheet", "read", "filled.xlsx", "--range", "A1:A6"], self.directory)
+        read = run_office(["read", "filled.xlsx", "--range", "A1:A6"], self.directory)
         texts = [value for row in read["details"]["range"]["values"] for value in row if value]
         self.assertEqual(texts, ["견적서: 박예시 귀하", "담당: 최견본", "연간 유지보수"])
         with zipfile.ZipFile(self.directory / "filled.xlsx") as archive:
@@ -75,10 +75,10 @@ class SheetListMergeTest(WorkbookFixture):
 
     def merge(self, items):
         write_json(self.directory / "values.json", {"items": items})
-        return run_office(["sheet", "merge", "list.xlsx", "values.json", "filled.xlsx"], self.directory)
+        return run_office(["merge", "list.xlsx", "values.json", "filled.xlsx"], self.directory)
 
     def formulas_and_values(self, cell_range):
-        read = run_office(["sheet", "read", "filled.xlsx", "--range", cell_range, "--where", "formula"], self.directory)
+        read = run_office(["read", "filled.xlsx", "--range", cell_range, "--where", "formula"], self.directory)
         return {cell["cell"]: (cell["formula"], cell["value"]) for cell in read["details"]["range"]["cells"]}
 
     def test_a_row_naming_a_list_repeats_per_item_and_the_total_grows_with_it(self):
@@ -102,8 +102,8 @@ sheet["A1"], sheet["A2"] = "{{ regions }}", "끝"
 workbook.save("list.xlsx")
 """, self.directory)
         write_json(self.directory / "values.json", {"regions": ["서울", "부산"]})
-        self.assertEqual(run_office(["sheet", "merge", "list.xlsx", "values.json", "filled.xlsx"], self.directory)["status"], "ok")
-        read = run_office(["sheet", "read", "filled.xlsx", "--range", "A1:A3"], self.directory)
+        self.assertEqual(run_office(["merge", "list.xlsx", "values.json", "filled.xlsx"], self.directory)["status"], "ok")
+        read = run_office(["read", "filled.xlsx", "--range", "A1:A3"], self.directory)
         self.assertEqual(read["details"]["range"]["values"], [["서울"], ["부산"], ["끝"]])
 
 

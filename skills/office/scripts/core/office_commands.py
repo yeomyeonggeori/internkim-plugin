@@ -1,89 +1,276 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
+import shlex
+
+
+BATCH_MODES = ("all", "best-effort", "stop-on-error")
+WHERE_KINDS = ("formula", "error", "number", "text", "empty")
+EVERY_KIND = "*"
+SHELL_SPECIAL = re.compile(r"[\s'\"\\$`;&|()*?!#~]")
 
 
 @dataclass(frozen=True)
-class Command:
-    format_name: str
-    verb: str
-    module: str
-    summary: str
-    details: str = ""
-    needs_packages: bool = True
-
-    @property
-    def words(self) -> list[str]:
-        return [self.format_name, self.verb] if self.verb else [self.format_name]
-
-    @property
-    def name(self) -> str:
-        return " ".join(self.words)
-
-    @property
-    def description(self) -> str:
-        sentence = self.summary[0].upper() + self.summary[1:] + "."
-        return f"{sentence} {self.details}" if self.details else sentence
-
-
-@dataclass(frozen=True)
-class Format:
+class Kind:
     name: str
+    label: str
+    extensions: tuple[str, ...]
     summary: str
     definitions_module: str
 
 
-FORMATS = (
-    Format("doc", "Word documents (.docx), and PDFs exported from Markdown", "doc.doc_definitions"),
-    Format("pdf", "PDF files", "pdf.pdf_definitions"),
-    Format("sheet", "workbooks (.xlsx)", "sheet.sheet_definitions"),
-    Format("deck", "slide decks built from slides.html, and .pptx files to read, edit and check", "deck.deck_definitions"),
-    Format("paperwork", "Korean company forms and contracts on letterhead", "paperwork.paperwork_definitions"),
-    Format("convert", "conversions between office formats", "convert.convert_definitions"),
+@dataclass(frozen=True)
+class Flag:
+    name: str
+    meaning: str
+    value: str = ""
+    repeatable: bool = False
+    number: type | None = None
+    choices: tuple[str, ...] = ()
+    default: object = None
+
+    @property
+    def takes_value(self) -> bool:
+        return bool(self.value)
+
+    @property
+    def destination(self) -> str:
+        return self.name.removeprefix("--").replace("-", "_")
+
+
+@dataclass(frozen=True)
+class Verb:
+    name: str
+    positionals: tuple[str, ...]
+    summary: str
+    subject: str | None
+    definitions_module: str | None = None
+
+    @property
+    def usage(self) -> str:
+        return " ".join([self.name, *(f"<{positional}>" for positional in self.positionals)])
+
+
+@dataclass(frozen=True)
+class Route:
+    verb: str
+    kind: str
+    module: str
+    summary: str
+    flags: tuple[str, ...] = ()
+    outputs: tuple[str, ...] = ()
+    label: str = ""
+    needs_packages: bool = True
+
+    @property
+    def name(self) -> str:
+        return self.verb if self.kind == EVERY_KIND else f"{self.verb} {self.kind}"
+
+    @property
+    def reads_its_kind(self) -> bool:
+        return not self.label
+
+
+@dataclass(frozen=True)
+class Conversion:
+    source: str
+    target: str
+    note: str
+    module: str = "convert.convert_file"
+    needs_packages: bool = True
+
+
+@dataclass(frozen=True)
+class Tool:
+    name: str
+    usage: str
+    summary: str
+
+
+KINDS = (
+    Kind("docx", ".docx", (".docx", ".docm", ".dotx", ".dotm"), "Word documents", "doc.doc_definitions"),
+    Kind("xlsx", ".xlsx", (".xlsx", ".xlsm", ".xltx", ".xltm"), "Excel workbooks", "sheet.sheet_definitions"),
+    Kind("pptx", ".pptx", (".pptx", ".pptm", ".potx", ".potm"), "PowerPoint decks, as delivered", "deck.deck_definitions"),
+    Kind("pdf", ".pdf", (".pdf",), "PDF files", "pdf.pdf_definitions"),
+    Kind("md", ".md", (".md", ".markdown"), "Markdown, the source a document is written in", "doc.doc_definitions"),
+    Kind("csv", ".csv .tsv", (".csv", ".tsv"), "delimited rows", "sheet.sheet_definitions"),
+    Kind("slides", "slides.html", (".html", ".htm"), "a deck written with the kit, or the folder holding it", "deck.deck_definitions"),
+    Kind("form", "a form", (".json",), "company forms and contracts, named <jurisdiction>/<form> such as kr/quote", "paperwork.paperwork_definitions"),
 )
 
-LIST_REPEAT_RULE = "A table row or paragraph that names a list repeats once per item: {{ items.field }} reads a field of the item and {{ items }} the item itself, and an empty list leaves it out."
+FLAGS = (
+    Flag("--output", "write the result to this copy and leave the file as it was", "PATH"),
+    Flag("--dry-run", "check and plan every operation, report the changes, and write nothing"),
+    Flag("--mode", "all (default) writes the batch whole or not at all; best-effort writes every operation that applies and reports the others; stop-on-error writes the operations before the first that does not apply", "MODE", choices=BATCH_MODES, default=BATCH_MODES[0]),
+    Flag("--track", "write text, paragraph, row and block edits as tracked changes others can accept or reject"),
+    Flag("--author", "author of tracked changes", "NAME"),
+    Flag("--allow-loss", "save even when content the editor cannot carry, such as form controls, would be dropped"),
+    Flag("--required-text", "a source fact that must appear; repeat for each fact", "TEXT", repeatable=True),
+    Flag("--forbidden-text", "text that must not appear, such as an unsupported claim; repeat for each", "TEXT", repeatable=True),
+    Flag("--slide-count", "the slide count the user asked for; a different count is an error", "N", number=int),
+    Flag("--minimum-pages", "the fewest pages the file may have", "N", number=int),
+    Flag("--maximum-pages", "the most pages the file may have", "N", number=int),
+    Flag("--minimum-text-length", "the fewest characters of extractable text", "N", number=int),
+    Flag("--required-font", "text that some embedded font's name must contain", "NAME"),
+    Flag("--pages", "pages to use, such as 2,4-6; a deck's pages are its slides", "PAGES"),
+    Flag("--start", "the first item to show: a block index from 0, or a page number from 1", "N", number=int),
+    Flag("--limit", "the most items to show: blocks, pages or rows", "N", number=int),
+    Flag("--sheet", "only this sheet", "NAME"),
+    Flag("--range", "a range such as A1:F40; default the whole sheet", "RANGE"),
+    Flag("--columns", "only these columns of the range, such as A,C:E", "COLUMNS"),
+    Flag("--where", "list only the cells that hold a formula, an error, a number, text, or nothing", "KIND", choices=WHERE_KINDS),
+    Flag("--stats", "per column: its header, value types, and count, min, max, sum and mean of the numbers"),
+    Flag("--formats", "each formatted cell's number format, font, fill, border and alignment, with column widths and row heights"),
+    Flag("--revisions", "list every tracked change with its id, type, author, date, block and text"),
+    Flag("--styles", "also list every paragraph and table style name the document defines"),
+    Flag("--detail", "add each paragraph's runs with where every style value comes from, fills, outlines, crops and animated shape ids"),
+    Flag("--ocr", "read pages that have no text layer from their image by OCR"),
+    Flag("--password", "the password that opens the PDF, when it has one", "PASSWORD"),
+    Flag("--output-directory", "where the images go; default <name>-preview beside the file", "DIRECTORY"),
+    Flag("--no-preview", "measure only, without drawing the pages"),
+    Flag("--scale", "pixels per point; 1 is 72 dpi", "N", number=float),
+    Flag("--font", "body font family of a .docx", "NAME"),
+    Flag("--font-size", "body size in points of a .docx", "N", number=float),
+    Flag("--font-path", "a font file to draw a .pdf with instead of the shipped one; a Bold file beside it is used for bold", "PATH"),
+    Flag("--count", "how many candidates to save", "N", number=int),
+)
+FLAGS_BY_NAME = {flag.name: flag for flag in FLAGS}
+BATCH_FLAGS = ("--output", "--dry-run", "--mode")
+TEXT_FLAGS = ("--required-text", "--forbidden-text")
 
-COMMANDS = (
-    Command("doc", "export", "doc.export_document", "write a .docx or .pdf from a Markdown source", "Links, local images and nested lists are kept."),
-    Command("doc", "create", "doc.create_docx", "build a .docx from blocks or a JSON spec", "office guide doc describes the spec."),
-    Command("doc", "edit", "doc.edit_docx", "append blocks to a .docx", "Edits the file in place."),
-    Command("doc", "read", "doc.read_docx", "list a .docx's blocks, headers, footers and comments by index", "Charts come with their data, and tracked changes are listed. Block indexes, chart indexes, comment ids and revision ids are what doc apply takes; block text reads as if every tracked change were accepted."),
-    Command("doc", "apply", "doc.apply_docx", "apply a batch of edits to a .docx, all or none unless --mode says otherwise, with --dry-run", "office guide doc lists the operations."),
-    Command("doc", "merge", "doc.merge_docx", "fill a .docx template's {{ placeholders }} from a values file", f"{LIST_REPEAT_RULE} Refuses to write when a placeholder has no value."),
-    Command("doc", "render", "doc.render_docx", "lay out a .docx page by page and draw page images, contact sheets and a PDF to look at", "It draws page size and margins, styles, numbering, tables, pictures, headers, footers and footnotes."),
-    Command("doc", "check", "doc.check_docx", "find placeholders left, broken references, a stale contents list, missing fonts or pictures, empty charts or headings, open comments and blank fields", "It also flags a wrong East Asian language and tracked changes. Issues suggest a doc apply operation where one fixes them."),
-    Command("doc", "validate", "doc.validate_docx", "check a .docx for required text, fonts and layout"),
-    Command("pdf", "create", "pdf.create_pdf", "lay out a PDF from blocks or a JSON spec", "office guide pdf describes the spec."),
-    Command("pdf", "edit", "pdf.edit_pdf", "append a section page to a PDF", "Edits the file in place."),
-    Command("pdf", "read", "pdf.read_pdf", "list a PDF's text by page, with page sizes and which pages have extractable text", "Each page also gives the rows of every table found on it, ruled or laid out in aligned columns."),
-    Command("pdf", "render", "pdf.render_pdf", "render PDF pages to PNG files and a contact sheet to look at"),
-    Command("pdf", "validate", "pdf.validate_pdf", "check a PDF for pages, extractable text and fonts"),
-    Command("sheet", "create", "sheet.create_xlsx", "build an .xlsx from rows or a JSON spec", "office guide sheet describes the spec."),
-    Command("sheet", "edit", "sheet.edit_xlsx", "append rows to an .xlsx", "Edits the file in place."),
-    Command("sheet", "read", "sheet.read_xlsx", "list a workbook's sheets, charts and features, and a range's values, formulas, column stats or formats", "Each sheet comes with its dimensions, panes, filter, tables and merged cells, and the workbook with its defined names."),
-    Command("sheet", "apply", "sheet.apply_xlsx", "apply a batch of edits to a workbook, all or none unless --mode says otherwise, with --dry-run", "office guide sheet lists the operations."),
-    Command("sheet", "check", "sheet.check_xlsx", "find computed formula errors, missing sheets, broken names, numbers too wide for their column, numbers, dates and formulas stored as text, charts without data and template placeholders", "It also compares stored formula values with computed ones, and flags unknown functions and pivots with empty values."),
-    Command("sheet", "merge", "sheet.merge_xlsx", "fill an .xlsx template's {{ placeholders }} from a values file", "A cell that is one placeholder takes the value's type; a row that names a list ({{ items.field }}, or {{ items }} for the item itself) repeats once per item, moving the rows below down and growing ranges that end on it, and an empty list leaves it blank. Refuses to write when a placeholder has no value."),
-    Command("sheet", "render", "sheet.render_xlsx", "lay out each sheet as printed pages and draw page images, contact sheets and a PDF to look at", "It draws the print area, page setup and scaling, column widths, row heights, merges, number formats as displayed, fonts, fills, borders, conditional colors, charts and pictures."),
-    Command("sheet", "validate", "sheet.validate_xlsx", "check an .xlsx for frozen headers, filters and blank headers"),
-    Command("deck", "check", "deck.check_deck", "check slides.html for layout, chart, image, placeholder, slide-count and palette defects without rendering, or a .pptx for overflow, off-slide and overlapping shapes, with slide images and contact sheets to look at", "slides.html is checked without rendering, and deck build runs this first. A .pptx's text is measured with the deck's fonts, each issue names an operation deck apply accepts, and the preview is drawn from the same geometry, styles and fonts."),
-    Command("deck", "build", "deck.build_deck", "check slides.html, then render it to PDF (default), PPTX or HTML with review evidence", "It draws without a browser into build/<name>.pdf (or .pptx, .html) with review images, geometry and an acceptance verdict."),
-    Command("deck", "read", "deck.read_pptx", "list a .pptx's slides with each shape's index, kind, box, text and style, tables, charts and notes", "Each shape has the index deck apply takes (3.1 is the second shape inside group 3), its id, name, kind, placeholder type, box in EMU and in percent of the slide, and its text with the effective font, size, bold and color. Shapes are listed back to front; links, transitions, comments and sections appear where the deck has them."),
-    Command("deck", "apply", "deck.apply_pptx", "apply a batch of edits to a .pptx, all or none unless --mode says otherwise, with --dry-run, and report the layout problems they leave", "office guide deck lists the operations. Overflowing text, shapes off the slide and overlaps are reported on every slide the batch changed, each with an operation that fixes it."),
-    Command("deck", "merge", "deck.merge_pptx", "fill a .pptx template's {{ placeholders }} from a values file", f"{LIST_REPEAT_RULE} Refuses to write when a placeholder has no value."),
-    Command("deck", "restore", "deck.restore_source", "recover the small authored slides.html from a delivered deck .html", "The kit, viewer and vendored fonts are removed, and inlined images and fonts point back at their files.", needs_packages=False),
-    Command("deck", "image", "deck.fetch_image", "download up to three public-domain photos for an English search query, with each one's size, ratio, licence and source", "Photos are CC0 or public domain, saved as <output>, <output stem>-2 and -3 in the output's format, each with its creator."),
-    Command("paperwork", "render", "paperwork.render_paperwork", "render a company form to PDF on letterhead", "A contract renders to .docx; office guide paperwork describes both."),
-    Command("paperwork", "fill", "paperwork.fill_template", "fill a standard contract template to .docx", "office guide paperwork lists each template's fields."),
-    Command("convert", "", "convert.convert_file", "convert a file to another format, such as docx to md, pdf to docx, or xlsx to csv", "The input and output extensions pick the route; office guide convert lists every route."),
-    Command("paperwork", "check", "paperwork.check_amounts", "report row amounts, totals, VAT and the amount in words of a priced form, never rewriting it", "office guide paperwork lists the rules.", needs_packages=False),
+POSITIONALS = {
+    "output": "the file to write; its extension names the format",
+    "source": "what the new file is made from",
+    "file": "the file",
+    "operations": "a JSON file holding the list of operations",
+    "template": "a .docx, .xlsx or .pptx with {{ placeholders }}, or a bundled form such as kr/quote",
+    "values": "a JSON object holding each placeholder's value",
+    "input": "the file to convert",
+    "query": "a concrete English scene, such as \"harbor cranes at dawn\"; one or two words find more",
+}
+
+VERBS = (
+    Verb("create", ("output", "source"), "make a new file; the source decides how", "source"),
+    Verb("read", ("file",), "list what a file holds, with the indexes apply takes", "file"),
+    Verb("apply", ("file", "operations"), "apply a batch of edits, whole or not at all unless --mode says otherwise", "file"),
+    Verb("merge", ("template", "values", "output"), "fill a template's {{ placeholders }}, or a bundled form, from a values file", "template"),
+    Verb("check", ("file",), "find what is wrong with a file before it is delivered", "file"),
+    Verb("render", ("file",), "draw page images and a contact sheet to look at; never a deliverable", "file"),
+    Verb("convert", ("input", "output"), "turn a file into another format; the two extensions pick the route", "input", "convert.convert_definitions"),
+    Verb("image", ("query", "output"), "download up to three public-domain photos for an English search query", None, "deck.deck_definitions"),
+)
+
+ROUTES = (
+    Route("create", "md", "doc.export_document", "a document written in Markdown, the usual way to make one", ("--font", "--font-size", "--font-path"), (".docx", ".pdf", ".html")),
+    Route("create", "slides", "deck.build_deck", "a deck: checked first, then drawn, with a verdict and review images", ("--slide-count",) + TEXT_FLAGS, (".pdf", ".pptx", ".html")),
+    Route("create", "docx", "doc.create_docx", "exact page setup, styles and blocks", outputs=(".docx",), label="JSON spec"),
+    Route("create", "xlsx", "sheet.create_xlsx", "sheets of rows with formulas, formats, charts and pivots", outputs=(".xlsx",), label="JSON spec"),
+    Route("create", "pdf", "pdf.create_pdf", "sections and tables placed on the page", outputs=(".pdf",), label="JSON spec"),
+    Route("create", "csv", "convert.import_table", "typed cells under a frozen, filtered header", outputs=(".xlsx", ".pdf")),
+    Route("read", "docx", "doc.read_docx", "blocks, headers, footers, comments, charts and tracked changes by index", ("--start", "--limit", "--revisions", "--styles")),
+    Route("read", "xlsx", "sheet.read_xlsx", "sheets, charts and features; a range's values, formulas, stats or formats", ("--sheet", "--range", "--columns", "--limit", "--where", "--stats", "--formats")),
+    Route("read", "pptx", "deck.read_pptx", "each slide's shapes with index, box, text and style, tables, charts and notes", ("--pages", "--detail")),
+    Route("read", "pdf", "pdf.read_pdf", "text and tables by page, page sizes, and which pages are scans", ("--start", "--limit", "--ocr", "--password")),
+    Route("apply", "docx", "doc.apply_docx", "text, blocks, tables, pictures, styles, sections, comments and tracked changes", BATCH_FLAGS + ("--track", "--author")),
+    Route("apply", "xlsx", "sheet.apply_xlsx", "cells, formulas, formats, rules, rows, sheets, charts and pivots", BATCH_FLAGS + ("--allow-loss",)),
+    Route("apply", "pptx", "deck.apply_pptx", "text, shapes, tables, charts and slides, reporting the layout problems left", BATCH_FLAGS),
+    Route("apply", "pdf", "pdf.apply_pdf", "section pages appended at the end", BATCH_FLAGS + ("--password",)),
+    Route("merge", "docx", "doc.merge_docx", "a filled .docx; a paragraph or row naming a list repeats per item"),
+    Route("merge", "xlsx", "sheet.merge_xlsx", "a filled .xlsx; a cell that is one placeholder takes the value's type"),
+    Route("merge", "pptx", "deck.merge_pptx", "a filled .pptx"),
+    Route("merge", "form", "paperwork.merge_form", "a form on letterhead to .pdf, or a contract to .docx", outputs=(".pdf", ".docx"), label="<jurisdiction>/<form>"),
+    Route("check", "docx", "doc.check_docx", "placeholders, references, contents list, fonts, pictures, comments, layout, required text", TEXT_FLAGS),
+    Route("check", "xlsx", "sheet.check_xlsx", "formula errors, broken names, numbers stored as text, wide numbers, frozen headers, filters and required text", TEXT_FLAGS),
+    Route("check", "pdf", "pdf.check_pdf", "pages, extractable text, embedded fonts and required text", TEXT_FLAGS + ("--minimum-pages", "--maximum-pages", "--minimum-text-length", "--required-font", "--password")),
+    Route("check", "pptx", "deck.check_pptx", "text overflowing, shapes off the slide and overlaps, slide count and required text, with slide images", ("--slide-count",) + TEXT_FLAGS + ("--pages", "--output-directory", "--no-preview")),
+    Route("check", "slides", "deck.check_deck", "layout, chart, image, placeholder, slide-count, palette and required-text defects, without drawing", ("--slide-count",) + TEXT_FLAGS),
+    Route("check", "form", "paperwork.check_amounts", "a form's row amounts, totals, tax and amount in words, never rewriting it", label="form values", needs_packages=False),
+    Route("render", "docx", "doc.render_docx", "pages as Word lays them out, with a PDF", ("--output-directory",)),
+    Route("render", "xlsx", "sheet.render_xlsx", "each sheet as printed pages, with a PDF", ("--sheet", "--output-directory")),
+    Route("render", "pdf", "pdf.render_pdf", "the pages as they are", ("--pages", "--scale", "--output-directory", "--password")),
+    Route("render", "pptx", "deck.render_pptx", "the slides as PowerPoint draws them", ("--pages", "--output-directory")),
+    Route("convert", EVERY_KIND, "convert.convert_file", "", ("--sheet", "--ocr", "--password")),
+    Route("image", EVERY_KIND, "deck.fetch_image", "saved as <output>, then <output stem>-2 and -3, each with its licence and source", ("--count",)),
+)
+
+CONVERSIONS = (
+    Conversion("docx", "pdf", "each page as render lays it out: page size, margins, styles, tables, pictures, headers and footers"),
+    Conversion("docx", "md", "final text with tracked changes accepted; images saved beside the output; comments, notes, fields and layout dropped"),
+    Conversion("docx", "html", "one self-contained page; the same content as docx to md"),
+    Conversion("xlsx", "pdf", "each visible sheet as render prints it: print area, scaling, number formats, fills, borders and charts"),
+    Conversion("xlsx", "csv", "cached values; one file per sheet unless --sheet picks one; UTF-8 with BOM so Excel reads Korean"),
+    Conversion("xlsx", "tsv", "the same as xlsx to csv, tab-separated"),
+    Conversion("pptx", "pdf", "each slide as render draws it: shapes, text, pictures, tables and charts"),
+    Conversion("pdf", "docx", "text PDFs only: paragraphs, headings by font size, lists, tables drawn with lines or laid out in aligned columns, images and two-column reading order; page layout is reflowed"),
+    Conversion("pdf", "md", "the same content as pdf to docx"),
+    Conversion("pdf", "xlsx", "each table, drawn with lines or laid out in aligned columns, as a sheet; a table whose header repeats on the next page continues; numbers, percents and dates typed; text outside tables is left out"),
+    Conversion("pdf", "pptx", "one slide per page at the page's size: text lines as text boxes, tables as tables, images as pictures; a page with drawn shapes or no text becomes one picture with its text in the notes"),
+    Conversion("html", "docx", "headings, paragraphs, lists, tables, bold, italic, links and images"),
+    Conversion("html", "md", "the same content as html to docx"),
+    Conversion("html", "pdf", "the same content as html to docx, laid out as a document; the page's own CSS and scripts are not applied"),
+    Conversion("html", "html", "a delivered deck .html back to the small slides.html it was built from: the kit, viewer and vendored fonts removed, inlined images and fonts pointing at their files again", "deck.restore_source", needs_packages=False),
+    Conversion("xls", "xlsx", "values, dates and merged cells; formulas kept as their values; fonts, colors, borders and widths dropped"),
+    Conversion("ods", "xlsx", "the same as xls to xlsx"),
+    Conversion("xlsb", "xlsx", "the same as xls to xlsx; formulas kept as their saved values"),
+)
+EXTENSION_ALIASES = {"markdown": "md", "htm": "html", "xlsm": "xlsx"}
+
+TOOLS = (
+    Tool("guide", "guide [verb] [kind] [operation]", "print what a verb or kind takes: fields, operations, rules and issue codes"),
+    Tool("setup", "setup", "install the Python environment, the renderer and the OCR engine into the skill, about 450 MB on disk; nothing else installs anything"),
+    Tool("python", "python <script.py> [arguments]", "run a task-local Python script with the office packages"),
 )
 
 
-def find_command(words: list[str]) -> Command | None:
-    return next((command for command in COMMANDS if words[:len(command.words)] == command.words), None)
+def command_text(words: list[str]) -> str:
+    return " ".join(shlex.quote(word) if not word or SHELL_SPECIAL.search(word) else word for word in words)
 
 
-def find_format(name: str) -> Format | None:
-    return next((office_format for office_format in FORMATS if office_format.name == name), None)
+def find_verb(name: str) -> Verb | None:
+    return next((verb for verb in VERBS if verb.name == name), None)
+
+
+def find_kind(name: str) -> Kind | None:
+    return next((kind for kind in KINDS if kind.name == name), None)
+
+
+def find_route(verb_name: str, kind_name: str) -> Route | None:
+    return next((route for route in ROUTES if route.verb == verb_name and route.kind in (kind_name, EVERY_KIND)), None)
+
+
+def verb_routes(verb_name: str) -> list[Route]:
+    return [route for route in ROUTES if route.verb == verb_name]
+
+
+def kind_routes(kind_name: str) -> list[Route]:
+    return [route for route in ROUTES if route.kind == kind_name]
+
+
+def route_label(route: Route) -> str:
+    if route.label:
+        return route.label
+    kind = find_kind(route.kind)
+    return kind.label if kind else route.verb
+
+
+def normalized_extension(extension: str) -> str:
+    lowered = extension.lower().lstrip(".")
+    return EXTENSION_ALIASES.get(lowered, lowered)
+
+
+def find_conversion(source: str, target: str) -> Conversion | None:
+    return next((conversion for conversion in CONVERSIONS if (conversion.source, conversion.target) == (source, target)), None)
+
+
+def conversion_sources() -> list[str]:
+    return list(dict.fromkeys(conversion.source for conversion in CONVERSIONS))
+
+
+def conversion_targets(source: str) -> list[str]:
+    return [conversion.target for conversion in CONVERSIONS if conversion.source == source]
+
+
+def definitions_modules() -> list[str]:
+    modules = [kind.definitions_module for kind in KINDS] + [verb.definitions_module for verb in VERBS if verb.definitions_module]
+    return list(dict.fromkeys(modules))

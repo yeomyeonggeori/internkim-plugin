@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import html
 import mimetypes
+from pathlib import Path
 
 from fonts.registry import MONOSPACE, SANS_BODY, default_family
 from charts.look import OFFICE_SERIES_COLORS
@@ -206,3 +207,12 @@ def math_html(latex: str, source: str, display: bool = False) -> str:
 
 def file_data_uri(blob: bytes, name: str) -> str:
     return data_uri(mimetypes.guess_type(name)[0] or "application/octet-stream", blob)
+
+
+def embedded_image(block, source_directory: Path):
+    if not isinstance(block, Image):
+        return block
+    image_path = source_directory / block.source
+    if block.source.startswith(("http://", "https://", "data:")) or not image_path.is_file():
+        return block
+    return replace(block, source=file_data_uri(image_path.read_bytes(), image_path.name))

@@ -3,26 +3,22 @@ from __future__ import annotations
 
 from pptx import Presentation
 
-from core.office_inputs import office_file
-from core.office_result import OfficeArgumentParser, Result, run_command
+from core.office_arguments import route_arguments
+from core.office_result import Result, run_command
 from deck.pptx_description import describe_presentation
-from deck.pptx_slide_selection import select_slides
+from core.page_selection import select_pages
 
 
 def main() -> Result:
     arguments = parse_arguments()
-    presentation = Presentation(arguments.presentation_path)
-    numbers = select_slides(arguments.slides, len(presentation.slides))
+    presentation = Presentation(arguments.file)
+    numbers = select_pages(arguments.pages, len(presentation.slides))
     details = describe_presentation(presentation, numbers, arguments.detail)
-    return Result(summary=f"read {len(numbers)} of {len(presentation.slides)} slides from {arguments.presentation_path}", output_path=arguments.presentation_path, details=details)
+    return Result(summary=f"read {len(numbers)} of {len(presentation.slides)} slides from {arguments.file}", output_path=arguments.file, details=details)
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser()
-    parser.add_argument("presentation_path", type=office_file("pptx"))
-    parser.add_argument("--slides", default="", help="slides to read, such as 2,4-6; default every slide")
-    parser.add_argument("--detail", action="store_true", help="add each paragraph's runs with where every style value comes from (run, shape, layout, master, theme), fills, outlines, crops and animated shape ids")
-    return parser.parse_args()
+    return route_arguments("read", "pptx")
 
 
 if __name__ == "__main__":

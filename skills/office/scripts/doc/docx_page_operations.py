@@ -245,7 +245,7 @@ def require_watermark_source(operation: dict, location: str) -> str | None:
 def require_picture_file(written_path: str, location: str) -> str:
     path = os.path.expanduser(written_path)
     if not os.path.isfile(path):
-        raise OfficeFailure(INPUT_NOT_FOUND.issue(f"{location}: {written_path} does not exist", location, suggestion="pass an absolute path, or one relative to the directory doc apply runs in"))
+        raise OfficeFailure(INPUT_NOT_FOUND.issue(f"{location}: {written_path} does not exist", location, suggestion="pass an absolute path, or one relative to the directory office apply runs in"))
     return path
 
 

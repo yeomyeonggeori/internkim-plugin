@@ -292,7 +292,7 @@ class RenderedEditablePptxTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             deck_path = Path(directory)
             (deck_path / "slides.html").write_text(DECK_SOURCE, encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path)
             envelope = json.loads(completed.stdout)
             layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
             with zipfile.ZipFile(deck_path / "build" / f"{deck_path.name}.pptx") as archive:

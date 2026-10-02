@@ -32,7 +32,7 @@ class FunctionNameTest(WorkbookFixture):
             workbook.active.append([1, "=XLOOKUP(1,A1:A1,A1:A1)"])
             workbook.save("foreign.xlsx")
         """, self.directory)
-        envelope = run_office(["sheet", "check", "foreign.xlsx"], self.directory)
+        envelope = run_office(["check", "foreign.xlsx"], self.directory)
         self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("FORMULA_ERROR", "Sheet!B1")])
         self.assertIn("#NAME?", envelope["issues"][0]["message"])
 

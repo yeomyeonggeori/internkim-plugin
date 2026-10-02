@@ -40,9 +40,9 @@ class ShapeAddress(Shape):
 
 
 SLIDE_NUMBER = Number(minimum=1, integer=True)
-SLIDE_FIELD = Field("slide", SLIDE_NUMBER, "from deck read", required=True)
-SHAPE_FIELD = Field("shape", ShapeAddress(), 'from deck read; "3.1" is shape 1 inside group 3', required=True)
-SHAPES_FIELD = Field("shapes", ListOf(ShapeAddress(), non_empty=True), "shape indexes from deck read", required=True)
+SLIDE_FIELD = Field("slide", SLIDE_NUMBER, "from office read", required=True)
+SHAPE_FIELD = Field("shape", ShapeAddress(), 'from office read; "3.1" is shape 1 inside group 3', required=True)
+SHAPES_FIELD = Field("shapes", ListOf(ShapeAddress(), non_empty=True), "shape indexes from office read", required=True)
 PARAGRAPH_FIELD = Field("paragraph", Number(minimum=0, integer=True), "only this paragraph, from 0; default all")
 X_LENGTH = Length("x")
 Y_LENGTH = Length("y")
@@ -70,7 +70,7 @@ ANCHOR = Choice(("top", "middle", "bottom"))
 TEXT_FIELD = Field("text", Text(), "new text; a newline starts a new paragraph", required=True)
 TABLE_ROW = Field("row", Number(minimum=0, integer=True), "from 0", required=True)
 TABLE_COLUMN = Field("column", Number(minimum=0, integer=True), "from 0", required=True)
-LAYOUT_FIELD = Field("layout", Text(non_empty=True), "layout name as deck read lists it", required=True)
+LAYOUT_FIELD = Field("layout", Text(non_empty=True), "layout name as office read lists it", required=True)
 AFTER_FIELD = Field("after", Number(minimum=0, integer=True), "slide number the new slide follows; 0 puts it first")
 CELL_ROWS = ListOf(ListOf(CellValue()), non_empty=True)
 SERIES = Record("series", "one data series", (
@@ -176,8 +176,8 @@ INSERT_OPERATIONS = (
         Field("text", Text(), "text inside the shape"),
     ),
     operation("add_connector", "draw a connector between two shapes of one slide, from the side of the first that faces the second; it stays attached when either shape moves", SLIDE_FIELD,
-        Field("from", ShapeAddress(), "shape the connector starts at, from deck read", required=True),
-        Field("to", ShapeAddress(), "shape the connector ends at, from deck read", required=True),
+        Field("from", ShapeAddress(), "shape the connector starts at, from office read", required=True),
+        Field("to", ShapeAddress(), "shape the connector ends at, from office read", required=True),
         Field("kind", Choice(CONNECTOR_KINDS), f"{STRAIGHT_KIND} (default) or {ELBOW_KIND}, which turns at right angles"),
         Field("arrow", Choice(tuple(ARROW_ENDS)), f"where arrowheads go; default {DEFAULT_ARROW}"),
         Field("color", HexColor(), "line color; default the theme's dark or light text color, whichever reads on the slide"),
@@ -264,7 +264,7 @@ SLIDE_OPERATIONS = (
         Field("after", Number(minimum=0, integer=True), "slide number the copy follows; default the original"),
     ),
     operation("delete_slide", "delete a slide", SLIDE_FIELD),
-    operation("reorder", "put the slides in a new order, given as the numbers deck read showed",
+    operation("reorder", "put the slides in a new order, given as the numbers office read showed",
         Field("order", ListOf(SLIDE_NUMBER, non_empty=True), "every slide that remains, each once, in the new order", required=True),
     ),
     operation("set_slide_hidden", "hide a slide from the slide show or show it again", SLIDE_FIELD,
@@ -306,7 +306,7 @@ SLIDE_OPERATIONS = (
         Field("date", Text(), "date text as it should read; empty text removes the date"),
     ),
 )
-SECTION_FIELD = Field("section", Text(non_empty=True), "section name as deck read lists it", required=True)
+SECTION_FIELD = Field("section", Text(non_empty=True), "section name as office read lists it", required=True)
 SECTION_OPERATIONS = (
     operation("add_section", "start a named section at a slide; it runs to the next section", SLIDE_FIELD,
         Field("name", Text(non_empty=True), "section name", required=True),
@@ -315,7 +315,7 @@ SECTION_OPERATIONS = (
         Field("name", Text(non_empty=True), "new name", required=True),
     ),
     operation("move_to_section", "move slides to the end of a section, in the order given",
-        Field("slides", ListOf(SLIDE_NUMBER, non_empty=True), "slide numbers from deck read", required=True),
+        Field("slides", ListOf(SLIDE_NUMBER, non_empty=True), "slide numbers from office read", required=True),
         SECTION_FIELD,
     ),
     operation("remove_section", "remove a section; its slides join the section before it", SECTION_FIELD),
@@ -337,7 +337,7 @@ DECK_OPERATIONS = (
 
 OPERATIONS = Variant(
     "operation",
-    "one edit of deck apply; slide numbers, shape indexes and table rows refer to the deck as deck read showed it before the batch, "
+    "one edit of office apply; slide numbers, shape indexes and table rows refer to the deck as office read showed it before the batch, "
     "operations run in order, and the batch applies whole or not at all unless --mode says otherwise; a slide added in the batch is edited in the next batch; "
     f"a length is EMU ({EMU_PER_INCH} per inch, {EMU_PER_POINT} per point) or text with a unit such as {LENGTH_EXAMPLES} of the slide",
     "op",

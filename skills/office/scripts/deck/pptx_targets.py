@@ -116,7 +116,7 @@ def shapes_of_kind_suggestion(target: ShapeTarget, kinds: tuple[str, ...]) -> st
     addresses = [str(index) for index, shape in enumerate(target.slide.shapes) if shape_kind(shape._element) in kinds]
     if addresses:
         return f"use shape {' or '.join(addresses)}, the {wanted} of slide {target.slide_number}"
-    return f"slide {target.slide_number} holds no {wanted}; run deck read to find the slide that does"
+    return f"slide {target.slide_number} holds no {wanted}; run office read to find the slide that does"
 
 
 def text_body(element):
@@ -126,7 +126,7 @@ def text_body(element):
 def require_text(target: ShapeTarget, location: str):
     body = text_body(target.element)
     if body is None:
-        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}.shape: {target.label} is a {target.kind} that holds no text", f"{location}.shape", "use set_table_cell or format_table_cells for a table, or pick a shape deck read shows with text"))
+        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}.shape: {target.label} is a {target.kind} that holds no text", f"{location}.shape", "use set_table_cell or format_table_cells for a table, or pick a shape office read shows with text"))
     return target.shape.text_frame
 
 

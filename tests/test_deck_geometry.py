@@ -99,7 +99,7 @@ class RenderedGeometryTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             deck_path = Path(directory)
             (deck_path / "slides.html").write_text(FIXTURE_SOURCE, encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build"], capture_output=True, text=True, cwd=deck_path)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pdf", "slides.html"], capture_output=True, text=True, cwd=deck_path)
             envelope = json.loads(completed.stdout)
             geometry = json.loads((deck_path / "build" / "review" / "geometry.json").read_text(encoding="utf-8"))
         clean, clipped = geometry["slides"]
@@ -128,7 +128,7 @@ class KitCollisionTest(unittest.TestCase):
     def build(self, source: str) -> dict:
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / "slides.html").write_text(source, encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build"], capture_output=True, text=True, cwd=directory)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.pdf", "slides.html"], capture_output=True, text=True, cwd=directory)
         return json.loads(completed.stdout)
 
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")

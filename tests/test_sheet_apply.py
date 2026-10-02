@@ -47,15 +47,15 @@ class WorkbookEditTest(WorkbookFixture):
         return envelope
 
     def formulas(self, sheet):
-        envelope = run_office(["sheet", "read", "fixture.xlsx", "--sheet", sheet, "--where", "formula"], self.directory)
+        envelope = run_office(["read", "fixture.xlsx", "--sheet", sheet, "--where", "formula"], self.directory)
         return {cell["cell"]: cell["formula"] for cell in envelope["details"]["range"]["cells"]}
 
     def values(self, sheet):
-        envelope = run_office(["sheet", "read", "fixture.xlsx", "--sheet", sheet, "--where", "formula"], self.directory)
+        envelope = run_office(["read", "fixture.xlsx", "--sheet", sheet, "--where", "formula"], self.directory)
         return {cell["cell"]: cell["value"] for cell in envelope["details"]["range"]["cells"]}
 
     def sheet_info(self, sheet="Sales"):
-        envelope = run_office(["sheet", "read", "fixture.xlsx"], self.directory)
+        envelope = run_office(["read", "fixture.xlsx"], self.directory)
         return next(info for info in envelope["details"]["sheets"] if info["name"] == sheet), envelope["details"]["definedNames"]
 
     def chart_references(self):
@@ -95,9 +95,9 @@ class SpecificSuggestionTest(WorkbookEditTest):
         self.assertEqual((issue["location"], issue["suggestion"]), ("ops[0].anchor", 'use a cell such as "ZZ1"'))
         issue = self.refusal([{"op": "add_chart", "type": "line", "range": "Sales!A1:B4"}])
         self.assertEqual(issue["suggestion"], 'put the sheet in its own field and the cells here: "sheet": "Sales", "range": "A1:B4"')
-        envelope = run_office(["sheet", "read", "fixture.xlsx", "--range", "A1:ZZZ"], self.directory)
+        envelope = run_office(["read", "fixture.xlsx", "--range", "A1:ZZZ"], self.directory)
         self.assertIn("in the corner ZZZ of 'A1:ZZZ', column ZZZ is past XFD and the row number is missing", envelope["summary"])
-        envelope = run_office(["sheet", "read", "fixture.xlsx", "--range", "XFE1"], self.directory)
+        envelope = run_office(["read", "fixture.xlsx", "--range", "XFE1"], self.directory)
         self.assertEqual(envelope["status"], "error")
 
     def test_a_taken_sheet_name_suggests_a_free_one(self):
@@ -110,12 +110,12 @@ class SpecificSuggestionTest(WorkbookEditTest):
         issues = self.apply([{"op": "add_chart", "sheet": "Sales", "type": "line", "data": "A1:B4"}], name="fixture.xlsx")["issues"]
         self.assertEqual([(issue["location"], issue["suggestion"]) for issue in issues], [("ops[0].data", "rename the field to 'range'")])
         write_json(self.directory / "spec.json", {"sheets": [{"name": "매출", "data": [["월", "매출"], ["1월", 5]]}]})
-        issues = run_office(["sheet", "create", "book.xlsx", "--spec", "spec.json"], self.directory)["issues"]
+        issues = run_office(["create", "book.xlsx", "spec.json"], self.directory)["issues"]
         self.assertEqual([issue["suggestion"] for issue in issues], ["rename the field to 'title'", "rename the field to 'rows'"])
 
     def test_rows_written_as_objects_are_answered_with_the_lists_they_mean(self):
         write_json(self.directory / "spec.json", {"sheets": [{"title": "매출", "rows": [{"담당자": "이샘플", "매출": 5}, {"매출": 6, "담당자": "박예시"}]}]})
-        issue = run_office(["sheet", "create", "book.xlsx", "--spec", "spec.json"], self.directory)["issues"][0]
+        issue = run_office(["create", "book.xlsx", "spec.json"], self.directory)["issues"][0]
         self.assertEqual((issue["code"], issue["location"]), ("WRONG_TYPE", "spec.sheets[0].rows"))
         self.assertIn("spec.sheets[0].rows[1] lists its keys in another order", issue["message"])
         self.assertIn('[["담당자", "매출"], ["이샘플", 5], ["박예시", 6]]', issue["suggestion"])
@@ -129,7 +129,7 @@ class TextLimitTest(WorkbookEditTest):
         issue = self.apply([{"op": "set_cell", "sheet": "Sales", "cell": "A9", "value": "x" * 32768}], name="fixture.xlsx")["issues"][0]
         self.assertIn("an Excel cell holds at most 32767", issue["message"])
         write_json(self.directory / "spec.json", {"sheets": [{"title": "2026년 3분기 영업 실적 지역별 담당자별 상세 분석 보고서", "rows": [["a"]]}]})
-        issue = run_office(["sheet", "create", "book.xlsx", "--spec", "spec.json"], self.directory)["issues"][0]
+        issue = run_office(["create", "book.xlsx", "spec.json"], self.directory)["issues"][0]
         self.assertEqual(issue["location"], "spec.sheets[0].title")
         self.assertIn("at most 31 characters", issue["message"])
         self.assertFalse((self.directory / "book.xlsx").exists())
@@ -208,7 +208,7 @@ class BatchTest(WorkbookEditTest):
             {"op": "rename_sheet", "sheet": "Extra", "name": "Later"},
             {"op": "set_cell", "sheet": "Later", "cell": "A2", "value": 7},
         ])
-        envelope = run_office(["sheet", "read", "fixture.xlsx", "--sheet", "Later"], self.directory)
+        envelope = run_office(["read", "fixture.xlsx", "--sheet", "Later"], self.directory)
         self.assertEqual(envelope["details"]["range"]["values"], [[61], [7]])
 
     def test_one_bad_operation_leaves_the_file_byte_identical(self):
@@ -292,7 +292,7 @@ class CellAndStyleTest(WorkbookEditTest):
             {"op": "set_cell", "sheet": "Sales", "cell": "F2", "value": "=B2+1", "type": "text"},
             {"op": "set_range", "sheet": "Sales", "cell": "F3", "values": [[1, "=F3*2"], ["=x", None]], "type": "auto"},
         ])
-        envelope = run_office(["sheet", "read", "fixture.xlsx", "--range", "F1:G4"], self.directory)
+        envelope = run_office(["read", "fixture.xlsx", "--range", "F1:G4"], self.directory)
         selected = envelope["details"]["range"]
         self.assertEqual(selected["formulas"], [["=B2+1", None], [None, None], [None, "=F3*2"], ["=x", None]])
         self.assertEqual(selected["values"][0][0], 11)
@@ -377,8 +377,7 @@ class MacroWorkbookTest(WorkbookFixture):
 
     def test_a_macro_workbook_keeps_its_macros_when_rows_are_appended(self):
         self.build_macro_workbook()
-        write_json(self.directory / "rows.json", [[3, "=A3*2"]])
-        envelope = run_office(["sheet", "edit", str(self.directory / "macro.xlsm"), "--rows", "rows.json"], self.directory)
+        envelope = self.apply([{"op": "append_rows", "rows": [[3, "=A3*2"]]}], name="macro.xlsm")
         self.assertEqual(envelope["status"], "ok", envelope)
         with zipfile.ZipFile(self.directory / "macro.xlsm") as archive:
             self.assertEqual(archive.read("xl/vbaProject.bin"), b"FAKE-VBA-PAYLOAD")

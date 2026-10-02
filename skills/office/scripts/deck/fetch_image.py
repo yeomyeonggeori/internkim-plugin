@@ -5,7 +5,6 @@ from dataclasses import dataclass
 import io
 import json
 import pathlib
-import sys
 import urllib.parse
 import urllib.request
 
@@ -13,7 +12,8 @@ from PIL import Image, UnidentifiedImageError
 
 from deck.deck_definitions import IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND
 from core.office_outputs import require_output_extension
-from core.office_result import OfficeArgumentParser, OfficeFailure, Result, run_command
+from core.office_arguments import route_parser
+from core.office_result import OfficeFailure, Result, run_command
 from core.text_script import has_hangul
 
 OPENVERSE_ENDPOINT = "https://api.openverse.org/v1/images/"
@@ -94,24 +94,17 @@ def save_as(data: bytes, output_path: pathlib.Path) -> tuple[int, int, int] | No
     return image.width, image.height, output_path.stat().st_size
 
 
-def parse_arguments(arguments: list[str]) -> tuple[str, str, int]:
-    parser = OfficeArgumentParser()
-    parser.add_argument("query", help="a concrete English scene, such as \"harbor cranes at dawn\"; one or two words find more")
-    parser.add_argument("output", nargs="?", help="where to save the photo, such as images/harbor.jpg")
-    parser.add_argument("--output", "-o", dest="output_option", help="the same as the second argument")
-    parser.add_argument("--count", type=int, default=DEFAULT_CANDIDATE_COUNT, help=f"how many candidates to save (default {DEFAULT_CANDIDATE_COUNT})")
-    parsed = parser.parse_args(arguments)
-    output = parsed.output_option or parsed.output
-    if not output:
-        parser.error("give the output path as the second argument or --output")
+def parse_arguments() -> tuple[str, str, int]:
+    parser = route_parser("image", count=DEFAULT_CANDIDATE_COUNT)
+    parsed = parser.parse_args()
     if not parsed.query.strip():
         parser.error("the query is empty; give a concrete English scene, such as \"harbor cranes at dawn\"")
-    require_output_extension(output, tuple(SAVE_FORMATS))
-    return parsed.query, output, max(1, parsed.count)
+    require_output_extension(parsed.output, tuple(SAVE_FORMATS))
+    return parsed.query, parsed.output, max(1, parsed.count)
 
 
 def main() -> Result:
-    query, output_value, count = parse_arguments(sys.argv[1:])
+    query, output_value, count = parse_arguments()
     output_path = pathlib.Path(output_value)
     try:
         results = search_openverse(query)

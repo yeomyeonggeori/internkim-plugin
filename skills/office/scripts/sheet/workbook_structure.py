@@ -151,7 +151,7 @@ def shift_filter(worksheet, shift: Shift) -> None:
 def guard_tables(worksheet, shift: Shift) -> None:
     for table in worksheet.tables.values():
         if table_is_broken_by(table, shift):
-            raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"table {table.name} on {worksheet.title} would gain or lose a column or lose its header row, which sheet apply does not edit; change rows and columns outside the table, or rebuild the table", worksheet.title))
+            raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"table {table.name} on {worksheet.title} would gain or lose a column or lose its header row, which office apply does not edit; change rows and columns outside the table, or rebuild the table", worksheet.title))
 
 
 def table_is_broken_by(table, shift: Shift) -> bool:

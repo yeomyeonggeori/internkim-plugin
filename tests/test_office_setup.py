@@ -50,7 +50,7 @@ class WithoutSetupTest(unittest.TestCase):
     def test_a_command_before_setup_names_setup_and_writes_nothing(self):
         office_entry = copy_skill(self.root / "office")
         before = tree_state(self.root / "office")
-        for arguments in (["sheet", "create", "표.xlsx", "--row", "a,b"], ["python", "-c", "print(1)"]):
+        for arguments in (["create", "표.xlsx", "표.csv"], ["python", "-c", "print(1)"]):
             with self.subTest(arguments=arguments[:2]):
                 completed, envelope = run(office_entry, arguments, self.work, self.environment)
                 self.assertEqual(completed.returncode, 1)
@@ -63,7 +63,7 @@ class WithoutSetupTest(unittest.TestCase):
     def test_a_drawing_command_without_prepared_renderer_packages_names_setup(self):
         office_entry = copy_skill(self.root / "office", ("python environment",))
         (self.work / "보고서.md").write_text(REPORT, encoding="utf-8")
-        completed, envelope = run(office_entry, ["doc", "export", "보고서.md", "--output", "보고서.pdf"], self.work, self.environment)
+        completed, envelope = run(office_entry, ["create", "보고서.pdf", "보고서.md"], self.work, self.environment)
         self.assertEqual(completed.returncode, 1)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["RENDERER_UNAVAILABLE"])
         self.assertIn("office setup", envelope["issues"][0]["message"] + envelope["issues"][0]["suggestion"])
@@ -86,7 +86,7 @@ class PreparedSkillTest(unittest.TestCase):
         cls.temporary_directory = tempfile.TemporaryDirectory()
         root = Path(cls.temporary_directory.name)
         cls.skill = root / "office"
-        cls.office_entry = copy_skill(cls.skill)
+        cls.office_entry = copy_skill(cls.skill, ("ocr engine",))
         cls.setup_completed, cls.setup_envelope = run(cls.office_entry, ["setup"], root, dict(os.environ))
         cls.requester = root / "requester"
         cls.work = cls.requester / "work"
@@ -105,8 +105,8 @@ class PreparedSkillTest(unittest.TestCase):
 
     def test_setup_lists_each_piece_where_the_skill_reads_it(self):
         steps = self.setup_envelope["details"]["steps"]
-        self.assertEqual([step["name"] for step in steps], ["python environment", "renderer packages"])
-        self.assertEqual({step["state"] for step in steps}, {"prepared"})
+        self.assertEqual([step["name"] for step in steps], ["python environment", "renderer packages", "ocr engine"])
+        self.assertEqual([step["state"] for step in steps], ["prepared", "prepared", "found"])
         self.assertEqual([Path(step["path"]) for step in steps], [self.skill.resolve() / PREPARED_LOCATIONS[step["name"]] for step in steps])
 
     def test_a_second_setup_finds_everything_and_changes_nothing(self):
@@ -118,11 +118,12 @@ class PreparedSkillTest(unittest.TestCase):
     def test_a_requester_builds_a_deck_a_sheet_and_a_document_from_the_read_only_skill_offline(self):
         shutil.copytree(DECK_SOURCE, self.work / "deck")
         (self.work / "보고서.md").write_text(REPORT, encoding="utf-8")
+        (self.work / "실적.csv").write_text("지역,매출\n서울,1200\n", encoding="utf-8")
         commands = (
-            (self.work / "deck", ["deck", "build", "--format", "pdf"]),
-            (self.work, ["sheet", "create", "실적.xlsx", "--row", "지역,매출", "--row", "서울,1200"]),
-            (self.work, ["doc", "export", "보고서.md", "--output", "보고서.pdf"]),
-            (self.work, ["doc", "export", "보고서.md", "--output", "보고서.docx"]),
+            (self.work / "deck", ["create", "build/deck.pdf", "slides.html"]),
+            (self.work, ["create", "실적.xlsx", "실적.csv"]),
+            (self.work, ["create", "보고서.pdf", "보고서.md"]),
+            (self.work, ["create", "보고서.docx", "보고서.md"]),
         )
         for directory, arguments in commands:
             with self.subTest(arguments=arguments[:2]):

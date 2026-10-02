@@ -76,7 +76,7 @@ class SpreadsheetFormulaTest(unittest.TestCase):
         specification_path = self.directory / "spec.json"
         specification_path.write_text(json.dumps({"title": "Probe", "sheets": [{"title": "Data", "rows": PROBE_ROWS}]}))
         workbook_path = self.directory / "probe.xlsx"
-        run_script("create_xlsx.py", str(workbook_path), "--spec", str(specification_path))
+        run_script("create_xlsx.py", str(workbook_path), str(specification_path))
         return read_cells(workbook_path)
 
     def test_every_formula_is_stored_exactly_as_written(self):
@@ -101,20 +101,12 @@ class SpreadsheetFormulaTest(unittest.TestCase):
         specification_path = self.directory / "spec.json"
         specification_path.write_text(json.dumps({"title": "Csv", "sheets": [{"title": "Data", "csvPath": str(csv_path)}]}))
         workbook_path = self.directory / "csv.xlsx"
-        run_script("create_xlsx.py", str(workbook_path), "--spec", str(specification_path))
+        run_script("create_xlsx.py", str(workbook_path), str(specification_path))
         cells = read_cells(workbook_path)
         self.assertEqual(cells["A2"], ("text", "007"))
         self.assertEqual(cells["B2"], ("number", "1500"))
         self.assertEqual(cells["C2"], ("number", "2.5"))
         self.assertEqual(cells["D2"], ("text", "1,500"))
-
-    def test_appended_row_values_are_typed_by_the_same_grammar(self):
-        workbook_path = self.directory / "append.xlsx"
-        run_script("create_xlsx.py", str(workbook_path), "--title", "Append", "--row", "code,amount")
-        run_script("edit_xlsx.py", str(workbook_path), "--row", "007,1500")
-        cells = read_cells(workbook_path)
-        self.assertEqual(cells["A2"], ("text", "007"))
-        self.assertEqual(cells["B2"], ("number", "1500"))
 
 
 class CellValueGrammarTest(unittest.TestCase):

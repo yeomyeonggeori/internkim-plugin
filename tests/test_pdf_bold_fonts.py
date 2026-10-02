@@ -67,7 +67,7 @@ class BoldFontTest(unittest.TestCase):
         specification_path = self.directory / "spec.json"
         specification_path.write_text(json.dumps(specification))
         output_path = self.directory / "out.pdf"
-        result = run_office_script("pdf/create_pdf.py", str(output_path), "--spec", str(specification_path))
+        result = run_office_script("pdf/create_pdf.py", str(output_path), str(specification_path))
         return result, output_path
 
     def test_pdf_create_embeds_a_second_font_file_for_headings(self):
@@ -82,20 +82,20 @@ class BoldFontTest(unittest.TestCase):
         self.assertEqual(result["status"], "warning")
         self.assertEqual(embedded_font_names(output_path), {"TestGothicRegular"})
 
-    def test_doc_export_embeds_bold_for_headings(self):
+    def test_a_markdown_pdf_embeds_bold_for_headings(self):
         self.add_bold_sibling()
         markdown_path = self.directory / "content.md"
         markdown_path.write_text("# Title\n\nBody\n")
-        result = run_office_script("doc/export_document.py", str(markdown_path), "--output", str(markdown_path.with_suffix(".pdf")), "--font-path", str(self.regular_path))
+        result = run_office_script("doc/export_document.py", str(markdown_path.with_suffix(".pdf")), str(markdown_path), "--font-path", str(self.regular_path))
         self.assertEqual(issue_codes(result), [])
         self.assertEqual(embedded_font_names(Path(result["outputPath"])), {"TestGothicRegular", "TestGothicBoldFace"})
 
-    def test_paperwork_render_embeds_bold_for_titles(self):
+    def test_a_form_embeds_bold_for_titles(self):
         self.add_bold_sibling()
         document = {"title": "Quote", "profile": {"name": "Sample Co"}, "sections": [{"title": "Terms", "paragraphs": ["Body"]}], "fontPath": str(self.regular_path)}
         document_path = self.directory / "document.json"
         document_path.write_text(json.dumps(document))
-        result = run_office_script("paperwork/render_paperwork.py", str(document_path), str(self.directory / "form.pdf"))
+        result = run_office_script("paperwork/merge_form.py", "intl/quote", str(document_path), str(self.directory / "form.pdf"))
         self.assertEqual(issue_codes(result), [])
         self.assertEqual(embedded_font_names(self.directory / "form.pdf"), {"TestGothicRegular", "TestGothicBoldFace"})
 

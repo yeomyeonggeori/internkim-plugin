@@ -32,18 +32,14 @@ class EastAsiaFontTest(unittest.TestCase):
     def tearDown(self):
         self.temporary_directory.cleanup()
 
-    def test_check_and_validate_agree_on_a_named_east_asian_font(self):
+    def test_a_named_east_asian_font_passes_the_check(self):
         korean_document(self.directory / "named.docx", "바탕")
-        for command in ("check", "validate"):
-            with self.subTest(command=command):
-                self.assertEqual(font_codes(run_office(["doc", command, "named.docx"], self.directory)), set())
+        self.assertEqual(font_codes(run_office(["check", "named.docx"], self.directory)), set())
 
-    def test_check_and_validate_agree_on_a_missing_east_asian_font(self):
+    def test_a_missing_east_asian_font_is_reported_once(self):
         korean_document(self.directory / "unnamed.docx", None)
-        for command in ("check", "validate"):
-            with self.subTest(command=command):
-                self.assertEqual(font_codes(run_office(["doc", command, "unnamed.docx"], self.directory)), {"EAST_ASIA_FONT_MISSING"})
-
+        envelope = run_office(["check", "unnamed.docx"], self.directory)
+        self.assertEqual([issue["code"] for issue in envelope["issues"] if issue["code"] == "EAST_ASIA_FONT_MISSING"], ["EAST_ASIA_FONT_MISSING"])
 
 if __name__ == "__main__":
     unittest.main()

@@ -41,7 +41,7 @@ def write_json(path, value):
 
 
 def block_texts(working_directory, document_name):
-    envelope = run_office(["doc", "read", document_name], working_directory)
+    envelope = run_office(["read", document_name], working_directory)
     return [(block["kind"], block.get("text", block.get("cells"))) for block in envelope["details"]["blocks"]]
 
 
@@ -92,7 +92,7 @@ document.save("contract.docx")
 
 
 def read_details(working_directory, document_name, *flags):
-    return run_office(["doc", "read", document_name, *flags], working_directory)["details"]
+    return run_office(["read", document_name, *flags], working_directory)["details"]
 
 
 class ContractFixture(unittest.TestCase):

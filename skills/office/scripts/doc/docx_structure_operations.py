@@ -157,7 +157,7 @@ def require_markdown_block(editing: DocxEditing, block, location: str) -> None:
     if isinstance(block, Image):
         problem = local_image_problem(block.source, Path(block.source))
         if problem:
-            raise OfficeFailure(INPUT_NOT_FOUND.issue(f"{location}.markdown: image {block.source} {problem}", f"{location}.markdown", suggestion="use a local path relative to the directory doc apply runs in"))
+            raise OfficeFailure(INPUT_NOT_FOUND.issue(f"{location}.markdown: image {block.source} {problem}", f"{location}.markdown", suggestion="use a local path relative to the directory office apply runs in"))
     style = required_style(block)
     if style:
         require_style(editing, style[0], (style[1],), f"{location}.markdown")

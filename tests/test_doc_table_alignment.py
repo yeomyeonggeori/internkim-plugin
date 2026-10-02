@@ -23,7 +23,7 @@ class TableAlignmentTest(unittest.TestCase):
         self.temporary_directory.cleanup()
 
     def test_column_alignment_reaches_the_document_and_comes_back(self):
-        self.assertEqual(run_office(["convert", "quote.md", "quote.docx"], self.directory)["status"], "ok")
+        self.assertEqual(run_office(["create", "quote.docx", "quote.md"], self.directory)["status"], "ok")
         document_xml = zipfile.ZipFile(self.directory / "quote.docx").read("word/document.xml").decode()
         self.assertEqual(re.findall(r'w:jc w:val="(\w+)"', document_xml)[:3], ["left", "center", "right"])
         self.assertEqual(run_office(["convert", "quote.docx", "back.md"], self.directory)["status"], "ok")

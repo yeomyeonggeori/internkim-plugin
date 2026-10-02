@@ -47,11 +47,11 @@ from charts.numbers import chart_number, split_chart_list
 from deck.deck_kit import DEFAULT_THEME, chart_types, icon_names, theme_palettes, uses_deck_kit
 from deck.deck_source import Element, find_all, normalized_text, parse_source, style_texts, visible_text
 from deck.design_tokens import design_front_matter
-from core.office_inputs import PPTX, require_kind
-from core.office_result import ERROR, Issue, OfficeArgumentParser, OfficeFailure, Result, run_command
+from core.office_arguments import route_arguments
+from core.office_result import ERROR, Issue, OfficeFailure, Result, run_command
 from core.office_schema import closest_name, listed_names, names_suggestion
 from deck.resource_inlining import resolve_resource_path
-from core.text_checks import PLACEHOLDER_PATTERN, PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
+from core.text_checks import PLACEHOLDER_PATTERN, PLACEHOLDER_LEFT, text_presence_issues
 
 
 DONUT_SLICE_MAXIMUM = 8
@@ -67,6 +67,7 @@ class CheckRequest:
     source_path: pathlib.Path
     requested_slide_count: int | None = None
     required_text: tuple[str, ...] = ()
+    forbidden_text: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -119,7 +120,7 @@ def deck_issues(request: CheckRequest, root: Element, slides: list[Slide], is_ki
     issues += slide_count_issues(request.requested_slide_count, slides)
     for slide in slides:
         issues += empty_slide_issues(slide) + chart_issues(slide) + image_issues(slide, request.source_path.parent) + placeholder_issues(slide)
-    issues += required_text_issues(request.required_text, slides)
+    issues += text_presence_issues(" ".join(slide.text() for slide in slides), request.required_text, request.forbidden_text)
     return issues + palette_issues(root, request.source_path.parent, is_kit_deck)
 
 
@@ -369,13 +370,6 @@ def placeholder_issues(slide: Slide) -> list[Issue]:
     return [PLACEHOLDER_LEFT.issue(f"{slide.location} still shows {', '.join(sorted(set(found)))}", slide.location, suggestion="replace it with the real value from the source, or write \"Not provided\" in the deck's language")]
 
 
-def required_text_issues(required_text: tuple[str, ...], slides: list[Slide]) -> list[Issue]:
-    deck_text = " ".join(slide.text() for slide in slides).casefold()
-    spaceless_text = deck_text.replace(" ", "")
-    missing = [value for value in required_text if normalized_text(value).casefold() not in deck_text and normalized_text(value).casefold().replace(" ", "") not in spaceless_text]
-    return [REQUIRED_TEXT_MISSING.issue(f"required text is missing: {value}", value) for value in missing]
-
-
 def palette_issues(root: Element, base_path: pathlib.Path, is_kit_deck: bool) -> list[Issue]:
     palette = allowed_colors(root, base_path, is_kit_deck)
     if palette is None:
@@ -466,23 +460,8 @@ def check_details(root: Element, slides: list[Slide]) -> dict:
     }
 
 
-def parse_arguments(arguments: list[str] | None = None):
-    parser = OfficeArgumentParser()
-    parser.add_argument("target", nargs="?", default="slides.html", help="slides.html, the directory holding it, or a .pptx (default slides.html)")
-    add_check_arguments(parser)
-    parser.add_argument("--slides", default="", help=".pptx: slides to check, such as 2,4-6; default every slide")
-    parser.add_argument("--output-directory", default="", help=".pptx: where the preview goes, default <file name>-check beside the file")
-    parser.add_argument("--no-preview", action="store_true", help=".pptx: measure only, without writing the preview")
-    return parser.parse_args(arguments)
-
-
-def add_check_arguments(parser: OfficeArgumentParser) -> None:
-    parser.add_argument("--slide-count", type=int, help="slides.html: the slide count the user asked for; a different count is an error")
-    parser.add_argument("--required-text", action="append", default=[], help="slides.html: a source fact that must be visible on a slide; repeat for each fact")
-
-
 def check_request(source_path: pathlib.Path, parsed) -> CheckRequest:
-    return CheckRequest(source_path.resolve(), parsed.slide_count, tuple(parsed.required_text))
+    return CheckRequest(source_path.resolve(), parsed.slide_count, tuple(parsed.required_text), tuple(parsed.forbidden_text))
 
 
 def deck_source_path(target: str) -> pathlib.Path:
@@ -491,12 +470,8 @@ def deck_source_path(target: str) -> pathlib.Path:
 
 
 def main() -> Result:
-    parsed = parse_arguments()
-    if pathlib.Path(parsed.target).suffix.casefold() not in ("", ".html"):
-        from deck.check_pptx import check_presentation
-        require_kind(parsed.target, PPTX)
-        return check_presentation(pathlib.Path(parsed.target).expanduser(), parsed.slides, parsed.output_directory, not parsed.no_preview)
-    return check_deck(check_request(deck_source_path(parsed.target), parsed))
+    parsed = route_arguments("check", "slides")
+    return check_deck(check_request(deck_source_path(parsed.file), parsed))
 
 
 if __name__ == "__main__":

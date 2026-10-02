@@ -40,4 +40,4 @@ image.save("chart.png")
 
 
 def pdf_text(path, working_directory):
-    return "\n".join(page["text"] for page in run_office(["pdf", "read", path], working_directory)["details"]["pages"])
+    return "\n".join(page["text"] for page in run_office(["read", path], working_directory)["details"]["pages"])

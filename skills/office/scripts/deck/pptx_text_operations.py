@@ -92,7 +92,7 @@ def plan_find_replace(editing: PptxEditing, operation: dict, location: str) -> C
     runs_by_paragraph = [paragraph.runs for frame in frames for paragraph in frame.paragraphs]
     occurrences = sum(joined_text(runs).count(operation["find"]) for runs in runs_by_paragraph)
     if occurrences == 0:
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}: {operation['find']!r} does not occur", location, "copy the exact text from deck read; a match cannot span two paragraphs"))
+        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}: {operation['find']!r} does not occur", location, "copy the exact text from office read; a match cannot span two paragraphs"))
     slides = scoped_slides(editing, operation, location)
 
     def change() -> str:
@@ -127,7 +127,7 @@ def plan_set_text_style(editing: PptxEditing, operation: dict, location: str) ->
     paragraphs = resolve_paragraphs(require_text(target, location), operation, target, location)
     find = operation.get("find")
     if find and not any(occurrences(paragraph._p, find) for paragraph in paragraphs):
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.find: {target.label} has no {find!r}", f"{location}.find", "copy the exact text from deck read; a match cannot span two paragraphs"))
+        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.find: {target.label} has no {find!r}", f"{location}.find", "copy the exact text from office read; a match cannot span two paragraphs"))
 
     def change() -> str:
         for properties in styled_properties(paragraphs, find):

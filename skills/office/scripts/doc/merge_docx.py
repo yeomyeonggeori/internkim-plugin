@@ -8,9 +8,9 @@ import zipfile
 from docx.oxml.ns import qn
 from lxml import etree
 
+from core.office_arguments import route_arguments
 from core.office_operations import save_atomically
-from core.office_inputs import office_file
-from core.office_result import OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
+from core.office_result import OfficeFailure, Result, read_json_file, run_command
 from core.office_schema import require_valid
 from core.template_merge import MERGE_VALUES, TEMPLATE_SYNTAX_ERROR, MergeReport, TextMarkup, fill_markup_part, write_package
 from core.office_outputs import same_kind_output
@@ -25,10 +25,10 @@ PRESERVE_SPACE = "{http://www.w3.org/XML/1998/namespace}space"
 
 def main() -> Result:
     arguments = parse_arguments()
-    values = read_json_file(arguments.values_path)
+    values = read_json_file(arguments.values)
     require_valid(MERGE_VALUES, values, "values")
-    output_path = os.path.expanduser(same_kind_output(arguments.output_path, arguments.template_path))
-    report = merge_template(os.path.expanduser(arguments.template_path), values, output_path)
+    output_path = os.path.expanduser(same_kind_output(arguments.output, arguments.template))
+    report = merge_template(os.path.expanduser(arguments.template), values, output_path)
     return Result(summary=f"filled {report.filled} placeholders into {output_path}", output_path=output_path, issues=report.unused_issues(), details={"placeholders": sorted(report.placeholder_names)})
 
 
@@ -73,11 +73,7 @@ def preserve_edge_spaces(root) -> None:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser()
-    parser.add_argument("template_path", type=office_file("docx"), help="the .docx template")
-    parser.add_argument("values_path", help="JSON object mapping each placeholder name to its value")
-    parser.add_argument("output_path", help="the filled .docx to write")
-    return parser.parse_args()
+    return route_arguments("merge", "docx")
 
 
 if __name__ == "__main__":

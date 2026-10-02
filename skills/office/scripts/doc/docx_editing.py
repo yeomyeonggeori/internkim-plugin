@@ -74,13 +74,13 @@ def require_style(editing: DocxEditing, style_name: str, style_types: tuple, loc
 def index_range_suggestion(noun: str, count: int) -> str:
     if count == 0:
         return f"the document has no {noun}s"
-    return f"use a {noun} index from 0 to {count - 1}; doc read lists them"
+    return f"use a {noun} index from 0 to {count - 1}; office read lists them"
 
 
 def placement(editing: DocxEditing, operation: dict, location: str):
     after, before, at = operation.get("after"), operation.get("before"), operation.get("at")
     if sum(value is not None for value in (after, before, at)) != 1:
-        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: give exactly one of after, before and at", location, suggestion='after or before take a block index from doc read; at takes "start" or "end"'))
+        raise OfficeFailure(INVALID_VALUE.issue(f"{location}: give exactly one of after, before and at", location, suggestion='after or before take a block index from office read; at takes "start" or "end"'))
     if before is not None:
         anchor = resolve_block(editing, before, f"{location}.before")
         return lambda element: anchor.addprevious(element)

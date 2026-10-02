@@ -55,7 +55,7 @@ CHECKED_DECK = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><ti
 def build(deck_path: Path, source: str) -> dict:
     deck_path.mkdir()
     (deck_path / "slides.html").write_text(source, encoding="utf-8")
-    completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path)
+    completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path)
     return json.loads(completed.stdout)
 
 
@@ -100,7 +100,7 @@ class IconSourceTest(unittest.TestCase):
         self.assertEqual([issue.kind.code for issue in self.check_issues(ICON_DECK) if issue.kind.code.startswith("ICON_")], [])
 
     def test_the_guide_lists_every_bundled_icon(self):
-        guide = subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", "deck"], capture_output=True, text=True).stdout
+        guide = subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", "slides"], capture_output=True, text=True).stdout
         names_line = next(line for line in guide.splitlines() if line.strip().startswith("names: "))
         self.assertEqual(names_line.strip().removeprefix("names: ").split(", "), list(icon_names()))
 
@@ -164,7 +164,7 @@ class IconBuildTest(unittest.TestCase):
         self.assertEqual(strokes, {1})
 
     def test_a_built_deck_with_icons_passes_the_pptx_check(self):
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "check", str(self.pptx_path)], capture_output=True, text=True)
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "check", str(self.pptx_path)], capture_output=True, text=True)
         self.assertEqual(json.loads(completed.stdout)["issues"], [])
 
 

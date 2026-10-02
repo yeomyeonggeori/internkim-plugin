@@ -110,22 +110,33 @@ def plan_set_cell(workbook, operation: dict, location: str) -> Change:
 
 def plan_set_range(workbook, operation: dict, location: str) -> Change:
     worksheet = sheet_of(workbook, operation, location)
-    first_row, first_column = parse_cell(operation["cell"], f"{location}.cell")
-    for row_offset, values in enumerate(operation["values"]):
+    first_cell = parse_cell(operation["cell"], f"{location}.cell")
+    return plan_written_rows(worksheet, first_cell, operation["values"], operation.get("type"), f"{location}.values")
+
+
+def plan_append_rows(workbook, operation: dict, location: str) -> Change:
+    worksheet = sheet_of(workbook, operation, location)
+    bounds = data_bounds(worksheet)
+    first_cell = (bounds[2] + 1, bounds[1]) if bounds else (1, 1)
+    return plan_written_rows(worksheet, first_cell, operation["rows"], operation.get("type"), f"{location}.rows")
+
+
+def plan_written_rows(worksheet, first_cell: tuple[int, int], rows: list, value_type: str | None, location: str) -> Change:
+    first_row, first_column = first_cell
+    for row_offset, values in enumerate(rows):
         for column_offset, value in enumerate(values):
-            require_writable(value, f"{location}.values[{row_offset}][{column_offset}]", keeps_text=operation.get("type") == "text")
+            require_writable(value, f"{location}[{row_offset}][{column_offset}]", keeps_text=value_type == "text")
 
     def change() -> str:
         existing = data_bounds(worksheet)
         written = []
-        for row_offset, values in enumerate(operation["values"]):
+        for row_offset, values in enumerate(rows):
             for column_offset, value in enumerate(values):
                 cell = worksheet.cell(row=first_row + row_offset, column=first_column + column_offset)
-                store_value(cell, value, operation.get("type"))
+                store_value(cell, value, value_type)
                 written.append(cell)
         style_written_cells(worksheet, written, existing)
-        rows = len(operation["values"])
-        return f"wrote {rows} rows from {worksheet.title}!{operation['cell'].upper()}"
+        return f"wrote {len(rows)} rows from {worksheet.title}!{get_column_letter(first_column)}{first_row}"
     return change
 
 
@@ -216,6 +227,7 @@ def plan_recalculate(workbook, operation: dict, location: str) -> Change:
 SHEET_OPERATIONS = OperationSet(OPERATIONS, {
     "set_cell": on_workbook(plan_set_cell),
     "set_range": on_workbook(plan_set_range),
+    "append_rows": on_workbook(plan_append_rows),
     "format_range": on_workbook(plan_format_range),
     "set_column_width": on_workbook(plan_set_column_width),
     "freeze_panes": on_workbook(plan_freeze_panes),

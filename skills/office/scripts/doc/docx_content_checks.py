@@ -103,7 +103,7 @@ def unresolved_comment_issues(document, elements: list) -> list[Issue]:
         return []
     first = open_threads[0]
     location = f"block {first['block']}" if first["block"] is not None else "comments"
-    return [UNRESOLVED_COMMENTS.issue(f"{len(open_threads)} comment threads are unresolved; doc read lists them under comments", location, fix=[{"op": "resolve_comment", "comment": first["id"]}])]
+    return [UNRESOLVED_COMMENTS.issue(f"{len(open_threads)} comment threads are unresolved; office read lists them under comments", location, fix=[{"op": "resolve_comment", "comment": first["id"]}])]
 
 
 def field_result_issues(elements: list, fields_update_on_open: bool) -> list[Issue]:

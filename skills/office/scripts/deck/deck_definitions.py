@@ -7,11 +7,12 @@ from deck.deck_kit import DEFAULT_THEME, chart_types, icon_names, kit_names, sli
 from deck.layout_thresholds import EMPTY_REGION_SHARE_MAXIMUM, LABEL_LINE_MAXIMUM, MARK_BREADTH_MINIMUM, REPEATED_FIGURE_MINIMUM, ROUND_SLOT_MINIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
 from core.office_operations import OPERATION_ISSUE_KINDS
 from core.template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
+from core.office_commands import EVERY_KIND
 from core.office_result import ERROR, SETUP_COMMAND, WARNING, Issue, IssueKind
 from core.office_schema import ListOf
 from deck.pptx_edit_definitions import OPERATIONS
 from render.renderer import RENDER_ISSUE_KINDS
-from core.text_checks import PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
+from core.text_checks import PLACEHOLDER_LEFT, TEXT_CHECK_ISSUE_KINDS
 from core.image_formats import PICTURE_FORMATS_TEXT
 
 
@@ -69,7 +70,6 @@ REVIEW_ISSUE_KINDS = tuple(check.kind for check in SLIDE_RENDER_CHECKS + DESIGN_
 
 SOURCE_NOT_HTML = IssueKind("SOURCE_NOT_HTML", ERROR, "the deck source is not an .html file", "write slides.html, or pass --source with an .html file")
 NO_SLIDE_SECTIONS = IssueKind("NO_SLIDE_SECTIONS", ERROR, "the HTML has no <section> slides", "put each slide in its own <section>")
-UNKNOWN_FORMAT = IssueKind("UNKNOWN_FORMAT", ERROR, "--format names a format the build cannot write", "use pdf, pptx, html, or all")
 FONT_NOT_EMBEDDED = IssueKind("FONT_NOT_EMBEDDED", WARNING, "the PPTX names a font it could not embed, so the recipient sees a substitute unless that font is installed", f"use {default_family(DECK).name}, or tell the recipient which font to install")
 TEXT_KEPT_AS_PICTURE = IssueKind("TEXT_KEPT_AS_PICTURE", WARNING, "some slide text is drawn into the slide picture, so the recipient cannot edit it", "name that text when delivering; rotated, skewed, filtered, gradient-clipped and SVG text stays a picture")
 
@@ -87,7 +87,7 @@ LAST_SLIDE_NOT_CLOSING = IssueKind("LAST_SLIDE_NOT_CLOSING", WARNING, "a deck of
 SLIDE_COUNT_MISMATCH = IssueKind("SLIDE_COUNT_MISMATCH", ERROR, "the slide count differs from --slide-count", "add or remove slides until the count matches the request")
 SLIDE_WITHOUT_CONTENT = IssueKind("SLIDE_WITHOUT_CONTENT", ERROR, "a slide has no visible text, image or chart", "give the slide its content or delete it")
 CHART_DATA_INVALID = IssueKind("CHART_DATA_INVALID", ERROR, "a chart's data attributes do not parse or do not line up", "give data-labels and data-values (or data-series) the same number of plain numbers")
-IMAGE_NOT_FOUND = IssueKind("IMAGE_NOT_FOUND", ERROR, "an image is remote or its file does not exist, so the slide would show an empty box", "download it with office deck image and point src at the local file, or remove the image")
+IMAGE_NOT_FOUND = IssueKind("IMAGE_NOT_FOUND", ERROR, "an image is remote or its file does not exist, so the slide would show an empty box", "download it with office image and point src at the local file, or remove the image")
 ICON_HOST_CLASSES = kit_names("iconHostClasses")
 ICON_LIST_LAYOUTS = kit_names("iconListLayouts")
 ICON_HOSTS = f"a {', '.join('.' + name for name in ICON_HOST_CLASSES)}, or an <li> of an {' or '.join(ICON_LIST_LAYOUTS)} list"
@@ -116,12 +116,11 @@ SOURCE_CHECK_ISSUE_KINDS = (
     ICON_MISPLACED,
     IMAGE_NOT_FOUND,
     PLACEHOLDER_LEFT,
-    REQUIRED_TEXT_MISSING,
+    *TEXT_CHECK_ISSUE_KINDS,
     OFF_PALETTE_COLOR,
 )
 
 BUILD_ISSUE_KINDS = (
-    UNKNOWN_FORMAT,
     *RENDER_ISSUE_KINDS,
     FONT_NOT_EMBEDDED,
     TEXT_KEPT_AS_PICTURE,
@@ -209,7 +208,7 @@ DIAGRAM_NOTES = (
     "each <li> is one box: a short phrase, or an <h3> and a <p>; .pick on an <li> fills its box with the accent",
     "process and cycle number their boxes; the top box of a hierarchy is dark and the top level of a pyramid takes the accent",
     "the PPTX draws each box as a native shape and each arrow as a connector attached to the boxes it joins",
-    "deck check refuses a list with fewer or more items than the layout holds and names the count",
+    "office check refuses a list with fewer or more items than the layout holds and names the count",
 )
 CHART_ATTRIBUTES = (
     "data-chart: " + ", ".join(chart_types()),
@@ -300,23 +299,24 @@ def icon_lines() -> list[str]:
 
 
 GUIDE_SECTIONS = (
-    ("Slide order", order_lines),
-    ("Themes (<body data-theme=\"...\">)", theme_lines),
-    ("Layouts (<section data-layout=\"...\">; parts are direct children of the section)", layout_lines),
-    ("Diagrams (process, cycle, hierarchy, pyramid, matrix)", diagram_lines),
-    ("Charts (<figure data-chart=\"...\"> in a chart slide)", chart_lines),
-    ("Icons (optional)", icon_lines),
+    ("slides", "Slide order", order_lines),
+    ("slides", "Themes (<body data-theme=\"...\">)", theme_lines),
+    ("slides", "Layouts (<section data-layout=\"...\">; parts are direct children of the section)", layout_lines),
+    ("slides", "Diagrams (process, cycle, hierarchy, pyramid, matrix)", diagram_lines),
+    ("slides", "Charts (<figure data-chart=\"...\"> in a chart slide)", chart_lines),
+    ("slides", "Icons (optional)", icon_lines),
 )
 
 GUIDE_INPUTS = (
-    ("deck apply <file.pptx> <ops.json>", ListOf(OPERATIONS, non_empty=True)),
-    ("deck merge <template.pptx> <values.json> <output.pptx>: values", MERGE_VALUES),
+    ("apply", "pptx", "the operations", ListOf(OPERATIONS, non_empty=True)),
+    ("merge", "pptx", "the values", MERGE_VALUES),
 )
 GUIDE_ISSUES = (
-    ("deck build", BUILD_ISSUE_KINDS + REVIEW_ISSUE_KINDS),
-    ("deck apply", OPERATION_ISSUE_KINDS + APPLY_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS),
-    ("deck check", SOURCE_CHECK_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS + PPTX_CHECK_ISSUE_KINDS),
-    ("deck merge", PACKAGE_MERGE_ISSUE_KINDS),
-    ("deck restore", (NO_SLIDE_SECTIONS,)),
-    ("deck image", IMAGE_ISSUE_KINDS),
+    ("create", "slides", SOURCE_CHECK_ISSUE_KINDS + BUILD_ISSUE_KINDS + REVIEW_ISSUE_KINDS),
+    ("check", "slides", SOURCE_CHECK_ISSUE_KINDS),
+    ("apply", "pptx", OPERATION_ISSUE_KINDS + APPLY_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS),
+    ("check", "pptx", (SLIDE_COUNT_MISMATCH,) + TEXT_CHECK_ISSUE_KINDS + LAYOUT_AUDIT_ISSUE_KINDS + PPTX_CHECK_ISSUE_KINDS),
+    ("render", "pptx", PPTX_CHECK_ISSUE_KINDS),
+    ("merge", "pptx", PACKAGE_MERGE_ISSUE_KINDS),
+    ("image", EVERY_KIND, IMAGE_ISSUE_KINDS),
 )

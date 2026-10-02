@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from pathlib import Path
 import re
 import zipfile
 from xml.etree import ElementTree
 
 from core.template_merge import placeholder_paths
+from paperwork.forms import TEMPLATES_ROOT
 
 
-TEMPLATES_PATH = Path(__file__).resolve().parents[2] / "assets" / "templates"
+TEMPLATES_PATH = TEMPLATES_ROOT / "kr"
 WORD_NAMESPACE = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 TEMPLATE_PARTS = re.compile(r"word/(document|header\d*|footer\d*)\.xml")
 

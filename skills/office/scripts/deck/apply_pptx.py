@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from core.office_operations import Review, apply_parser, run_apply
+from core.office_arguments import route_arguments
+from core.office_operations import Review, run_apply
 from core.office_result import Result, run_command
 from deck.pptx_layout_audit import audit_presentation, substitutions
 from deck.pptx_operations import PPTX_OPERATIONS, save_editing
@@ -9,7 +10,7 @@ from deck.pptx_targets import PptxEditing, load_editing
 
 
 def main() -> Result:
-    arguments = apply_parser("pptx").parse_args()
+    arguments = route_arguments("apply", "pptx")
     return run_apply(arguments, PPTX_OPERATIONS, load_editing, save_editing, review_layout)
 
 

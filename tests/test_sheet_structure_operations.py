@@ -21,7 +21,7 @@ class SheetStructureTest(OperationFixture):
         workbook = self.workbook()
         self.assertEqual(workbook.sheetnames, ["Sales"])
         self.assertEqual((workbook["Sales"]["F1"].value, workbook.defined_names["Memo"].attr_text), ("=#REF!", "#REF!"))
-        codes = {issue["code"] for issue in run_office(["sheet", "check", "book.xlsx"], self.directory)["issues"]}
+        codes = {issue["code"] for issue in run_office(["check", "book.xlsx"], self.directory)["issues"]}
         self.assertIn("BROKEN_DEFINED_NAME", codes)
 
     def test_the_last_visible_sheet_cannot_be_deleted(self):

@@ -101,7 +101,7 @@ def plan_set_image_properties(editing: DocxEditing, operation: dict, location: s
     pictures = block_pictures(paragraph._p)
     picture_index = operation.get("picture") or 0
     if picture_index >= len(pictures):
-        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.picture: block {operation['block']} holds {len(pictures)} pictures", f"{location}.picture", suggestion="doc read marks the blocks that hold pictures"))
+        raise OfficeFailure(TARGET_NOT_FOUND.issue(f"{location}.picture: block {operation['block']} holds {len(pictures)} pictures", f"{location}.picture", suggestion="office read marks the blocks that hold pictures"))
     drawing = pictures[picture_index]
 
     def change() -> str:

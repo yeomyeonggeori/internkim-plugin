@@ -128,7 +128,7 @@ def card_spill_issues(entries: list[Entry], area: SlideArea) -> list[Issue]:
 
 def layout_issue(check: ReviewCheck, text: str, where: str, remedy: dict | str | None) -> Issue:
     if isinstance(remedy, dict):
-        return check.kind.issue(text, where, f"apply the {remedy['op']} in fix with deck apply, then check the slide again", fix=[remedy])
+        return check.kind.issue(text, where, f"apply the {remedy['op']} in fix with office apply, then check the slide again", fix=[remedy])
     return check.kind.issue(text, where, remedy)
 
 
