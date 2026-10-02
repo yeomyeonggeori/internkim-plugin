@@ -2,6 +2,8 @@
   const fitSteps = [1, 0.95, 0.9, 0.86, 0.82, 0.78];
   const growSteps = [1.3, 1.2, 1.1, 1];
   const growingLayouts = new Set(["kpi", "cards", "comparison", "table"]);
+  const itemSlackShare = 0.15;
+  const boundedAttribute = "data-kit-bounded";
   const overflowTolerance = 2;
   const titleLineMaximum = 3;
   const balanceSteps = 7;
@@ -42,6 +44,16 @@
   const numericCellPattern = /^[+\-−]?[₩$€£¥]?\s?[\d.,]+\s?(%p|%|[^\s\d()]{1,4}(\s[^\s\d()]{1,2})?)?(\s?\([^)]*\))?$/;
   const svgNamespace = "http://www.w3.org/2000/svg";
   const barScaleShare = 0.84;
+  const barBandFill = 0.6;
+  const clusterBandFill = 0.72;
+  const clusterGapShare = 0.12;
+  const barDepthShare = 0.4;
+  const chartShareMinimum = 0.5;
+  const chartFitPasses = 3;
+  const chartFitTolerance = 24;
+  const roundSideMinimum = 480;
+  const columnKinds = new Set(["column", "stacked", "stacked100", "combo"]);
+  const roundKinds = new Set(["donut", "pie"]);
   const lineInsetShare = 5;
   const coverRingRadii = [442, 342, 242];
   const groupedNumberPattern = /^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/;
@@ -49,8 +61,11 @@
   const comboColumnShare = 0.6;
   const comboLineBand = [0.68, 0.92];
   const insideLabelSeries = 3;
+  const insideLabelInks = ["var(--on-accent)", "var(--ink)", "var(--bg)"];
   const scatterLabelSwitchShare = 70;
   const edgeTickClasses = { 0: "kit-from-start", 100: "kit-from-end" };
+  const tickIntervals = 4;
+  const roundStepMultiples = [1, 2, 5, 10];
 
   function slides() {
     return Array.from(document.querySelectorAll("section[data-layout]"));
@@ -776,6 +791,39 @@
     if (layOut) await layOut(slide);
   }
 
+  function clearItemBounds(slide) {
+    slide.querySelectorAll(`[${boundedAttribute}]`).forEach((item) => {
+      item.removeAttribute(boundedAttribute);
+      ["height", "align-self"].forEach((name) => item.style.removeProperty(name));
+    });
+  }
+
+  function boundedAlignment(item) {
+    if (!item.parentElement.classList.contains("kit-grid")) return "center";
+    return item.classList.contains("kit-second-row") ? "start" : "end";
+  }
+
+  async function boundItemSlack(slide, layOut) {
+    clearItemBounds(slide);
+    const items = rowItems(slide);
+    if (!items.length) return;
+    const stretched = Math.max(...items.map((item) => boxSize(item).height));
+    items.forEach((item) => item.style.setProperty("align-self", "start"));
+    if (layOut) await layOut(slide);
+    const allowed = Math.ceil(Math.max(...items.map((item) => boxSize(item).height)) * (1 + itemSlackShare));
+    items.forEach((item) => item.style.removeProperty("align-self"));
+    if (stretched <= allowed) {
+      if (layOut) await layOut(slide);
+      return;
+    }
+    items.forEach((item) => {
+      item.setAttribute(boundedAttribute, "");
+      item.style.setProperty("height", `${allowed}px`);
+      item.style.setProperty("align-self", boundedAlignment(item));
+    });
+    if (layOut) await layOut(slide);
+  }
+
   async function growSlide(slide, layOut) {
     if (!canGrow(slide)) return false;
     for (const step of growSteps) {
@@ -942,6 +990,37 @@
     return scaledRange(bottom, bottom + whole);
   }
 
+  function resolvedChannels(host, color) {
+    const probe = element("i", "", { color });
+    host.appendChild(probe);
+    const channels = (getComputedStyle(probe).color.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+    probe.remove();
+    return channels.length === 3 ? channels : null;
+  }
+
+  function relativeLuminance(channels) {
+    const linear = channels.map((channel) => {
+      const share = channel / 255;
+      return share <= 0.03928 ? share / 12.92 : ((share + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+  }
+
+  function contrastRatio(first, second) {
+    const [lighter, darker] = [relativeLuminance(first), relativeLuminance(second)].sort((one, other) => other - one);
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
+  function insideLabelInk(host, fill) {
+    const background = resolvedChannels(host, fill);
+    if (!background) return insideLabelInks[0];
+    const ranked = insideLabelInks
+      .map((ink) => ({ ink, channels: resolvedChannels(host, ink) }))
+      .filter(({ channels }) => channels)
+      .sort((first, second) => contrastRatio(second.channels, background) - contrastRatio(first.channels, background));
+    return ranked.length ? ranked[0].ink : insideLabelInks[0];
+  }
+
   function highlighted(figure) {
     return figure.getAttribute("data-highlight");
   }
@@ -966,13 +1045,16 @@
     return label;
   }
 
-  function groupShare(categoryCount) {
-    if (categoryCount <= 3) return 0.34;
-    return categoryCount <= 6 ? 0.5 : 0.62;
+  function barsPerGroup(seriesCount, stacks) {
+    return stacks ? 1 : seriesCount;
   }
 
-  function barGroupShare(seriesCount) {
-    return seriesCount === 1 ? 0.56 : 0.72;
+  function bandFill(barCount) {
+    return barCount > 1 ? clusterBandFill : barBandFill;
+  }
+
+  function barShareOfSlot(barCount) {
+    return barCount > 1 ? 1 - clusterGapShare : 1;
   }
 
   function lineStartsAtZero(figure) {
@@ -1009,8 +1091,10 @@
     const top = (value) => (1 - range.share(value)) * 100;
     const zero = top(0);
     const slot = 100 / data.labels.length;
-    const group = slot * groupShare(data.labels.length);
-    const barWidth = stacks ? group : group / data.series.length;
+    const bars = barsPerGroup(data.series.length, stacks);
+    const group = slot * bandFill(bars);
+    const barWidth = group / bars;
+    const drawnShare = barShareOfSlot(bars);
     const labels = [];
     data.labels.forEach((label, category) => {
       const center = slot * category + slot / 2;
@@ -1023,7 +1107,7 @@
           stackTop -= height;
           area.appendChild(element("div", "kit-segment", { left: percent(left), top: percent(stackTop), width: percent(barWidth), height: percent(height), background: colors[seriesIndex] }));
           if (height >= 7 && seriesIndex < insideLabelSeries) {
-            labels.push(valueLabel(formats[seriesIndex].format(value), seriesIndex === 0 ? "kit-inside" : "kit-inside kit-on-light", { left: percent(center), top: percent(stackTop + height / 2) }, { series: seriesIndex, index: category }));
+            labels.push(valueLabel(formats[seriesIndex].format(value), "kit-inside", { left: percent(center), top: percent(stackTop + height / 2), color: insideLabelInk(figure, colors[seriesIndex]) }, { series: seriesIndex, index: category }));
           }
         });
         if (mode === "stacked") labels.push(valueLabel(formats[0].format(totals[category]), "", { left: percent(center), top: percent(stackTop) }));
@@ -1034,7 +1118,7 @@
           const barTop = Math.min(top(value), zero);
           const height = Math.max(0.3, Math.abs(zero - top(value)));
           const negative = value < 0 ? " kit-negative" : "";
-          area.appendChild(element("div", `kit-bar${negative}`, { left: percent(barLeft + barWidth * 0.06), top: percent(barTop), width: percent(barWidth * 0.88), height: percent(height), background: barColor(figure, data, seriesIndex, label, colors) }));
+          area.appendChild(element("div", `kit-bar${negative}`, { left: percent(barLeft + (barWidth * (1 - drawnShare)) / 2), top: percent(barTop), width: percent(barWidth * drawnShare), height: percent(height), background: barColor(figure, data, seriesIndex, label, colors) }));
           const muted = isMuted(figure, data, label) ? " kit-muted" : "";
           labels.push(valueLabel(formats[seriesIndex].format(value), `${value < 0 ? "kit-below" : ""}${muted}`, { left: percent(barLeft + barWidth / 2), top: percent(value < 0 ? barTop + height : barTop) }, { series: seriesIndex, index: category }));
         });
@@ -1052,8 +1136,10 @@
     const colors = seriesColors(data.series.length);
     const range = niceRange(data.series.flatMap((item) => item.values), true);
     const slot = 100 / data.labels.length;
-    const group = slot * barGroupShare(data.series.length);
-    const barHeight = group / data.series.length;
+    const bars = barsPerGroup(data.series.length, false);
+    const group = slot * bandFill(bars);
+    const barHeight = group / bars;
+    const drawnShare = barShareOfSlot(bars);
     const position = (value) => range.share(value) * 100 * barScaleShare;
     const zero = position(0);
     const labels = element("div", "kit-bar-labels");
@@ -1070,7 +1156,7 @@
         const left = Math.min(position(value), zero);
         const width = Math.max(0.3, Math.abs(position(value) - zero));
         const negative = value < 0 ? " kit-negative" : "";
-        area.appendChild(element("div", `kit-bar kit-horizontal${negative}`, { left: percent(left), top: percent(barTop + barHeight * 0.06), width: percent(width), height: percent(barHeight * 0.88), background: barColor(figure, data, seriesIndex, label, colors) }));
+        area.appendChild(element("div", `kit-bar kit-horizontal${negative}`, { left: percent(left), top: percent(barTop + (barHeight * (1 - drawnShare)) / 2), width: percent(width), height: percent(barHeight * drawnShare), background: barColor(figure, data, seriesIndex, label, colors) }));
         const muted = isMuted(figure, data, label) ? " kit-muted" : "";
         area.appendChild(valueLabel(formats[seriesIndex].format(value), `${value < 0 ? "kit-start" : "kit-end"}${muted}`, { left: percent(value < 0 ? left : left + width), top: percent(barTop + barHeight / 2) }, { series: seriesIndex, index: category }));
       });
@@ -1144,7 +1230,7 @@
       const last = data.labels.length - 1;
       const height = yOf(floor[last]) - yOf(ceiling[last]);
       if (height >= 7 && seriesIndex < insideLabelSeries) {
-        labels.push(valueLabel(formats[seriesIndex].format(item.values[last]), seriesIndex === 0 ? "kit-inside kit-before" : "kit-inside kit-before kit-on-light", { left: percent(xOf(last)), top: percent(yOf(ceiling[last]) + height / 2) }, { series: seriesIndex, index: last }));
+        labels.push(valueLabel(formats[seriesIndex].format(item.values[last]), "kit-inside kit-before", { left: percent(xOf(last)), top: percent(yOf(ceiling[last]) + height / 2), color: insideLabelInk(figure, colors[seriesIndex]) }, { series: seriesIndex, index: last }));
       }
       floor = ceiling;
     });
@@ -1169,8 +1255,31 @@
     chart.secondaryRange = range;
   }
 
-  function axisTicks(range, format) {
-    return [0, 50, 100].map((share) => ({ share, text: format(range.minimum + ((range.maximum - range.minimum) * share) / 100) }));
+  function roundStep(span) {
+    const magnitude = 10 ** Math.floor(Math.log10(span));
+    const multiple = roundStepMultiples.find((candidate) => span / magnitude <= candidate);
+    return multiple * magnitude;
+  }
+
+  function tickedRange(values) {
+    const padded = niceRange(values, false);
+    const step = roundStep((padded.maximum - padded.minimum) / tickIntervals);
+    const range = scaledRange(Math.floor(padded.minimum / step) * step, Math.ceil(padded.maximum / step) * step);
+    return { ...range, step };
+  }
+
+  function stepDecimals(step) {
+    return Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
+  }
+
+  function axisTicks(range, unit) {
+    const decimals = stepDecimals(range.step);
+    const formatter = new Intl.NumberFormat(locale(), { maximumFractionDigits: decimals, minimumFractionDigits: decimals });
+    const count = Math.round((range.maximum - range.minimum) / range.step);
+    return Array.from({ length: count + 1 }, (_, index) => {
+      const value = range.minimum + index * range.step;
+      return { share: Math.round(range.share(value) * 1000) / 10, text: formatter.format(value) + unit };
+    });
   }
 
   function scatterColor(figure, label) {
@@ -1181,8 +1290,8 @@
   function renderScatter(figure, data, chart, formats) {
     chart.classList.add("kit-scatter");
     const [horizontal, vertical] = data.series;
-    const xRange = niceRange(horizontal.values, false);
-    const yRange = niceRange(vertical.values, false);
+    const xRange = tickedRange(horizontal.values);
+    const yRange = tickedRange(vertical.values);
     const verticalTitle = element("span", "kit-axis-title");
     verticalTitle.textContent = vertical.name;
     const { area, categories } = categoryAxis(chart, "kit-scatter-area");
@@ -1190,13 +1299,13 @@
     const horizontalTitle = element("span", "kit-axis-title kit-axis-x");
     horizontalTitle.textContent = horizontal.name;
     chart.appendChild(horizontalTitle);
-    axisTicks(yRange, formats[1].format).forEach(({ share, text }) => {
+    axisTicks(yRange, formats[1].unit).forEach(({ share, text }) => {
       area.appendChild(element("div", "kit-gridline", { top: percent(100 - share) }));
-      const tick = element("span", share === 100 ? "kit-tick kit-under" : "kit-tick", { top: percent(100 - share) });
+      const tick = element("span", `kit-tick ${edgeTickClasses[100 - share] || ""}`.trim(), { top: percent(100 - share) });
       tick.textContent = text;
       area.appendChild(tick);
     });
-    axisTicks(xRange, formats[0].format).forEach(({ share, text }) => {
+    axisTicks(xRange, formats[0].unit).forEach(({ share, text }) => {
       area.appendChild(element("div", "kit-gridline kit-vertical", { left: percent(share) }));
       addCategory(categories, text, share).classList.add(edgeTickClasses[share] || "kit-middle");
     });
@@ -1310,9 +1419,20 @@
     return range ? { minimum: range.minimum, maximum: range.maximum } : null;
   }
 
+  function nativeBars(type, data) {
+    const stacks = type === "stacked" || type === "stacked100";
+    return barsPerGroup(type === "combo" ? data.series.length - 1 : data.series.length, stacks);
+  }
+
   function gapWidth(type, data) {
-    const share = type === "bar" ? barGroupShare(data.series.length) : groupShare(data.labels.length);
-    return Math.round(((1 - share) / share) * 100);
+    const bars = nativeBars(type, data);
+    const share = bandFill(bars);
+    return Math.round(((1 - share) / share) * (bars / barShareOfSlot(bars)) * 100);
+  }
+
+  function barOverlap(type, data) {
+    const drawnShare = barShareOfSlot(nativeBars(type, data));
+    return drawnShare < 1 ? -Math.round(((1 - drawnShare) / drawnShare) * 100) : 0;
   }
 
   function pointColors(figure, type, data) {
@@ -1340,37 +1460,146 @@
       valueRange: rangeLimits(valueRange(figure, type, data, chart)),
       secondaryRange: rangeLimits(chart.secondaryRange),
       gapWidth: gapWidth(type, data),
+      overlap: barOverlap(type, data),
       colors: { series: seriesColors(data.series.length), points: pointColors(figure, type, data), grid: "var(--line)", background: "var(--bg)" },
       text: { category: ".kit-category", legend: ".kit-legend > span, .kit-donut-legend span", share: ".kit-donut-legend b", axisTitle: ".kit-axis-title" },
     };
   }
 
+  function chartFigure(slide) {
+    return slide.getAttribute("data-layout") === "chart" ? slide.querySelector(":scope > figure[data-chart]") : null;
+  }
+
   function composeChartSide(slide) {
-    const insight = directChildren(slide, "insight")[0];
-    const legend = slide.querySelector(":scope > figure .kit-donut-legend");
-    if (!insight || !legend) return;
+    const figure = chartFigure(slide);
+    const legend = figure?.querySelector(".kit-donut-legend");
+    if (!legend) return;
     const side = element("div", "kit-side");
-    slide.insertBefore(side, insight);
-    side.append(legend, insight);
+    slide.insertBefore(side, figure.nextSibling);
+    side.append(legend, ...directChildren(slide, "insight"), ...directChildren(slide, "takeaway"));
     slide.classList.add("kit-round-side");
+  }
+
+  function unsquareRings(rings) {
+    rings.forEach((ring) => {
+      ring.classList.remove("kit-squared");
+      ["width", "height"].forEach((name) => ring.style.removeProperty(name));
+    });
+  }
+
+  function squareRing(ring, side) {
+    ring.style.setProperty("width", `${Math.floor(side)}px`);
+    ring.style.setProperty("height", `${Math.floor(side)}px`);
+    ring.classList.add("kit-squared");
   }
 
   async function squareRings(slide, layOut) {
     const rings = Array.from(slide.querySelectorAll(".kit-donut-ring"));
     if (!rings.length) return;
-    rings.forEach((ring) => {
-      ring.classList.remove("kit-squared");
-      ["width", "height"].forEach((name) => ring.style.removeProperty(name));
-    });
+    unsquareRings(rings);
     if (layOut) await layOut(slide);
     rings.forEach((ring) => {
       const box = ring.getBoundingClientRect();
-      const side = `${Math.floor(Math.min(box.width, box.height))}px`;
-      ring.style.setProperty("width", side);
-      ring.style.setProperty("height", side);
-      ring.classList.add("kit-squared");
+      squareRing(ring, Math.min(box.width, box.height));
     });
     if (layOut) await layOut(slide);
+  }
+
+  function boxSize(target) {
+    const box = target.getBoundingClientRect();
+    return { width: box.right - box.left, height: box.bottom - box.top };
+  }
+
+  function frameWidth(slide) {
+    const style = getComputedStyle(slide);
+    return slide.offsetWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+  }
+
+  function columnGap(slide) {
+    return parseFloat(getComputedStyle(slide).columnGap) || 0;
+  }
+
+  function naturalPlotWidth(figure, plot) {
+    const type = figure.getAttribute("data-chart");
+    const data = chartData(figure);
+    const columnData = type === "combo" ? { labels: data.labels, series: data.series.slice(0, -1) } : data;
+    const bars = barsPerGroup(columnData.series.length, type === "stacked" || type === "stacked100");
+    const { width, height } = boxSize(plot);
+    const thickest = height * barDepthShare;
+    const band = (thickest * bars) / (bandFill(bars) * barShareOfSlot(bars));
+    return Math.min(width, band * columnData.labels.length);
+  }
+
+  async function fitColumnChart(slide, figure, layOut) {
+    const plot = figure.querySelector(".kit-plot-area");
+    if (!plot) return;
+    const narrowest = frameWidth(slide) * chartShareMinimum;
+    for (let pass = 0; pass < chartFitPasses; pass += 1) {
+      const figureWidth = boxSize(figure).width;
+      const plotWidth = boxSize(plot).width;
+      const natural = Math.max(naturalPlotWidth(figure, plot), narrowest - (figureWidth - plotWidth));
+      const freed = plotWidth - natural;
+      if (freed < chartFitTolerance) break;
+      slide.style.setProperty("--chart-width", `${Math.floor(figureWidth - freed)}px`);
+      slide.classList.add("kit-fitted-chart");
+      if (layOut) await layOut(slide);
+    }
+    await fitInsightValues(slide, layOut);
+  }
+
+  async function fitInsightValues(slide, layOut) {
+    if (!slide.classList.contains("kit-fitted-chart")) return;
+    const values = directChildren(slide, "insight").flatMap((insight) => directChildren(insight, "value"));
+    values.forEach((value) => value.style.removeProperty("font-size"));
+    if (layOut) await layOut(slide);
+    values.forEach((value) => {
+      if (value.scrollWidth <= value.clientWidth) return;
+      const size = parseFloat(getComputedStyle(value).fontSize);
+      value.style.setProperty("font-size", `${Math.floor((size * value.clientWidth) / value.scrollWidth)}px`);
+    });
+    if (layOut) await layOut(slide);
+  }
+
+  async function fitRoundChart(slide, figure, layOut) {
+    const rings = Array.from(figure.querySelectorAll(".kit-donut-ring"));
+    const widest = frameWidth(slide) - roundSideMinimum - columnGap(slide);
+    for (let pass = 0; pass < chartFitPasses; pass += 1) {
+      unsquareRings(rings);
+      if (layOut) await layOut(slide);
+      const diameter = Math.min(widest, ...rings.map((ring) => boxSize(ring).height));
+      rings.forEach((ring) => squareRing(ring, diameter));
+      slide.style.setProperty("--chart-width", `${Math.floor(diameter)}px`);
+      slide.classList.add("kit-fitted-chart");
+      if (layOut) await layOut(slide);
+    }
+  }
+
+  function resetChartFit(slide) {
+    slide.classList.remove("kit-fitted-chart");
+    slide.style.removeProperty("--chart-width");
+    slide.querySelectorAll(".insight > .value").forEach((value) => value.style.removeProperty("font-size"));
+    unsquareRings(Array.from(slide.querySelectorAll(".kit-donut-ring")));
+  }
+
+  async function fitTickGutters(slide, layOut) {
+    const charts = Array.from(slide.querySelectorAll(".kit-scatter"));
+    charts.forEach((chart) => chart.style.removeProperty("--tick-gutter"));
+    if (!charts.length) return;
+    if (layOut) await layOut(slide);
+    charts.forEach((chart) => {
+      const widest = Math.max(0, ...Array.from(chart.querySelectorAll(".kit-tick")).map((tick) => boxSize(tick).width));
+      chart.style.setProperty("--tick-gutter", `${Math.ceil(widest)}px`);
+    });
+    if (layOut) await layOut(slide);
+  }
+
+  async function fitChart(slide, layOut) {
+    await fitTickGutters(slide, layOut);
+    const figure = chartFigure(slide);
+    if (!figure) return squareRings(slide, layOut);
+    const type = figure.getAttribute("data-chart");
+    if (roundKinds.has(type)) return fitRoundChart(slide, figure, layOut);
+    if (columnKinds.has(type)) return fitColumnChart(slide, figure, layOut);
   }
 
   function moveThemeToRoot() {
@@ -1408,9 +1637,12 @@
   async function render(layOut) {
     prepare();
     for (const slide of slides()) {
+      resetChartFit(slide);
+      clearItemBounds(slide);
       await fitSlide(slide, layOut);
+      await boundItemSlack(slide, layOut);
       await balanceTitles(slide, layOut);
-      await squareRings(slide, layOut);
+      await fitChart(slide, layOut);
       drawConnectors(slide);
     }
   }

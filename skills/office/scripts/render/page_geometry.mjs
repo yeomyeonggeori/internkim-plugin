@@ -1,7 +1,7 @@
 export const capacityAttribute = "data-kit-capacity";
 
 export function measurePageGeometry(pages, thresholds) {
-  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, labelLineMaximum, repeatedFigureMinimum, backgroundShareOfSlide, deadZoneShareOfSlide } = thresholds;
+  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, labelLineMaximum, repeatedFigureMinimum, backgroundShareOfSlide, deadZoneShareOfSlide, markBreadthMinimum, roundSlotMinimum } = thresholds;
 
   const isMeasurable = (element) => {
     const style = getComputedStyle(element);
@@ -416,6 +416,57 @@ export function measurePageGeometry(pages, thresholds) {
       .map(({ element, rect, empty }) => ({ ...describe(element), height: round(rect.bottom - rect.top), emptyHeight: round(empty) }));
   };
 
+  const coveredLength = (intervals) => {
+    let covered = 0;
+    let reach = -Infinity;
+    intervals.sort((first, second) => first[0] - second[0]).forEach(([start, end]) => {
+      covered += Math.max(0, end - Math.max(start, reach));
+      reach = Math.max(reach, end);
+    });
+    return covered;
+  };
+
+  const barBreadth = (chart) => {
+    const plot = chart.querySelector(".kit-plot-area, .kit-bar-area");
+    const bars = Array.from(chart.querySelectorAll(".kit-bar, .kit-segment")).filter(isMeasurable).map((bar) => bar.getBoundingClientRect());
+    if (!plot || !bars.length) return null;
+    const area = plot.getBoundingClientRect();
+    const isHorizontal = Boolean(chart.querySelector(".kit-bar.kit-horizontal"));
+    const along = isHorizontal ? ["top", "bottom"] : ["left", "right"];
+    const breadth = area[along[1]] - area[along[0]];
+    if (breadth <= 0) return null;
+    return { kind: "bars", share: roundRatio(coveredLength(bars.map((bar) => [bar[along[0]], bar[along[1]]])) / breadth), minimum: markBreadthMinimum };
+  };
+
+  const ringSlot = (chart, ring) => {
+    const figure = chart.closest("figure") || chart;
+    const box = figure.getBoundingClientRect();
+    const caption = Array.from(figure.children).find((child) => child.tagName === "FIGCAPTION" && isMeasurable(child));
+    const legend = chart.querySelector(".kit-donut-legend");
+    const ringBox = ring.getBoundingClientRect();
+    const legendBox = legend && isMeasurable(legend) ? legend.getBoundingClientRect() : null;
+    const besideLegend = legendBox && legendBox.top < ringBox.bottom && legendBox.bottom > ringBox.top ? legendBox.right - legendBox.left + Math.max(0, legendBox.left - ringBox.right) : 0;
+    const captionHeight = caption ? caption.getBoundingClientRect().bottom - Math.min(caption.getBoundingClientRect().top, ringBox.bottom) : 0;
+    return { width: box.width - besideLegend, height: box.height - captionHeight };
+  };
+
+  const ringFill = (chart) => {
+    const ring = chart.querySelector(".kit-donut-ring");
+    if (!ring || !isMeasurable(ring)) return null;
+    const box = ring.getBoundingClientRect();
+    const slot = ringSlot(chart, ring);
+    const largest = Math.max(slot.width, slot.height);
+    if (largest <= 0) return null;
+    return { kind: "round", share: roundRatio(Math.min(box.width, box.height) / largest), minimum: roundSlotMinimum };
+  };
+
+  const underfilledCharts = (page) =>
+    Array.from(page.querySelectorAll("[data-native-chart]"))
+      .filter(isMeasurable)
+      .map((chart) => ({ chart, fill: ringFill(chart) || barBreadth(chart) }))
+      .filter(({ fill }) => fill && fill.share < fill.minimum)
+      .map(({ chart, fill }) => ({ ...describe(chart.closest("figure") || chart), ...fill }));
+
   return pages.map((page, index) => ({
     index: index + 1,
     width: round(page.getBoundingClientRect().width),
@@ -434,6 +485,7 @@ export function measurePageGeometry(pages, thresholds) {
     longTitles: longTitles(page),
     longLabels: longLabels(page),
     repeatedFigures: repeatedFigures(page),
+    underfilledCharts: underfilledCharts(page),
     capacity: JSON.parse(page.getAttribute(capacityAttribute) || "[]"),
   }));
 }

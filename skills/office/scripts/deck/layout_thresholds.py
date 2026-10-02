@@ -15,6 +15,8 @@ FULL_WIDTH_RATIO = 0.95
 TITLE_LINE_MAXIMUM = kit_number("titleLineMaximum")
 LABEL_LINE_MAXIMUM = 2
 REPEATED_FIGURE_MINIMUM = 3
+MARK_BREADTH_MINIMUM = 0.45
+ROUND_SLOT_MINIMUM = 0.85
 BACKGROUND_SHARE_OF_SLIDE = 0.7
 
 
@@ -30,4 +32,6 @@ def renderer_thresholds() -> dict[str, float]:
         "labelLineMaximum": LABEL_LINE_MAXIMUM,
         "repeatedFigureMinimum": REPEATED_FIGURE_MINIMUM,
         "backgroundShareOfSlide": BACKGROUND_SHARE_OF_SLIDE,
+        "markBreadthMinimum": MARK_BREADTH_MINIMUM,
+        "roundSlotMinimum": ROUND_SLOT_MINIMUM,
     }

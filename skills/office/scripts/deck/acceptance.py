@@ -6,6 +6,7 @@ import json
 import pathlib
 
 from deck.deck_definitions import (
+    CHART_UNDERFILLED,
     CONTENT_OVERFLOW,
     DRAWING_DISTORTED,
     FOOTER_CROSSED,
@@ -37,6 +38,7 @@ OBJECTIVE_DEFECT_CODES = frozenset(
         TITLE_TOO_LONG.kind,
         IMAGE_DISTORTED.kind,
         DRAWING_DISTORTED.kind,
+        CHART_UNDERFILLED.kind,
         SLIDE_BLANK.kind,
         VERTICAL_DEAD_ZONE.kind,
         HORIZONTAL_DEAD_ZONE.kind,
