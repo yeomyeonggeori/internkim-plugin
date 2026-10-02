@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Callable
 
 from paperwork.amounts import korean_number_words, parse_amount, truncate_to_won
-from paperwork.template_fields import template_fields, template_list_fields
+from paperwork.template_fields import template_fields
 
 
 DEFAULT_VALUES = {
@@ -26,6 +26,18 @@ def derive_korean_total(context: dict) -> str | None:
     return None if amount is None else korean_number_words(truncate_to_won(amount))
 
 
+LIST_FIELDS = {
+    "service-agreement": ("deliverables", "payments", "scopeItems"),
+    "mou": ("cooperationItems", "orgARoles", "orgBRoles"),
+    "offer-letter": ("benefits",),
+}
+
+OPTIONAL_PARAGRAPH_FIELDS = {
+    "employment-contract": ("endDate",),
+    "nda": ("penaltyAmount",),
+    "offer-letter": ("equity", "probationNote"),
+}
+
 DERIVED_VALUES: dict[str, dict[str, Callable[[dict], str | None]]] = {
     "service-agreement": {"totalAmountKorean": derive_korean_total},
 }
@@ -39,8 +51,16 @@ def derived_values(template_name: str) -> dict[str, Callable[[dict], str | None]
     return DERIVED_VALUES.get(template_name, {})
 
 
+def list_fields(template_name: str) -> tuple[str, ...]:
+    return LIST_FIELDS.get(template_name, ())
+
+
+def optional_paragraph_fields(template_name: str) -> tuple[str, ...]:
+    return OPTIONAL_PARAGRAPH_FIELDS.get(template_name, ())
+
+
 def scalar_fields(template_name: str) -> list[str]:
-    lists = set(template_list_fields(template_name))
+    lists = set(list_fields(template_name))
     return [field for field in template_fields(template_name) if field not in lists]
 
 
@@ -58,6 +78,15 @@ def non_empty_fields(template_name: str) -> list[str]:
 def complete_context(template_name: str, context: dict) -> dict:
     completed = {**default_values(template_name), **context}
     for field, derive in derived_values(template_name).items():
-        if str(completed.get(field, "")).strip() == "":
+        if is_blank(completed.get(field)):
             completed[field] = derive(completed)
     return completed
+
+
+def merge_values(template_name: str, context: dict) -> dict:
+    optional = {field: [] if is_blank(context.get(field)) else [context[field]] for field in optional_paragraph_fields(template_name)}
+    return {**context, **optional}
+
+
+def is_blank(value: object) -> bool:
+    return str("" if value is None else value).strip() == ""

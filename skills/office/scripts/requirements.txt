@@ -1,5 +1,4 @@
 brotli
-docxtpl
 fonttools
 fpdf2
 ironcalc==0.8.3

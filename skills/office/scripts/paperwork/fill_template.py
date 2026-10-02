@@ -5,13 +5,12 @@ import json
 import os
 from pathlib import Path
 
-from docxtpl import DocxTemplate
-
-from fonts.docx_embedding import save_document
+from doc.merge_docx import merge_template
+from fonts.docx_embedding import embed_named_fonts
 from core.office_result import DOCUMENTS_FOLDER, MISSING_FIELD, PERMISSION_DENIED, WRONG_TYPE, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from core.office_outputs import output_file
-from paperwork.template_context import caller_fields, complete_context, non_empty_fields
-from paperwork.template_fields import TEMPLATES_PATH, template_list_fields, template_names
+from paperwork.template_context import caller_fields, complete_context, list_fields, merge_values, non_empty_fields
+from paperwork.template_fields import TEMPLATES_PATH, template_names
 
 
 UNKNOWN_VALUE_GUIDANCE = 'fill EVERY field; use "미정" only when the requester truly did not provide the value'
@@ -21,11 +20,11 @@ def main() -> Result:
     arguments = parse_arguments()
     context = load_context(arguments.template_name, arguments.context_path)
     output_path = Path(os.path.expanduser(arguments.output_path))
-    template = DocxTemplate(str(TEMPLATES_PATH / f"{arguments.template_name}.docx"))
-    template.render(context)
+    template_path = str(TEMPLATES_PATH / f"{arguments.template_name}.docx")
     try:
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        save_document(template, output_path)
+        merge_template(template_path, merge_values(arguments.template_name, context), str(output_path))
+        embed_named_fonts(output_path)
     except PermissionError as error:
         raise OfficeFailure(PERMISSION_DENIED.issue(
             f"cannot write to {output_path} (permission denied)",
@@ -37,7 +36,7 @@ def main() -> Result:
 
 def context_hint(template_name: str) -> str:
     fields = {field: "<값>" for field in caller_fields(template_name)}
-    fields.update({field: ["<항목>"] for field in template_list_fields(template_name)})
+    fields.update({field: ["<항목>"] for field in list_fields(template_name)})
     return f"context JSON for {template_name} must contain: {json.dumps(fields, ensure_ascii=False)}"
 
 
@@ -61,7 +60,7 @@ def missing_value_problems(template_name: str, context: dict, hint: str) -> list
     ]
     missing_lists = [
         MISSING_FIELD.issue(f"context.{field}: must be a non-empty array", f"context.{field}", suggestion=suggestion)
-        for field in template_list_fields(template_name)
+        for field in list_fields(template_name)
         if not isinstance(context.get(field), list) or not context[field]
     ]
     return missing_values + missing_lists

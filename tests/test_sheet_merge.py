@@ -44,8 +44,8 @@ class SheetMergeTest(WorkbookFixture):
         with zipfile.ZipFile(self.directory / "filled.xlsx") as archive:
             self.assertIn("박예시".encode(), archive.read("xl/worksheets/sheet1.xml"))
 
-    def test_a_missing_value_or_a_bare_list_writes_nothing(self):
-        envelope = self.merge({"customer": {"name": "박예시"}, "manager": "최견본", "amount": 1, "issued": [1, 2]})
+    def test_a_missing_value_or_an_object_in_one_cell_writes_nothing(self):
+        envelope = self.merge({"customer": {"name": "박예시"}, "manager": "최견본", "amount": 1, "issued": {"date": "2026-10-01"}})
         self.assertEqual(sorted((issue["code"], issue["location"]) for issue in envelope["issues"]), [("LIST_NEEDS_A_ROW", "견적서!B5"), ("UNRESOLVED_PLACEHOLDER", "견적서!A6")])
         self.assertFalse((self.directory / "filled.xlsx").exists())
 
@@ -91,6 +91,20 @@ class SheetListMergeTest(WorkbookFixture):
     def test_an_empty_list_leaves_the_row_blank_and_the_total_whole(self):
         self.assertEqual(self.merge([])["status"], "ok")
         self.assertEqual(self.formulas_and_values("D2:D3"), {"D2": ("=B2*C2", 0), "D3": ("=SUM(D2:D2)", 0)})
+
+
+    def test_a_row_naming_a_list_of_values_repeats_with_each_value(self):
+        run_office_python("""
+from openpyxl import Workbook
+workbook = Workbook()
+sheet = workbook.active
+sheet["A1"], sheet["A2"] = "{{ regions }}", "끝"
+workbook.save("list.xlsx")
+""", self.directory)
+        write_json(self.directory / "values.json", {"regions": ["서울", "부산"]})
+        self.assertEqual(run_office(["sheet", "merge", "list.xlsx", "values.json", "filled.xlsx"], self.directory)["status"], "ok")
+        read = run_office(["sheet", "read", "filled.xlsx", "--range", "A1:A3"], self.directory)
+        self.assertEqual(read["details"]["range"]["values"], [["서울"], ["부산"], ["끝"]])
 
 
 if __name__ == "__main__":

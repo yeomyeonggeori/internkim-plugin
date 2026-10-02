@@ -114,10 +114,10 @@ def index_row_placeholders(worksheet, row_number: int, list_name: str, index: in
 
 
 def indexed_placeholder(match, list_name: str, index: int) -> str:
-    name, _, rest = match.group(1).partition(".")
-    if name != list_name or not rest or rest.split(".", 1)[0].isdigit():
+    name, separator, rest = match.group(1).partition(".")
+    if name != list_name or rest.split(".", 1)[0].isdigit():
         return match.group(0)
-    return f"{{{{ {list_name}.{index}.{rest} }}}}"
+    return f"{{{{ {list_name}.{index}{separator}{rest} }}}}"
 
 
 def merged_parts(template_path: str, report: MergeReport) -> dict[str, bytes]:

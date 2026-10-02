@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import copy
 import os
 import re
 import zipfile
@@ -12,13 +11,14 @@ from core.office_operations import save_atomically
 from core.office_inputs import office_file
 from core.office_result import OfficeArgumentParser, Result, read_json_file, run_command
 from core.office_schema import require_valid
-from core.template_merge import MERGE_VALUES, MergeReport, fill_text_nodes, repeated_list_name, write_package
+from core.template_merge import MERGE_VALUES, MergeReport, TextMarkup, fill_markup_part, write_package
 from core.office_outputs import same_kind_output
 
 
 DRAWING_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/main"
 PRESENTATION_NAMESPACE = "http://schemas.openxmlformats.org/presentationml/2006/main"
 FILLED_PART_PATTERN = re.compile(r"ppt/(slides/slide|notesSlides/notesSlide)(\d+)\.xml")
+DRAWING_MARKUP = TextMarkup(f"{{{DRAWING_NAMESPACE}}}tr", f"{{{DRAWING_NAMESPACE}}}p", f"{{{DRAWING_NAMESPACE}}}t")
 
 
 def main() -> Result:
@@ -43,7 +43,7 @@ def merged_parts(template_path: str, report: MergeReport) -> dict[str, bytes]:
                 continue
             root = etree.fromstring(archive.read(name))
             location = f"{'notes of ' if 'notes' in match.group(1) else ''}slide {match.group(2)}"
-            if fill_part(root, location, report):
+            if fill_markup_part(root, DRAWING_MARKUP, location, report, grow_table_frame):
                 rewritten[name] = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
     return rewritten
 
@@ -53,38 +53,12 @@ def part_order(name: str) -> tuple:
     return (match.group(1), int(match.group(2))) if match else ("", 0)
 
 
-def fill_part(root, location: str, report: MergeReport) -> bool:
-    repeated = any([repeat_rows(row, location, report) for row in list(root.iter(drawing("tr")))])
-    filled = [fill_text_nodes(paragraph_text_nodes(paragraph), report, location) for paragraph in root.iter(drawing("p"))]
-    return repeated or any(filled)
-
-
-def paragraph_text_nodes(paragraph) -> list:
-    return list(paragraph.iter(drawing("t")))
-
-
-def repeat_rows(row, location: str, report: MergeReport) -> bool:
-    list_name = repeated_list_name("".join(node.text or "" for node in row.iter(drawing("t"))), report.values)
-    if list_name is None:
-        return False
-    items = report.values[list_name]
-    report.mark_used(list_name)
-    for index, item in enumerate(items):
-        clone = copy.deepcopy(row)
-        for paragraph in clone.iter(drawing("p")):
-            fill_text_nodes(paragraph_text_nodes(paragraph), report, f"{location} row {list_name}.{index}", {**report.values, list_name: item})
-        row.addprevious(clone)
-    grow_table_frame(row, len(items) - 1)
-    row.getparent().remove(row)
-    return True
-
-
-def grow_table_frame(row, added_rows: int) -> None:
+def grow_table_frame(row, item_count: int) -> None:
     frame = next(row.iterancestors(f"{{{PRESENTATION_NAMESPACE}}}graphicFrame"), None)
     extent = frame.find(f"{{{PRESENTATION_NAMESPACE}}}xfrm/{drawing('ext')}") if frame is not None else None
     if extent is None:
         return
-    extent.set("cy", str(max(0, int(extent.get("cy")) + added_rows * int(row.get("h", "0")))))
+    extent.set("cy", str(max(0, int(extent.get("cy")) + (item_count - 1) * int(row.get("h", "0")))))
 
 
 def drawing(tag: str) -> str:

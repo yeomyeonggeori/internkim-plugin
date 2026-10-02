@@ -67,3 +67,25 @@ class DeckMergeTest(DeckFixture):
         with zipfile.ZipFile(self.directory / "report.pptx") as before, zipfile.ZipFile(self.directory / "filled.pptx") as after:
             changed = [name for name in before.namelist() if before.read(name) != after.read(name)]
         self.assertEqual(changed, ["ppt/slides/slide1.xml", "ppt/notesSlides/notesSlide1.xml"])
+
+    def test_a_paragraph_naming_a_list_becomes_one_paragraph_per_item(self):
+        run_office_python_json("""
+from pptx import Presentation
+from pptx.util import Inches
+presentation = Presentation()
+slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+text = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(6), Inches(2)).text_frame
+text.text = "핵심 성과"
+text.add_paragraph().text = "{{ highlights }}"
+presentation.save("report.pptx")
+print("{}")
+""", self.directory)
+        envelope = self.merge({"highlights": ["매출 12% 증가", "신규 고객 3곳"]})
+        self.assertEqual(envelope["status"], "ok", envelope)
+        paragraphs = run_office_python_json("""
+import json
+from pptx import Presentation
+shape = Presentation("filled.pptx").slides[0].shapes[0]
+print(json.dumps([paragraph.text for paragraph in shape.text_frame.paragraphs], ensure_ascii=False))
+""", self.directory)
+        self.assertEqual(paragraphs, ["핵심 성과", "매출 12% 증가", "신규 고객 3곳"])

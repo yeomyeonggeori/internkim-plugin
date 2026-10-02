@@ -65,7 +65,7 @@ class MergeTest(DocumentFixture):
     def test_a_missing_value_writes_nothing(self):
         write_json(self.directory / "values.json", {"customer": "박예시"})
         envelope = run_office(["doc", "merge", "fixture.docx", "values.json", "merged.docx"], self.directory)
-        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("UNRESOLVED_PLACEHOLDER", "values.customer_name")])
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("UNRESOLVED_PLACEHOLDER", "body")])
         self.assertFalse((self.directory / "merged.docx").exists())
 
     def test_values_fill_placeholders_and_unused_names_warn(self):
@@ -105,16 +105,39 @@ class MergeTest(DocumentFixture):
         tables = [block for block in read_details(self.directory, "merged.docx")["blocks"] if block.get("cells")]
         self.assertEqual(tables[-1]["cells"], [["품목", "금액"], ["노트북", "1200000"], ["모니터", "300000"]])
 
-    def test_a_list_outside_a_table_row_names_the_list(self):
+    def test_a_paragraph_naming_a_list_repeats_and_an_empty_list_leaves_it_out(self):
         run_office_python("""
             from docx import Document
             document = Document("fixture.docx")
             document.add_paragraph("품목: {{ items.name }}")
+            document.add_paragraph("비고: {{ notes }}")
+            document.add_paragraph("첨부: {{ attachments }}")
             document.save("fixture.docx")
         """, self.directory)
-        write_json(self.directory / "values.json", {"customer_name": "박예시", "items": [{"name": "노트북"}]})
+        write_json(self.directory / "values.json", {"customer_name": "박예시", "items": [{"name": "노트북"}, {"name": "모니터"}], "notes": ["납기 엄수"], "attachments": []})
         envelope = run_office(["doc", "merge", "fixture.docx", "values.json", "merged.docx"], self.directory)
-        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("LIST_NEEDS_A_ROW", "values.items")])
+        self.assertEqual(envelope["status"], "ok", envelope["issues"])
+        texts = [text for kind, text in block_texts(self.directory, "merged.docx") if kind == "paragraph"]
+        self.assertEqual(texts[-3:], ["품목: 노트북", "품목: 모니터", "비고: 납기 엄수"])
+        self.assertFalse(any(text.startswith("첨부") for text in texts))
+
+    def test_an_object_where_one_value_is_written_names_the_placeholder(self):
+        write_json(self.directory / "values.json", {"customer_name": {"first": "예시"}})
+        envelope = run_office(["doc", "merge", "fixture.docx", "values.json", "merged.docx"], self.directory)
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["LIST_NEEDS_A_ROW"])
+        self.assertFalse((self.directory / "merged.docx").exists())
+
+    def test_a_statement_tag_is_refused_by_name(self):
+        run_office_python("""
+            from docx import Document
+            document = Document("fixture.docx")
+            document.add_paragraph("{% if customer_name %}귀하{% endif %}")
+            document.save("fixture.docx")
+        """, self.directory)
+        write_json(self.directory / "values.json", {"customer_name": "박예시"})
+        envelope = run_office(["doc", "merge", "fixture.docx", "values.json", "merged.docx"], self.directory)
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["TEMPLATE_SYNTAX_ERROR", "TEMPLATE_SYNTAX_ERROR"])
+        self.assertIn("{% if customer_name %}", envelope["issues"][0]["message"])
         self.assertFalse((self.directory / "merged.docx").exists())
 
 

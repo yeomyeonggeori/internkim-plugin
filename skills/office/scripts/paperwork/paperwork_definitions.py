@@ -7,8 +7,8 @@ from core.office_result import ERROR, WARNING, IssueKind
 from core.office_schema import AnyOf, Boolean, CellValue, Field, ListOf, Number, Record, Text, Variant
 from paperwork.paperwork_design import FONT_KOREAN_DOCX
 from fonts.pdf_registration import FONT_PATH_MEANING
-from paperwork.template_context import caller_fields, default_values, derived_values
-from paperwork.template_fields import template_list_fields, template_names
+from paperwork.template_context import caller_fields, default_values, derived_values, list_fields, optional_paragraph_fields
+from paperwork.template_fields import template_names
 
 
 LABELED_VALUE = Record("labeled value", "one label and its value", (
@@ -147,13 +147,18 @@ def template_guide_lines() -> list[str]:
     for name in template_names():
         lines.append(f"  {name}")
         lines.append(f"    required: {', '.join(caller_fields(name))}")
-        lines.extend(list_lines(name) + default_lines(name) + derived_lines(name))
+        lines.extend(list_lines(name) + default_lines(name) + optional_lines(name) + derived_lines(name))
     return lines
 
 
 def list_lines(template_name: str) -> list[str]:
-    fields = template_list_fields(template_name)
-    return [f"    non-empty lists: {', '.join(fields)}"] if fields else []
+    fields = list_fields(template_name)
+    return [f"    non-empty lists, one numbered paragraph per item: {', '.join(fields)}"] if fields else []
+
+
+def optional_lines(template_name: str) -> list[str]:
+    fields = optional_paragraph_fields(template_name)
+    return [f"    paragraph left out when blank: {', '.join(fields)}"] if fields else []
 
 
 def default_lines(template_name: str) -> list[str]:
