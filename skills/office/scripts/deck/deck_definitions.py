@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from fonts.registry import DECK, default_family
-from deck.deck_kit import DEFAULT_THEME, chart_types, slide_size, theme_palettes
+from deck.deck_kit import DEFAULT_THEME, chart_types, icon_names, kit_names, slide_size, theme_palettes
 from deck.layout_thresholds import LABEL_LINE_MAXIMUM, MARK_BREADTH_MINIMUM, REPEATED_FIGURE_MINIMUM, ROUND_SLOT_MINIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
 from core.office_operations import OPERATION_ISSUE_KINDS
 from core.template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
@@ -52,7 +52,7 @@ LANGUAGE_MISMATCH = review_check("LANGUAGE_MISMATCH", "slide titles are Latin-on
 UNSOURCED_CURRENT_DATE = review_check("UNSOURCED_CURRENT_DATE", "a slide shows today's date that the source does not", "show only dates from the source material")
 VERTICAL_DEAD_ZONE = review_check("VERTICAL_DEAD_ZONE", "an empty band spans much of the slide height, between content, under the body or inside a card", "give the body what its layout holds, such as a .takeaway band, more items or an .insight, or move the content to a layout that fills the frame")
 HORIZONTAL_DEAD_ZONE = review_check("HORIZONTAL_DEAD_ZONE", "an empty region beside the content spans much of the body's height, such as a half-width box with nothing next to it", "give the empty side what the layout holds, such as the points that explain a number, an .insight or another item, or move the content to a layout composed for one part")
-EMOJI_ICON = review_check("EMOJI_ICON", "a slide uses emoji glyphs", "write a .label word instead; the kit draws list markers and numbers itself")
+EMOJI_ICON = review_check("EMOJI_ICON", "a slide uses emoji glyphs", "write a .label word or a data-icon office guide deck lists instead; the kit draws list markers and numbers itself")
 MISSING_SPEAKER_NOTES = review_check("MISSING_SPEAKER_NOTES", "a slide has no speaker notes", 'add an <aside class="notes"> script to every slide')
 
 SLIDE_RENDER_CHECKS = (SLIDE_BLANK, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, TEXT_COVERED, FOOTER_CROSSED, TITLE_TOO_LONG, LABEL_TOO_LONG, REPEATED_FIGURE, IMAGE_DISTORTED, DRAWING_DISTORTED, CHART_UNDERFILLED, TINY_TEXT)
@@ -88,6 +88,11 @@ SLIDE_COUNT_MISMATCH = IssueKind("SLIDE_COUNT_MISMATCH", ERROR, "the slide count
 SLIDE_WITHOUT_CONTENT = IssueKind("SLIDE_WITHOUT_CONTENT", ERROR, "a slide has no visible text, image or chart", "give the slide its content or delete it")
 CHART_DATA_INVALID = IssueKind("CHART_DATA_INVALID", ERROR, "a chart's data attributes do not parse or do not line up", "give data-labels and data-values (or data-series) the same number of plain numbers")
 IMAGE_NOT_FOUND = IssueKind("IMAGE_NOT_FOUND", ERROR, "an image is remote or its file does not exist, so the slide would show an empty box", "download it with office deck image and point src at the local file, or remove the image")
+ICON_HOST_CLASSES = kit_names("iconHostClasses")
+ICON_LIST_LAYOUTS = kit_names("iconListLayouts")
+ICON_HOSTS = f"a {', '.join('.' + name for name in ICON_HOST_CLASSES)}, or an <li> of an {' or '.join(ICON_LIST_LAYOUTS)} list"
+ICON_UNKNOWN = IssueKind("ICON_UNKNOWN", ERROR, "a data-icon names an icon the kit does not ship", "use a name office guide deck lists under Icons, or drop the data-icon")
+ICON_MISPLACED = IssueKind("ICON_MISPLACED", ERROR, "a data-icon sits on a part the kit draws no icon for", f"put data-icon on {ICON_HOSTS}, or drop it")
 OFF_PALETTE_COLOR = IssueKind("OFF_PALETTE_COLOR", WARNING, "the source uses colors outside the theme or DESIGN.md palette", "use the theme tokens such as var(--accent) and var(--ink), or name the brand color in DESIGN.md colors")
 
 SOURCE_CHECK_ISSUE_KINDS = (
@@ -107,6 +112,8 @@ SOURCE_CHECK_ISSUE_KINDS = (
     SLIDE_COUNT_MISMATCH,
     SLIDE_WITHOUT_CONTENT,
     CHART_DATA_INVALID,
+    ICON_UNKNOWN,
+    ICON_MISPLACED,
     IMAGE_NOT_FOUND,
     PLACEHOLDER_LEFT,
     REQUIRED_TEXT_MISSING,
@@ -284,12 +291,21 @@ def chart_lines() -> list[str]:
     return [f"  {attribute}" for attribute in CHART_ATTRIBUTES]
 
 
+def icon_lines() -> list[str]:
+    return [
+        f"  data-icon=\"<name>\" on {ICON_HOSTS} draws a line icon in the accent color at the type scale, in the PDF and as a picture in the PPTX",
+        "  give every item of a row or list an icon, or none; an icon replaces a list item's number",
+        f"  names: {', '.join(icon_names())}",
+    ]
+
+
 GUIDE_SECTIONS = (
     ("Slide order", order_lines),
     ("Themes (<body data-theme=\"...\">)", theme_lines),
     ("Layouts (<section data-layout=\"...\">; parts are direct children of the section)", layout_lines),
     ("Diagrams (process, cycle, hierarchy, pyramid, matrix)", diagram_lines),
     ("Charts (<figure data-chart=\"...\"> in a chart slide)", chart_lines),
+    ("Icons (optional)", icon_lines),
 )
 
 GUIDE_INPUTS = (

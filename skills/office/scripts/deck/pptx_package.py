@@ -25,9 +25,9 @@ def default_theme_fonts() -> tuple[str, str]:
     return font.latin, font.east_asian
 
 
-def write_pptx_static_files(archive: zipfile.ZipFile, slide_count: int, noted_slides: tuple[int, ...], deck_fonts: DeckFonts = DeckFonts(), chart_count: int = 0) -> None:
+def write_pptx_static_files(archive: zipfile.ZipFile, slide_count: int, noted_slides: tuple[int, ...], deck_fonts: DeckFonts = DeckFonts(), chart_count: int = 0, has_vector_pictures: bool = False) -> None:
     fonts = embedded_fonts(list(deck_fonts.embedded_faces), slide_count + 3)
-    archive.writestr("[Content_Types].xml", content_types_xml(slide_count, noted_slides, bool(fonts), chart_count))
+    archive.writestr("[Content_Types].xml", content_types_xml(slide_count, noted_slides, bool(fonts), chart_count, has_vector_pictures))
     archive.writestr("_rels/.rels", package_relationships_xml())
     archive.writestr("docProps/core.xml", core_properties_xml())
     archive.writestr("docProps/app.xml", app_properties_xml(slide_count))
@@ -42,7 +42,7 @@ def write_pptx_static_files(archive: zipfile.ZipFile, slide_count: int, noted_sl
         archive.writestr(font.part_name, embedded_open_type(font.face))
 
 
-def content_types_xml(slide_count: int, noted_slides: tuple[int, ...], has_fonts: bool = False, chart_count: int = 0) -> str:
+def content_types_xml(slide_count: int, noted_slides: tuple[int, ...], has_fonts: bool = False, chart_count: int = 0, has_vector_pictures: bool = False) -> str:
     overrides = [
         '<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>',
         '<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>',
@@ -65,6 +65,7 @@ def content_types_xml(slide_count: int, noted_slides: tuple[int, ...], has_fonts
         '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
         '<Default Extension="xml" ContentType="application/xml"/>'
         '<Default Extension="png" ContentType="image/png"/>'
+        + ('<Default Extension="svg" ContentType="image/svg+xml"/>' if has_vector_pictures else "")
         + ('<Default Extension="fntdata" ContentType="application/x-fontdata"/>' if has_fonts else "")
         + ('<Default Extension="xlsx" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/>' if chart_count else "")
         + "".join(overrides)

@@ -20,6 +20,9 @@ from fonts.truetype import TrueTypeFace
 TEXT_LAYERS_DIRECTORY_NAME = "pptx-layers"
 LAYOUT_FILE_NAME = "layout.json"
 HYPERLINK_RELATIONSHIP_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
+IMAGE_RELATIONSHIP_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+SVG_BLIP_EXTENSION_URI = "{96DAC541-7B7A-43D3-8B79-37D633B846F1}"
+SVG_BLIP_NAMESPACE = "http://schemas.microsoft.com/office/drawing/2016/SVG/main"
 FIRST_LINK_RELATIONSHIP_NUMBER = 4
 FIRST_SHAPE_ID = 3
 
@@ -29,6 +32,7 @@ class TextLayers:
     language: str
     slides: list[dict]
     background_paths: list[pathlib.Path]
+    directory: pathlib.Path
 
 
 @dataclass(frozen=True)
@@ -38,6 +42,7 @@ class EditablePptx:
     connector_count: int
     chart_count: int
     table_count: int
+    icon_count: int
     boxes_kept_as_picture: int
     embedded_typefaces: tuple[str, ...]
     unembedded_families: tuple[str, ...]
@@ -57,7 +62,7 @@ def read_text_layers(review_path: pathlib.Path, slide_count: int) -> TextLayers 
     background_paths = [layers_path / f"background.{number:03}.png" for number in range(1, slide_count + 1)]
     if len(layout["slides"]) != slide_count or not all(path.exists() for path in background_paths):
         return None
-    return TextLayers(layout.get("language", ""), layout["slides"], background_paths)
+    return TextLayers(layout.get("language", ""), layout["slides"], background_paths, layers_path)
 
 
 def write_editable_pptx(layers: TextLayers, notes: list[str], pptx_path: pathlib.Path) -> EditablePptx:
@@ -67,17 +72,18 @@ def write_editable_pptx(layers: TextLayers, notes: list[str], pptx_path: pathlib
     deck_fonts = DeckFonts(theme_fonts=theme_typefaces(runs), embedded_faces=tuple(faces))
     context_language = language_tag(layers.language)
     with zipfile.ZipFile(pptx_path, "w", zipfile.ZIP_DEFLATED) as archive:
-        write_pptx_static_files(archive, len(layers.slides), noted_slide_numbers(notes), deck_fonts, chart_count(layers.slides))
+        write_pptx_static_files(archive, len(layers.slides), noted_slide_numbers(notes), deck_fonts, chart_count(layers.slides), icon_count(layers.slides) > 0)
         write_notes_parts(archive, notes)
         first_chart_number = 1
         for number, (slide, background_path) in enumerate(zip(layers.slides, layers.background_paths), start=1):
-            first_chart_number += write_slide(archive, number, slide, background_path, context_language, bool(notes[number - 1]), first_chart_number)
+            first_chart_number += write_slide(archive, number, slide, background_path, context_language, bool(notes[number - 1]), first_chart_number, layers.directory)
     return EditablePptx(
         text_box_count=sum(len(free_blocks(slide)) for slide in layers.slides),
         shape_count=sum(len(slide["shapes"]) for slide in layers.slides),
         connector_count=sum(len(slide.get("connectors", [])) for slide in layers.slides),
         chart_count=chart_count(layers.slides),
         table_count=table_count(layers.slides),
+        icon_count=icon_count(layers.slides),
         boxes_kept_as_picture=sum(slide["boxesKeptAsPicture"] for slide in layers.slides),
         embedded_typefaces=tuple(face.family for face in faces),
         unembedded_families=unembedded_families(styled_text),
@@ -85,7 +91,7 @@ def write_editable_pptx(layers: TextLayers, notes: list[str], pptx_path: pathlib
     )
 
 
-def write_slide(archive: zipfile.ZipFile, number: int, slide: dict, background_path: pathlib.Path, language: str, has_notes: bool, first_chart_number: int) -> int:
+def write_slide(archive: zipfile.ZipFile, number: int, slide: dict, background_path: pathlib.Path, language: str, has_notes: bool, first_chart_number: int, layers_directory: pathlib.Path) -> int:
     links = slide_link_ids(slide)
     scale = SlideScale(slide["width"], slide["height"])
     context = TextContext(scale, language, links)
@@ -98,15 +104,76 @@ def write_slide(archive: zipfile.ZipFile, number: int, slide: dict, background_p
     first_table_id = first_text_box_id + len(blocks)
     first_chart_id = first_table_id + len(tables)
     charts = slide_chart_parts(slide.get("charts", []), first_chart_number, FIRST_LINK_RELATIONSHIP_NUMBER + len(links))
+    icons = slide_icon_parts(slide.get("icons", []), number, FIRST_LINK_RELATIONSHIP_NUMBER + len(links) + len(charts))
     boxes = "".join(shape_xml(shape_id, shape, scale) for shape_id, shape in enumerate(shapes, start=FIRST_SHAPE_ID))
     boxes += slide_connectors_xml(connectors, shapes, FIRST_SHAPE_ID, scale)
     text_boxes = "".join(text_box_xml(shape_id, block, context) for shape_id, block in enumerate(blocks, start=first_text_box_id))
     table_frames = table_frames_xml(tables, cell_blocks(slide["blocks"]), first_table_id, context)
     archive.write(background_path, f"ppt/media/background{number}.png")
-    archive.writestr(f"ppt/slides/slide{number}.xml", slide_document(background_picture_xml() + boxes + text_boxes + table_frames + chart_frames_xml(charts, first_chart_id, context)))
-    archive.writestr(f"ppt/slides/_rels/slide{number}.xml.rels", slide_relationships_xml(number, has_notes, links, charts))
+    pictures = icon_pictures_xml(icons, first_chart_id + len(charts), scale)
+    archive.writestr(f"ppt/slides/slide{number}.xml", slide_document(background_picture_xml() + boxes + text_boxes + table_frames + chart_frames_xml(charts, first_chart_id, context) + pictures))
+    archive.writestr(f"ppt/slides/_rels/slide{number}.xml.rels", slide_relationships_xml(number, has_notes, links, charts, icons))
     write_chart_parts(archive, charts, context)
+    write_icon_media(archive, icons, layers_directory)
     return len(charts)
+
+
+@dataclass(frozen=True)
+class IconPart:
+    name: str
+    box: dict
+    sources: dict[str, str]
+    media: dict[str, str]
+    relationship_ids: dict[str, str]
+
+
+def icon_count(slides: list[dict]) -> int:
+    return sum(len(slide.get("icons", [])) for slide in slides)
+
+
+def slide_icon_parts(icons: list[dict], slide_number: int, first_relationship_number: int) -> list[IconPart]:
+    return [
+        IconPart(
+            name=icon["name"],
+            box=icon["box"],
+            sources={kind: icon[kind] for kind in ("png", "svg")},
+            media={kind: f"icon{slide_number}_{index}.{kind}" for kind in ("png", "svg")},
+            relationship_ids={kind: f"rId{first_relationship_number + 2 * (index - 1) + offset}" for offset, kind in enumerate(("png", "svg"))},
+        )
+        for index, icon in enumerate(icons, start=1)
+    ]
+
+
+def icon_pictures_xml(icons: list[IconPart], first_shape_id: int, scale: SlideScale) -> str:
+    return "".join(icon_picture_xml(shape_id, icon, scale) for shape_id, icon in enumerate(icons, start=first_shape_id))
+
+
+def icon_picture_xml(shape_id: int, icon: IconPart, scale: SlideScale) -> str:
+    box = icon.box
+    return (
+        f'<p:pic><p:nvPicPr><p:cNvPr id="{shape_id}" name="Icon {html.escape(icon.name)}" descr="{html.escape(icon.name)}"/>'
+        '<p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>'
+        f'<p:blipFill><a:blip r:embed="{icon.relationship_ids["png"]}"><a:extLst><a:ext uri="{SVG_BLIP_EXTENSION_URI}">'
+        f'<asvg:svgBlip xmlns:asvg="{SVG_BLIP_NAMESPACE}" r:embed="{icon.relationship_ids["svg"]}"/></a:ext></a:extLst></a:blip>'
+        '<a:stretch><a:fillRect/></a:stretch></p:blipFill>'
+        f'<p:spPr><a:xfrm><a:off x="{scale.x(box["left"])}" y="{scale.y(box["top"])}"/>'
+        f'<a:ext cx="{scale.x(box["right"] - box["left"])}" cy="{scale.y(box["bottom"] - box["top"])}"/></a:xfrm>'
+        '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>'
+    )
+
+
+def icon_relationships_xml(icons: list[IconPart]) -> str:
+    return "".join(
+        f'<Relationship Id="{icon.relationship_ids[kind]}" Type="{IMAGE_RELATIONSHIP_TYPE}" Target="../media/{icon.media[kind]}"/>'
+        for icon in icons
+        for kind in ("png", "svg")
+    )
+
+
+def write_icon_media(archive: zipfile.ZipFile, icons: list[IconPart], layers_directory: pathlib.Path) -> None:
+    for icon in icons:
+        for kind in ("png", "svg"):
+            archive.write(layers_directory / icon.sources[kind], f"ppt/media/{icon.media[kind]}")
 
 
 def free_blocks(slide: dict) -> list[dict]:
@@ -127,7 +194,7 @@ def slide_link_ids(slide: dict) -> dict[str, str]:
     return {href: f"rId{number}" for number, href in enumerate(hrefs, start=FIRST_LINK_RELATIONSHIP_NUMBER)}
 
 
-def slide_relationships_xml(number: int, has_notes: bool, links: dict[str, str], charts: list[ChartPart]) -> str:
+def slide_relationships_xml(number: int, has_notes: bool, links: dict[str, str], charts: list[ChartPart], icons: list[IconPart]) -> str:
     notes_relationship = notes_relationship_xml(number, "rId3") if has_notes else ""
     link_relationships = "".join(
         f'<Relationship Id="{relationship_id}" Type="{HYPERLINK_RELATIONSHIP_TYPE}" Target="{html.escape(href)}" TargetMode="External"/>'
@@ -136,8 +203,8 @@ def slide_relationships_xml(number: int, has_notes: bool, links: dict[str, str],
     return xml_document(
         '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
         '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>'
-        f'<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/background{number}.png"/>'
-        f"{notes_relationship}{link_relationships}{chart_relationships_xml(charts)}</Relationships>"
+        f'<Relationship Id="rId2" Type="{IMAGE_RELATIONSHIP_TYPE}" Target="../media/background{number}.png"/>'
+        f"{notes_relationship}{link_relationships}{chart_relationships_xml(charts)}{icon_relationships_xml(icons)}</Relationships>"
     )
 
 

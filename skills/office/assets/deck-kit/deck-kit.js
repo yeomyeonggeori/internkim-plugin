@@ -66,6 +66,10 @@
   const edgeTickClasses = { 0: "kit-from-start", 100: "kit-from-end" };
   const tickIntervals = 4;
   const roundStepMultiples = [1, 2, 5, 10];
+  const iconAttribute = "data-icon";
+  const iconHostClasses = ["card", "kpi", "step"];
+  const iconListLayouts = ["agenda", "closing"];
+  const nativeIconAttribute = "data-native-icon";
 
   function slides() {
     return Array.from(document.querySelectorAll("section[data-layout]"));
@@ -150,7 +154,10 @@
     slide.classList.add("kit-grid");
     slide.style.setProperty("--n", String(gridCardCount / 2));
     cards.slice(gridCardCount / 2).forEach((card) => card.classList.add("kit-second-row"));
-    cards.filter((card) => card.firstElementChild?.matches(".label, .value")).forEach((card) => card.classList.add("kit-keyed"));
+    cards.filter((card) => card.firstElementChild?.matches(".label, .value")).forEach((card) => {
+      card.classList.add("kit-keyed");
+      card.firstElementChild.classList.add("kit-key");
+    });
   }
 
   function diagramList(slide) {
@@ -369,11 +376,61 @@
     });
   }
 
+  function isIconHost(part, slide) {
+    if (iconHostClasses.some((name) => part.classList.contains(name))) return true;
+    const list = part.parentElement;
+    return part.tagName === "LI" && Boolean(list) && ["OL", "UL"].includes(list.tagName) && list.parentElement === slide && iconListLayouts.includes(slide.getAttribute("data-layout"));
+  }
+
+  function iconFor(name) {
+    const markup = (window.deckKitIcons || {})[name];
+    const icon = element("span", markup ? "kit-icon" : "kit-icon kit-blank");
+    if (!markup) return icon;
+    icon.innerHTML = markup;
+    icon.setAttribute(nativeIconAttribute, name);
+    return icon;
+  }
+
+  function keyGroup(host) {
+    const key = host.classList.contains("kit-keyed") ? host.querySelector(":scope > .kit-key") : null;
+    if (!key) return host;
+    const group = element("div", "kit-key-group");
+    host.insertBefore(group, key);
+    group.appendChild(key);
+    return group;
+  }
+
+  function placeIcon(host, icon) {
+    const parent = keyGroup(host);
+    parent.insertBefore(icon, parent.firstChild);
+    host.classList.add("kit-iconed");
+  }
+
+  function iconSiblings(host) {
+    const name = iconHostClasses.find((className) => host.classList.contains(className));
+    return name ? directChildren(host.parentElement, name) : listItems(host.parentElement);
+  }
+
+  function drawIcons() {
+    slides().forEach((slide) => {
+      const hosts = Array.from(slide.querySelectorAll(`[${iconAttribute}]`)).filter((part) => isIconHost(part, slide));
+      const groups = new Set(hosts.flatMap(iconSiblings));
+      groups.forEach((host) => {
+        if (host.querySelector(".kit-icon")) return;
+        placeIcon(host, iconFor((host.getAttribute(iconAttribute) || "").trim()));
+      });
+    });
+  }
+
   function addListIndexes() {
     const lists = Array.from(document.querySelectorAll("section[data-layout] ol, section[data-layout='agenda'] > ul"));
     lists.forEach((list) => {
       Array.from(list.children).forEach((item, position) => {
         if (item.firstElementChild?.classList.contains("kit-index")) return;
+        if (item.classList.contains("kit-iconed")) {
+          groupPhrasing(item);
+          return;
+        }
         const index = element("span", "kit-index");
         index.textContent = String(position + 1).padStart(2, "0");
         item.insertBefore(index, item.firstChild);
@@ -1622,6 +1679,7 @@
     addFooters();
     markStructure();
     buildDiagrams();
+    drawIcons();
     addListIndexes();
     groupComparisonPoints();
     groupSteps();
