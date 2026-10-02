@@ -46,7 +46,10 @@ function collectStyles(document, excludedSelector) {
 }
 
 async function loadFonts(fontRequests) {
-  return Promise.all(fontRequests.map(async (font) => ({ ...font, data: await fs.readFile(font.path), metrics: readFontMetrics(font.path) })));
+  return Promise.all(fontRequests.map(async (font) => {
+    const data = await fs.readFile(font.path);
+    return { ...font, data, metrics: readFontMetrics(data) };
+  }));
 }
 
 function unquote(name) {

@@ -11,8 +11,11 @@ sys.path.insert(0, str(SCRIPTS_PATH))
 from core.css_color import named_color_hex, parse_css_color  # noqa: E402
 from render.renderer import javascript_runtime  # noqa: E402
 from core.units import inches_to_pixels, millimetres_to_pixels, points_to_pixels  # noqa: E402
+from fonts.registry import FAMILIES  # noqa: E402
 
 CSS_VALUES = (SCRIPTS_PATH / "render" / "css_values.mjs").as_uri()
+FONT_METRICS = (SCRIPTS_PATH / "render" / "font_metrics.mjs").as_uri()
+SAMPLED_CHARACTERS = "가힣한글 Aa1,.%·「」"
 LENGTHS = {"1in": inches_to_pixels(1), "2.54cm": inches_to_pixels(1), "10mm": millimetres_to_pixels(10), "12pt": points_to_pixels(12)}
 COLORS = ("#1a56db", "#abc", "#1a56db80", "rgb(26, 86, 219)", "rgba(26, 86, 219, 0.5)", "rgb(10% 50% 90% / 25%)", "hsl(220, 79%, 48%)", "transparent", "teal", "crimson")
 
@@ -30,6 +33,18 @@ def evaluate(script: str):
 
 def javascript_colors(texts) -> dict:
     return evaluate(f"import {{ parseColor }} from {json.dumps(CSS_VALUES)}; console.log(JSON.stringify(Object.fromEntries({json.dumps(list(texts))}.map((text) => [text, parseColor(text)]))))")
+
+
+def javascript_advances(path, characters: str) -> list:
+    return evaluate(f"import {{ readFileSync }} from 'node:fs'; import {{ readFontMetrics }} from {json.dumps(FONT_METRICS)}; const metrics = readFontMetrics(readFileSync({json.dumps(str(path))})); console.log(JSON.stringify(Array.from({json.dumps(characters)}, (character) => metrics.advanceEm(character.codePointAt(0)))))")
+
+
+def font_tools_advances(path, characters: str) -> list:
+    from fontTools.ttLib import TTFont
+
+    with TTFont(str(path)) as font:
+        cmap, metrics, units_per_em = font.getBestCmap(), font["hmtx"].metrics, font["head"].unitsPerEm
+        return [metrics[cmap[ord(character)]][0] / units_per_em if ord(character) in cmap else None for character in characters]
 
 
 def channels(hex_value: str) -> list[int]:
@@ -57,6 +72,13 @@ class RendererConformanceTest(unittest.TestCase):
         for name, *rgb in NAMED_COLOR_PATTERN.findall(NAMED_COLORS_PATTERN.search(source).group(1)):
             with self.subTest(name=name):
                 self.assertEqual([int(value) for value in rgb], channels(named_color_hex(name)))
+
+    def test_the_layout_reads_each_shipped_font_file_as_font_tools_does(self):
+        for family in FAMILIES:
+            for face in family.faces:
+                with self.subTest(font=face.file_name):
+                    path = family.path(face)
+                    self.assertEqual(javascript_advances(path, SAMPLED_CHARACTERS), font_tools_advances(path, SAMPLED_CHARACTERS))
 
 
 if __name__ == "__main__":

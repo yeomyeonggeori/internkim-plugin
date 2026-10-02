@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import io
 import pathlib
 import struct
 
@@ -13,6 +14,7 @@ SUBFAMILY_NAME_ID = 2
 FULL_NAME_ID = 4
 TYPOGRAPHIC_FAMILY_NAME_ID = 16
 VERSION_NAME_ID = 5
+WOFF2_SIGNATURE = b"wOF2"
 EOT_VERSION = 0x00020002
 EOT_MAGIC_NUMBER = 0x504C
 EOT_ROOT_STRING_CHECKSUM = 0x50475342
@@ -61,7 +63,7 @@ def license_allows_embedding(fs_type: int) -> bool:
 
 
 def read_truetype_face(path: pathlib.Path) -> TrueTypeFace:
-    data = path.read_bytes()
+    data = sfnt_data(path)
     tables = table_directory(data)
     names = english_names(data, tables[b"name"])
     os2_offset = tables[b"OS/2"][0]
@@ -82,6 +84,17 @@ def read_truetype_face(path: pathlib.Path) -> TrueTypeFace:
         checksum_adjustment=struct.unpack_from(">I", data, head_offset + 8)[0],
         has_truetype_outlines=b"glyf" in tables,
     )
+
+
+def sfnt_data(path: pathlib.Path) -> bytes:
+    data = path.read_bytes()
+    if not data.startswith(WOFF2_SIGNATURE):
+        return data
+    from fontTools.ttLib import woff2
+
+    output = io.BytesIO()
+    woff2.decompress(io.BytesIO(data), output)
+    return output.getvalue()
 
 
 def table_directory(data: bytes) -> dict[bytes, tuple[int, int]]:

@@ -22,7 +22,7 @@ def shipped_font_files() -> set[Path]:
 
 
 def registered_font_files() -> set[Path]:
-    return {family.asset(face) for family in FAMILIES for face in family.faces}
+    return {family.path(face) for family in FAMILIES for face in family.faces}
 
 
 class BundledFontRegistryTest(unittest.TestCase):

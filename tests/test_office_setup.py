@@ -61,7 +61,7 @@ class WithoutSetupTest(unittest.TestCase):
         self.assertFalse((self.root / "home").exists())
 
     def test_a_drawing_command_without_prepared_renderer_packages_names_setup(self):
-        office_entry = copy_skill(self.root / "office", ("python environment", "fonts"))
+        office_entry = copy_skill(self.root / "office", ("python environment",))
         (self.work / "보고서.md").write_text(REPORT, encoding="utf-8")
         completed, envelope = run(office_entry, ["doc", "export", "보고서.md", "--output", "보고서.pdf"], self.work, self.environment)
         self.assertEqual(completed.returncode, 1)
@@ -105,7 +105,7 @@ class PreparedSkillTest(unittest.TestCase):
 
     def test_setup_lists_each_piece_where_the_skill_reads_it(self):
         steps = self.setup_envelope["details"]["steps"]
-        self.assertEqual([step["name"] for step in steps], ["python environment", "renderer packages", "fonts"])
+        self.assertEqual([step["name"] for step in steps], ["python environment", "renderer packages"])
         self.assertEqual({step["state"] for step in steps}, {"prepared"})
         self.assertEqual([Path(step["path"]) for step in steps], [self.skill.resolve() / PREPARED_LOCATIONS[step["name"]] for step in steps])
 

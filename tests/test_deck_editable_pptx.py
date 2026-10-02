@@ -21,7 +21,7 @@ sys.path.insert(0, str(SCRIPTS_PATH.parent))
 from deck.editable_pptx import read_text_layers, write_editable_pptx  # noqa: E402
 from png_fixture import read_png, write_png  # noqa: E402
 from deck.resource_inlining import PAPERLOGY  # noqa: E402
-from fonts.truetype import read_truetype_face  # noqa: E402
+from fonts.truetype import read_truetype_face, sfnt_data  # noqa: E402
 
 
 NAMESPACES = {
@@ -199,7 +199,7 @@ class EditablePptxPackageTest(unittest.TestCase):
         self.assertEqual(eot_size, len(font_data))
         self.assertEqual(version, 0x00020002)
         self.assertEqual(struct.unpack_from("<H", font_data, 34)[0], EOT_MAGIC_NUMBER)
-        self.assertEqual(font_data[-font_data_size:], PAPERLOGY.path(PAPERLOGY.face(400)).read_bytes())
+        self.assertEqual(font_data[-font_data_size:], sfnt_data(PAPERLOGY.path(PAPERLOGY.face(400))))
         self.assertIn('Extension="fntdata"', archive.read("[Content_Types].xml").decode())
 
     def test_text_boxes_never_autofit_and_wrap_inside_the_slide(self):

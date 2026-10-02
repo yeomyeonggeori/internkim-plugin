@@ -178,6 +178,7 @@ def subset_data(source: pathlib.Path, text: str) -> bytes:
     output = io.BytesIO()
     with TTFont(str(source), recalcTimestamp=False) as font:
         subsetter.subset(font)
+        font.flavor = None
         font.save(output)
     return output.getvalue()
 

@@ -7,4 +7,3 @@ __pycache__/
 
 # prepared by each skill's setup, never committed or bundled
 node_modules/
-skills/office/assets/fonts/.unpacked/

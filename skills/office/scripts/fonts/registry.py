@@ -2,20 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import functools
-import hashlib
-import io
-import os
 import pathlib
-import shutil
 
 from fonts.truetype import ENGLISH_UNITED_STATES, FAMILY_NAME_ID, FULL_NAME_ID, SUBFAMILY_NAME_ID, TYPOGRAPHIC_FAMILY_NAME_ID, UNICODE_BMP_ENCODING, WINDOWS_PLATFORM, has_korean_code_page, license_allows_embedding
-from core.office_result import DEPENDENCIES_UNAVAILABLE, OfficeFailure
 
 
 FONT_DIRECTORY = pathlib.Path(__file__).resolve().parents[2] / "assets" / "fonts"
-UNPACKED_FONT_DIRECTORY = FONT_DIRECTORY / ".unpacked"
-OPENTYPE_FLAVOR = b"OTTO"
-WOFF2_FLAVOR_OFFSET = 4
 REGULAR_WEIGHT = 400
 BOLD_WEIGHT = 700
 POSTSCRIPT_NAME_ID = 6
@@ -58,11 +50,8 @@ class BundledFamily:
         chosen = matched_weight(weight, sorted(face.weight for face in self.faces))
         return next(face for face in self.faces if face.weight == chosen)
 
-    def asset(self, face: BundledFace) -> pathlib.Path:
-        return FONT_DIRECTORY / self.directory / face.file_name
-
     def path(self, face: BundledFace) -> pathlib.Path:
-        return unpacked_font(self.asset(face))
+        return FONT_DIRECTORY / self.directory / face.file_name
 
 
 @dataclass(frozen=True)
@@ -281,38 +270,3 @@ def renderer_fonts() -> list[dict]:
         for family in FAMILIES
         for face in family.faces
     ]
-
-
-@functools.lru_cache(maxsize=None)
-def unpacked_font(asset: pathlib.Path) -> pathlib.Path:
-    target = unpacked_font_path(asset, asset.read_bytes())
-    if not target.exists():
-        raise OfficeFailure(DEPENDENCIES_UNAVAILABLE.issue(f"the bundled font {asset.name} is not unpacked to {target}", str(target)))
-    return target
-
-
-def unpacked_font_path(asset: pathlib.Path, data: bytes) -> pathlib.Path:
-    suffix = ".otf" if data[WOFF2_FLAVOR_OFFSET:WOFF2_FLAVOR_OFFSET + 4] == OPENTYPE_FLAVOR else ".ttf"
-    return UNPACKED_FONT_DIRECTORY / hashlib.sha256(data).hexdigest()[:16] / f"{asset.stem}{suffix}"
-
-
-def prepare_bundled_fonts() -> str:
-    assets = {family.asset(face): family.asset(face).read_bytes() for family in FAMILIES for face in family.faces}
-    if all(unpacked_font_path(asset, data).exists() for asset, data in assets.items()):
-        return "found"
-    if UNPACKED_FONT_DIRECTORY.exists():
-        shutil.rmtree(UNPACKED_FONT_DIRECTORY)
-    for asset, data in assets.items():
-        write_unpacked_font(data, unpacked_font_path(asset, data))
-    return "prepared"
-
-
-def write_unpacked_font(data: bytes, target: pathlib.Path) -> None:
-    from fontTools.ttLib import woff2
-
-    target.parent.mkdir(parents=True, exist_ok=True)
-    partial = target.with_name(f"{target.name}.{os.getpid()}.partial")
-    with open(partial, "wb") as output:
-        woff2.decompress(io.BytesIO(data), output)
-    partial.replace(target)
-

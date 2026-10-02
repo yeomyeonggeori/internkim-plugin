@@ -61,7 +61,7 @@ class ScannedStatementTest(unittest.TestCase):
 
     def test_an_engine_that_is_not_prepared_is_named_with_its_setup_and_the_page_still_answers(self):
         with tempfile.TemporaryDirectory() as root:
-            office_entry = copy_skill(Path(root) / "office", ("python environment", "fonts"))
+            office_entry = copy_skill(Path(root) / "office", ("python environment",))
             environment = {**os.environ, "PATH": str(Path(sys.executable).parent)}
             completed = subprocess.run([sys.executable, str(office_entry), "pdf", "read", "scanned-statement.pdf", "--ocr"], capture_output=True, text=True, cwd=self.directory, env=environment)
         self.assertNotIn("Traceback", completed.stderr)

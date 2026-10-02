@@ -77,7 +77,7 @@ def paperlogy_local_font_face(face: BundledFace) -> str:
     return (
         f'@font-face {{ font-family: "{VENDORED_PAPERLOGY_FAMILY}"; '
         f"font-weight: {face.weight}; font-style: normal; font-display: swap; "
-        f'src: url("{base64_data_url("font/woff2", PAPERLOGY.asset(face))}") format("woff2"); }}'
+        f'src: url("{base64_data_url("font/woff2", PAPERLOGY.path(face))}") format("woff2"); }}'
     )
 
 
