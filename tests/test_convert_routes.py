@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -22,6 +23,8 @@ for row in (["월", "매출"], ["1월", 1200], ["2월", 1500], ["합계", "=SUM(
 book.create_sheet("담당자").append(["이름", "부서"])
 book.save("실적.xlsx")
 """
+
+LEGACY_WORKBOOK = Path(__file__).resolve().parent / "fixtures" / "workbooks" / "예산.xls"
 
 
 def convert(source, target, working_directory, *flags):
@@ -245,20 +248,16 @@ class PdfRouteTest(unittest.TestCase):
 
 
 class LegacyWorkbookTest(unittest.TestCase):
-    def test_xls_cells_keep_their_types(self):
-        sys.path.insert(0, str(SCRIPTS_PATH))
-        import xlrd
-        from convert.spreadsheet_import import xls_value
-
-        class Cell:
-            def __init__(self, ctype, value):
-                self.ctype, self.value = ctype, value
-
-        class Book:
-            datemode = 0
-
-        values = [xls_value(Book(), Cell(ctype, value)) for ctype, value in ((xlrd.XL_CELL_NUMBER, 3.0), (xlrd.XL_CELL_NUMBER, 2.5), (xlrd.XL_CELL_DATE, 46296.0), (xlrd.XL_CELL_BOOLEAN, 1), (xlrd.XL_CELL_TEXT, "영업"), (xlrd.XL_CELL_EMPTY, ""))]
-        self.assertEqual([str(value) for value in values], ["3", "2.5", "2026-10-01", "True", "영업", "None"])
+    def test_an_xls_workbook_keeps_its_types_merges_and_sheets(self):
+        with tempfile.TemporaryDirectory() as name:
+            directory = Path(name)
+            shutil.copy(LEGACY_WORKBOOK, directory / "예산.xls")
+            envelope = convert("예산.xls", "예산.xlsx", directory)
+            self.assertEqual([issue["code"] for issue in envelope["issues"]], ["CONVERSION_APPROXIMATED"])
+            sheet = run_office(["sheet", "read", "예산.xlsx"], directory)["details"]
+        self.assertEqual([entry["name"] for entry in sheet["sheets"]], ["예산", "메모"])
+        self.assertEqual(sheet["sheets"][0]["mergedCells"], ["A1:B1"])
+        self.assertEqual(sheet["range"]["values"], [["2026년 예산", None], ["인건비", 1200], ["단가", 2.5], ["마감", "2026-10-01T00:00:00"], ["확정", True]])
 
 
 class WithoutRendererTest(ConversionFixture):
@@ -286,11 +285,18 @@ ODS_CONTENT = """<?xml version="1.0" encoding="UTF-8"?>
 <table:table-row table:number-rows-repeated="1048570"><table:table-cell table:number-columns-repeated="1024"/></table:table-row>
 </table:table></office:spreadsheet></office:body></office:document-content>"""
 
+ODS_MANIFEST = """<?xml version="1.0" encoding="UTF-8"?>
+<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.2">
+<manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.spreadsheet"/>
+<manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/>
+</manifest:manifest>"""
+
 
 def write_ods(path):
     import zipfile
     with zipfile.ZipFile(path, "w") as archive:
         archive.writestr("mimetype", "application/vnd.oasis.opendocument.spreadsheet")
+        archive.writestr("META-INF/manifest.xml", ODS_MANIFEST)
         archive.writestr("content.xml", ODS_CONTENT)
 
 
