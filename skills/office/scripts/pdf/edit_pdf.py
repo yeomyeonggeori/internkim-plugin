@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import io
-import json
 import os
+from pathlib import Path
+import tempfile
 
-from fpdf import FPDF
 from pypdf import PdfReader, PdfWriter
 
-from pdf import create_pdf as pdf_helper
 from core.office_inputs import add_password_argument, office_file, require_unlocked_pdf
 from core.office_result import OfficeArgumentParser, Result, read_json_file, run_command
 from core.office_schema import require_valid
+from core.page_sizes import Paper
+from core.units import MILLIMETRES_PER_INCH, POINTS_PER_INCH
+from doc.document_pdf import PageLayout, render_document_pdf
+from pdf.create_pdf import section_blocks
 from pdf.pdf_definitions import SECTION
-from fonts.pdf_registration import register_document_font
-from core.page_sizes import DEFAULT_PAPER
+
+
+POINTS_TO_MILLIMETRES = MILLIMETRES_PER_INCH / POINTS_PER_INCH
 
 
 def main() -> Result:
@@ -22,10 +25,13 @@ def main() -> Result:
     section = read_section(arguments)
     pdf_path = os.path.expanduser(arguments.pdf_path)
     require_unlocked_pdf(pdf_path, arguments.password)
-    font_name, font_path = pdf_helper.resolve_font({})
-    appended_page_bytes, font_issues = build_appended_page(section, font_name, font_path)
-    merge_into_original(pdf_path, appended_page_bytes, arguments.password)
-    return Result(summary=f"appended a section page to {pdf_path}", output_path=pdf_path, issues=tuple(font_issues))
+    original_reader = PdfReader(pdf_path, password=arguments.password)
+    layout = PageLayout(paper=last_page_paper(original_reader), page_numbers=False)
+    with tempfile.TemporaryDirectory() as directory:
+        appended_path = Path(directory) / "section.pdf"
+        issues = render_document_pdf(section_blocks(section), appended_path, Path.cwd(), section.get("title") or Path(pdf_path).stem, layout=layout)
+        merge_into_original(pdf_path, original_reader, appended_path, arguments.password)
+    return Result(summary=f"appended a section page to {pdf_path}", output_path=pdf_path, issues=tuple(issues))
 
 
 def read_section(arguments) -> dict:
@@ -39,21 +45,13 @@ def read_section(arguments) -> dict:
     return section
 
 
-def build_appended_page(section: dict, font_name: str, font_path) -> tuple[bytes, list]:
-    appended_pdf = FPDF(orientation="P", unit="mm", format=DEFAULT_PAPER.millimetres)
-    appended_pdf.set_margins(18, 18, 18)
-    appended_pdf.set_auto_page_break(auto=True, margin=16)
-    font_issues = register_document_font(appended_pdf, font_name, font_path, json.dumps(section, ensure_ascii=False))
-    appended_pdf.add_page()
-    appended_pdf.set_font(font_name, size=11)
-    appended_pdf.set_text_color(31, 41, 55)
-    pdf_helper.add_section(appended_pdf, section, font_name)
-    return bytes(appended_pdf.output()), font_issues
+def last_page_paper(reader: PdfReader) -> Paper:
+    box = reader.pages[-1].mediabox
+    return Paper("original", float(box.width) * POINTS_TO_MILLIMETRES, float(box.height) * POINTS_TO_MILLIMETRES, 0)
 
 
-def merge_into_original(pdf_path: str, appended_page_bytes: bytes, password: str | None) -> None:
-    original_reader = PdfReader(pdf_path, password=password)
-    appended_reader = PdfReader(io.BytesIO(appended_page_bytes))
+def merge_into_original(pdf_path: str, original_reader: PdfReader, appended_path: Path, password: str | None) -> None:
+    appended_reader = PdfReader(appended_path)
     writer = PdfWriter()
     for page in original_reader.pages:
         writer.add_page(page)

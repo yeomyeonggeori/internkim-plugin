@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 
+from pdf_fixture import copy_pdf_fixture
 from xlsb_fixture import write_xlsb
 
 
@@ -23,6 +24,7 @@ def run_office(arguments, working_directory):
 
 
 def write_inputs(directory):
+    copy_pdf_fixture("report.pdf", directory)
     script = """
 import sys
 from pathlib import Path
@@ -34,10 +36,6 @@ openpyxl.Workbook().save(directory / "plain.xlsx")
 pptx.Presentation().save(directory / "plain.pptx")
 writer = PdfWriter(); writer.add_blank_page(200, 200); writer.write(directory / "plain.pdf")
 writer = PdfWriter(); writer.add_blank_page(200, 200); writer.encrypt("sample-password"); writer.write(directory / "locked.pdf")
-from fpdf import FPDF
-document = FPDF(); document.add_page(); document.set_font("Helvetica", size=12)
-for line in range(40): document.cell(text=f"Sample line {line} for the owner locked report", new_x="LMARGIN", new_y="NEXT")
-document.output(str(directory / "report.pdf"))
 whole = (directory / "report.pdf").read_bytes()
 (directory / "truncated.pdf").write_bytes(whole[:len(whole) // 2])
 writer = PdfWriter(clone_from=str(directory / "report.pdf")); writer.encrypt(user_password="", owner_password="owner", permissions_flag=0, algorithm="RC4-128"); writer.write(directory / "owner-locked.pdf")
@@ -199,6 +197,9 @@ class InputBoundaryTest(unittest.TestCase):
         self.assert_refused("pdf read", edited.name, "PDF_PASSWORD_REQUIRED")
         envelope, _ = run_office(["pdf", "read", edited.name, "--password", "sample-password"], self.directory)
         self.assertEqual(envelope["details"]["pageCount"], 2)
+        first, appended = envelope["details"]["pages"]
+        self.assertEqual((appended["widthPoints"], appended["heightPoints"]), (first["widthPoints"], first["heightPoints"]))
+        self.assertIn("추가 조항", appended["text"])
 
     def test_apply_checks_its_input_before_reading_the_operations(self):
         (self.directory / "ops.json").write_text("[]", encoding="utf-8")

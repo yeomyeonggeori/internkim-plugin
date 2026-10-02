@@ -10,7 +10,7 @@ OFFICE_SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" 
 sys.path.insert(0, str(OFFICE_SCRIPTS_PATH))
 
 from fonts.registry import SANS_BODY, default_family, resolved_face  # noqa: E402
-from fonts.pdf_registration import bold_sibling  # noqa: E402
+from fonts.font_files import bold_sibling  # noqa: E402
 
 SOURCE_FONT_PATH = resolved_face(default_family(SANS_BODY).name).path
 

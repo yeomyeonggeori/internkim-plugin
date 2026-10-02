@@ -1,6 +1,5 @@
 brotli
 fonttools
-fpdf2
 ironcalc==0.8.3
 latex2mathml
 mathml2omml

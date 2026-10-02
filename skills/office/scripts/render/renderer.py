@@ -24,6 +24,7 @@ NODE_MAJOR_VERSION_MINIMUM = 18
 DEFAULT_VIEWPORT = (1600, 900)
 PIXELS_FILE_NAME = "pixels.json"
 CONTACT_SHEETS_FILE_NAME = "contact-sheets.json"
+PAGE_NUMBER_FOOTER = '<div style="display:flex;width:100%;justify-content:center;font-size:8pt;color:#6e7781"><span class="pageNumber"></span>&nbsp;/&nbsp;<span class="totalPages"></span></div>'
 
 RUNTIME_REQUIREMENT = f"bun, or node {NODE_MAJOR_VERSION_MINIMUM} or newer"
 RUNTIME_MISSING = f"neither bun nor node {NODE_MAJOR_VERSION_MINIMUM} or newer is installed"
@@ -78,9 +79,10 @@ class DocumentPdfRequest:
     output_path: pathlib.Path
     title: str
     fonts: tuple[FontFile, ...]
-    size: str = "a4"
+    size: str | dict = "a4"
     landscape: bool = False
     margin: dict = field(default_factory=dict)
+    footer: str | None = PAGE_NUMBER_FOOTER
 
 
 @dataclass(frozen=True)
@@ -107,7 +109,7 @@ def font_from_json(entry: dict) -> FontFile:
 def single_face_path(font: FontFile) -> pathlib.Path:
     if font.path.suffix.casefold() not in COLLECTION_SUFFIXES:
         return font.path
-    from fonts.pdf_registration import extract_face
+    from fonts.font_files import extract_face
 
     extracted_path = skill_cache_path(os.environ) / "fonts" / f"{font.path.stem}-face{font.index}.ttf"
     if not extracted_path.exists():
@@ -237,6 +239,7 @@ def render_document_pdf(request: DocumentPdfRequest) -> pathlib.Path:
         "size": request.size,
         "landscape": request.landscape,
         "margin": request.margin,
+        "footer": request.footer,
         "fontFamilies": list(dict.fromkeys(font.family for font in request.fonts)),
         "fonts": [font_request(font) for font in request.fonts],
     }

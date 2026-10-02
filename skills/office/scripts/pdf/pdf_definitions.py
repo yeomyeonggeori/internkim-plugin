@@ -1,29 +1,31 @@
 from __future__ import annotations
 
-from core.office_result import ERROR, WARNING, IssueKind
+from core.office_result import BOLD_FONT_UNAVAILABLE, ERROR, WARNING, IssueKind
+from doc.doc_definitions import GLYPH_NOT_COVERED
+from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE
 from core.office_schema import Boolean, CellValue, Choice, Field, ListOf, Number, Record, Text
-from fonts.pdf_registration import FONT_NAME_MEANING, FONT_PATH_MEANING
+from fonts.font_files import FONT_NAME_MEANING, FONT_PATH_MEANING
 from core.text_checks import TEXT_CHECK_ISSUE_KINDS
 from core.page_sizes import DEFAULT_PAPER, PAPER_NAMES
 
 
-TABLE = Record("table", "a bordered table with a shaded header row, wrapped to the page width", (
+TABLE = Record("table", "a table with a shaded header row, wrapped to the page width", (
     Field("headers", ListOf(CellValue(), non_empty=True), "header cells", required=True),
     Field("rows", ListOf(ListOf(CellValue())), "body rows; missing cells print empty"),
 ))
 
-SECTION = Record("section", "a heading followed by paragraphs, bullets, then an optional table", (
+SECTION = Record("section", "a heading followed by paragraphs, bullets, then an optional table; text reads **bold**, *emphasis*, `code` and [links](url) as doc export's Markdown does", (
     Field("title", Text(), "section heading"),
     Field("paragraphs", ListOf(Text(non_empty=True)), "body paragraphs"),
     Field("bullets", ListOf(Text(non_empty=True)), "bullet items"),
     Field("table", TABLE, "a table after the text"),
 ))
 
-PDF_SPECIFICATION = Record("document", "the --spec file of pdf create", (
-    Field("title", Text(), "large title with a rule under it"),
+PDF_SPECIFICATION = Record("document", "the --spec file of pdf create, drawn with doc export's page look", (
+    Field("title", Text(), "large title"),
     Field("subtitle", Text(), "smaller line under the title"),
     Field("format", Choice(PAPER_NAMES), f"paper size; default {DEFAULT_PAPER.name}"),
-    Field("marginMillimeters", Number(minimum=0), "every margin, default 18"),
+    Field("marginMillimeters", Number(minimum=0), "every margin; by default doc export's margins"),
     Field("fontPath", Text(), FONT_PATH_MEANING),
     Field("fontName", Text(), FONT_NAME_MEANING),
     Field("pageNumbers", Boolean(), "centered page numbers in the footer, default true"),
@@ -47,6 +49,7 @@ PAGE_WITHOUT_TEXT = IssueKind("PAGE_WITHOUT_TEXT", WARNING, "a PDF page has no t
 PAGE_READ_BY_OCR = IssueKind("PAGE_READ_BY_OCR", WARNING, "the text of a page without a text layer was read from its image by OCR: a space between words can be missing and a character can be misread", "tell the user which pages came from OCR, and confirm names, amounts and dates that matter with them before relying on them")
 OCR_UNAVAILABLE = IssueKind("OCR_UNAVAILABLE", WARNING, "the OCR engine could not be installed or run, so pages without a text layer were not read", "say which pages could not be read and why; the message names what failed, usually no network on the first OCR run")
 
+WRITE_ISSUE_KINDS = (BOLD_FONT_UNAVAILABLE, GLYPH_NOT_COVERED, RENDERER_UNAVAILABLE, RENDER_FAILED)
 RENDER_ISSUE_KINDS = (PAGE_NOT_IN_DOCUMENT,)
 READ_ISSUE_KINDS = (PAGE_WITHOUT_TEXT, PAGE_READ_BY_OCR, OCR_UNAVAILABLE)
 
@@ -68,6 +71,8 @@ GUIDE_INPUTS = (
     ("pdf edit --section <file>", SECTION),
 )
 GUIDE_ISSUES = (
+    ("pdf create", WRITE_ISSUE_KINDS),
+    ("pdf edit", WRITE_ISSUE_KINDS),
     ("pdf read", READ_ISSUE_KINDS),
     ("pdf render", RENDER_ISSUE_KINDS),
     ("pdf validate", VALIDATE_ISSUE_KINDS),

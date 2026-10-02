@@ -9,7 +9,7 @@ import unittest
 from openpyxl import load_workbook
 
 from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, run_office, run_office_python
-from pdf_fixture import SCANNED_STATEMENT_PDF, statement_pdf_code
+from pdf_fixture import SCANNED_STATEMENT_PDF, copy_pdf_fixture
 from skill_runtime import dependency_environment_path, safe_name, skill_cache_path
 
 
@@ -21,7 +21,7 @@ class ScannedStatementTest(unittest.TestCase):
     def setUpClass(cls):
         cls.temporary_directory = tempfile.TemporaryDirectory()
         cls.directory = Path(cls.temporary_directory.name)
-        run_office_python(statement_pdf_code(), cls.directory)
+        copy_pdf_fixture("statement.pdf", cls.directory)
         run_office_python(SCANNED_STATEMENT_PDF, cls.directory)
 
     @classmethod

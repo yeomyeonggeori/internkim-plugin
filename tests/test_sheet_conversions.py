@@ -1,51 +1,14 @@
 import datetime
 from pathlib import Path
 import tempfile
-import textwrap
 import unittest
 
 from openpyxl import load_workbook
 
-from pdf_fixture import statement_pdf_code, with_fonts
+from pdf_fixture import copy_pdf_fixture
 from sheet_fixture import SCRIPTS_PATH, run_office, run_office_python
 from xlsb_fixture import write_xlsb
 
-TABLE_PDF = """
-from fpdf import FPDF
-pdf = FPDF(format="A4")
-pdf.set_auto_page_break(False)
-pdf.add_font("Korean", "", {regular!r})
-pdf.add_font("Korean", "B", {bold!r})
-
-def table(rows):
-    with pdf.table(col_widths=(50, 45, 45, 40)) as drawn:
-        for row in rows:
-            cells = drawn.row()
-            for value in row:
-                cells.cell(value)
-
-HEADER = ("지점", "매출", "증감률", "기준일")
-pdf.add_page()
-pdf.set_font("Korean", "", 10)
-pdf.cell(180, 8, "지점별 실적", new_x="LMARGIN", new_y="NEXT")
-table([HEADER, ("서울 본점", "1,200,000", "12.5%", "2024.01.15"), ("부산 지점", "(3,000)", "-4.0%", "2024-02-01")])
-pdf.add_page()
-table([HEADER, ("대구 지점", "₩850,500", "0%", "2024.03.31"), ("코드 007", "007", "3.25", "미정")])
-pdf.add_page()
-table([("1", "2", "3", "4"), ("5", "6", "7", "8")])
-pdf.add_page()
-pdf.cell(180, 8, "표가 없는 쪽", new_x="LMARGIN", new_y="NEXT")
-pdf.output("tables.pdf")
-"""
-TEXT_PDF = """
-from fpdf import FPDF
-pdf = FPDF(format="A4")
-pdf.add_font("Korean", "", {regular!r})
-pdf.add_page()
-pdf.set_font("Korean", "", 12)
-pdf.cell(180, 8, "표 없이 글만 있는 문서")
-pdf.output("text.pdf")
-"""
 
 
 class ConversionFixture(unittest.TestCase):
@@ -56,9 +19,6 @@ class ConversionFixture(unittest.TestCase):
 
     def convert(self, source, target):
         return run_office(["convert", source, target], self.directory)
-
-    def write_pdf(self, code):
-        run_office_python(with_fonts(textwrap.dedent(code)), self.directory)
 
 
 class DelimitedRouteTest(ConversionFixture):
@@ -110,7 +70,7 @@ class BinaryWorkbookTest(ConversionFixture):
 
 class PdfTablesTest(ConversionFixture):
     def test_pdf_tables_become_typed_sheets_and_a_repeated_header_continues_one(self):
-        self.write_pdf(TABLE_PDF)
+        copy_pdf_fixture("tables.pdf", self.directory)
         envelope = self.convert("tables.pdf", "tables.xlsx")
         self.assertEqual(envelope["details"]["route"], "pdf -> xlsx")
         self.assertEqual(envelope["details"]["tables"], [
@@ -133,7 +93,7 @@ class PdfTablesTest(ConversionFixture):
         self.assertIsNone(third.freeze_panes)
 
     def test_a_table_laid_out_without_lines_becomes_a_typed_sheet(self):
-        run_office_python(statement_pdf_code(), self.directory)
+        copy_pdf_fixture("statement.pdf", self.directory)
         envelope = self.convert("statement.pdf", "statement.xlsx")
         self.assertEqual(envelope["status"], "ok", envelope["issues"])
         self.assertEqual(envelope["details"]["tables"], [{"sheet": "Page 1", "pages": [1], "rows": 7, "columns": 5, "header": True}])
@@ -144,7 +104,7 @@ class PdfTablesTest(ConversionFixture):
         self.assertEqual(sheet["E2"].number_format, "#,##0")
 
     def test_a_pdf_without_tables_is_refused_with_what_to_do(self):
-        self.write_pdf(TEXT_PDF)
+        copy_pdf_fixture("text.pdf", self.directory)
         envelope = self.convert("text.pdf", "text.xlsx")
         self.assertEqual(envelope["status"], "error")
         self.assertEqual(envelope["issues"][0]["code"], "TABLE_NOT_FOUND")

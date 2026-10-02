@@ -6,21 +6,8 @@ import tempfile
 import unittest
 
 from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, run_office, run_office_python
-from pdf_fixture import STATEMENT_ROWS, statement_pdf_code
+from pdf_fixture import STATEMENT_ROWS, copy_pdf_fixture
 from render_fixture import png_size
-
-
-FIXTURE_PDF = """
-from fpdf import FPDF
-pdf = FPDF(format="A4", unit="pt")
-pdf.set_font("Helvetica", size=14)
-pdf.add_page()
-pdf.cell(text="Quarterly summary page one")
-pdf.add_page(format="Letter")
-pdf.cell(text="Second page, Letter size")
-pdf.add_page()
-pdf.output("fixture.pdf")
-"""
 
 
 KOREAN_FONT_PDF = """
@@ -64,7 +51,7 @@ class PdfFixture(unittest.TestCase):
     def setUp(self):
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.directory = Path(self.temporary_directory.name)
-        run_office_python(FIXTURE_PDF, self.directory)
+        copy_pdf_fixture("fixture.pdf", self.directory)
 
     def tearDown(self):
         self.temporary_directory.cleanup()
@@ -95,13 +82,13 @@ class ReadTest(PdfFixture):
 class ReadTablesTest(unittest.TestCase):
     def test_read_gives_the_rows_of_a_table_laid_out_without_lines(self):
         with tempfile.TemporaryDirectory() as directory:
-            run_office_python(statement_pdf_code(), Path(directory))
+            copy_pdf_fixture("statement.pdf", directory)
             page = run_office(["pdf", "read", "statement.pdf"], Path(directory))["details"]["pages"][0]
         self.assertEqual(page["tables"], [STATEMENT_ROWS])
 
     def test_a_page_without_a_table_carries_no_tables_field(self):
         with tempfile.TemporaryDirectory() as directory:
-            run_office_python(FIXTURE_PDF, Path(directory))
+            copy_pdf_fixture("fixture.pdf", directory)
             pages = run_office(["pdf", "read", "fixture.pdf"], Path(directory))["details"]["pages"]
         self.assertEqual([page.get("tables") for page in pages], [None, None, None])
 

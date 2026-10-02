@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fonts.docx_embedding import save_document
 from doc.docx_markdown import DEFAULT_DOCUMENT_FONT, markdown_document
-from doc.document_pdf import render_document_pdf
+from doc.document_pdf import DocumentFonts, render_document_pdf
 from doc.latex_math import math_issues
 from doc.markdown_blocks import Heading, parse_markdown
 from doc.markdown_charts import require_valid_charts
@@ -36,7 +36,7 @@ def main() -> Result:
 
 
 def export_pdf(blocks: list, output_path: Path, source_directory: Path, font_path_argument: str) -> list[Issue]:
-    return render_document_pdf(blocks, output_path, source_directory, document_title(blocks, output_path), Path(font_path_argument) if font_path_argument else None)
+    return render_document_pdf(blocks, output_path, source_directory, document_title(blocks, output_path), DocumentFonts(font_path=Path(font_path_argument) if font_path_argument else None))
 
 
 def document_title(blocks: list, output_path: Path) -> str:

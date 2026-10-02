@@ -6,7 +6,7 @@ from paperwork.amounts import ROUNDING_RULE, VAT_RATE_PERCENT
 from core.office_result import ERROR, WARNING, IssueKind
 from core.office_schema import AnyOf, Boolean, CellValue, Field, ListOf, Number, Record, Text, Variant
 from paperwork.paperwork_design import FONT_KOREAN_DOCX
-from fonts.pdf_registration import FONT_PATH_MEANING
+from fonts.font_files import FONT_PATH_MEANING
 from paperwork.template_context import caller_fields, default_values, derived_values, list_fields, optional_paragraph_fields
 from paperwork.template_fields import template_names
 

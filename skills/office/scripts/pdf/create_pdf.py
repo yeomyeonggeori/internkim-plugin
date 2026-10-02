@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 
-from fonts.registry import BODY_SIZE_POINTS, SANS_BODY, default_family
 from core.office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
 from core.office_schema import require_valid
-from pdf.pdf_definitions import PDF_SPECIFICATION
-from fonts.pdf_registration import register_document_font
 from core.page_sizes import DEFAULT_PAPER, PAPER_BY_NAME
 from core.office_outputs import output_file
+from core.units import millimetres_to_pixels
+from doc.document_pdf import DocumentFonts, PageLayout, render_document_pdf
+from doc.markdown_blocks import Heading, ListItem, Paragraph, Table
+from pdf.pdf_definitions import PDF_SPECIFICATION
 
 
 def read_specification(arguments):
@@ -52,193 +52,56 @@ def build_specification(arguments):
     }
 
 
-def create_pdf(specification):
-    from fpdf import FPDF
-
-    class DocumentPDF(FPDF):
-        def footer(self):
-            if specification.get("pageNumbers") is False:
-                return
-            self.set_y(-14)
-            self.set_font(active_font_name, size=8)
-            self.set_text_color(92, 99, 112)
-            self.cell(0, 8, f"{self.page_no()}", align="C")
-
-    active_font_name, font_path = resolve_font(specification)
-
-    pdf = DocumentPDF(orientation="P", unit="mm", format=PAPER_BY_NAME[specification.get("format") or DEFAULT_PAPER.name].millimetres)
-    margin_millimeters = specification.get("marginMillimeters")
-    margin = float(18 if margin_millimeters is None else margin_millimeters)
-    pdf.set_margins(margin, margin, margin)
-    pdf.set_auto_page_break(auto=True, margin=16)
-    font_issues = register_document_font(pdf, active_font_name, font_path, json.dumps(specification, ensure_ascii=False))
-    pdf.add_page()
-    pdf.set_font(active_font_name, size=11)
-    pdf.set_text_color(31, 41, 55)
-
-    add_title(pdf, specification, active_font_name)
-    for section in specification.get("sections") or []:
-        add_section(pdf, section, active_font_name)
-    return pdf, font_issues
-
-
-def add_title(pdf, specification, font_name):
+def specification_blocks(specification: dict) -> list:
+    blocks = []
     title = optional_text(specification.get("title"))
-    if not title:
-        return
-    pdf.set_font(font_name, "B", size=18)
-    pdf.set_text_color(17, 24, 39)
-    write_multiline(pdf, 0, 9, title, align="L")
+    if title:
+        blocks.append(Heading(1, title))
     subtitle = optional_text(specification.get("subtitle"))
     if subtitle:
-        pdf.set_font(font_name, size=10)
-        pdf.set_text_color(75, 85, 99)
-        write_multiline(pdf, 0, 6, subtitle)
-    pdf.set_draw_color(203, 213, 225)
-    pdf.ln(2)
-    pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
-    pdf.ln(7)
+        blocks.append(Paragraph(subtitle))
+    for section in specification.get("sections") or []:
+        blocks.extend(section_blocks(section))
+    return blocks
 
 
-def add_section(pdf, section, font_name):
+def section_blocks(section: dict) -> list:
     title = optional_text(section.get("title"))
-    if title:
-        pdf.set_font(font_name, "B", size=13)
-        pdf.set_text_color(17, 24, 39)
-        write_multiline(pdf, 0, 7, title)
-        pdf.ln(1)
-    pdf.set_font(font_name, size=BODY_SIZE_POINTS)
-    pdf.set_text_color(31, 41, 55)
-    for paragraph in section.get("paragraphs") or []:
-        write_multiline(pdf, 0, 6.2, paragraph.strip())
-        pdf.ln(1.5)
-    for item in section.get("bullets") or []:
-        write_multiline(pdf, 0, 6.2, "• " + item.strip())
+    blocks = [Heading(2, title)] if title else []
+    blocks.extend(Paragraph(paragraph.strip()) for paragraph in section.get("paragraphs") or [])
+    blocks.extend(ListItem("-", 0, bullet.strip()) for bullet in section.get("bullets") or [])
     table = section.get("table")
     if table:
-        add_table(pdf, table, font_name)
-    pdf.ln(4)
+        blocks.append(table_block(table))
+    return blocks
 
 
-def add_table(pdf, table, font_name):
-    headers = table["headers"]
-    rows = table.get("rows") or []
-    pdf.set_font(font_name, size=9.5)
-    column_widths = compute_column_widths(pdf, headers, rows)
-    add_table_row(pdf, column_widths, headers, is_header=True)
-    for row in rows:
-        add_table_row(pdf, column_widths, row, is_header=False)
-    pdf.ln(1)
+def table_block(table: dict) -> Table:
+    headers = [cell_text(header) for header in table["headers"]]
+    rows = [[cell_text(row[index]) if index < len(row) else "" for index in range(len(headers))] for row in table.get("rows") or []]
+    return Table([headers, *rows])
 
 
-def compute_column_widths(pdf, headers, rows):
-    available_width = pdf.w - pdf.l_margin - pdf.r_margin
-    column_count = len(headers)
-    cell_padding = 3
-    minimum_width = available_width * 0.12
-    desired_widths = [pdf.get_string_width(str(headers[index])) + cell_padding * 2 for index in range(column_count)]
-    for row in rows:
-        for index in range(column_count):
-            value = row[index] if index < len(row) else ""
-            text_width = pdf.get_string_width("" if value is None else str(value))
-            desired_widths[index] = max(desired_widths[index], text_width + cell_padding * 2)
-    bounded_widths = [max(minimum_width, width) for width in desired_widths]
-    scale = available_width / sum(bounded_widths)
-    return [width * scale for width in bounded_widths]
+def cell_text(value) -> str:
+    return "" if value is None else str(value)
 
 
-def add_table_row(pdf, column_widths, values, is_header):
-    cell_padding = 1.6
-    line_height = 5.0
-    texts = row_cell_texts(values, len(column_widths))
-    wrapped_columns = [wrap_text_to_lines(pdf, text, width - cell_padding * 2) for text, width in zip(texts, column_widths)]
-    row_line_count = max(len(lines) for lines in wrapped_columns)
-    row_height = row_line_count * line_height + cell_padding * 2
-    ensure_room_for_row(pdf, row_height)
-    row_x = pdf.l_margin
-    row_y = pdf.get_y()
-    set_row_colors(pdf, is_header)
-    cell_x = row_x
-    for width, lines in zip(column_widths, wrapped_columns):
-        pdf.rect(cell_x, row_y, width, row_height, style="DF" if is_header else "D")
-        draw_wrapped_lines(pdf, cell_x, row_y, width, lines, line_height, cell_padding)
-        cell_x += width
-    pdf.set_xy(row_x, row_y + row_height)
+def page_layout(specification: dict) -> PageLayout:
+    paper = PAPER_BY_NAME[specification.get("format") or DEFAULT_PAPER.name]
+    margin_millimeters = specification.get("marginMillimeters")
+    margin = PageLayout().margin if margin_millimeters is None else dict.fromkeys(("top", "right", "bottom", "left"), millimetres_to_pixels(margin_millimeters))
+    return PageLayout(paper, margin, specification.get("pageNumbers") is not False)
 
 
-def row_cell_texts(values, column_count):
-    return ["" if index >= len(values) or values[index] is None else str(values[index]) for index in range(column_count)]
+def document_fonts(specification: dict) -> DocumentFonts:
+    font_path = optional_text(specification.get("fontPath"))
+    return DocumentFonts(Path(font_path) if font_path else None, optional_text(specification.get("fontName")) or None)
 
 
-def set_row_colors(pdf, is_header):
-    if is_header:
-        pdf.set_fill_color(235, 241, 247)
-        pdf.set_text_color(17, 24, 39)
-        return
-    pdf.set_fill_color(255, 255, 255)
-    pdf.set_text_color(31, 41, 55)
-
-
-def ensure_room_for_row(pdf, row_height):
-    if pdf.get_y() + row_height > pdf.h - pdf.b_margin:
-        pdf.add_page()
-
-
-def draw_wrapped_lines(pdf, x, y, width, lines, line_height, cell_padding):
-    for line_index, line in enumerate(lines):
-        pdf.set_xy(x + cell_padding, y + cell_padding + line_index * line_height)
-        pdf.cell(width - cell_padding * 2, line_height, line, border=0)
-
-
-def wrap_text_to_lines(pdf, text, max_width):
-    if text == "":
-        return [""]
-    lines = []
-    for raw_line in text.split("\n"):
-        lines.extend(wrap_single_line(pdf, raw_line, max_width))
-    return lines or [""]
-
-
-def wrap_single_line(pdf, line, max_width):
-    words = line.split(" ")
-    wrapped_lines = []
-    current_line = ""
-    for word in words:
-        candidate_line = word if current_line == "" else f"{current_line} {word}"
-        if pdf.get_string_width(candidate_line) <= max_width:
-            current_line = candidate_line
-            continue
-        if current_line:
-            wrapped_lines.append(current_line)
-        current_line = break_long_word(pdf, word, max_width, wrapped_lines)
-    wrapped_lines.append(current_line)
-    return wrapped_lines
-
-
-def break_long_word(pdf, word, max_width, wrapped_lines):
-    remaining_word = word
-    while pdf.get_string_width(remaining_word) > max_width and len(remaining_word) > 1:
-        split_index = find_character_split_index(pdf, remaining_word, max_width)
-        wrapped_lines.append(remaining_word[:split_index])
-        remaining_word = remaining_word[split_index:]
-    return remaining_word
-
-
-def find_character_split_index(pdf, text, max_width):
-    for index in range(len(text), 0, -1):
-        if pdf.get_string_width(text[:index]) <= max_width:
-            return index
-    return 1
-
-
-def write_multiline(pdf, width, height, text, **options):
-    pdf.multi_cell(width, height, text, new_x="LMARGIN", new_y="NEXT", **options)
-
-
-def resolve_font(specification):
-    configured_font = optional_text(specification.get("fontPath"))
-    font_name = optional_text(specification.get("fontName")) or default_family(SANS_BODY).name
-    return font_name, Path(configured_font) if configured_font else None
+def write_pdf(specification: dict, output_path: Path) -> list:
+    blocks = specification_blocks(specification)
+    title = optional_text(specification.get("title")) or output_path.stem
+    return render_document_pdf(blocks, output_path, Path.cwd(), title, document_fonts(specification), page_layout(specification))
 
 
 def parse_arguments():
@@ -256,11 +119,10 @@ def parse_arguments():
 def main():
     arguments = parse_arguments()
     specification = read_specification(arguments)
-    pdf, font_issues = create_pdf(specification)
     output_path = Path(os.path.expanduser(arguments.output_path))
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    pdf.output(str(output_path))
-    return Result(summary=f"created {output_path}", output_path=str(output_path), issues=tuple(font_issues))
+    issues = write_pdf(specification, output_path)
+    return Result(summary=f"created {output_path}", output_path=str(output_path), issues=tuple(issues))
 
 
 if __name__ == "__main__":

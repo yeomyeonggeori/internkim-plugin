@@ -1,8 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { render } from "takumi-pdf";
 
-const pageNumberFooter = '<div style="display:flex;width:100%;justify-content:center;font-size:8pt;color:#6e7781"><span class="pageNumber"></span>&nbsp;/&nbsp;<span class="totalPages"></span></div>';
-
 async function main() {
   const request = JSON.parse(await readFile(process.argv[2], "utf8"));
   const fonts = await Promise.all(request.fonts.map(async (font) => ({ name: font.family, weight: font.weight, style: font.style || "normal", data: await readFile(font.path), ...(font.generic ? { generic: font.generic } : {}) })));
@@ -14,7 +12,7 @@ async function main() {
     lang: "ko-KR",
     fonts,
     fontFamilies: request.fontFamilies,
-    footer: pageNumberFooter,
+    footer: request.footer || false,
     outline: true,
     uncoveredText: "placeholder",
     metadata: { title: request.title },

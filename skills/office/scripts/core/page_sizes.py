@@ -29,6 +29,10 @@ class Paper:
     def pixels(self) -> tuple[int, int]:
         return round(millimetres_to_pixels(self.width_millimetres)), round(millimetres_to_pixels(self.height_millimetres))
 
+    @property
+    def exact_pixels(self) -> dict[str, float]:
+        return {"width": millimetres_to_pixels(self.width_millimetres), "height": millimetres_to_pixels(self.height_millimetres)}
+
 
 # ECMA-376 Part 1, 18.3.1.63 pageSetup paperSize: 1 Letter, 5 Legal, 8 A3, 9 A4, 11 A5, 13 B5 (JIS)
 PAPERS = (

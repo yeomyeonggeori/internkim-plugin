@@ -19,7 +19,7 @@ from core.office_commands import COMMANDS, FORMATS  # noqa: E402
 from office_guide import guide_text  # noqa: E402
 from core.office_result import COMMAND_ISSUE_KINDS, IssueKind, command_result  # noqa: E402
 from core.office_schema import CellValue, Field, ListOf, Number, Record, Text, Variant  # noqa: E402
-from render_fixture import bare_environment  # noqa: E402
+from render_fixture import bare_environment, can_render  # noqa: E402
 
 
 def load_definitions(office_format):
@@ -135,13 +135,21 @@ class OutputPathTest(unittest.TestCase):
             cases = {
                 ("sheet", "create", "folder.xlsx", "--row", "a,b"): ("PATH_UNUSABLE", "folder.xlsx"),
                 ("sheet", "create", "plain/book.xlsx", "--row", "a,b"): ("PATH_UNUSABLE", "plain"),
-                ("pdf", "create", f"{long_name}.pdf", "--title", "제목"): ("PATH_UNUSABLE", f"{long_name}.pdf"),
                 ("doc", "export", "notes.md", "--output", "plain/notes.docx"): ("PATH_UNUSABLE", "plain"),
                 ("convert", "notes.md", f"{long_name}.docx"): ("PATH_UNUSABLE", f"{long_name}.docx"),
             }
             for arguments, expected in cases.items():
                 with self.subTest(arguments=arguments[:3]):
                     self.assertEqual(self.path_issues(list(arguments), working_directory), [expected])
+
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+    def test_a_drawn_pdf_whose_name_the_disk_refuses_is_one_envelope_naming_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            long_name = f"{'n' * 300}.pdf"
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "pdf", "create", long_name, "--title", "제목"], capture_output=True, text=True, cwd=directory)
+            envelope = json.loads(completed.stdout)
+            self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("PATH_UNUSABLE", long_name)])
+            self.assertEqual(list(Path(directory).iterdir()), [])
 
     def test_an_output_whose_extension_names_another_format_is_refused_before_writing(self):
         with tempfile.TemporaryDirectory() as directory:
