@@ -11,10 +11,6 @@ from openpyxl import load_workbook
 from doc_fixture import run_office, run_office_python
 from pdf_fixture import SCANNED_STATEMENT_PDF, copy_pdf_fixture
 from skill_copy_fixture import copy_skill
-from pdf.ocr.ocr_environment import ocr_python  # noqa: E402
-from pdf.pdf_definitions import OCR_SETUP_COMMAND  # noqa: E402
-
-OCR_NOT_PREPARED = f"the OCR engine is not prepared; run {OCR_SETUP_COMMAND}"
 
 
 AMOUNTS = ["금액", "1,440,000", "540,000", "1,192,500", "432,000", "420,000", "4,024,500"]
@@ -41,7 +37,6 @@ class ScannedStatementTest(unittest.TestCase):
         slides = run_office(["convert", "scanned-statement.pdf", "scan.pptx"], self.directory)
         self.assertNotIn("--ocr", slides["issues"][0]["suggestion"])
 
-    @unittest.skipUnless(ocr_python(), OCR_NOT_PREPARED)
     def test_read_with_ocr_gives_the_page_text_and_its_table(self):
         envelope = run_office(["read", "scanned-statement.pdf", "--ocr"], self.directory)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["PAGE_READ_BY_OCR"])
@@ -54,7 +49,6 @@ class ScannedStatementTest(unittest.TestCase):
         self.assertEqual([row[-1] for row in table], AMOUNTS)
         self.assertEqual([row[0] for row in table][1:], ["2026-09-02", "2026-09-09", "2026-09-16", "2026-09-23", "2026-09-30", "합계"])
 
-    @unittest.skipUnless(ocr_python(), OCR_NOT_PREPARED)
     def test_convert_with_ocr_writes_the_scanned_table_as_typed_cells(self):
         envelope = run_office(["convert", "scanned-statement.pdf", "scan.xlsx", "--ocr"], self.directory)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["PAGE_READ_BY_OCR"])
