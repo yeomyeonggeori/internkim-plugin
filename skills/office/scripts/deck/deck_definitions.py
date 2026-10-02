@@ -221,7 +221,7 @@ CHART_ATTRIBUTES = (
     "scatter: two series, the horizontal axis first and the vertical second; each label names one point",
     "stacked100: each column shows its series as shares of the column's total",
     "area: the series stacked as bands over the labels, a total over time and what it is made of",
-    "data-unit: text after every value, such as 억, %, 건; combo and scatter take one per axis, \"억, %\"",
+    "data-unit: text after every value, such as M, % or a Korean number unit like 억; combo and scatter take one per axis, \"M, %\"",
     "data-highlight: one label drawn in the accent color while the others are muted (single series, or a scatter point)",
     "data-center, data-center-label: the text in a donut's hole; default the first slice's share",
     "data-zero: true starts a line chart's axis at zero",

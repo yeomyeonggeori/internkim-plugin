@@ -1,20 +1,20 @@
-# 경력증명서 (Certificate of Career)
+# Certificate of Career (경력증명서)
 
 output: pdf
-filename: 경력증명서_<성명>_<YYYYMMDD>.pdf
+filename: 경력증명서_<name>_<YYYYMMDD>.pdf
 
 ## Purpose
 
-퇴사자 또는 근무 이력이 있는 사람의 과거 근무 사실을 증명하는 대내외 제출용 문서. 재직증명서와 달리 재직기간이 종료된 확정 기간이다.
+A certificate of past employment for someone who has left or who once worked at the company, submitted inside or outside the company. Unlike the certificate of employment (재직증명서), its 재직기간 (employment period) is a closed period that has ended.
 
 ## Required fields
 
-- documentNumber: company_document_register가 반환한 번호를 "제 <YYYY>-<NNN>호" 형식으로 표기한다 (예: 제 2026-013호)
-- meta 인적사항(4): 성명, 생년월일, 주소, 소속(부서)
-- meta 재직사항(4): 직위(직급), 담당업무, 재직기간, 제출용도
-- 재직기간은 "<입사일> ~ <퇴사일>" 형식의 확정된 기간으로 표기 (재직증명서처럼 "현재"를 쓰지 않는다)
-- 퇴직사유는 요청자가 명시적으로 요구했을 때만 meta에 추가한다 (기본은 생략)
-- signature: 발급일 + "회사명 대표이사 대표자명", stamp true
+- documentNumber: the number company_document_register returns, written as "제 <YYYY>-<NNN>호" (e.g. 제 2026-013호)
+- meta, personal details (4): 성명 (name), 생년월일 (date of birth), 주소 (address), 소속 (department)
+- meta, employment details (4): 직위 (position or grade), 담당업무 (duties), 재직기간 (employment period), 제출용도 (purpose of submission)
+- 재직기간 is a closed period, "<start date> ~ <end date>" (never "현재" (present), which only the certificate of employment uses)
+- 퇴직사유 (reason for leaving) goes in meta only when the requester explicitly asks for it (omitted by default)
+- signature: issue date + "<company name> 대표이사 <representative name>", stamp true
 
 ## Document JSON skeleton
 
@@ -24,17 +24,17 @@ filename: 경력증명서_<성명>_<YYYYMMDD>.pdf
   "documentNumber": "제 <YYYY>-<NNN>호",
   "profile": { ...company profile... },
   "meta": [
-    { "label": "성명", "value": "<성명>" },
+    { "label": "성명", "value": "<name>" },
     { "label": "생년월일", "value": "<YYYY-MM-DD>" },
-    { "label": "주소", "value": "<주소>" },
-    { "label": "소속", "value": "<부서명>" },
-    { "label": "직위", "value": "<직위>" },
-    { "label": "담당업무", "value": "<담당업무 상세>" },
-    { "label": "재직기간", "value": "<입사일> ~ <퇴사일>" },
-    { "label": "제출용도", "value": "<제출처 또는 용도>" }
+    { "label": "주소", "value": "<address>" },
+    { "label": "소속", "value": "<department>" },
+    { "label": "직위", "value": "<position>" },
+    { "label": "담당업무", "value": "<duties in detail>" },
+    { "label": "재직기간", "value": "<start date> ~ <end date>" },
+    { "label": "제출용도", "value": "<where it is submitted, or its purpose>" }
   ],
   "notes": ["위와 같이 근무하였음을 증명합니다."],
-  "signature": { "date": "<YYYY년 M월 D일>", "line": "<회사명> 대표이사 <대표자명>", "stamp": true },
+  "signature": { "date": "<YYYY년 M월 D일>", "line": "<company name> 대표이사 <representative name>", "stamp": true },
   "footer": "본 증명서는 상기 근무 이력이 사실임을 증명합니다."
 }
 ```
@@ -42,19 +42,19 @@ filename: 경력증명서_<성명>_<YYYYMMDD>.pdf
 ## Fixed wording
 
 - notes: "위와 같이 근무하였음을 증명합니다."
-- 재직기간은 반드시 종료일이 있는 닫힌 기간으로 표기한다.
-- 퇴직사유를 넣을 때는 meta에 `{ "label": "퇴직사유", "value": "<퇴직사유>" }` 행을 재직기간 다음에 추가한다 — 요청자가 요구하지 않으면 넣지 않는다.
+- 재직기간 is always a closed period with an end date.
+- To include 퇴직사유, add the row `{ "label": "퇴직사유", "value": "<reason for leaving>" }` to meta right after 재직기간; never add it unless the requester asks.
 
-## Density gate (deliver 전 자기검사)
+## Density gate (self-check before delivery)
 
-- 인적사항 4개(성명·생년월일·주소·소속)가 meta에 전부 있는가?
-- 재직사항 4개(직위·담당업무·재직기간·제출용도)가 meta에 전부 있는가?
-- 재직기간이 입사일~퇴사일의 닫힌 기간인가 ("현재"가 아닌가)?
-- 퇴직사유는 요청자가 요구했을 때만 들어 있는가?
-- notes에 "위와 같이 근무하였음을 증명합니다."가 있는가?
+- Are all four personal details (성명, 생년월일, 주소, 소속) in meta?
+- Are all four employment details (직위, 담당업무, 재직기간, 제출용도) in meta?
+- Is 재직기간 a closed period from start date to end date (not "현재")?
+- Is 퇴직사유 present only if the requester asked for it?
+- Do the notes hold "위와 같이 근무하였음을 증명합니다."?
 
 ## Rules
 
-- 성명, 생년월일, 주소, 소속, 직위, 담당업무, 입사일, 퇴사일, 용도가 없으면 지어내지 말고 요청자에게 확인한다.
-- 근로기준법 제39조에 따라 근로자가 요구한 사항만 기재한다 — 요구하지 않은 급여·평가·퇴직사유 등은 절대 넣지 않는다.
-- title은 "경 력 증 명 서"처럼 글자 사이 공백을 넣는다.
+- When the name, date of birth, address, department, position, duties, start date, end date or purpose is missing, never invent it; ask the requester.
+- Under Article 39 of the Labor Standards Act (근로기준법 제39조), state only what the employee asked for; never include salary, evaluations, a reason for leaving or anything else not asked for.
+- Space the title's characters apart: "경 력 증 명 서".

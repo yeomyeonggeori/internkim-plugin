@@ -318,7 +318,7 @@ def shape_problems(chart_type: str, labels: list[str], series: list[tuple[str, l
     if chart_type == "combo" and len(series) < 2:
         problems.append("a combo chart takes data-series with the column series first and the line series last")
     if chart_type == "scatter" and len(series) != 2:
-        problems.append('a scatter chart takes exactly two series in data-series: the horizontal axis first, then the vertical, such as "매출: 12, 30; 이익률: 8, 11"')
+        problems.append('a scatter chart takes exactly two series in data-series: the horizontal axis first, then the vertical, such as "Revenue: 12, 30; Margin: 8, 11"')
     if chart_type in KIT_STACKED_CHARTS and any(value < 0 for _, values in series for value in numbers_in(values)):
         problems.append(f"a {chart_type} chart stacks its series, so every value must be zero or more")
     if not is_round_kind(chart_type):

@@ -7,7 +7,7 @@ from sheet.sheet_definitions import FORMULA_SYNTAX
 from core.excel_limits import CELL_TEXT_LIMIT, FORMULA_LENGTH_LIMIT
 
 
-QUOTED_COMMA_EXAMPLE = "--row '품목,\"1,500\"'"
+QUOTED_COMMA_EXAMPLE = "--row 'Item,\"1,500\"'"
 
 
 def is_formula(value: object) -> bool:

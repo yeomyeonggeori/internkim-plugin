@@ -8,26 +8,26 @@ Work in `artifacts/<deck-slug>/`. First run `<skill>/scripts/office guide deck`:
 
 ```html
 <!doctype html>
-<html lang="ko">
-<head><meta charset="utf-8"><title>샘플전자 2026년 3분기 사업 리뷰</title></head>
+<html lang="en">
+<head><meta charset="utf-8"><title>Sample Electronics Q3 2026 Business Review</title></head>
 <body data-theme="corporate">
 <section data-layout="cover">
-  <p class="eyebrow">2026년 3분기 사업 리뷰</p>
-  <h1>3분기 매출 128억 원, 목표를 6% 넘었습니다</h1>
-  <p class="lead">프리미엄 라인과 B2B 계약이 성장을 이끌었습니다.</p>
-  <p class="meta">전략기획팀 이샘플 · 2026년 10월 6일</p>
-  <aside class="notes">3분기 매출은 128억 원으로 목표를 6% 넘었습니다.</aside>
+  <p class="eyebrow">Q3 2026 business review</p>
+  <h1>Q3 revenue reached $128M, 6% above target</h1>
+  <p class="lead">The premium line and B2B contracts drove the growth.</p>
+  <p class="meta">Strategy team, Alex Sample · October 6, 2026</p>
+  <aside class="notes">Q3 revenue was $128M, 6% above target.</aside>
 </section>
 <section data-layout="chart">
-  <h2>매출은 네 분기 연속 늘었습니다</h2>
-  <figure data-chart="column" data-labels="4Q25, 1Q26, 2Q26, 3Q26" data-values="96, 104, 113, 128" data-unit="억" data-highlight="3Q26"><figcaption>분기 매출, 단위 억 원, 출처: 재무팀</figcaption></figure>
-  <div class="insight"><p class="value">+33%</p><p>1년 사이 증가</p></div>
-  <aside class="notes">1년 전 96억 원에서 128억 원으로 33% 늘었습니다.</aside>
+  <h2>Revenue grew for four quarters in a row</h2>
+  <figure data-chart="column" data-labels="4Q25, 1Q26, 2Q26, 3Q26" data-values="96, 104, 113, 128" data-unit="M" data-highlight="3Q26"><figcaption>Quarterly revenue in $M. Source: Finance</figcaption></figure>
+  <div class="insight"><p class="value">+33%</p><p>growth in one year</p></div>
+  <aside class="notes">Revenue rose 33% in a year, from $96M to $128M.</aside>
 </section>
 <section data-layout="closing">
-  <h2>세 가지를 승인해 주십시오</h2>
-  <ol><li>예산 6억 원</li><li>파트너 두 곳 계약</li><li>11월 3일 출시</li></ol>
-  <aside class="notes">오늘 이 세 가지를 결정해 주시면 11월에 출시합니다.</aside>
+  <h2>Three approvals today let us launch in November</h2>
+  <ol><li>A $6M budget</li><li>Contracts with two partners</li><li>Launch on November 3</li></ol>
+  <aside class="notes">With these three decisions today, we launch in November.</aside>
 </section>
 </body>
 </html>
@@ -43,7 +43,7 @@ Work in `artifacts/<deck-slug>/`. First run `<skill>/scripts/office guide deck`:
 Run from `artifacts/<deck-slug>`, passing the slide count the user asked for and the source facts that must appear:
 
 ```json
-{"command": "<skill>/scripts/office deck build --slide-count 10 --required-text \"128억\" --required-text \"2026년 3분기\"", "workingDirectoryPath": "artifacts/<deck-slug>"}
+{"command": "<skill>/scripts/office deck build --slide-count 10 --required-text \"128M\" --required-text \"Q3 2026\"", "workingDirectoryPath": "artifacts/<deck-slug>"}
 ```
 
 It writes `build/<deck-slug>.pdf`; add `--format pptx` for PowerPoint or `--format all` for both. `<skill>/scripts/office deck check` runs its first stage alone.

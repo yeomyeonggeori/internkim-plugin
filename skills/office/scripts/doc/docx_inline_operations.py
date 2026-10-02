@@ -59,7 +59,7 @@ def inline_equation(editing: DocxEditing, operation: dict, equation, location: s
 def plan_insert_field(editing: DocxEditing, operation: dict, location: str) -> Change:
     kind = operation["field"]
     if kind == "SEQ" and not operation.get("sequence"):
-        raise OfficeFailure(MISSING_FIELD.issue(f"{location}.sequence: a SEQ field numbers a named sequence, such as 그림 or 표", f"{location}.sequence"))
+        raise OfficeFailure(MISSING_FIELD.issue(f"{location}.sequence: a SEQ field numbers a named sequence, such as Figure or Table", f"{location}.sequence"))
     paragraph = resolve_paragraph(editing, operation["block"], f"{location}.block")
     anchor = insertion_point(paragraph._p, operation.get("afterText"), operation, location)
 

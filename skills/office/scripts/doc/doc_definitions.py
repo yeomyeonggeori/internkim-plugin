@@ -164,7 +164,7 @@ CHART_SERIES = Record("series", "one data series", (
 CHART_DATA = (
     Field("categories", ListOf(CellValue(), non_empty=True), "category labels along the axis, or slice names of a pie"),
     Field("series", ListOf(CHART_SERIES, non_empty=True), "data series; pie and doughnut take one"),
-    Field("title", Text(), "chart title, with the unit, such as 분기 매출 (억 원)"),
+    Field("title", Text(), "chart title, with the unit, such as Quarterly revenue (KRW 100M)"),
     Field("legend", Boolean(), "show the legend; default when there is more than one series or a pie"),
     Field("secondaryAxis", Boolean(), "combo only: draw the lines against their own axis on the right; default when lines and columns differ more than tenfold"),
 )
@@ -334,7 +334,7 @@ OPERATIONS = Variant(
             TARGET_BLOCK,
             Field("field", Choice(FIELD_KINDS), "SEQ numbers a named sequence such as figures", required=True),
             Field("format", Text(non_empty=True), "DATE, TIME, CREATEDATE and SAVEDATE: a picture such as yyyy-MM-dd or HH:mm"),
-            Field("sequence", Text(non_empty=True), "SEQ only: the sequence name, such as 그림"),
+            Field("sequence", Text(non_empty=True), "SEQ only: the sequence name, such as Figure"),
             AFTER_TEXT,
         )),
         Record("move_blocks", "move blocks, keeping their order, to another place", (
@@ -423,7 +423,7 @@ OPERATIONS = Variant(
             Field("type", Choice(("nextPage", "continuous", "evenPage", "oddPage")), "where the new section starts, default nextPage"),
             Field("orientation", Choice(("portrait", "landscape")), "orientation of the new section"),
         )),
-        Record("set_watermark", "put large diagonal text such as 대외비 or DRAFT, or a picture such as a logo, behind every page; give text or image", (
+        Record("set_watermark", "put large diagonal text such as CONFIDENTIAL or DRAFT, or a picture such as a logo, behind every page; give text or image", (
             Field("text", Text(), "watermark text; empty removes the watermark"),
             Field("image", Text(non_empty=True), f"{PICTURE_FORMATS_TEXT} file centered behind the body"),
             Field("scale", Number(minimum=1, maximum=1000), "picture size as a percent of its natural size; default fit inside the margins"),

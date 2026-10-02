@@ -428,7 +428,7 @@ OPERATIONS = Variant(
             Field("values", ListOf(PIVOT_VALUE, non_empty=True), "what to summarize: header names, or objects for a per-value function, percent or formula", required=True),
             Field("function", Choice(PIVOT_FUNCTIONS), "how values given by name combine, default sum"),
             Field("groupDates", MapOf(Choice(("month", "quarter", "year")), key="row or column header"), "group a date header by month, quarter or year; every row needs a date"),
-            Field("groupNumbers", MapOf(PIVOT_NUMBER_GROUP, key="row or column header"), "group a number header into bins of equal width, such as {\"금액\": {\"step\": 1000000}}; every row needs a number"),
+            Field("groupNumbers", MapOf(PIVOT_NUMBER_GROUP, key="row or column header"), "group a number header into bins of equal width, such as {\"Amount\": {\"step\": 1000000}}; every row needs a number"),
             Field("top", PIVOT_TOP, "keep only the items of one row or column header with the largest, or smallest, totals of the first value"),
             Field("targetSheet", Text(non_empty=True), "sheet the pivot goes on, created when missing, default a new sheet named Pivot"),
             Field("targetCell", CELL_ADDRESS, "top-left cell of the pivot, default A3"),
