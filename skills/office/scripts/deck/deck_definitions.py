@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from fonts.registry import DECK, default_family
 from deck.deck_kit import DEFAULT_THEME, chart_types, slide_size, theme_palettes
-from deck.layout_thresholds import SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
+from deck.layout_thresholds import LABEL_LINE_MAXIMUM, REPEATED_FIGURE_MINIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
 from core.office_operations import OPERATION_ISSUE_KINDS
 from core.template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
 from core.office_result import ERROR, WARNING, Issue, IssueKind
@@ -40,22 +40,27 @@ TEXT_OVERLAP = review_check("TEXT_OVERLAP", "two pieces of text cover each other
 TEXT_COVERED = review_check("TEXT_COVERED", "a box painted over text hides part of it", "follow the suggestion, which names the cause: rows, items or text that do not fit, or a custom style that moves a part over another")
 FOOTER_CROSSED = review_check("FOOTER_CROSSED", "slide content reaches into the footer band", "shorten or split the content so it ends above the footer")
 TITLE_TOO_LONG = review_check("TITLE_TOO_LONG", f"a slide title runs past {TITLE_LINE_MAXIMUM} lines", "state the conclusion in one short sentence and move the detail into the body or the speaker notes")
+LABEL_TOO_LONG = review_check("LABEL_TOO_LONG", f"a .label wraps past {LABEL_LINE_MAXIMUM} lines, and every card in its row keeps that height empty to stay aligned", "shorten the label to the name of the measure and put the detail in the change line under it or in the speaker notes")
+REPEATED_FIGURE = review_check("REPEATED_FIGURE", f"one slide shows the same figure, a number with its unit, {REPEATED_FIGURE_MINIMUM} or more times", "show each figure once where it carries the point: give the .insight or card a different fact, such as the change or the comparison, or set a donut's data-center to another number")
 TINY_TEXT = review_check("TINY_TEXT", f"rendered text is smaller than {SMALLEST_TEXT_SHARE_OF_WIDTH * slide_size()[0]:g}px on a {slide_size()[0]}px slide ({SMALLEST_TEXT_SHARE_OF_WIDTH:.2%} of its width)", "shorten the slide so the kit does not shrink its type; the suggestion says how much fits at full size")
 IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "put the photo in a cover or image slide, which crops it to its frame, or give its box the image's own ratio")
+DRAWING_DISTORTED = review_check("DRAWING_DISTORTED", "a drawing that must keep its proportions, such as a donut or pie chart, is stretched into another shape", "give the chart a slot the kit can square, such as a chart slide without extra parts beside the figure; a donut or pie is always drawn as a circle")
 
 TOPIC_TITLE = review_check("TOPIC_TITLE", "the title is a topic label, not a claim", "write the title as the slide's conclusion")
 LANGUAGE_MISMATCH = review_check("LANGUAGE_MISMATCH", "slide titles are Latin-only in a Korean deck", "write the titles in the request language")
 UNSOURCED_CURRENT_DATE = review_check("UNSOURCED_CURRENT_DATE", "a slide shows today's date that the source does not", "show only dates from the source material")
 VERTICAL_DEAD_ZONE = review_check("VERTICAL_DEAD_ZONE", "an empty band spans much of the slide height, between content, under the body or inside a card", "give the body what its layout holds, such as a .takeaway band, more items or an .insight, or move the content to a layout that fills the frame")
+HORIZONTAL_DEAD_ZONE = review_check("HORIZONTAL_DEAD_ZONE", "an empty region beside the content spans much of the body's height, such as a half-width box with nothing next to it", "give the empty side what the layout holds, such as the points that explain a number, an .insight or another item, or move the content to a layout composed for one part")
 EMOJI_ICON = review_check("EMOJI_ICON", "a slide uses emoji glyphs", "write a .label word instead; the kit draws list markers and numbers itself")
 MISSING_SPEAKER_NOTES = review_check("MISSING_SPEAKER_NOTES", "a slide has no speaker notes", 'add an <aside class="notes"> script to every slide')
 
-SLIDE_RENDER_CHECKS = (SLIDE_BLANK, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, TEXT_COVERED, FOOTER_CROSSED, TITLE_TOO_LONG, IMAGE_DISTORTED, TINY_TEXT)
+SLIDE_RENDER_CHECKS = (SLIDE_BLANK, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, TEXT_COVERED, FOOTER_CROSSED, TITLE_TOO_LONG, LABEL_TOO_LONG, REPEATED_FIGURE, IMAGE_DISTORTED, DRAWING_DISTORTED, TINY_TEXT)
 DESIGN_CHECKS = (
     TOPIC_TITLE,
     LANGUAGE_MISMATCH,
     UNSOURCED_CURRENT_DATE,
     VERTICAL_DEAD_ZONE,
+    HORIZONTAL_DEAD_ZONE,
     EMOJI_ICON,
     MISSING_SPEAKER_NOTES,
 )
@@ -188,7 +193,7 @@ SHARED_PARTS = (
     ".eyebrow: a short kicker above the title",
     ".lead: one subtitle line under the title",
     ".takeaway: the conclusion band under the body",
-    ".source: the source line, placed in the footer beside the page number",
+    ".source: the source line, drawn in small type just above the footer; the footer itself always shows the deck name and the page number",
     "<em>: words in the accent color; .up and .down color a change; .pick highlights one item",
     "<aside class=\"notes\">: the speaker notes",
 )

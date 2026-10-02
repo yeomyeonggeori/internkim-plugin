@@ -3,11 +3,15 @@
   const growSteps = [1.3, 1.2, 1.1, 1];
   const growingLayouts = new Set(["kpi", "cards", "comparison", "table"]);
   const overflowTolerance = 2;
+  const titleLineMaximum = 3;
   const balanceSteps = 7;
   const clauseEndPattern = /[,，、·:;]$/;
   const phraseBreakPenalty = 0.35;
   const footerlessLayouts = new Set(["cover", "section"]);
   const itemClasses = ["kpi", "card", "step", "column"];
+  const rowItemClasses = ["kpi", "card", "column"];
+  const alignedAttribute = "data-kit-aligned";
+  const numberFrameSelector = ".eyebrow, h2, .lead, .value, .label, .takeaway, .source, .kit-footer, aside";
   const gridCardCount = 4;
   const capacityAttribute = "data-kit-capacity";
   const connectorLayerAttribute = "data-native-connectors";
@@ -28,6 +32,9 @@
   const matrixGapShare = 2;
   const capacityPartNames = [["h1, h2", "title"], [".lead", "lead"], [".eyebrow", "eyebrow"], [".takeaway", "takeaway"], [".card", "card"], [".kpi", "kpi"], [".column", "column"], [".step", "step"], [".kit-steps", "steps"], [".insight", "insight"], ["ol, ul", "list"], ["table", "table"], ["figure", "chart"], ["blockquote", "quote"], [".kit-diagram", "diagram"]];
   const hangulPattern = /[\u1100-\u11FF\u3130-\u318F\uAC00-\uD7AF]/;
+  const hangulRunPattern = /([\u1100-\u11FF\u3130-\u318F\uAC00-\uD7AF]+)/;
+  const tightTrackingShare = -0.012;
+  const untrackedSelector = "aside, svg, script, style";
   const unitWordPattern = /^[\uAC00-\uD7AF][^\s\d\uAC00-\uD7AF]*$/;
   const keptInlineSelector = "em, strong, b, i, mark, small, span, a";
   const phrasingSelector = "em, strong, b, i, mark, a, span, code, sub, sup";
@@ -88,14 +95,10 @@
     slides().forEach((slide) => {
       if (footerlessLayouts.has(slide.getAttribute("data-layout")) || directChildren(slide, "kit-footer").length) return;
       const footer = element("footer", "kit-footer");
-      const source = directChildren(slide, "source")[0];
-      if (source) {
-        footer.appendChild(source);
-      } else {
-        const label = element("span", "source");
-        label.textContent = deckLabel;
-        footer.appendChild(label);
-      }
+      directChildren(slide, "source").forEach((source) => footer.appendChild(source));
+      const label = element("span", "kit-deck");
+      label.textContent = deckLabel;
+      footer.appendChild(label);
       const page = element("span", "kit-page");
       page.textContent = String(all.indexOf(slide) + 1).padStart(2, "0");
       footer.appendChild(page);
@@ -110,10 +113,20 @@
       if (slide.getAttribute("data-layout") === "cards") arrangeCardGrid(slide);
       if (slide.getAttribute("data-layout") === "closing" && directChildren(slide, "card").length) slide.classList.add("kit-carded");
       if (directChildren(slide, "insight").length) slide.classList.add("kit-with-insight");
+      if (slide.getAttribute("data-layout") === "number") arrangeNumber(slide);
       slide.querySelectorAll("ol, ul").forEach((list) => list.style.setProperty("--items", String(listItems(list).length)));
       const hasBody = Array.from(slide.children).some((child) => child.classList.contains("card") || ["OL", "UL"].includes(child.tagName));
       if (!hasBody) slide.classList.add("kit-bare");
     });
+  }
+
+  function arrangeNumber(slide) {
+    const support = Array.from(slide.children).filter((child) => !child.matches(numberFrameSelector));
+    support.forEach((child) => child.classList.add("kit-support"));
+    if (support.length) return;
+    slide.classList.add("kit-lone");
+    [...directChildren(slide, "value"), ...directChildren(slide, "label")].forEach(groupPhrasing);
+    if (!directChildren(slide, "label").length) slide.classList.add("kit-unlabelled");
   }
 
   function arrangeCardGrid(slide) {
@@ -485,6 +498,30 @@
     });
   }
 
+  function isTightlyTracked(element) {
+    const style = getComputedStyle(element);
+    const spacing = parseFloat(style.letterSpacing);
+    const size = parseFloat(style.fontSize);
+    return spacing / size < tightTrackingShare;
+  }
+
+  function trackHangulRun(textNode) {
+    const pieces = textNode.textContent.split(hangulRunPattern).filter(Boolean);
+    if (!pieces.some((piece) => hangulPattern.test(piece))) return;
+    textNode.replaceWith(...pieces.map((piece) => {
+      if (!hangulPattern.test(piece)) return document.createTextNode(piece);
+      const run = element("span", "kit-hangul");
+      run.textContent = piece;
+      return run;
+    }));
+  }
+
+  function trackHangul() {
+    slides().forEach((slide) => {
+      textNodesIn(slide, untrackedSelector).filter((node) => node.parentElement && !node.parentElement.classList.contains("kit-hangul") && isTightlyTracked(node.parentElement)).forEach(trackHangulRun);
+    });
+  }
+
   function isNumericColumn(cells) {
     const data = cells.filter((cell) => cell.tagName === "TD" && cell.textContent.trim());
     const numeric = data.filter((cell) => numericCellPattern.test(cell.textContent.trim()));
@@ -654,16 +691,97 @@
     for (const title of Array.from(slide.children).filter((child) => ["H1", "H2"].includes(child.tagName))) await balanceTitle(title, slide, layOut);
   }
 
+  function lineCountOf(element) {
+    const tops = textNodesIn(element, null).flatMap((node) => {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      return Array.from(range.getClientRects()).map((rect) => (rect.top + rect.bottom) / 2);
+    });
+    const lines = [];
+    tops.sort((first, second) => first - second).forEach((center) => {
+      if (!lines.length || center - lines[lines.length - 1] > overflowTolerance * 4) lines.push(center);
+    });
+    return lines.length;
+  }
+
+  function titlesRunLong(slide) {
+    return Array.from(slide.children).some((child) => ["H1", "H2"].includes(child.tagName) && lineCountOf(child) > titleLineMaximum);
+  }
+
+  function fits(slide) {
+    return !slide.clientHeight || (!overflows(slide) && !titlesRunLong(slide));
+  }
+
   function canGrow(slide) {
     return growingLayouts.has(slide.getAttribute("data-layout")) || slide.classList.contains("kit-carded");
+  }
+
+  function rowItems(slide) {
+    return Array.from(slide.children).filter((child) => rowItemClasses.some((className) => child.classList.contains(className)));
+  }
+
+  function rowsOf(items) {
+    const rows = new Map();
+    items.forEach((item) => {
+      const top = Math.round(item.getBoundingClientRect().top);
+      rows.set(top, [...(rows.get(top) || []), item]);
+    });
+    return Array.from(rows.values()).filter((row) => row.length > 1);
+  }
+
+  function partRole(part, isLast) {
+    if (part.classList.contains("value")) return "value";
+    if (part.classList.contains("label")) return "label";
+    if (part.tagName === "H3") return "heading";
+    return isLast ? "closing" : "text";
+  }
+
+  function rolesOf(item) {
+    const parts = Array.from(item.children).filter((part) => part.getBoundingClientRect().height > 0);
+    const seen = {};
+    return parts.map((part, index) => {
+      const role = partRole(part, index === parts.length - 1 && index > 0);
+      seen[role] = (seen[role] || 0) + 1;
+      return { part, key: `${role}${seen[role]}` };
+    });
+  }
+
+  function alignRow(row) {
+    const parts = row.flatMap(rolesOf);
+    const keys = new Set(parts.map((entry) => entry.key));
+    keys.forEach((key) => {
+      const shared = parts.filter((entry) => entry.key === key);
+      if (shared.length < 2) return;
+      const tallest = Math.max(...shared.map((entry) => entry.part.getBoundingClientRect().height));
+      shared.forEach((entry) => {
+        entry.part.setAttribute(alignedAttribute, "");
+        entry.part.style.setProperty("min-height", `${Math.ceil(tallest)}px`);
+      });
+    });
+  }
+
+  function clearRowAlignment(slide) {
+    slide.querySelectorAll(`[${alignedAttribute}]`).forEach((part) => {
+      part.removeAttribute(alignedAttribute);
+      part.style.removeProperty("min-height");
+    });
+  }
+
+  async function settle(slide, layOut) {
+    clearRowAlignment(slide);
+    if (layOut) await layOut(slide);
+    const rows = rowsOf(rowItems(slide));
+    if (!rows.length) return;
+    rows.forEach(alignRow);
+    if (layOut) await layOut(slide);
   }
 
   async function growSlide(slide, layOut) {
     if (!canGrow(slide)) return false;
     for (const step of growSteps) {
       slide.style.setProperty("--grow", String(step));
-      if (layOut) await layOut(slide);
-      if (!slide.clientHeight || !overflows(slide)) return true;
+      await settle(slide, layOut);
+      if (fits(slide)) return true;
     }
     slide.style.removeProperty("--grow");
     slide.classList.add("kit-full");
@@ -675,8 +793,8 @@
     if (await growSlide(slide, layOut)) return;
     for (const step of fitSteps) {
       slide.style.setProperty("--fit", String(step));
-      if (layOut) await layOut(slide);
-      if (!slide.clientHeight || !overflows(slide)) return;
+      await settle(slide, layOut);
+      if (fits(slide)) return;
       if (step === fitSteps[0]) slide.setAttribute(capacityAttribute, JSON.stringify(slideCapacity(slide)));
     }
   }
@@ -1227,6 +1345,34 @@
     };
   }
 
+  function composeChartSide(slide) {
+    const insight = directChildren(slide, "insight")[0];
+    const legend = slide.querySelector(":scope > figure .kit-donut-legend");
+    if (!insight || !legend) return;
+    const side = element("div", "kit-side");
+    slide.insertBefore(side, insight);
+    side.append(legend, insight);
+    slide.classList.add("kit-round-side");
+  }
+
+  async function squareRings(slide, layOut) {
+    const rings = Array.from(slide.querySelectorAll(".kit-donut-ring"));
+    if (!rings.length) return;
+    rings.forEach((ring) => {
+      ring.classList.remove("kit-squared");
+      ["width", "height"].forEach((name) => ring.style.removeProperty(name));
+    });
+    if (layOut) await layOut(slide);
+    rings.forEach((ring) => {
+      const box = ring.getBoundingClientRect();
+      const side = `${Math.floor(Math.min(box.width, box.height))}px`;
+      ring.style.setProperty("width", side);
+      ring.style.setProperty("height", side);
+      ring.classList.add("kit-squared");
+    });
+    if (layOut) await layOut(slide);
+  }
+
   function moveThemeToRoot() {
     const theme = document.body.getAttribute("data-theme");
     if (!theme) return;
@@ -1254,7 +1400,9 @@
     addQuoteMarks();
     markNumericCells();
     keepMixedWords();
+    trackHangul();
     document.querySelectorAll("section[data-layout] figure[data-chart]").forEach(renderChart);
+    slides().forEach(composeChartSide);
   }
 
   async function render(layOut) {
@@ -1262,6 +1410,7 @@
     for (const slide of slides()) {
       await fitSlide(slide, layOut);
       await balanceTitles(slide, layOut);
+      await squareRings(slide, layOut);
       drawConnectors(slide);
     }
   }

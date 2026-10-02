@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from deck.deck_kit import kit_length, slide_size
+from deck.deck_kit import kit_length, kit_number, slide_size
 
 
 PIXEL_TOLERANCE = 4
@@ -9,7 +9,12 @@ DISTORTION_TOLERANCE = 0.05
 TEXT_PREVIEW_LENGTH = 40
 SMALLEST_TEXT_SHARE_OF_WIDTH = kit_length("size-floor") / slide_size()[0]
 VERTICAL_DEAD_ZONE_HEIGHT_RATIO = 0.27
-TITLE_LINE_MAXIMUM = 3
+HORIZONTAL_DEAD_ZONE_WIDTH_RATIO = 0.3
+HORIZONTAL_DEAD_ZONE_BODY_HEIGHT_RATIO = 0.55
+FULL_WIDTH_RATIO = 0.95
+TITLE_LINE_MAXIMUM = kit_number("titleLineMaximum")
+LABEL_LINE_MAXIMUM = 2
+REPEATED_FIGURE_MINIMUM = 3
 BACKGROUND_SHARE_OF_SLIDE = 0.7
 
 
@@ -22,5 +27,7 @@ def renderer_thresholds() -> dict[str, float]:
         "smallestTextShareOfWidth": SMALLEST_TEXT_SHARE_OF_WIDTH,
         "deadZoneShareOfSlide": VERTICAL_DEAD_ZONE_HEIGHT_RATIO,
         "titleLineMaximum": TITLE_LINE_MAXIMUM,
+        "labelLineMaximum": LABEL_LINE_MAXIMUM,
+        "repeatedFigureMinimum": REPEATED_FIGURE_MINIMUM,
         "backgroundShareOfSlide": BACKGROUND_SHARE_OF_SLIDE,
     }

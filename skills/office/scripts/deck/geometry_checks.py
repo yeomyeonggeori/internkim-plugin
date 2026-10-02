@@ -4,10 +4,10 @@ from dataclasses import dataclass
 import json
 import pathlib
 
-from deck.deck_definitions import CONTENT_OVERFLOW, FOOTER_CROSSED, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_COVERED, TEXT_OVERLAP, TINY_TEXT, TITLE_TOO_LONG
+from deck.deck_definitions import CONTENT_OVERFLOW, DRAWING_DISTORTED, FOOTER_CROSSED, IMAGE_DISTORTED, LABEL_TOO_LONG, OUT_OF_FRAME, REPEATED_FIGURE, TEXT_COVERED, TEXT_OVERLAP, TINY_TEXT, TITLE_TOO_LONG
 from deck.deck_kit import kit_length, slide_size
 from deck.kit_fixes import capacity_fix, photo_fix, placement_fix, size_fix, text_fix
-from deck.layout_thresholds import SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
+from deck.layout_thresholds import LABEL_LINE_MAXIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
 from core.office_result import Issue
 
 
@@ -16,6 +16,7 @@ FINDINGS_NAMED_PER_ISSUE = 3
 SLIDE_HEIGHT = slide_size()[1]
 FOOTER_HEIGHT_RATIO = kit_length("footer-height") / SLIDE_HEIGHT
 FOOTER_REACH_RATIO = 2 * FOOTER_HEIGHT_RATIO
+SELF_EXPLAINED_CHECKS = (TITLE_TOO_LONG, LABEL_TOO_LONG, REPEATED_FIGURE, DRAWING_DISTORTED)
 
 
 @dataclass(frozen=True)
@@ -82,7 +83,7 @@ def finding_issues(check, findings: list[dict[str, object]], describe, headline:
 
 
 def kit_suggestion(check, measured: dict[str, object], kit_layout: str):
-    if not kit_layout or check is TITLE_TOO_LONG:
+    if not kit_layout or check in SELF_EXPLAINED_CHECKS:
         return None
     if check is IMAGE_DISTORTED:
         return lambda finding: photo_fix(kit_layout)
@@ -147,6 +148,14 @@ def describe_long_title(finding: dict[str, object]) -> str:
     return f"{element_label(finding)} wraps to {finding['lines']} lines; keep a title to {finding['maximum']}"
 
 
+def describe_long_label(finding: dict[str, object]) -> str:
+    return f"{element_label(finding)} wraps to {finding['lines']} lines; keep a label to {finding['maximum']}"
+
+
+def describe_repeated_figure(finding: dict[str, object]) -> str:
+    return f"{finding['figure']} is shown {finding['count']} times, in {', '.join(finding['places'])}"
+
+
 def describe_distorted_image(finding: dict[str, object]) -> str:
     return f"{element_label(finding)} renders at ratio {finding['renderedRatio']} but is {finding['naturalRatio']}"
 
@@ -162,7 +171,10 @@ GEOMETRY_FINDINGS = (
     (TEXT_COVERED, "coveredText", describe_covered_text, "{count} text elements are hidden under a box drawn over them"),
     (FOOTER_CROSSED, "footerCrossings", describe_footer_crossing, "{count} parts of the slide reach into the footer"),
     (TITLE_TOO_LONG, "longTitles", describe_long_title, f"{{count}} titles run past {TITLE_LINE_MAXIMUM} lines"),
+    (LABEL_TOO_LONG, "longLabels", describe_long_label, f"{{count}} labels run past {LABEL_LINE_MAXIMUM} lines"),
+    (REPEATED_FIGURE, "repeatedFigures", describe_repeated_figure, "{count} figures are repeated on the slide"),
     (IMAGE_DISTORTED, "distortedImages", describe_distorted_image, "{count} images are stretched"),
+    (DRAWING_DISTORTED, "distortedDrawings", describe_distorted_image, "{count} drawings are stretched out of their own proportions"),
     (TINY_TEXT, "smallText", describe_small_text, "{count} text elements are smaller than the slide can show legibly"),
 )
 

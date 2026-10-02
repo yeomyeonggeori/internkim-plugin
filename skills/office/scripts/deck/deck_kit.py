@@ -61,6 +61,15 @@ def kit_length(token: str) -> int:
     return int(re.search(rf"--{token}:\s*(\d+)px;", kit_stylesheet()).group(1))
 
 
+@functools.lru_cache(maxsize=None)
+def kit_script() -> str:
+    return KIT_SCRIPT_PATH.read_text(encoding="utf-8")
+
+
+def kit_number(name: str) -> int:
+    return int(re.search(rf"const {name} = (\d+);", kit_script()).group(1))
+
+
 def theme_palettes() -> dict[str, dict[str, str]]:
     palettes = {}
     for match in THEME_BLOCK_PATTERN.finditer(kit_stylesheet()):
@@ -73,6 +82,6 @@ def theme_names() -> tuple[str, ...]:
 
 
 def chart_types() -> tuple[str, ...]:
-    renderers = CHART_RENDERERS_PATTERN.search(KIT_SCRIPT_PATH.read_text(encoding="utf-8"))
+    renderers = CHART_RENDERERS_PATTERN.search(kit_script())
     return tuple(CHART_TYPE_PATTERN.findall(renderers.group(1))) if renderers else ()
 

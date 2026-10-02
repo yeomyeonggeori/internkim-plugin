@@ -1,7 +1,7 @@
 export const capacityAttribute = "data-kit-capacity";
 
 export function measurePageGeometry(pages, thresholds) {
-  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, backgroundShareOfSlide, deadZoneShareOfSlide } = thresholds;
+  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, labelLineMaximum, repeatedFigureMinimum, backgroundShareOfSlide, deadZoneShareOfSlide } = thresholds;
 
   const isMeasurable = (element) => {
     const style = getComputedStyle(element);
@@ -108,6 +108,25 @@ export function measurePageGeometry(pages, thresholds) {
       .filter(({ renderedRatio, naturalRatio }) => Math.abs(renderedRatio / naturalRatio - 1) > aspectRatioTolerance)
       .map(({ image, renderedRatio, naturalRatio }) => ({ ...describe(image), renderedRatio: roundRatio(renderedRatio), naturalRatio: roundRatio(naturalRatio) }));
 
+  const viewBoxRatio = (svg) => {
+    const [, , width, height] = (svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
+    return width > 0 && height > 0 ? width / height : null;
+  };
+
+  const keepsProportions = (svg) => (svg.getAttribute("preserveAspectRatio") || "xMidYMid meet").trim() !== "none";
+
+  const distortedDrawings = (page) =>
+    Array.from(page.querySelectorAll("svg"))
+      .filter((svg) => isMeasurable(svg) && keepsProportions(svg) && viewBoxRatio(svg))
+      .map((svg) => {
+        const rect = svg.getBoundingClientRect();
+        return { svg, renderedRatio: rect.height > 0 ? rect.width / rect.height : 0, naturalRatio: viewBoxRatio(svg) };
+      })
+      .filter(({ renderedRatio, naturalRatio }) => renderedRatio > 0 && Math.abs(renderedRatio / naturalRatio - 1) > aspectRatioTolerance)
+      .map(({ svg, renderedRatio, naturalRatio }) => ({ host: svg.closest("[data-native-chart]") || svg, renderedRatio: roundRatio(renderedRatio), naturalRatio: roundRatio(naturalRatio) }))
+      .filter((drawing, index, drawings) => drawings.findIndex((other) => other.host === drawing.host) === index)
+      .map(({ host, renderedRatio, naturalRatio }) => ({ ...describe(host), renderedRatio, naturalRatio }));
+
   const smallText = (page) => {
     const minimum = page.getBoundingClientRect().width * smallestTextShareOfWidth;
     return elementsOf(page)
@@ -119,11 +138,13 @@ export function measurePageGeometry(pages, thresholds) {
 
   const colorIsVisible = (color) => color !== "transparent" && !/(,\s*0\)|\/\s*0%?\))$/.test(color);
 
-  const paintsBox = (style) =>
-    colorIsVisible(style.backgroundColor) ||
-    style.backgroundImage !== "none" ||
-    style.boxShadow !== "none" ||
-    ["Top", "Right", "Bottom", "Left"].some((side) => parseFloat(style[`border${side}Width`]) > 0 && style[`border${side}Style`] !== "none" && colorIsVisible(style[`border${side}Color`]));
+  const drawsBorder = (style, side) => parseFloat(style[`border${side}Width`]) > 0 && style[`border${side}Style`] !== "none" && colorIsVisible(style[`border${side}Color`]);
+
+  const paintsFill = (style) => colorIsVisible(style.backgroundColor) || style.backgroundImage !== "none" || style.boxShadow !== "none";
+
+  const paintsBox = (style) => paintsFill(style) || ["Top", "Right", "Bottom", "Left"].some((side) => drawsBorder(style, side));
+
+  const enclosesBox = (style) => paintsFill(style) || (drawsBorder(style, "Top") && drawsBorder(style, "Bottom")) || (drawsBorder(style, "Left") && drawsBorder(style, "Right"));
 
   const mediaTags = new Set(["IMG", "SVG", "CANVAS", "VIDEO", "PICTURE", "OBJECT", "EMBED", "IFRAME"]);
 
@@ -236,6 +257,39 @@ export function measurePageGeometry(pages, thresholds) {
       .filter(({ lines }) => lines > titleLineMaximum)
       .map(({ title, lines }) => ({ ...describe(title), lines, maximum: titleLineMaximum }));
 
+  const longLabels = (page) =>
+    Array.from(page.querySelectorAll(".label"))
+      .filter(isMeasurable)
+      .map((label) => ({ label, lines: lineCount(descendantTextRects(label)) }))
+      .filter(({ lines }) => lines > labelLineMaximum)
+      .map(({ label, lines }) => ({ ...describe(label), lines, maximum: labelLineMaximum }));
+
+  const figurePattern = /^[+\-−±]?[₩$€£¥]?\d[\d,]*(?:\.\d+)?(?:\s?[^\s\d]{1,4}){0,2}$/;
+
+  const isSeriesPart = (element) => Boolean(element.closest("table, footer, [data-series][data-point]"));
+
+  const isRunningText = (element) => {
+    const parent = element.parentElement;
+    if (!parent || !getComputedStyle(element).display.startsWith("inline")) return false;
+    const parentDisplay = getComputedStyle(parent).display;
+    return !parentDisplay.includes("flex") && !parentDisplay.includes("grid") && parent.textContent.trim() !== element.textContent.trim();
+  };
+
+  const shownFigures = (page) =>
+    elementsOf(page)
+      .slice(1)
+      .filter((element) => ownTextRects(element).length > 0 && !isSeriesPart(element) && !isRunningText(element))
+      .map((element) => ({ element, figure: (element.textContent || "").replace(/\s+/g, " ").trim() }))
+      .filter(({ figure }) => figurePattern.test(figure));
+
+  const repeatedFigures = (page) => {
+    const shown = new Map();
+    shownFigures(page).forEach(({ element, figure }) => shown.set(figure, [...(shown.get(figure) || []), element]));
+    return Array.from(shown.entries())
+      .filter(([, elements]) => elements.length >= repeatedFigureMinimum)
+      .map(([figure, elements]) => ({ figure, count: elements.length, places: elements.map((element) => describe(element.closest("[class]") || element).selector) }));
+  };
+
   const contentRects = (page, elements = elementsOf(page).slice(1)) => {
     const frame = page.getBoundingClientRect();
     const slideArea = frame.width * frame.height;
@@ -270,6 +324,60 @@ export function measurePageGeometry(pages, thresholds) {
     return mergedBands(contentRects(page), frame.top, Infinity).map(([top, bottom]) => [round(top), round(bottom)]);
   };
 
+  const uniqueSorted = (values) => Array.from(new Set(values.map(round))).sort((first, second) => first - second);
+
+  const bodyFrame = (page, rects) => {
+    const footer = footerOf(page);
+    const top = Math.min(...rects.map((rect) => rect.top));
+    const bottom = footer ? footer.getBoundingClientRect().top : Math.max(...rects.map((rect) => rect.bottom));
+    const box = page.getBoundingClientRect();
+    const style = getComputedStyle(page);
+    return { left: box.left + (parseFloat(style.paddingLeft) || 0), right: box.right - (parseFloat(style.paddingRight) || 0), top, bottom };
+  };
+
+  const largestEmptyRectangle = (frame, rects) => {
+    const inside = rects.map((rect) => intersection(rect, frame)).filter((rect) => rect.right > rect.left && rect.bottom > rect.top);
+    const xs = uniqueSorted([frame.left, frame.right, ...inside.flatMap((rect) => [rect.left, rect.right])]);
+    const ys = uniqueSorted([frame.top, frame.bottom, ...inside.flatMap((rect) => [rect.top, rect.bottom])]);
+    const columns = xs.length - 1;
+    const isEmpty = (row, column) => {
+      const x = (xs[column] + xs[column + 1]) / 2;
+      const y = (ys[row] + ys[row + 1]) / 2;
+      return !inside.some((rect) => rect.left <= x && x <= rect.right && rect.top <= y && y <= rect.bottom);
+    };
+    const heights = new Array(columns).fill(0);
+    let best = null;
+    for (let row = 0; row < ys.length - 1; row += 1) {
+      for (let column = 0; column < columns; column += 1) heights[column] = isEmpty(row, column) ? heights[column] + ys[row + 1] - ys[row] : 0;
+      const stack = [];
+      for (let column = 0; column <= columns; column += 1) {
+        const height = column < columns ? heights[column] : 0;
+        while (stack.length && heights[stack[stack.length - 1]] >= height) {
+          const tallest = heights[stack.pop()];
+          const left = stack.length ? xs[stack[stack.length - 1] + 1] : xs[0];
+          const area = tallest * (xs[column] - left);
+          if (tallest > 0 && (!best || area > best.area)) best = { area, left, right: xs[column], top: ys[row + 1] - tallest, bottom: ys[row + 1] };
+        }
+        stack.push(column);
+      }
+    }
+    return best;
+  };
+
+  const figureRects = (page) => Array.from(page.querySelectorAll("figure")).filter(isMeasurable).map((figure) => figure.getBoundingClientRect());
+
+  const emptyRegion = (page) => {
+    const rects = contentRects(page);
+    if (!rects.length) return null;
+    const frame = bodyFrame(page, rects);
+    if (frame.bottom <= frame.top || frame.right <= frame.left) return null;
+    const region = largestEmptyRectangle(frame, [...rects, ...figureRects(page)]);
+    if (!region) return null;
+    const origin = page.getBoundingClientRect();
+    const relative = (rect) => ({ left: round(rect.left - origin.left), top: round(rect.top - origin.top), right: round(rect.right - origin.left), bottom: round(rect.bottom - origin.top) });
+    return { ...relative(region), frame: relative(frame) };
+  };
+
   const contentBoxOf = (box, rect) => {
     const style = getComputedStyle(box);
     const inset = (side) => (parseFloat(style[`border${side}Width`]) || 0) + (parseFloat(style[`padding${side}`]) || 0);
@@ -298,7 +406,7 @@ export function measurePageGeometry(pages, thresholds) {
     const frame = page.getBoundingClientRect();
     const boxes = elementsOf(page)
       .slice(1)
-      .filter((element) => !mediaTags.has(element.tagName.toUpperCase()) && paintsBox(getComputedStyle(element)) && descendantTextRects(element).length > 0)
+      .filter((element) => !mediaTags.has(element.tagName.toUpperCase()) && enclosesBox(getComputedStyle(element)) && descendantTextRects(element).length > 0)
       .map((element) => ({ element, rect: element.getBoundingClientRect() }))
       .filter(({ rect }) => area(rect) > 0 && !isBackground(rect, page))
       .map(({ element, rect }) => ({ element, rect, empty: emptyHeightInside(element, rect, page) }));
@@ -310,17 +418,22 @@ export function measurePageGeometry(pages, thresholds) {
 
   return pages.map((page, index) => ({
     index: index + 1,
+    width: round(page.getBoundingClientRect().width),
     height: round(page.getBoundingClientRect().height),
     contentBands: contentBands(page),
+    emptyRegion: emptyRegion(page),
     hollowBoxes: hollowBoxes(page),
     overflow: overflowingElements(page).map(describeOverflow),
     outOfFrame: elementsOutsideFrame(page).map((element) => ({ ...describe(element), rect: describeRect(element.getBoundingClientRect()) })),
     overlaps: overlappingText(page),
     distortedImages: distortedImages(page),
+    distortedDrawings: distortedDrawings(page),
     smallText: smallText(page),
     coveredText: coveredText(page),
     footerCrossings: footerCrossings(page),
     longTitles: longTitles(page),
+    longLabels: longLabels(page),
+    repeatedFigures: repeatedFigures(page),
     capacity: JSON.parse(page.getAttribute(capacityAttribute) || "[]"),
   }));
 }
