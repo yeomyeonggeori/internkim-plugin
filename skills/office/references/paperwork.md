@@ -4,13 +4,13 @@ Create standardized business documents with the bundled letterhead renderer and 
 
 ## Catalog and specs
 
-Read the requested language's spec first at `references/paperwork/<ko|en>/<slug>.md`; the spec is the source of truth for required content, fixed wording, output format, and the content JSON. `<skill>/scripts/office guide paperwork` lists every slug and whether it renders or fills a template.
+Read the requested language's spec first at `references/paperwork/<ko|en>/<slug>.md`; the spec is the source of truth for required content, fixed wording, output format, and the content JSON. A `ko` spec quotes in Korean what the form prints and explains it in English; write every `<placeholder>` value in Korean. `<skill>/scripts/office guide paperwork` lists every slug and whether it renders or fills a template.
 
 ## Workflow
 
 1. Identify type and language, then read the matching spec even when a similar document exists in conversation.
 2. Call `company_info_get` for the language. If required `missingFields` or legal attributes are absent, ask once for all the missing values, save them through `company_info_set`, and copy optional logo or stamp images in a single terminal command.
-3. Compare the spec's required fields with the request. Ask only for missing critical names, counterpart, dates, amounts, or terms; never invent them. Use the user's-language equivalent of "미기재" only for optional fields.
+3. Compare the spec's required fields with the request. Ask only for missing critical names, counterpart, dates, amounts, or terms; never invent them. Write "Not provided" in the document's language (미기재 in Korean) only for optional fields.
 4. Register with `company_document_register` before rendering, using the catalog slug and a concise summary. Put the returned document number in the content JSON.
 5. Write the spec-shaped content JSON. For a form with quantities, prices, VAT or a contract amount, run `<skill>/scripts/office paperwork check <content.json>` first and fix every issue it reports. Then run `<skill>/scripts/office paperwork render <content.json> <storageDirectory>/<filename>.pdf` or the `paperwork fill` command the spec names, then deliver the generated PDF or DOCX to the requester. The spec and `<skill>/scripts/office guide paperwork` define the payload fields; do not reproduce their schema in a reply.
 6. Validate the output, then run `<skill>/scripts/office pdf render <file.pdf>` and look at the pages, especially table-heavy forms and dense contracts, then call `company_document_update` with the actual delivered path. If the registered storage directory is not writable, use the requester documents area and record that path.

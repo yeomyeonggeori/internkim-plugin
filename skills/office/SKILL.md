@@ -19,7 +19,7 @@ One command, `<skill>/scripts/office <format> <verb> [arguments]`, writes and ch
 | Workbook, CSV or TSV cleanup, formulas, charts | `sheet create`, `sheet edit`, `sheet read`, `sheet apply`, `sheet merge`, `sheet check`, `sheet render`, `sheet validate` | `references/sheet.md` |
 | Deck, presentation, PPTX, or checking an existing .pptx | `deck check`, `deck build`, `deck read`, `deck apply`, `deck merge`, `deck restore`, `deck image` | `references/deck.md` |
 | Converting a file to another format | `convert` | `office guide convert` |
-| Standardized company form or contract on letterhead (견적서, 품의서, 증명서, 계약서, NDA, MOU) | `paperwork check`, `paperwork render`, `paperwork fill` | `references/paperwork.md` |
+| Standardized company form or contract on letterhead: quotation, approval request (품의서), certificate, contract, NDA, MOU | `paperwork check`, `paperwork render`, `paperwork fill` | `references/paperwork.md` |
 
 A standardized form belongs to paperwork even when it ships as .docx or PDF: its letterhead, approval boxes, seals, and fixed clauses live there. Work the listed commands do not cover, such as merging PDFs, goes in a task-local Python file run with `<skill>/scripts/office python <script.py> [arguments]`, which provides every office package.
 
