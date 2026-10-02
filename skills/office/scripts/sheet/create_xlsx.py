@@ -9,37 +9,30 @@ from types import SimpleNamespace
 
 from openpyxl.utils import get_column_letter
 
-from sheet.cell_values import typed_cell_value
-from sheet.excel_functions import written_value
+from sheet.workbook.cell_values import typed_cell_value
+from sheet.formulas.functions import written_value
 from core.office_inputs import read_text_input
 from core.office_operations import apply_batch, save_atomically
-from core.office_result import INVALID_ARGUMENTS, INVALID_VALUE, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
+from core.office_arguments import route_arguments
+from core.office_result import INVALID_VALUE, OfficeFailure, Result, read_json_file, run_command
 from core.office_schema import closest_name, require_valid
 from sheet.sheet_definitions import WORKBOOK_SPECIFICATION
-from sheet.sheet_operations import SHEET_OPERATIONS, SheetEditing, save_editing
-from sheet.sheet_styling import style_table
-from sheet.sheet_workbook import validate_sheet_name
-from sheet.written_cells import argument_rows, require_writable_rows
+from sheet.operations.operation_set import SHEET_OPERATIONS, SheetEditing, save_editing
+from sheet.operations.styling import style_table
+from sheet.operations.sheets import validate_sheet_name
+from sheet.operations.written_cells import require_writable_rows
 from core.excel_limits import MAXIMUM_COLUMN, fitting_sheet_name
-from sheet.workbook_access import column_index
-from core.office_outputs import output_file
+from sheet.workbook.access import column_index
 
 
 def optional_text(value):
     return (value or "").strip()
 
 
-def read_specification(arguments):
-    if arguments.spec:
-        specification = read_json_file(arguments.spec)
-        location = "spec"
-    elif arguments.title or arguments.row:
-        specification = build_specification(arguments)
-        location = "arguments"
-    else:
-        raise OfficeFailure(INVALID_ARGUMENTS.issue("provide at least --title or --row, or pass --spec <file>"))
-    require_valid(WORKBOOK_SPECIFICATION, specification, location)
-    require_sheet_titles(specification, location)
+def read_specification(specification_path):
+    specification = read_json_file(specification_path)
+    require_valid(WORKBOOK_SPECIFICATION, specification, "spec")
+    require_sheet_titles(specification, "spec")
     return specification
 
 
@@ -155,28 +148,12 @@ def meant_column(key, headers):
     return None
 
 
-def build_specification(arguments):
-    sheet_name = arguments.sheet or arguments.title or "Sheet1"
-    rows = argument_rows(arguments.row, None)
-    sheet_specification = {"title": sheet_name, "rows": rows}
-    return {"title": arguments.title or "", "sheets": [sheet_specification]}
-
-
-def parse_arguments():
-    parser = OfficeArgumentParser()
-    parser.add_argument("output_path", type=output_file(".xlsx"), help="Path to the output .xlsx file")
-    parser.add_argument("--title", metavar="TEXT", default="", help="Workbook title (also used as sheet name when --sheet is absent)")
-    parser.add_argument("--sheet", metavar="NAME", default=None, help="Sheet name (default: title or Sheet1)")
-    parser.add_argument("--row", action="append", default=[], metavar="CELLS", help="Add one row as one CSV line: values separated by commas, a value holding a comma in double quotes (repeatable)")
-    parser.add_argument("--spec", metavar="JSON_PATH", help="Full workbook spec JSON for rich workbooks (multiple sheets, formulas, formats)")
-    return parser.parse_args()
-
 
 def main():
-    arguments = parse_arguments()
-    specification = read_specification(arguments)
+    arguments = route_arguments("create", "xlsx")
+    specification = read_specification(arguments.source)
     workbook = create_workbook(specification)
-    output_path = Path(os.path.expanduser(arguments.output_path))
+    output_path = Path(os.path.expanduser(arguments.output))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     editing = SheetEditing(workbook, None)
     changes = apply_batch(SHEET_OPERATIONS, editing, specification.get("operations") or [])

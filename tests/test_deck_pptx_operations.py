@@ -15,7 +15,7 @@ from test_deck_pptx_editing import KoreanDeckFixture, codes, run_office
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
-from deck.editable_pptx import read_text_layers, write_editable_pptx  # noqa: E402
+from deck.pptx_export.editable import read_text_layers, write_editable_pptx  # noqa: E402
 from png_fixture import write_png  # noqa: E402
 
 
@@ -200,7 +200,7 @@ class FooterTest(KoreanDeckFixture):
         write_png(layers / "background.001.png", 32, 18, [[(255, 255, 255, 255)] * 32 for _ in range(18)])
         write_editable_pptx(read_text_layers(directory / "review", 1), [""], directory / "built.pptx")
         (directory / "ops.json").write_text(json.dumps([{"op": "set_header_footer", "slideNumber": True, "date": "2026년 10월"}]), encoding="utf-8")
-        envelope = run_office(["deck", "apply", "built.pptx", "ops.json"], directory)
+        envelope = run_office(["apply", "built.pptx", "ops.json"], directory)
         self.assertEqual(envelope["status"], "ok", envelope)
         shapes = self.read(name="built.pptx")["slides"][0]["shapes"]
         numbers = next(shape for shape in shapes if shape.get("placeholder") == "sldNum")

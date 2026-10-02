@@ -31,6 +31,10 @@ def convert(source, target, working_directory, *flags):
     return run_office(["convert", source, target, *flags], working_directory)
 
 
+def create(target, source, working_directory, *flags):
+    return run_office(["create", target, source, *flags], working_directory)
+
+
 class ConversionFixture(unittest.TestCase):
     def setUp(self):
         self.temporary_directory = tempfile.TemporaryDirectory()
@@ -44,21 +48,28 @@ class ConversionFixture(unittest.TestCase):
 
 class RouteTableTest(unittest.TestCase):
     def test_every_declared_route_has_a_converter(self):
-        check = "from convert.convert_file import CONVERTERS, ROUTES; print(sorted(CONVERTERS) == sorted((route.source, route.target) for route in ROUTES))"
+        check = "from convert.convert_file import CONVERTERS; from core.office_commands import CONVERSIONS; print(sorted(CONVERTERS) == sorted((route.source, route.target) for route in CONVERSIONS if route.module == 'convert.convert_file'))"
         completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", check], capture_output=True, text=True, check=True)
         self.assertEqual(completed.stdout.strip(), "True")
 
     def test_an_unsupported_pair_names_the_outputs_the_input_has(self):
         with tempfile.TemporaryDirectory() as directory:
-            Path(directory, "보고서.md").write_text("# 제목\n", encoding="utf-8")
-            envelope = convert("보고서.md", "보고서.xlsx", directory)
+            Path(directory, "보고서.html").write_text("<h1>제목</h1>", encoding="utf-8")
+            envelope = convert("보고서.html", "보고서.xlsx", directory)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["UNSUPPORTED_CONVERSION"])
-        self.assertEqual(envelope["issues"][0]["suggestion"], ".md converts to .docx, .html, .pdf")
+        self.assertEqual(envelope["issues"][0]["suggestion"], ".html converts to .docx, .md, .pdf, .html")
+
+    def test_a_source_a_file_is_made_from_is_sent_to_create(self):
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "보고서.md").write_text("# 제목\n", encoding="utf-8")
+            envelope = convert("보고서.md", "보고서.docx", directory)
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["UNSUPPORTED_CONVERSION"])
+        self.assertEqual(envelope["issues"][0]["suggestion"], "office create 보고서.docx 보고서.md")
 
 
 class DocumentRouteTest(ConversionFixture):
     def test_markdown_survives_docx_and_back(self):
-        self.assertEqual(convert("보고서.md", "보고서.docx", self.directory)["status"], "ok")
+        self.assertEqual(create("보고서.docx", "보고서.md", self.directory)["status"], "ok")
         envelope = convert("보고서.docx", "왕복.md", self.directory)
         self.assertEqual(envelope["status"], "ok", envelope["issues"])
         markdown = (self.directory / "왕복.md").read_text(encoding="utf-8")
@@ -67,7 +78,7 @@ class DocumentRouteTest(ConversionFixture):
         self.assertTrue((self.directory / "왕복-media" / "image1.png").exists())
 
     def test_html_carries_the_structure_into_docx_and_back(self):
-        convert("보고서.md", "보고서.html", self.directory)
+        create("보고서.html", "보고서.md", self.directory)
         page = (self.directory / "보고서.html").read_text(encoding="utf-8")
         self.assertIn("<strong>42억 3,000만 원</strong>", page)
         self.assertIn('src="data:image/png;base64,', page)
@@ -116,7 +127,7 @@ class PdfSourceRouteTest(unittest.TestCase):
         copy_pdf_fixture("circle.pdf", self.directory)
         envelope = convert("newsletter.pdf", "newsletter.pptx", self.directory)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["PAGE_WITHOUT_TEXT", "CONVERSION_APPROXIMATED"])
-        self.assertIn("pdf render newsletter.pdf --pages 3 --scale 2", envelope["issues"][0]["suggestion"])
+        self.assertIn("office render newsletter.pdf --pages 3 --scale 2", envelope["issues"][0]["suggestion"])
         self.assertEqual([(page["slide"], page["tables"]) for page in envelope["details"]["pages"]], [("editable", 0), ("editable", 1), ("picture", 0)])
         slides = slide_texts(self.directory, "newsletter.pptx")
         self.assertIn("2026년 하반기 교육 안내", slides[0])
@@ -138,7 +149,7 @@ def slide_texts(directory, name):
     return json.loads(completed.stdout)
 
 def read_has_picture(directory, name):
-    return any(block.get("picture") for block in run_office(["doc", "read", name], directory)["details"]["blocks"])
+    return any(block.get("picture") for block in run_office(["read", name], directory)["details"]["blocks"])
 
 
 class TableRouteTest(unittest.TestCase):
@@ -150,8 +161,8 @@ class TableRouteTest(unittest.TestCase):
             self.assertEqual(envelope["details"]["files"], ["실적-매출.csv", "실적-담당자.csv"])
             self.assertEqual((directory / "실적-매출.csv").read_text(encoding="utf-8-sig").splitlines(), ["월,매출", "1월,1200", "2월,1500", "합계,2700"])
             self.assertEqual(convert("실적.xlsx", "매출.tsv", directory, "--sheet", "매출")["details"]["files"], ["매출.tsv"])
-            self.assertEqual(convert("실적-매출.csv", "다시.xlsx", directory)["status"], "ok")
-            sheet = run_office(["sheet", "read", "다시.xlsx"], directory)["details"]
+            self.assertEqual(create("다시.xlsx", "실적-매출.csv", directory)["status"], "ok")
+            sheet = run_office(["read", "다시.xlsx"], directory)["details"]
             self.assertEqual(sheet["range"]["values"][3], ["합계", 2700])
             self.assertEqual(sheet["sheets"][0]["frozenPanes"], "A2")
 
@@ -161,7 +172,7 @@ class TableRouteTest(unittest.TestCase):
             write_ods(directory / "예산.ods")
             envelope = convert("예산.ods", "예산.xlsx", directory)
             self.assertEqual([issue["code"] for issue in envelope["issues"]], ["CONVERSION_APPROXIMATED"])
-            sheet = run_office(["sheet", "read", "예산.xlsx"], directory)["details"]
+            sheet = run_office(["read", "예산.xlsx"], directory)["details"]
             self.assertEqual(sheet["sheets"][0]["name"], "예산")
             self.assertEqual(sheet["sheets"][0]["mergedCells"], ["A1:B1"])
             self.assertEqual(sheet["range"]["values"], [["2026년 예산", None], ["인건비", 1200], ["인건비", 1200], ["마감", "2026-10-01T00:00:00"], ["=수식 아님", 2400]])
@@ -189,7 +200,7 @@ class PdfRouteTest(unittest.TestCase):
 
     def assert_pdf(self, name, page_count, required_text):
         self.assertEqual(pdf_page_count(self.directory / name), page_count)
-        validation = run_office(["pdf", "validate", name, "--required-text", required_text], self.directory)
+        validation = run_office(["check", name, "--required-text", required_text], self.directory)
         self.assertEqual(validation["status"], "ok", validation["issues"])
 
     def test_a_document_becomes_a_pdf_page_for_each_laid_out_page(self):
@@ -217,19 +228,18 @@ class PdfRouteTest(unittest.TestCase):
         for source, required_text in (("실적.csv", "부산"), ("실적.tsv", "대구")):
             with self.subTest(source=source):
                 target = source.replace(".", "-") + ".pdf"
-                envelope = convert(source, target, self.directory)
+                envelope = create(target, source, self.directory)
                 self.assertEqual(envelope["status"], "ok", envelope["issues"])
-                self.assertEqual(envelope["details"]["route"], f"{source.split('.')[1]} -> pdf")
                 self.assert_pdf(target, 1, required_text)
 
     def test_an_html_page_becomes_a_laid_out_pdf_with_its_headings_tables_and_pictures(self):
         (self.directory / "보고서.md").write_text(REPORT_MARKDOWN, encoding="utf-8")
         run_office_python(CHART_IMAGE, self.directory)
-        convert("보고서.md", "보고서.html", self.directory)
+        create("보고서.html", "보고서.md", self.directory)
         envelope = convert("보고서.html", "웹.pdf", self.directory)
         self.assertEqual(envelope["status"], "ok", envelope["issues"])
         self.assertEqual(envelope["details"]["route"], "html -> pdf")
-        read = run_office(["pdf", "read", "웹.pdf"], self.directory)
+        read = run_office(["read", "웹.pdf"], self.directory)
         text = " ".join(page["text"] for page in read["details"]["pages"])
         for expected in ("2. 주요 지표", "4,230", "대형 고객 3곳 다년 계약 전환"):
             self.assertIn(expected, text)
@@ -244,7 +254,7 @@ class LegacyWorkbookTest(unittest.TestCase):
             shutil.copy(LEGACY_WORKBOOK, directory / "예산.xls")
             envelope = convert("예산.xls", "예산.xlsx", directory)
             self.assertEqual([issue["code"] for issue in envelope["issues"]], ["CONVERSION_APPROXIMATED"])
-            sheet = run_office(["sheet", "read", "예산.xlsx"], directory)["details"]
+            sheet = run_office(["read", "예산.xlsx"], directory)["details"]
         self.assertEqual([entry["name"] for entry in sheet["sheets"]], ["예산", "메모"])
         self.assertEqual(sheet["sheets"][0]["mergedCells"], ["A1:B1"])
         self.assertEqual(sheet["range"]["values"], [["2026년 예산", None], ["인건비", 1200], ["단가", 2.5], ["마감", "2026-10-01T00:00:00"], ["확정", True]])
@@ -255,9 +265,9 @@ class WithoutRendererTest(ConversionFixture):
         (self.directory / "웹.html").write_text("<h1>분기 보고서</h1><p>3분기 매출은 128억 원입니다.</p>", encoding="utf-8")
         (self.directory / "실적.csv").write_text("월,매출\n1월,1200\n", encoding="utf-8")
         before = sorted(self.directory.iterdir())
-        for source in ("보고서.md", "웹.html", "실적.csv"):
-            with self.subTest(source=source):
-                completed = run_office_without_renderer(["convert", source, "결과.pdf"], self.directory)
+        for command in (["create", "결과.pdf", "보고서.md"], ["convert", "웹.html", "결과.pdf"], ["create", "결과.pdf", "실적.csv"]):
+            with self.subTest(command=command):
+                completed = run_office_without_renderer(command, self.directory)
                 envelope = json.loads(completed.stdout)
                 self.assertEqual(completed.returncode, 1)
                 self.assertEqual(completed.stderr, "")

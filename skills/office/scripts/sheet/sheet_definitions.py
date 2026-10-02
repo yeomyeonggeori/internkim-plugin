@@ -13,9 +13,9 @@ from core.office_result import ERROR, INVALID_VALUE, WARNING, WRONG_TYPE, Issue,
 from core.excel_limits import CHART_TITLE_LIMIT, FORBIDDEN_SHEET_NAME_TEXT, HEADER_FOOTER_LIMIT, MAXIMUM_SHEET_NAME_LENGTH
 from core.page_sizes import PAPER_NAMES
 from core.office_schema import HEX_COLOR_PATTERN, AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, closest_name, color_problem, guess_text, wrong_type
-from core.text_checks import PLACEHOLDER_LEFT
+from core.text_checks import PLACEHOLDER_LEFT, TEXT_CHECK_ISSUE_KINDS
 from core.office_theme import THEME_SLOTS
-from sheet.theme_colors import THEME_COLOR, theme_reference
+from sheet.workbook.theme_colors import THEME_COLOR, theme_reference
 from core.image_formats import PICTURE_FORMATS_TEXT
 
 
@@ -74,7 +74,7 @@ SHEET = Record("sheet", "one worksheet; the first row, or the row after the head
 ))
 
 
-SHEET_NAME = Field("sheet", Text(non_empty=True), "sheet name from sheet read, default the first sheet")
+SHEET_NAME = Field("sheet", Text(non_empty=True), "sheet name from office read, default the first sheet")
 CELL_ADDRESS = Text(non_empty=True)
 VALUE_TYPE = Field("type", Choice(("auto", "text")), "auto (default) stores text starting with = as a formula and YYYY-MM-DD as a date; text keeps it as literal text")
 COUNT = Field("count", Number(minimum=1, integer=True), "how many, default 1")
@@ -83,7 +83,7 @@ COLOR = Text(non_empty=True)
 STYLE_COLOR = CellColor()
 FIT_PAGES = AnyOf((Boolean(), Number(minimum=0, maximum=1000, integer=True)), name="true, false or a page count")
 HIDDEN = Field("hidden", Boolean(), "true (default) hides, false shows again")
-CHART_INDEX = Field("chart", Number(minimum=0, integer=True), "chart index on the sheet, from sheet read", required=True)
+CHART_INDEX = Field("chart", Number(minimum=0, integer=True), "chart index on the sheet, from office read", required=True)
 SHAPE_GEOMETRIES = {"rectangle": "rect", "rounded_rectangle": "roundRect", "ellipse": "ellipse", "arrow": "rightArrow", "callout": "wedgeRectCallout", "textbox": "rect"}
 COMPARISON_OPERATORS = ("between", "not_between", "equal", "not_equal", "greater_than", "less_than", "greater_or_equal", "less_or_equal")
 DATA_LABELS = tuple(LABEL_FLAGS)
@@ -126,10 +126,10 @@ PIVOT_TOP = Record("top items", "a top or bottom filter on a row or column heade
 
 OPERATIONS = Variant(
     "operation",
-    "one edit of sheet apply; operations run in order and each sees the workbook the ones before it left, and the batch applies whole or not at all unless --mode says otherwise",
+    "one edit of office apply; operations run in order and each sees the workbook the ones before it left, and the batch applies whole or not at all unless --mode says otherwise",
     "op",
     (
-        Record("set_cell", "write one cell; an unstyled cell in or touching a table of at least two rows and two columns takes the table's default style, the one sheet create gives every cell", (
+        Record("set_cell", "write one cell; an unstyled cell in or touching a table of at least two rows and two columns takes the table's default style, the one office create gives every cell", (
             SHEET_NAME,
             Field("cell", CELL_ADDRESS, "cell address such as B7", required=True),
             Field("value", CellValue(), "number, text or true/false; text starting with = is a formula; omit or null to clear the cell"),
@@ -139,6 +139,11 @@ OPERATIONS = Variant(
             SHEET_NAME,
             Field("cell", CELL_ADDRESS, "top-left cell address", required=True),
             Field("values", ROWS, "rows of values; each item follows set_cell's value", required=True),
+            VALUE_TYPE,
+        )),
+        Record("append_rows", "write rows under the last filled row, from its first filled column, styled as set_cell describes", (
+            SHEET_NAME,
+            Field("rows", ROWS, "rows of values; each item follows set_cell's value", required=True),
             VALUE_TYPE,
         )),
         Record("format_range", "format every cell in a range; unnamed properties stay as they are", (
@@ -331,7 +336,7 @@ OPERATIONS = Variant(
             Field("name", Text(non_empty=True), f"new sheet name, at most {MAXIMUM_SHEET_NAME_LENGTH} characters", required=True),
             Field("index", Number(minimum=0, integer=True), "position among the sheets, default last"),
         )),
-        Record("delete_sheet", "delete a sheet; formulas, names and charts that read it show #REF!, which sheet check reports", (
+        Record("delete_sheet", "delete a sheet; formulas, names and charts that read it show #REF!, which office check reports", (
             Field("sheet", Text(non_empty=True), "sheet name", required=True),
         )),
         Record("duplicate_sheet", "copy a sheet with its cells, styles, sizes, merges, conditional formats and validations right after it; charts, images, tables and pivots stay on the original", (
@@ -350,7 +355,7 @@ OPERATIONS = Variant(
             Field("local", Boolean(), "the name works only on its sheet, default the whole workbook"),
         )),
         Record("delete_defined_name", "remove a defined name; formulas that use it show #NAME?", (
-            Field("name", Text(non_empty=True), "name from sheet read", required=True),
+            Field("name", Text(non_empty=True), "name from office read", required=True),
         )),
         Record("rename_sheet", "rename a sheet and rewrite every formula, defined name and chart reference to it", (
             Field("sheet", Text(non_empty=True), "current sheet name", required=True),
@@ -428,7 +433,7 @@ OPERATIONS = Variant(
             Field("values", ListOf(PIVOT_VALUE, non_empty=True), "what to summarize: header names, or objects for a per-value function, percent or formula", required=True),
             Field("function", Choice(PIVOT_FUNCTIONS), "how values given by name combine, default sum"),
             Field("groupDates", MapOf(Choice(("month", "quarter", "year")), key="row or column header"), "group a date header by month, quarter or year; every row needs a date"),
-            Field("groupNumbers", MapOf(PIVOT_NUMBER_GROUP, key="row or column header"), "group a number header into bins of equal width, such as {\"금액\": {\"step\": 1000000}}; every row needs a number"),
+            Field("groupNumbers", MapOf(PIVOT_NUMBER_GROUP, key="row or column header"), "group a number header into bins of equal width, such as {\"Amount\": {\"step\": 1000000}}; every row needs a number"),
             Field("top", PIVOT_TOP, "keep only the items of one row or column header with the largest, or smallest, totals of the first value"),
             Field("targetSheet", Text(non_empty=True), "sheet the pivot goes on, created when missing, default a new sheet named Pivot"),
             Field("targetCell", CELL_ADDRESS, "top-left cell of the pivot, default A3"),
@@ -440,22 +445,22 @@ OPERATIONS = Variant(
 )
 OPERATION_BATCH = ListOf(OPERATIONS, non_empty=True)
 
-WORKBOOK_SPECIFICATION = Record("workbook", "the --spec file of sheet create", (
+WORKBOOK_SPECIFICATION = Record("workbook", "the JSON spec office create builds an .xlsx from", (
     Field("title", Text(), "workbook title stored as document metadata; a visible title is a heading or row you write"),
     Field("sheets", ListOf(SHEET, non_empty=True), "the worksheets", required=True),
-    Field("operations", ListOf(OPERATIONS), "sheet apply operations run on the new workbook, for charts, pivots, rules and print setup"),
+    Field("operations", ListOf(OPERATIONS), "operations, as office apply takes them, run on the new workbook, for charts, pivots, rules and print setup"),
 ))
 
 FORMULA_NOT_EVALUATED = IssueKind("FORMULA_NOT_EVALUATED", WARNING, "a formula could not be computed here, so the file holds no value for it until Excel recalculates", "read the cells the formula uses; the formula itself was kept as written")
-CIRCULAR_REFERENCE = IssueKind("CIRCULAR_REFERENCE", ERROR, "a formula reads its own cell, directly or through other formulas, so Excel warns on open and shows 0; sheet create, edit and apply write nothing when their own cells make one", "point the formula at the cells beside it, such as =SUM(A2:A9) in A10")
+CIRCULAR_REFERENCE = IssueKind("CIRCULAR_REFERENCE", ERROR, "a formula reads its own cell, directly or through other formulas, so Excel warns on open and shows 0; office create and office apply write nothing when their own cells make one", "point the formula at the cells beside it, such as =SUM(A2:A9) in A10")
 FORMULA_SYNTAX = IssueKind("FORMULA_SYNTAX", ERROR, "a formula does not parse: a ( or { left open, a ) that closes nothing, an operator with nothing on one side, or an unclosed quote, so nothing was written", "fix the formula where the message says, or keep it as literal text with \"type\": \"text\"")
 HEADER_NOT_FROZEN = IssueKind("HEADER_NOT_FROZEN", WARNING, "a data table, a sheet with at least two header cells and at least 10 rows under them, has a header row that is not frozen", "freeze the pane under the header row")
 AUTO_FILTER_MISSING = IssueKind("AUTO_FILTER_MISSING", WARNING, "a data table, a sheet with at least two header cells and at least 10 rows under them, has no auto filter", "add a filter over the header and data rows")
 BLANK_HEADER_CELLS = IssueKind("BLANK_HEADER_CELLS", WARNING, "header cells are blank", "name every column")
 STALE_CACHED_VALUE = IssueKind("STALE_CACHED_VALUE", WARNING, "a formula's stored value differs from what the formula computes, so a viewer that does not recalculate shows the wrong number", "apply recalculate")
 FORMULA_ERROR = IssueKind("FORMULA_ERROR", ERROR, "a formula computes #DIV/0!, #REF!, #NAME?, #VALUE! or #N/A", "fix the formula's references or the cells it reads, with set_cell")
-MISSING_SHEET_REFERENCE = IssueKind("MISSING_SHEET_REFERENCE", ERROR, "a formula reads a sheet the workbook does not have; sheet create, edit and apply write nothing when their own formulas do", "add the sheet first, or point the formula at an existing one")
-UNKNOWN_FUNCTION = IssueKind("UNKNOWN_FUNCTION", ERROR, "a formula calls a function Excel does not have, so it shows #NAME?; sheet create, edit and apply write nothing when their own formulas do", "write the Excel function the message names, such as SUM for SUMM")
+MISSING_SHEET_REFERENCE = IssueKind("MISSING_SHEET_REFERENCE", ERROR, "a formula reads a sheet the workbook does not have; office create and office apply write nothing when their own formulas do", "add the sheet first, or point the formula at an existing one")
+UNKNOWN_FUNCTION = IssueKind("UNKNOWN_FUNCTION", ERROR, "a formula calls a function Excel does not have, so it shows #NAME?; office create and office apply write nothing when their own formulas do", "write the Excel function the message names, such as SUM for SUMM")
 BROKEN_DEFINED_NAME = IssueKind("BROKEN_DEFINED_NAME", ERROR, "a defined name points at #REF! or a sheet the workbook does not have", "read the workbook's defined names and recreate the reference")
 CONTENT_WOULD_BE_LOST = IssueKind("CONTENT_WOULD_BE_LOST", ERROR, "the workbook holds content the editor cannot carry through a save, such as form controls, embedded objects or an unknown extension, so nothing was written", "pass --allow-loss to save without it, or leave this workbook to Excel")
 CONTENT_DROPPED = IssueKind("CONTENT_DROPPED", WARNING, "--allow-loss saved the workbook without content the editor cannot carry", "tell the user what was dropped")
@@ -466,7 +471,7 @@ PIVOT_VALUES_EMPTY = IssueKind("PIVOT_VALUES_EMPTY", ERROR, "a pivot table's val
 SHEET_PRINTS_WIDE = IssueKind("SHEET_PRINTS_WIDE", WARNING, "a sheet's columns print across more than one page wide, so each printed row is cut apart onto separate sheets of paper", "apply the set_page_setup in fix: it shrinks the columns onto one page wide", suggestion_applies_fix=True)
 NUMBER_TOO_WIDE = IssueKind("NUMBER_TOO_WIDE", ERROR, "a number is wider than its column and Excel shows it as ####", "apply the set_column_width in fix", suggestion_applies_fix=True)
 
-VALIDATE_ISSUE_KINDS = (
+TABLE_CHECK_ISSUE_KINDS = (
     HEADER_NOT_FROZEN,
     AUTO_FILTER_MISSING,
     BLANK_HEADER_CELLS,
@@ -488,34 +493,33 @@ CHECK_ISSUE_KINDS = (
 )
 
 GUIDE_INPUTS = (
-    ("sheet create --spec <file>", WORKBOOK_SPECIFICATION),
-    ("sheet edit --rows <file>", ROWS),
-    ("sheet apply <file.xlsx> <ops.json>", OPERATION_BATCH),
-    ("sheet merge <template.xlsx> <values.json> <output.xlsx>: values", MERGE_VALUES),
+    ("create", "xlsx", "the JSON spec", WORKBOOK_SPECIFICATION),
+    ("apply", "xlsx", "the operations", OPERATION_BATCH),
+    ("merge", "xlsx", "the values", MERGE_VALUES),
 )
+
+
 def behavior_lines() -> list[str]:
     return [
         "  formulas are stored exactly as written: write each reference for the row it lands in, counting a heading row",
         "  each formula also stores the value it computes, so viewers that never recalculate show numbers; a formula that cannot be computed here keeps no value and is reported as FORMULA_NOT_EVALUATED",
         "  the spec title is document metadata; nothing is added to the sheet unless you write it, such as a heading",
-        "  a --row is one CSV line: values separated by commas, a value holding a comma in double quotes, and no more values than the header has",
-        "  CSV and --row values become numbers when they are plain integers or decimals; 007, +82, 1,500 and anything over 15 digits stay text; text that is exactly YYYY-MM-DD becomes a date wherever it is written, unless set_cell or set_range says \"type\": \"text\"",
-        "  sheet apply writes the whole batch or nothing; --dry-run lists the changes and --output leaves the source alone",
+        "  CSV values become numbers when they are plain integers or decimals; 007, +82, 1,500 and anything over 15 digits stay text; text that is exactly YYYY-MM-DD becomes a date wherever it is written, unless set_cell or set_range says \"type\": \"text\"",
+        "  office apply writes the whole batch or nothing; --dry-run lists the changes and --output leaves the source alone",
         "  inserting, deleting and renaming rewrite every formula, defined name, filter, merged range, table, chart series, sparkline and shape that points at the cells; a reference into a deleted row becomes #REF!",
         "  edits keep macros, sparklines, slicers, shapes, Excel extensions and unknown parts; content no edit can carry stops the save with CONTENT_WOULD_BE_LOST",
     ]
 
 
-GUIDE_SECTIONS = (("How the sheet commands behave", behavior_lines),)
+GUIDE_SECTIONS = (("xlsx", "How the commands treat a workbook", behavior_lines),)
 
 WRITE_ISSUE_KINDS = (FORMULA_SYNTAX, UNKNOWN_FUNCTION, MISSING_SHEET_REFERENCE, CIRCULAR_REFERENCE, FORMULA_NOT_EVALUATED, CHART_COLUMN_LEFT_OUT)
 EDIT_ISSUE_KINDS = (CONTENT_WOULD_BE_LOST, CONTENT_DROPPED)
 GUIDE_ISSUES = (
-    ("sheet create", WRITE_ISSUE_KINDS),
-    ("sheet edit", WRITE_ISSUE_KINDS + EDIT_ISSUE_KINDS),
-    ("sheet apply", WRITE_ISSUE_KINDS + EDIT_ISSUE_KINDS + OPERATION_ISSUE_KINDS),
-    ("sheet check", CHECK_ISSUE_KINDS),
-    ("sheet validate", VALIDATE_ISSUE_KINDS),
-    ("sheet render", PREVIEW_ISSUE_KINDS + (SHEET_PRINTS_WIDE,)),
-    ("sheet merge", PACKAGE_MERGE_ISSUE_KINDS + WRITE_ISSUE_KINDS),
+    ("create", "xlsx", WRITE_ISSUE_KINDS),
+    ("create", "csv", WRITE_ISSUE_KINDS + (SHEET_PRINTS_WIDE,)),
+    ("apply", "xlsx", WRITE_ISSUE_KINDS + EDIT_ISSUE_KINDS + OPERATION_ISSUE_KINDS),
+    ("check", "xlsx", CHECK_ISSUE_KINDS + TABLE_CHECK_ISSUE_KINDS + TEXT_CHECK_ISSUE_KINDS),
+    ("render", "xlsx", PREVIEW_ISSUE_KINDS + (SHEET_PRINTS_WIDE,)),
+    ("merge", "xlsx", PACKAGE_MERGE_ISSUE_KINDS + WRITE_ISSUE_KINDS),
 )

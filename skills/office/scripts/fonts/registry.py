@@ -5,9 +5,10 @@ import functools
 import pathlib
 
 from fonts.truetype import ENGLISH_UNITED_STATES, FAMILY_NAME_ID, FULL_NAME_ID, SUBFAMILY_NAME_ID, TYPOGRAPHIC_FAMILY_NAME_ID, UNICODE_BMP_ENCODING, WINDOWS_PLATFORM, has_korean_code_page, license_allows_embedding
+from core.skill_paths import ASSETS_PATH
 
 
-FONT_DIRECTORY = pathlib.Path(__file__).resolve().parents[2] / "assets" / "fonts"
+FONT_DIRECTORY = ASSETS_PATH / "fonts"
 REGULAR_WEIGHT = 400
 BOLD_WEIGHT = 700
 POSTSCRIPT_NAME_ID = 6

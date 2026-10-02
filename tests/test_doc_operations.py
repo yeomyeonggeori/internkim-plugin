@@ -67,7 +67,7 @@ class RichDocumentFixture(ContractFixture):
 
     def apply(self, operations, *flags, output="edited.docx"):
         write_json(self.directory / "ops.json", operations)
-        envelope = run_office(["doc", "apply", "contract.docx", "ops.json", "--output", output, *flags], self.directory)
+        envelope = run_office(["apply", "contract.docx", "ops.json", "--output", output, *flags], self.directory)
         self.assertEqual(envelope["status"], "ok", envelope["issues"])
         return envelope
 
@@ -105,7 +105,7 @@ class ContentOperationTest(RichDocumentFixture):
         self.assertEqual((texts[0], texts[-2], texts[-1]), ("처음", "끝 하나", "끝 둘"))
         self.assertEqual(read_details(self.directory, "edited.docx")["blocks"][9]["cells"][0][0], "번호")
         write_json(self.directory / "ops.json", [{"op": "insert_paragraph", "after": -1, "text": "x"}])
-        refused = run_office(["doc", "apply", "contract.docx", "ops.json"], self.directory)
+        refused = run_office(["apply", "contract.docx", "ops.json"], self.directory)
         self.assertEqual(refused["status"], "error")
 
     def test_notes_bookmarks_and_cross_references_read_back(self):
@@ -120,14 +120,14 @@ class ContentOperationTest(RichDocumentFixture):
         self.assertTrue(details["blocks"][9]["text"].endswith("보관한다.제3조 (지급 조건)"))
         comparison = self.compare()
         self.assertIn("word/footnotes.xml", comparison["added"])
-        codes = {issue["code"] for issue in run_office(["doc", "check", "edited.docx"], self.directory)["issues"]}
+        codes = {issue["code"] for issue in run_office(["check", "edited.docx"], self.directory)["issues"]}
         self.assertNotIn("BROKEN_INTERNAL_REFERENCE", codes)
 
     def test_a_table_of_contents_lists_the_headings_and_asks_word_to_refresh(self):
         self.apply([{"op": "insert_table_of_contents", "after": 1, "title": "목차", "levels": 1}])
         texts = [text for _, text in block_texts(self.directory, "edited.docx")]
         self.assertEqual(texts[2:6], ["목차", "제1조 (목적)", "제2조 (계약 금액)", "제3조 (지급 조건)"])
-        codes = {issue["code"] for issue in run_office(["doc", "check", "edited.docx"], self.directory)["issues"]}
+        codes = {issue["code"] for issue in run_office(["check", "edited.docx"], self.directory)["issues"]}
         self.assertNotIn("STALE_TABLE_OF_CONTENTS", codes)
         self.assertEqual(self.compare()["changedParts"], ["word/settings.xml"])
 
@@ -136,7 +136,7 @@ class ContentOperationTest(RichDocumentFixture):
         revisions = read_details(self.directory, "edited.docx", "--revisions")["revisions"]
         self.assertIn(("formatting", "박예시", ["bold"]), [(revision["type"], revision["author"], revision.get("changed")) for revision in revisions])
         write_json(self.directory / "reject.json", [{"op": "reject_revisions", "author": "박예시"}])
-        run_office(["doc", "apply", "edited.docx", "reject.json"], self.directory)
+        run_office(["apply", "edited.docx", "reject.json"], self.directory)
         with zipfile.ZipFile(self.directory / "edited.docx") as archive:
             amount_paragraph = re.search(r"<w:p[ >](?:(?!</w:p>).)*일천만 원(?:(?!</w:p>).)*</w:p>", archive.read("word/document.xml").decode()).group(0)
         self.assertNotIn("<w:b/>", amount_paragraph)
@@ -154,10 +154,10 @@ class TableOperationTest(RichDocumentFixture):
         self.assertEqual(details["blocks"][8]["cells"], [["구분", "금액", "지급 시기"], ["착수금", "3,000,000", "착수 시"], ["잔금", "7,000,000", "검수 후"]])
         self.assertEqual(details["blocks"][11]["cells"][1], ["착수", "중간\n완료", "중간\n완료"])
         write_json(self.directory / "ops.json", [{"op": "delete_table_column", "block": 11, "column": 0}])
-        refused = run_office(["doc", "apply", "edited.docx", "ops.json"], self.directory)
+        refused = run_office(["apply", "edited.docx", "ops.json"], self.directory)
         self.assertEqual([issue["code"] for issue in refused["issues"]], ["OPERATION_NOT_APPLICABLE"])
         write_json(self.directory / "ops.json", [{"op": "delete_table_column", "block": 8, "column": 2}])
-        self.assertEqual(run_office(["doc", "apply", "edited.docx", "ops.json"], self.directory)["status"], "ok")
+        self.assertEqual(run_office(["apply", "edited.docx", "ops.json"], self.directory)["status"], "ok")
         self.assertEqual(read_details(self.directory, "edited.docx")["blocks"][8]["columns"], 2)
         with zipfile.ZipFile(self.directory / "edited.docx") as archive:
             self.assertIn('w:fill="DCE6F1"', archive.read("word/document.xml").decode())
@@ -189,7 +189,7 @@ class SectionPropertyOrderTest(unittest.TestCase):
     def test_page_numbering_is_inserted_before_what_python_docx_orders_after_it(self):
         sys.path.insert(0, str(SCRIPTS_PATH))
         from docx.oxml.section import CT_SectPr
-        from doc.docx_page_operations import SECTION_PROPERTIES_AFTER_PAGE_NUMBERING
+        from doc.operations.pages import SECTION_PROPERTIES_AFTER_PAGE_NUMBERING
         page_margin_successors = CT_SectPr._insert_pgMar.__closure__[0].cell_contents._successors
         after_page_numbering = page_margin_successors[page_margin_successors.index("w:pgNumType") + 1:]
         self.assertEqual(SECTION_PROPERTIES_AFTER_PAGE_NUMBERING, after_page_numbering)

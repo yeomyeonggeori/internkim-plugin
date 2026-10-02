@@ -7,7 +7,7 @@ from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE
 from core.office_operations import OPERATION_ISSUE_KINDS
 from core.office_result import ERROR, WARNING, IssueKind
 from core.page_sizes import PAPER_NAMES
-from core.office_schema import AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Text, Variant
+from core.office_schema import Boolean, CellValue, Choice, Field, HexColor, ListOf, Number, Record, Text, Variant
 from core.template_merge import LIST_NEEDS_A_ROW, MERGE_VALUES, TEMPLATE_SYNTAX_ERROR, UNRESOLVED_PLACEHOLDER, UNUSED_VALUE
 from core.text_checks import FORBIDDEN_TEXT_PRESENT, PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
 from core.image_formats import PICTURE_FORMATS_TEXT
@@ -51,28 +51,13 @@ PAGE = Record("page", "page setup on A4", (
     Field("marginInches", Number(minimum=0), "every margin, default 1"),
 ))
 
-DOCUMENT_SPECIFICATION = Record("document", "the --spec file of doc create", (
+DOCUMENT_SPECIFICATION = Record("document", "the JSON spec office create builds a .docx from", (
     Field("title", Text(), "centered title above the first block"),
     Field("fontName", Text(non_empty=True), f"font for body and headings, default {DOCUMENT_FONT}"),
     Field("fontSize", Number(minimum=1), f"body size in points, default {BODY_SIZE_POINTS}"),
     Field("page", PAGE, "page setup"),
     Field("blocks", ListOf(BLOCK, non_empty=True), "the content", required=True),
 ))
-
-BLOCK_LIST = ListOf(BLOCK)
-
-TABLE_FILE_ROWS = AnyOf((
-    ListOf(ListOf(CellValue()), non_empty=True),
-    ListOf(MapOf(CellValue(), key="column header"), non_empty=True),
-), name="rows: a list of row lists, or a list of objects keyed by column header")
-
-TABLE_FILE = AnyOf((
-    TABLE_FILE_ROWS,
-    Record("table file", "rows with column widths", (
-        Field("rows", TABLE_FILE_ROWS, "the rows", required=True),
-        Field("columnWidthsInches", ListOf(Number(minimum=0)), "one width per column"),
-    )),
-), name="rows, or a table file object")
 
 DOCUMENT_EMPTY = IssueKind("DOCUMENT_EMPTY", ERROR, "the document has no visible paragraph text", "add the content blocks, then rebuild")
 DOCUMENT_SPARSE = IssueKind("DOCUMENT_SPARSE", WARNING, "the document has fewer than three visible paragraphs", "check that every section of the source made it in")
@@ -85,7 +70,7 @@ TABLE_TOO_WIDE = IssueKind("TABLE_TOO_WIDE", WARNING, "a table has more than fiv
 TABLE_EMPTY_CELLS = IssueKind("TABLE_EMPTY_CELLS", WARNING, "a table has empty cells", "fill the cells, or write the user's-language equivalent of Not provided")
 TABLE_DENSE_CELLS = IssueKind("TABLE_DENSE_CELLS", WARNING, "a table has cells over 90 characters", "shorten the cell text or widen the column")
 
-VALIDATE_ISSUE_KINDS = (
+QUALITY_ISSUE_KINDS = (
     DOCUMENT_EMPTY,
     DOCUMENT_SPARSE,
     REQUIRED_TEXT_MISSING,
@@ -101,11 +86,11 @@ VALIDATE_ISSUE_KINDS = (
 )
 
 BLOCK_INDEX = Number(minimum=0, integer=True)
-INSERT_AFTER = Field("after", BLOCK_INDEX, "insert after this block index from doc read")
+INSERT_AFTER = Field("after", BLOCK_INDEX, "insert after this block index from office read")
 INSERT_BEFORE = Field("before", BLOCK_INDEX, "insert before this block index")
 INSERT_AT = Field("at", Choice(("start", "end")), "insert at the start or the end of the body; give one of after, before and at")
-TARGET_BLOCK = Field("block", BLOCK_INDEX, "block index from doc read", required=True)
-TABLE_BLOCK = Field("block", BLOCK_INDEX, "index of a table block from doc read", required=True)
+TARGET_BLOCK = Field("block", BLOCK_INDEX, "block index from office read", required=True)
+TABLE_BLOCK = Field("block", BLOCK_INDEX, "index of a table block from office read", required=True)
 ROW_INDEX = Number(minimum=0, integer=True)
 
 ALIGNMENT = Choice(("left", "center", "right", "justify"))
@@ -153,7 +138,7 @@ WRAPS = ("inline", "square", "topAndBottom", "behindText", "inFrontOfText")
 WRAP_FIELD = Field("wrap", Choice(WRAPS), "inline sits in the text line; square and topAndBottom float with text around or above and below; behindText and inFrontOfText float over the text")
 FIELD_KINDS = ("DATE", "TIME", "CREATEDATE", "SAVEDATE", "PAGE", "NUMPAGES", "SECTIONPAGES", "AUTHOR", "TITLE", "SUBJECT", "FILENAME", "NUMWORDS", "SEQ")
 NOTE_KIND = Field("kind", Choice(("footnote", "endnote")), "which kind of note", required=True)
-NOTE_ID = Field("note", Number(minimum=1, integer=True), "note id from doc read", required=True)
+NOTE_ID = Field("note", Number(minimum=1, integer=True), "note id from office read", required=True)
 TO_BLOCK = Field("toBlock", BLOCK_INDEX, "last block of the range, default block")
 MARKDOWN = Field("markdown", Text(non_empty=True), "Markdown: # headings, paragraphs, - or 1. lists, | tables |, > quotes, ![alt](local path) pictures and ```chart blocks", required=True)
 CHART_SERIES = Record("series", "one data series", (
@@ -164,15 +149,15 @@ CHART_SERIES = Record("series", "one data series", (
 CHART_DATA = (
     Field("categories", ListOf(CellValue(), non_empty=True), "category labels along the axis, or slice names of a pie"),
     Field("series", ListOf(CHART_SERIES, non_empty=True), "data series; pie and doughnut take one"),
-    Field("title", Text(), "chart title, with the unit, such as 분기 매출 (억 원)"),
+    Field("title", Text(), "chart title, with the unit, such as Quarterly revenue (KRW 100M)"),
     Field("legend", Boolean(), "show the legend; default when there is more than one series or a pie"),
     Field("secondaryAxis", Boolean(), "combo only: draw the lines against their own axis on the right; default when lines and columns differ more than tenfold"),
 )
-CHART_INDEX = Field("chart", Number(minimum=0, integer=True), "chart index from doc read", required=True)
-COMMENT_ID = Field("comment", Number(minimum=0, integer=True), "comment id from doc read", required=True)
+CHART_INDEX = Field("chart", Number(minimum=0, integer=True), "chart index from office read", required=True)
+COMMENT_ID = Field("comment", Number(minimum=0, integer=True), "comment id from office read", required=True)
 REVISION_SELECTOR = (
     Field("all", Boolean(), "every tracked change"),
-    Field("ids", ListOf(Text(non_empty=True)), "revision ids from doc read --revisions, such as r1; ids are renumbered after every edit"),
+    Field("ids", ListOf(Text(non_empty=True)), "revision ids from office read --revisions, such as r1; ids are renumbered after every edit"),
     Field("author", Text(non_empty=True), "only changes by this author"),
     Field("type", Choice(REVISION_TYPES), "only this kind of change"),
     Field("block", BLOCK_INDEX, "only changes in this block"),
@@ -180,7 +165,7 @@ REVISION_SELECTOR = (
 
 OPERATIONS = Variant(
     "operation",
-    "one edit of doc apply; every index refers to the document as doc read showed it before the batch, and the batch applies whole or not at all unless --mode says otherwise",
+    "one edit of office apply; every index refers to the document as office read showed it before the batch, and the batch applies whole or not at all unless --mode says otherwise",
     "op",
     (
         Record("replace_text", "replace every occurrence of text, keeping the formatting of the run the match starts in", (
@@ -224,7 +209,7 @@ OPERATIONS = Variant(
         Record("delete_block", "delete a block", (TARGET_BLOCK,)),
         Record("set_style", "set a paragraph or table style that the document defines", (
             TARGET_BLOCK,
-            Field("style", Text(non_empty=True), "a style name from doc read's paragraphStyles or tableStyles", required=True),
+            Field("style", Text(non_empty=True), "a style name from office read's paragraphStyles or tableStyles", required=True),
         )),
         Record("set_cell", "replace one table cell's text", (
             TABLE_BLOCK,
@@ -334,7 +319,7 @@ OPERATIONS = Variant(
             TARGET_BLOCK,
             Field("field", Choice(FIELD_KINDS), "SEQ numbers a named sequence such as figures", required=True),
             Field("format", Text(non_empty=True), "DATE, TIME, CREATEDATE and SAVEDATE: a picture such as yyyy-MM-dd or HH:mm"),
-            Field("sequence", Text(non_empty=True), "SEQ only: the sequence name, such as 그림"),
+            Field("sequence", Text(non_empty=True), "SEQ only: the sequence name, such as Figure"),
             AFTER_TEXT,
         )),
         Record("move_blocks", "move blocks, keeping their order, to another place", (
@@ -423,7 +408,7 @@ OPERATIONS = Variant(
             Field("type", Choice(("nextPage", "continuous", "evenPage", "oddPage")), "where the new section starts, default nextPage"),
             Field("orientation", Choice(("portrait", "landscape")), "orientation of the new section"),
         )),
-        Record("set_watermark", "put large diagonal text such as 대외비 or DRAFT, or a picture such as a logo, behind every page; give text or image", (
+        Record("set_watermark", "put large diagonal text such as CONFIDENTIAL or DRAFT, or a picture such as a logo, behind every page; give text or image", (
             Field("text", Text(), "watermark text; empty removes the watermark"),
             Field("image", Text(non_empty=True), f"{PICTURE_FORMATS_TEXT} file centered behind the body"),
             Field("scale", Number(minimum=1, maximum=1000), "picture size as a percent of its natural size; default fit inside the margins"),
@@ -463,13 +448,13 @@ BROKEN_INTERNAL_REFERENCE = IssueKind("BROKEN_INTERNAL_REFERENCE", ERROR, "a lin
 STALE_TABLE_OF_CONTENTS = IssueKind("STALE_TABLE_OF_CONTENTS", WARNING, "the table of contents does not list the headings the document has", "apply update_fields_on_open so Word refreshes it")
 EAST_ASIA_FONT_MISSING = IssueKind("EAST_ASIA_FONT_MISSING", WARNING, "Korean text has no East Asian font at any level, so each reader substitutes its own", "apply set_east_asia_font")
 EAST_ASIA_LANGUAGE_NOT_KOREAN = IssueKind("EAST_ASIA_LANGUAGE_NOT_KOREAN", WARNING, "Korean text is tagged with another East Asian language, so LibreOffice breaks its lines mid-word and Word picks that language's fonts", "apply set_korean_language")
-TRACKED_CHANGES_PRESENT = IssueKind("TRACKED_CHANGES_PRESENT", WARNING, "the document holds tracked changes nobody has accepted or rejected", "doc read --revisions lists them; settle them with accept_revisions or reject_revisions unless the reader should see the redline")
+TRACKED_CHANGES_PRESENT = IssueKind("TRACKED_CHANGES_PRESENT", WARNING, "the document holds tracked changes nobody has accepted or rejected", "office read --revisions lists them; settle them with accept_revisions or reject_revisions unless the reader should see the redline")
 
 MISSING_IMAGE = IssueKind("MISSING_IMAGE", ERROR, "a picture's image part is missing from the file, so it shows an empty frame or nothing", "delete_block when the paragraph holds only the picture, or insert_image the file again")
 CHART_EMPTY = IssueKind("CHART_EMPTY", WARNING, "a chart has no number in any series, so it draws empty axes", "apply edit_chart with the categories and values")
 EMPTY_HEADING = IssueKind("EMPTY_HEADING", WARNING, "a heading has no text, so the outline and the table of contents show a blank line", "apply delete_block, or set_text with the heading")
 HEADING_SKIP = IssueKind("HEADING_SKIP", WARNING, "a heading is more than one level deeper than the heading before it", "apply set_style with the next level's heading style")
-UNRESOLVED_COMMENTS = IssueKind("UNRESOLVED_COMMENTS", WARNING, "comment threads are still open, and the reader sees them in the margin", "doc read lists them; answer or resolve_comment each, or delete_comment")
+UNRESOLVED_COMMENTS = IssueKind("UNRESOLVED_COMMENTS", WARNING, "comment threads are still open, and the reader sees them in the margin", "office read lists them; answer or resolve_comment each, or delete_comment")
 HEADING_STRANDED = IssueKind("HEADING_STRANDED", WARNING, "a heading is the last line of a page and the text it introduces starts the next page", "apply the set_paragraph_format in fix: it keeps the heading on the page of the paragraph after it", suggestion_applies_fix=True)
 FIELD_NOT_EVALUATED = IssueKind("FIELD_NOT_EVALUATED", WARNING, "a field holds no result, so it shows blank until Word updates fields", "apply update_fields_on_open")
 
@@ -509,20 +494,17 @@ def markdown_lines() -> list[str]:
     ]
 
 
-GUIDE_SECTIONS = (("Markdown that doc export reads", markdown_lines),)
+GUIDE_SECTIONS = (("md", "Markdown office create reads", markdown_lines),)
 
 GUIDE_INPUTS = (
-    ("doc create --spec <file>", DOCUMENT_SPECIFICATION),
-    ("doc create --table <file>", TABLE_FILE),
-    ("doc edit --blocks <file>", BLOCK_LIST),
-    ("doc apply <file.docx> <ops.json>", OPERATION_BATCH),
-    ("doc merge <template.docx> <values.json> <output.docx>: values", MERGE_VALUES),
+    ("create", "docx", "the JSON spec", DOCUMENT_SPECIFICATION),
+    ("apply", "docx", "the operations", OPERATION_BATCH),
+    ("merge", "docx", "the values", MERGE_VALUES),
 )
 GUIDE_ISSUES = (
-    ("doc export", EXPORT_ISSUE_KINDS),
-    ("doc validate", VALIDATE_ISSUE_KINDS + (EAST_ASIA_FONT_MISSING,)),
-    ("doc check", CHECK_ISSUE_KINDS),
-    ("doc apply", OPERATION_ISSUE_KINDS),
-    ("doc merge", MERGE_ISSUE_KINDS),
-    ("doc render", PREVIEW_ISSUE_KINDS),
+    ("create", "md", EXPORT_ISSUE_KINDS),
+    ("check", "docx", CHECK_ISSUE_KINDS + tuple(kind for kind in QUALITY_ISSUE_KINDS + (EAST_ASIA_FONT_MISSING,) if kind not in CHECK_ISSUE_KINDS)),
+    ("apply", "docx", OPERATION_ISSUE_KINDS),
+    ("merge", "docx", MERGE_ISSUE_KINDS),
+    ("render", "docx", PREVIEW_ISSUE_KINDS),
 )

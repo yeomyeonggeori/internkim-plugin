@@ -52,13 +52,13 @@ class KoreanDeckFixture(unittest.TestCase):
 
     def apply(self, operations, *options):
         write_json(self.directory / "ops.json", operations)
-        return run_office(["deck", "apply", "deck.pptx", "ops.json", *options], self.directory)
+        return run_office(["apply", "deck.pptx", "ops.json", *options], self.directory)
 
     def read(self, *options, name="deck.pptx"):
-        return run_office(["deck", "read", name, *options], self.directory)["details"]
+        return run_office(["read", name, *options], self.directory)["details"]
 
     def slide(self, number, *options):
-        return self.read("--slides", str(number), *options)["slides"][0]
+        return self.read("--pages", str(number), *options)["slides"][0]
 
     def presentation(self, name="deck.pptx"):
         return Presentation(str(self.directory / name))
@@ -428,16 +428,22 @@ class LayoutAuditTest(KoreanDeckFixture):
 
     def test_check_without_a_preview_reports_the_same_findings(self):
         self.apply([{"op": "set_transform", "slide": 3, "shape": 1, "y": 3600000}])
-        envelope = run_office(["deck", "check", "deck.pptx", "--no-preview", "--slides", "3"], self.directory)
+        envelope = run_office(["check", "deck.pptx", "--no-preview", "--pages", "3"], self.directory)
         self.assertEqual(codes(envelope), ["OUT_OF_FRAME"])
         self.assertEqual(envelope["details"]["checkedSlides"], [3])
+
+
+    def test_check_counts_the_slides_and_finds_required_and_forbidden_text(self):
+        envelope = run_office(["check", "deck.pptx", "--no-preview", "--slide-count", "4", "--required-text", "분기별매출 추이", "--required-text", "없는 문구", "--forbidden-text", "분기별"], self.directory)
+        texts = [(issue["code"], issue["location"]) for issue in envelope["issues"] if issue["code"] in ("SLIDE_COUNT_MISMATCH", "REQUIRED_TEXT_MISSING", "FORBIDDEN_TEXT_PRESENT")]
+        self.assertEqual(texts, [("SLIDE_COUNT_MISMATCH", "deck.pptx"), ("REQUIRED_TEXT_MISSING", "없는 문구"), ("FORBIDDEN_TEXT_PRESENT", "분기별")])
 
 
 class PreviewTest(KoreanDeckFixture):
     def check_preview(self, *operations):
         if operations:
             self.apply(list(operations))
-        envelope = run_office(["deck", "check", "deck.pptx"], self.directory)
+        envelope = run_office(["check", "deck.pptx"], self.directory)
         document = lxml.html.fromstring((self.directory / envelope["details"]["preview"]).read_text(encoding="utf-8"))
         return envelope, document
 

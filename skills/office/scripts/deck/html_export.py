@@ -3,17 +3,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 import pathlib
 
-from deck.acceptance import judge_build
+from deck.review.acceptance import judge_build
 from deck.check_deck import CheckRequest, check_deck
-from deck.deck_definitions import FONT_NOT_EMBEDDED, TEXT_KEPT_AS_PICTURE, UNKNOWN_FORMAT
+from deck.deck_definitions import FONT_NOT_EMBEDDED, TEXT_KEPT_AS_PICTURE
 from deck.deck_kit import KIT_MARKER, inject_deck_kit, slide_size
-from deck.editable_pptx import EditablePptx, read_text_layers, text_layers_path, write_editable_pptx
-from deck.geometry_checks import GEOMETRY_FILE_NAME
+from deck.pptx_export.editable import EditablePptx, read_text_layers, text_layers_path, write_editable_pptx
+from deck.review.geometry_checks import GEOMETRY_FILE_NAME
 from deck.layout_thresholds import renderer_thresholds
 from core.office_result import Issue, OfficeFailure, Result
 from render.renderer import PIXELS_FILE_NAME, RENDER_FAILED, RENDERER_UNAVAILABLE, RenderFailed, RendererUnavailable, RenderRequest, render_html, render_issues
-from deck.render_evidence import clear_stale_render_evidence
-from deck.render_review import review_deck
+from deck.review.evidence import clear_stale_render_evidence
+from deck.review.deck_review import review_deck
 from deck.resource_inlining import VENDORED_FONTS_MARKER, inject_vendored_paperlogy_fallback, inline_local_fonts, inline_local_images
 from deck.slide_source import SPEAKER_NOTES_CLASS
 from deck.slide_structure import extract_notes
@@ -21,7 +21,6 @@ from deck.slide_viewer import SLIDE_VIEWER_MARKER, inject_screen_slide_viewer
 from deck.source_preflight import read_checked_source
 
 
-ALLOWED_FORMATS = {"html", "pdf", "pptx", "notes", "review"}
 BUILD_REVIEW_FACTS = ("slideCount", "renderedSlideCount")
 SPEAKER_NOTES_HIDDEN_STYLE = f"section .{SPEAKER_NOTES_CLASS} {{ display: none !important; }}"
 
@@ -70,7 +69,7 @@ def export_deck(request: ExportRequest) -> Result:
 
 def remove_previous_outputs(request: ExportRequest) -> None:
     request.build_path.mkdir(parents=True, exist_ok=True)
-    for suffix in (".html", ".pptx", ".pdf", "-notes.txt"):
+    for suffix in (".html", ".pptx", ".pdf"):
         request.output_path(suffix).unlink(missing_ok=True)
 
 
@@ -87,25 +86,13 @@ def write_derived_outputs(request: ExportRequest, html_output_path: pathlib.Path
     if "pptx" in request.formats:
         pptx_details, pptx_issues = write_pptx(request, [extract_notes(slide_source) for slide_source in slide_sources])
         issues.extend(pptx_issues)
-    if "notes" in request.formats:
-        write_notes(slide_sources, request.output_path("-notes.txt"))
     review = review_deck(request.source_path, request.deck_name, request.review_path, request.check.required_text)
     issues.extend(review.issues)
     return DerivedOutputs(issues, pptx_details, review)
 
 
-def enabled_formats(raw_formats: str) -> set[str]:
-    formats = {value.strip().casefold() for value in raw_formats.split(",") if value.strip()}
-    if "all" in formats:
-        formats.remove("all")
-        formats.update(ALLOWED_FORMATS)
-    if "pptx" in formats:
-        formats.add("pdf")
-    formats.update({"review", "html"})
-    unknown_formats = sorted(formats - ALLOWED_FORMATS)
-    if unknown_formats:
-        raise OfficeFailure(UNKNOWN_FORMAT.issue("unknown presentation format(s): " + ", ".join(unknown_formats)))
-    return formats
+def output_formats(requested: str) -> set[str]:
+    return {requested, "html", "review", *(("pdf",) if requested == "pptx" else ())}
 
 
 def deck_html_text(source_path: pathlib.Path) -> str:
@@ -183,15 +170,6 @@ def editable_pptx_issues(written: EditablePptx, pptx_path: pathlib.Path) -> list
     return issues
 
 
-def write_notes(slide_sources: list[str], notes_path: pathlib.Path) -> None:
-    note_blocks = []
-    for index, slide_source in enumerate(slide_sources, start=1):
-        notes = extract_notes(slide_source)
-        if notes:
-            note_blocks.append(f"Slide {index}\n{notes}")
-    notes_path.write_text("\n\n".join(note_blocks) + ("\n" if note_blocks else ""), encoding="utf-8")
-
-
 def build_summary(request: ExportRequest, derived: DerivedOutputs) -> str:
     written = [name for name, path in output_paths(request, derived).items() if path]
     return f"built {', '.join(written)} into {request.build_path}; {derived.review.summary}"
@@ -207,7 +185,6 @@ def output_paths(request: ExportRequest, derived: DerivedOutputs) -> dict[str, s
         "html": request.output_path(".html"),
         "pdf": request.output_path(".pdf"),
         "pptx": request.output_path(".pptx"),
-        "notes": request.output_path("-notes.txt"),
         "review": request.review_path / "slide-review.json",
     }
     return {

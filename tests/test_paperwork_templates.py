@@ -10,13 +10,13 @@ import zipfile
 from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, run_office
 
 
-from paperwork.amounts import VAT_RATE_PERCENT
+from paperwork.jurisdictions import JURISDICTIONS
 from paperwork.template_context import DEFAULT_VALUES, DERIVED_VALUES, LIST_FIELDS, OPTIONAL_PARAGRAPH_FIELDS, caller_fields, complete_context, list_fields, scalar_fields
 from paperwork.template_fields import template_fields, template_names
 
 
-SPECIFICATIONS_PATH = SCRIPTS_PATH.parent / "references" / "paperwork" / "ko"
-ENGLISH_SPECIFICATIONS_PATH = SPECIFICATIONS_PATH.parent / "en"
+SPECIFICATIONS_PATH = SCRIPTS_PATH.parent / "references" / "paperwork" / "kr"
+ENGLISH_SPECIFICATIONS_PATH = SPECIFICATIONS_PATH.parent / "intl"
 SKELETON_PATTERN = re.compile(r"## Context JSON skeleton\s+```json\n(.*?)\n```", re.DOTALL)
 DOCUMENT_SKELETON_PATTERN = re.compile(r"## Document JSON skeleton\s+```json\n(.*?)\n```", re.DOTALL)
 TAX_RATE_MENTION = re.compile(r"(?:부가세|VAT|Tax) ?\((\d+)%\)|(?:세액은 공급가액의|tax as) (\d+)%")
@@ -51,7 +51,7 @@ def field_paths(value, prefix=""):
 def documented_fields(template_name):
     specification = (SPECIFICATIONS_PATH / f"{template_name}.md").read_text(encoding="utf-8")
     match = SKELETON_PATTERN.search(specification)
-    return set(json.loads(match.group(1))) if match else None
+    return set(json.loads(match.group(1))) - {"form"} if match else None
 
 
 class TemplateFieldsTest(unittest.TestCase):
@@ -116,10 +116,19 @@ class TemplateSourceTest(unittest.TestCase):
                 self.assertEqual(document_skeleton_fields(english), korean_fields, korean.name)
 
 
-    def test_every_tax_rate_a_spec_states_is_the_rate_paperwork_check_uses(self):
+    def test_every_tax_rate_a_spec_states_is_the_rate_its_jurisdiction_checks(self):
+        for jurisdiction in JURISDICTIONS:
+            if jurisdiction.tax_rate_percent is None:
+                continue
+            for specification in sorted((SPECIFICATIONS_PATH.parent / jurisdiction.code).glob("*.md")):
+                for match in TAX_RATE_MENTION.finditer(specification.read_text(encoding="utf-8")):
+                    self.assertEqual(int(match.group(1) or match.group(2)), jurisdiction.tax_rate_percent, f"{jurisdiction.code}/{specification.name}: {match.group(0)}")
+
+    def test_every_spec_skeleton_names_its_own_form(self):
         for specification in sorted(SPECIFICATIONS_PATH.parent.glob("*/*.md")):
-            for match in TAX_RATE_MENTION.finditer(specification.read_text(encoding="utf-8")):
-                self.assertEqual(int(match.group(1) or match.group(2)), VAT_RATE_PERCENT, f"{specification.parent.name}/{specification.name}: {match.group(0)}")
+            match = DOCUMENT_SKELETON_PATTERN.search(specification.read_text(encoding="utf-8")) or SKELETON_PATTERN.search(specification.read_text(encoding="utf-8"))
+            named = re.search(r'"form": "([^"]+)"', match.group(1))
+            self.assertEqual(named.group(1), f"{specification.parent.name}/{specification.stem}")
 
 
 FILLED_PARAGRAPHS = """
@@ -134,7 +143,7 @@ class FillTest(unittest.TestCase):
     def fill(self, template_name, context):
         self.directory = Path(self.enterContext(tempfile.TemporaryDirectory()))
         (self.directory / "context.json").write_text(json.dumps(context, ensure_ascii=False), encoding="utf-8")
-        envelope = run_office(["paperwork", "fill", template_name, "context.json", "out.docx"], self.directory)
+        envelope = run_office(["merge", f"kr/{template_name}", "context.json", "out.docx"], self.directory)
         self.assertEqual(envelope["status"], "ok", envelope)
         completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", FILLED_PARAGRAPHS, str(self.directory / "out.docx")], capture_output=True, text=True, check=True)
         return json.loads(completed.stdout)

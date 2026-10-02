@@ -15,7 +15,7 @@ WRITE_AND_READ_BACK = """
 import json, sys
 from pathlib import Path
 sys.path[:0] = [{scripts_path!r}, {tests_path!r}]
-from deck.editable_pptx import read_text_layers, write_editable_pptx
+from deck.pptx_export.editable import read_text_layers, write_editable_pptx
 from png_fixture import write_png
 from pptx import Presentation
 from deck.slide_source import split_slide_sources

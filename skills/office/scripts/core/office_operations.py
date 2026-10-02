@@ -7,9 +7,9 @@ from pathlib import Path
 import tempfile
 from typing import Callable, Sequence
 
-from core.office_inputs import office_file
+from core.office_commands import BATCH_MODES
 from core.office_outputs import same_kind_output
-from core.office_result import ERROR, FILL_INS, VALUE_FILL_IN, WARNING, Issue, IssueKind, OfficeArgumentParser, OfficeFailure, Result, read_json_file
+from core.office_result import ERROR, FILL_INS, VALUE_FILL_IN, WARNING, Issue, IssueKind, OfficeFailure, Result, read_json_file
 from core.office_schema import ListOf, Variant, join_location, require_valid
 
 
@@ -32,7 +32,6 @@ def chart_indexes_suggestion(owner: str, chart_count: int, add_operation: str) -
     return f"use a chart from 0 to {chart_count - 1}"
 Planner = Callable[[object, dict, str], Change]
 Preparer = Callable[[object, dict, int], dict]
-BATCH_MODES = ("all", "best-effort", "stop-on-error")
 ALL_MODE, BEST_EFFORT_MODE, STOP_ON_ERROR_MODE = BATCH_MODES
 
 
@@ -192,18 +191,8 @@ def failures_named(path: str):
         raise OSError(error.errno, error.strerror, path) from error
 
 
-def apply_parser(input_kind: str) -> OfficeArgumentParser:
-    parser = OfficeArgumentParser()
-    parser.add_argument("path", type=office_file(input_kind), help="the file to edit")
-    parser.add_argument("ops", help="JSON file with a list of operations")
-    parser.add_argument("--output", help="write the result here instead of editing the file in place")
-    parser.add_argument("--dry-run", action="store_true", help="check and plan every operation, report the changes, and write nothing")
-    parser.add_argument("--mode", choices=BATCH_MODES, default=ALL_MODE, help="all (default) writes the batch whole or not at all; best-effort writes every operation that applies and reports the others; stop-on-error writes the operations before the first that does not apply")
-    return parser
-
-
 def apply_output_path(arguments) -> str:
-    return os.path.expanduser(same_kind_output(arguments.output, arguments.path) if arguments.output else arguments.path)
+    return os.path.expanduser(same_kind_output(arguments.output, arguments.file) if arguments.output else arguments.file)
 
 
 @dataclass(frozen=True)
@@ -213,14 +202,14 @@ class Review:
 
 
 def run_apply(arguments, operation_set: OperationSet, load: Callable[[str], object], save: Callable[[object, str], Sequence[Issue] | None], review: Callable[[object], Review] | None = None) -> Result:
-    operations = read_batch(operation_set, arguments.ops, arguments.mode)
-    document = load(arguments.path)
+    document = load(arguments.file)
+    operations = read_batch(operation_set, arguments.operations, arguments.mode)
     outcome = apply_operations(operation_set, document, operations, arguments.mode)
     reviewed = review(document) if review is not None else Review()
     issues = outcome.issues() + reviewed.issues
     details = {"dryRun": arguments.dry_run, **outcome.details(), **reviewed.details}
     if arguments.dry_run:
-        return Result(summary=f"dry run: {outcome.counted()} would apply to {arguments.path}", issues=issues, details=details)
+        return Result(summary=f"dry run: {outcome.counted()} would apply to {arguments.file}", issues=issues, details=details)
     output_path = apply_output_path(arguments)
     saved_issues = save_atomically(lambda temporary_path: save(document, temporary_path), output_path)
     return Result(summary=f"applied {outcome.counted()} to {output_path}", output_path=output_path, issues=issues + tuple(saved_issues), details=details)

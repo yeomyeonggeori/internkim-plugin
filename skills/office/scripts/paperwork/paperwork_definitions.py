@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from pathlib import Path
-
-from paperwork.amounts import ROUNDING_RULE, VAT_RATE_PERCENT
 from core.office_result import ERROR, WARNING, IssueKind
 from core.office_schema import AnyOf, Boolean, CellValue, Field, ListOf, Number, Record, Text, Variant
 from paperwork.paperwork_design import FONT_KOREAN_DOCX
 from fonts.font_files import FONT_PATH_MEANING
 from paperwork.template_context import caller_fields, default_values, derived_values, list_fields, optional_paragraph_fields
 from paperwork.template_fields import template_names
+from paperwork.forms import Form, form_slugs
+from paperwork.jurisdictions import JURISDICTIONS, Jurisdiction
+from doc.doc_definitions import GLYPH_NOT_COVERED
+from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE
 
 
 LABELED_VALUE = Record("labeled value", "one label and its value", (
@@ -20,10 +21,10 @@ PROFILE = Record("profile", "the company_info_get result, pasted whole; the lett
     Field("name", CellValue(), "company name; name or companyName is required"),
     Field("companyName", CellValue(), "company name when name is absent"),
     Field("logoPath", CellValue(), "logo image at the letterhead's left"),
-    Field("legalAttributes", ListOf(LABELED_VALUE), "the first two print on the letterhead, such as 사업자등록번호"),
-    Field("registrationNumber", CellValue(), "printed as 사업자등록번호 when legalAttributes is empty"),
+    Field("legalAttributes", ListOf(LABELED_VALUE), "the first two print on the letterhead, such as the business registration number"),
+    Field("registrationNumber", CellValue(), "printed after the jurisdiction's registration label when legalAttributes is empty"),
     Field("representative", CellValue(), "representative's name"),
-    Field("representativeTitle", CellValue(), "title before the name, default 대표"),
+    Field("representativeTitle", CellValue(), "title before the name, default the jurisdiction's representative title"),
     Field("address", CellValue(), "address line"),
     Field("phone", CellValue(), "contact line"),
     Field("email", CellValue(), "contact line"),
@@ -39,7 +40,7 @@ ITEMS = Record("items", "the item table with its totals", (
 ))
 
 RECIPIENT = Record("recipient", "the addressee block", (
-    Field("label", CellValue(), "caption above the lines, default 수신"),
+    Field("label", CellValue(), "caption above the lines, default the jurisdiction's recipient label"),
     Field("lines", ListOf(CellValue()), "addressee lines"),
 ))
 
@@ -51,13 +52,16 @@ PAPERWORK_SECTION = Record("section", "a titled block of paragraphs and bullets"
 
 SIGNATURE = Record("signature", "the dated signature line", (
     Field("date", CellValue(), "date line"),
-    Field("line", CellValue(), "signer line; (인) is appended"),
+    Field("line", CellValue(), "signer line; the jurisdiction's seal mark, where it has one, is appended"),
     Field("stamp", Boolean(), "place profile.stampPath on the signer line"),
 ))
 
-PAPERWORK_DOCUMENT = Record("document", "the JSON of paperwork render to a .pdf; each spec under references/paperwork has its skeleton", (
+FORM_FIELD = Field("form", Text(non_empty=True), "the form these values fill, <jurisdiction>/<form> such as kr/quote; office merge takes it from its first argument and office check from here")
+
+PAPERWORK_DOCUMENT = Record("document", "the values office merge draws on letterhead as a .pdf; each spec under references/paperwork has its skeleton", (
+    FORM_FIELD,
     Field("title", Text(non_empty=True), "centered document title", required=True),
-    Field("documentNumber", CellValue(), "printed as 문서번호 under the title"),
+    Field("documentNumber", CellValue(), "printed under the title after the jurisdiction's document-number label"),
     Field("profile", PROFILE, "company profile for the letterhead", required=True),
     Field("approvalLine", ListOf(Text()), "approval box captions, left to right"),
     Field("recipient", RECIPIENT, "addressee"),
@@ -67,6 +71,7 @@ PAPERWORK_DOCUMENT = Record("document", "the JSON of paperwork render to a .pdf;
     Field("notes", AnyOf((Text(), ListOf(CellValue()))), "centered closing lines"),
     Field("signature", AnyOf((Text(), SIGNATURE)), "signature; text becomes date on its first line and signer after"),
     Field("footer", CellValue(), "footer line on every page"),
+    Field("taxRatePercent", Number(minimum=0), "the tax rate the form states, which office check uses where the jurisdiction sets none"),
     Field("fontPath", Text(), FONT_PATH_MEANING),
 ))
 
@@ -94,7 +99,8 @@ CONTRACT_BLOCK = Variant(
     ),
 )
 
-CONTRACT_DOCUMENT = Record("contract", "the JSON of paperwork render to a .docx, for a clause the standard templates cannot express", (
+CONTRACT_DOCUMENT = Record("contract", "the values office merge writes as a .docx contract when the form has no bundled template", (
+    FORM_FIELD,
     Field("title", CellValue(), "centered bold title"),
     Field("fontName", CellValue(), f"body font, default {FONT_KOREAN_DOCX}"),
     Field("fontSize", Number(minimum=1), "body size in points"),
@@ -102,43 +108,48 @@ CONTRACT_DOCUMENT = Record("contract", "the JSON of paperwork render to a .docx,
     Field("blocks", ListOf(CONTRACT_BLOCK, non_empty=True), "the content", required=True),
 ))
 
-QUANTITY_HEADERS = ("수량", "Qty")
-UNIT_PRICE_HEADERS = ("단가", "Unit price")
-AMOUNT_HEADERS = ("공급가액", "Amount")
-TAX_HEADERS = ("세액", "Tax")
-WORDS_LABELS = ("합계금액",)
-
 ROW_AMOUNT_MISMATCH = IssueKind("ROW_AMOUNT_MISMATCH", ERROR, "a row's amount is not its quantity times its unit price", "correct the row's amount, or the quantity or unit price if one of those is wrong")
 SUPPLY_TOTAL_MISMATCH = IssueKind("SUPPLY_TOTAL_MISMATCH", ERROR, "the supply total is not the sum of the row amounts", "correct the supply total, or the row that is wrong")
 ROW_VAT_MISMATCH = IssueKind("ROW_VAT_MISMATCH", ERROR, "a row's VAT is not the VAT rate times the row's supply amount", "correct the row's VAT, or its amount if that is wrong")
 VAT_MISMATCH = IssueKind("VAT_MISMATCH", ERROR, "the VAT total is not the sum of the row VATs, or without row VATs not the VAT rate times the supply total", "correct the VAT line")
 GRAND_TOTAL_MISMATCH = IssueKind("GRAND_TOTAL_MISMATCH", ERROR, "the grand total is not the supply total plus the VAT", "correct the grand total line")
-AMOUNT_IN_WORDS_MISMATCH = IssueKind("AMOUNT_IN_WORDS_MISMATCH", ERROR, "the Korean amount in words does not match the grand total", "rewrite the amount in words from the grand total")
+AMOUNT_IN_WORDS_MISMATCH = IssueKind("AMOUNT_IN_WORDS_MISMATCH", ERROR, "the amount in words, where the jurisdiction writes one, does not match the grand total", "rewrite the amount in words from the grand total")
 AMOUNT_UNREADABLE = IssueKind("AMOUNT_UNREADABLE", ERROR, "a quantity, price or total holds no number", "write the value as a number, with or without thousands separators")
-NO_AMOUNTS_FOUND = IssueKind("NO_AMOUNTS_FOUND", WARNING, "the input holds no quantity, unit price and amount columns and no contract amount, so nothing was checked", "pass the document JSON of a priced form or a contract context with totalAmount")
+NO_AMOUNTS_FOUND = IssueKind("NO_AMOUNTS_FOUND", WARNING, "the input holds no quantity, unit price and amount columns and no contract amount, so nothing was checked", "check the values of a priced form, or of a contract with totalAmount")
 
 AMOUNT_ISSUE_KINDS = (ROW_AMOUNT_MISMATCH, ROW_VAT_MISMATCH, SUPPLY_TOTAL_MISMATCH, VAT_MISMATCH, GRAND_TOTAL_MISMATCH, AMOUNT_IN_WORDS_MISMATCH, AMOUNT_UNREADABLE, NO_AMOUNTS_FOUND)
 
 GUIDE_INPUTS = (
-    ("paperwork render <document.json> <output>.pdf", PAPERWORK_DOCUMENT),
-    ("paperwork render <document.json> <output>.docx", CONTRACT_DOCUMENT),
+    ("merge", "form", "the values for a .pdf", PAPERWORK_DOCUMENT),
+    ("merge", "form", "the values for a .docx without a bundled template", CONTRACT_DOCUMENT),
 )
-GUIDE_ISSUES = (("paperwork check", AMOUNT_ISSUE_KINDS),)
-
-
-SPECIFICATIONS_PATH = Path(__file__).resolve().parents[2] / "references" / "paperwork"
-
-
-def form_slugs() -> list[str]:
-    return sorted(path.stem for path in (SPECIFICATIONS_PATH / "ko").glob("*.md"))
+GUIDE_ISSUES = (
+    ("merge", "form", (GLYPH_NOT_COVERED, RENDERER_UNAVAILABLE, RENDER_FAILED)),
+    ("check", "form", AMOUNT_ISSUE_KINDS),
+)
 
 
 def form_lines() -> list[str]:
-    templates = set(template_names())
-    rendered = [slug for slug in form_slugs() if slug not in templates]
+    lines = []
+    for jurisdiction in JURISDICTIONS:
+        with_template = [slug for slug in form_slugs(jurisdiction.code) if Form(jurisdiction, slug).template_path is not None]
+        lines.append(f"  {jurisdiction.code}: {', '.join(form_slugs(jurisdiction.code))}")
+        if with_template:
+            lines.append(f"    a bundled .docx template fills these, from the fields below: {', '.join(with_template)}")
+    return lines
+
+
+def jurisdiction_lines() -> list[str]:
+    return [line for jurisdiction in JURISDICTIONS for line in jurisdiction_summary(jurisdiction)]
+
+
+def jurisdiction_summary(jurisdiction: Jurisdiction) -> list[str]:
+    columns = jurisdiction.columns
+    tax = f"{jurisdiction.tax_rate_percent}% of each row's amount when rows have a {columns.tax} column, else of the supply total" if jurisdiction.tax_rate_percent is not None else "taxRatePercent when the values state it, else the tax line is only added to the total"
+    words = f"; meta \"{jurisdiction.amount_in_words.label}\" holds the amount in words: {jurisdiction.amount_in_words.example}" if jurisdiction.amount_in_words else ""
     return [
-        f"  paperwork render: {', '.join(rendered)}",
-        f"  paperwork fill (a Korean contract template; in English, paperwork render): {', '.join(sorted(templates))}",
+        f"  {jurisdiction.code} ({jurisdiction.name}): labels in {jurisdiction.language}; dates {jurisdiction.date_format}; currency {jurisdiction.money.currency or 'as the form names it'}",
+        f"    item columns {columns.quantity}, {columns.unit_price}, {columns.amount}, {columns.tax}; tax {tax}; rounding: {jurisdiction.money.rounding_rule}{words}",
     ]
 
 
@@ -174,18 +185,16 @@ def derived_lines(template_name: str) -> list[str]:
 
 def amount_rule_lines() -> list[str]:
     return [
-        f"  input: the document JSON of paperwork render with items.headers holding {', '.join(QUANTITY_HEADERS + UNIT_PRICE_HEADERS + AMOUNT_HEADERS)}, or the context JSON of paperwork fill service-agreement",
-        "  row amount = quantity x unit price; supply total = sum of row amounts; grand total = supply total + VAT",
-        f"  row VAT = {VAT_RATE_PERCENT}% of the row amount when rows have a {' or '.join(TAX_HEADERS)} column; VAT total = sum of row VATs, else {VAT_RATE_PERCENT}% of the supply total",
-        f"  rounding: {ROUNDING_RULE}",
-        "  items.totals lists supply total, VAT and grand total in that order; meta \"합계금액\" holds the amount in words",
-        "  amount in words: \"일금 일백만원정\" for 1,000,000; a trailing 整 counts as 정",
+        "  input: values naming their form, with items whose headers hold the jurisdiction's item columns, or a contract with totalAmount",
+        "  row amount = quantity x unit price; supply total = sum of row amounts; grand total = supply total + tax",
+        "  items.totals lists supply total, tax and grand total in that order",
         "  the command only reports facts in details and never rewrites the input",
     ]
 
 
 GUIDE_SECTIONS = (
-    ("Forms (each slug's spec is references/paperwork/<ko|en>/<slug>.md)", form_lines),
-    ("Templates of paperwork fill <template> <context.json> <output>.docx; the context JSON holds these fields", template_guide_lines),
-    ("Amount rules of paperwork check <input.json>", amount_rule_lines),
+    ("form", "Forms (office merge <jurisdiction>/<form> <values.json> <output>; each one's spec is references/paperwork/<jurisdiction>/<form>.md)", form_lines),
+    ("form", "Jurisdictions", jurisdiction_lines),
+    ("form", "Fields of the bundled .docx templates", template_guide_lines),
+    ("form", "Amount rules of office check <values.json>", amount_rule_lines),
 )

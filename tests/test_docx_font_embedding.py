@@ -13,7 +13,7 @@ OFFICE_SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" 
 sys.path.insert(0, str(OFFICE_SCRIPTS_PATH))
 
 from fonts.registry import SANS_BODY, default_family  # noqa: E402
-from doc.docx_defaults import apply_korean_defaults  # noqa: E402
+from doc.model.defaults import apply_korean_defaults  # noqa: E402
 from fonts.docx_embedding import embed_named_fonts, obfuscated, save_document  # noqa: E402
 
 WORD = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"

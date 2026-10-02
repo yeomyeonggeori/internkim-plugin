@@ -5,7 +5,7 @@ from doc_fixture import DocumentFixture, block_texts, read_details, run_office, 
 
 def apply(directory, operations, document="fixture.docx"):
     write_json(directory / "operations.json", operations)
-    return run_office(["doc", "apply", document, "operations.json"], directory)
+    return run_office(["apply", document, "operations.json"], directory)
 
 
 def document_xml(directory, document="fixture.docx"):
@@ -83,7 +83,7 @@ class InlineOperationTest(DocumentFixture):
         self.assertIn("<m:f>", xml)
         self.assertIn("<m:sSup>", xml)
         self.assertTrue(read_details(self.directory, "fixture.docx")["blocks"][2]["equation"])
-        render = run_office(["doc", "render", "fixture.docx"], self.directory)
+        render = run_office(["render", "fixture.docx"], self.directory)
         self.assertIn("2 equations drawn as linear text", render["issues"][0]["message"])
         self.assertIn("(a+b)/2=∑_(i=1)^n x_i", (self.directory / "fixture-preview" / "preview.html").read_text(encoding="utf-8"))
 
@@ -99,7 +99,7 @@ class InlineOperationTest(DocumentFixture):
         self.assertIn('DATE \\@ "yyyy-MM-dd"', xml)
         self.assertIn("SEQ 표 \\* ARABIC", xml)
         self.assertRegex(block_texts(self.directory, "fixture.docx")[2][1], r"^둘째 문단\d{4}-\d{2}-\d{2}1$")
-        codes = {issue["code"] for issue in run_office(["doc", "check", "fixture.docx"], self.directory)["issues"]}
+        codes = {issue["code"] for issue in run_office(["check", "fixture.docx"], self.directory)["issues"]}
         self.assertNotIn("FIELD_NOT_EVALUATED", codes)
 
     def test_notes_are_rewritten_and_deleted_with_their_marks(self):

@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
+from paperwork.template_fields import TEMPLATES_PATH
 from paperwork.paperwork_design import (
     COLOR_INK,
     DOCX_PAGE_MARGIN_INCHES,
@@ -330,7 +330,7 @@ BUILDERS = {
 
 
 def main():
-    templates_directory = Path(__file__).resolve().parents[2] / "assets" / "templates"
+    templates_directory = TEMPLATES_PATH
     templates_directory.mkdir(parents=True, exist_ok=True)
     requested = sys.argv[1:] or sorted(BUILDERS)
     for template_name in requested:

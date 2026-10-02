@@ -47,7 +47,7 @@ class DeckMergeTest(DeckFixture):
 
     def merge(self, values):
         (self.directory / "values.json").write_text(json.dumps(values, ensure_ascii=False), encoding="utf-8")
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "merge", "report.pptx", "values.json", "filled.pptx"], capture_output=True, text=True, cwd=self.directory)
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "merge", "report.pptx", "values.json", "filled.pptx"], capture_output=True, text=True, cwd=self.directory)
         return json.loads(completed.stdout)
 
     def test_a_split_title_fills_and_a_table_row_repeats_per_item(self):

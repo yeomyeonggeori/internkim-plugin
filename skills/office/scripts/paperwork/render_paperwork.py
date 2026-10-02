@@ -1,24 +1,19 @@
-#!/usr/bin/env python3
 from __future__ import annotations
 
-import os
-from pathlib import Path
 
 from fonts.docx_embedding import save_document
-from core.office_result import DOCUMENTS_FOLDER, MISSING_FIELD, PERMISSION_DENIED, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
+from core.office_result import MISSING_FIELD, OfficeFailure
 from core.office_schema import require_valid
 from paperwork.paperwork_definitions import CONTRACT_DOCUMENT, PAPERWORK_CONTENT_FIELDS, PAPERWORK_DOCUMENT
-from paperwork.paperwork_pdf import company_display_name, render_paperwork_pdf
-from core.office_outputs import output_file
+from paperwork.paperwork_pdf import company_display_name
 from paperwork.paperwork_design import COLOR_INK, FONT_KOREAN_DOCX, LINE_SPACING, SIZE_BODY, SIZE_CLAUSE_HEADING, SIZE_TITLE
 
 
-SPEC_HINT = "read the document type's spec at this skill's references/paperwork/<ko|en>/<type>.md and copy its Document JSON skeleton exactly"
+SPEC_HINT = "read the form's spec at this skill's references/paperwork/<jurisdiction>/<form>.md and copy its Document JSON skeleton exactly"
 
 
-def load_document(document_path):
-    document = read_json_file(document_path)
-    require_valid(PAPERWORK_DOCUMENT, document, "document")
+def load_document(document: dict) -> dict:
+    require_valid(PAPERWORK_DOCUMENT, document, "values")
     require_company_name(document["profile"])
     require_content(document)
     normalize_document(document)
@@ -28,13 +23,13 @@ def load_document(document_path):
 def require_company_name(profile):
     if company_display_name(profile):
         return
-    raise OfficeFailure(MISSING_FIELD.issue("document.profile.name: required; insert the company_info_get result into profile", "document.profile.name", suggestion=SPEC_HINT))
+    raise OfficeFailure(MISSING_FIELD.issue("values.profile.name: required; insert the company_info_get result into profile", "values.profile.name", suggestion=SPEC_HINT))
 
 
 def require_content(document):
     if any(field in document for field in PAPERWORK_CONTENT_FIELDS):
         return
-    raise OfficeFailure(MISSING_FIELD.issue(f"document has no content: add at least one of {', '.join(PAPERWORK_CONTENT_FIELDS)}", "document", suggestion=SPEC_HINT))
+    raise OfficeFailure(MISSING_FIELD.issue(f"values have no content: add at least one of {', '.join(PAPERWORK_CONTENT_FIELDS)}", "values", suggestion=SPEC_HINT))
 
 
 def normalize_document(document):
@@ -50,9 +45,8 @@ def normalize_document(document):
         document["notes"] = [notes.strip()]
 
 
-def load_contract_document(document_path):
-    document = read_json_file(document_path)
-    require_valid(CONTRACT_DOCUMENT, document, "document")
+def load_contract_document(document: dict) -> dict:
+    require_valid(CONTRACT_DOCUMENT, document, "values")
     return document
 
 
@@ -119,36 +113,3 @@ def append_docx_block(word_document, block):
             for column_index, value in enumerate(row):
                 if column_index < len(table.rows[row_index].cells):
                     table.rows[row_index].cells[column_index].text = "" if value is None else str(value)
-
-
-def main():
-    parser = OfficeArgumentParser()
-    parser.add_argument("document_path", help="Path to the document JSON file")
-    parser.add_argument("output_path", type=output_file(".pdf", ".docx"), help="Path to the output .pdf or .docx file")
-    arguments = parser.parse_args()
-    output_path = Path(os.path.expanduser(arguments.output_path))
-    document_path = os.path.expanduser(arguments.document_path)
-    try:
-        font_issues = write_output(document_path, output_path)
-    except PermissionError as error:
-        raise OfficeFailure(PERMISSION_DENIED.issue(
-            f"cannot write to {output_path} (permission denied)",
-            location=error.filename,
-            suggestion=f"rerun the SAME command with the output changed to {DOCUMENTS_FOLDER}/{output_path.parent.name}/{output_path.name}",
-        )) from error
-    return Result(summary=f"rendered {output_path}", output_path=str(output_path), issues=tuple(font_issues))
-
-
-def write_output(document_path, output_path):
-    if output_path.suffix.lower() == ".docx":
-        document = load_contract_document(document_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        generate_docx(document, output_path)
-        return []
-    document = load_document(document_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    return render_paperwork_pdf(document, output_path)
-
-
-if __name__ == "__main__":
-    raise SystemExit(run_command(main))

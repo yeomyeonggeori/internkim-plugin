@@ -30,3 +30,7 @@ def require_output_extension(path: str, extensions: tuple[str, ...]) -> str:
 def same_kind_output(output_path: str, source_path: str) -> str:
     require_output_extension(output_path, (Path(source_path).suffix.lower(),))
     return output_path
+
+
+def preview_directory(source_path: Path, chosen: str | None) -> Path:
+    return Path(chosen).expanduser() if chosen else source_path.with_name(f"{source_path.stem}-preview")

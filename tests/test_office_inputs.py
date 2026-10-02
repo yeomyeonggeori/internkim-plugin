@@ -11,10 +11,10 @@ from xlsb_fixture import write_xlsb
 
 OFFICE_ENTRY = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "office"
 READERS = {
-    "docx": ("doc read", "doc check", "doc validate", "doc render"),
-    "xlsx": ("sheet read", "sheet check", "sheet validate", "sheet render"),
-    "pptx": ("deck read", "deck check"),
-    "pdf": ("pdf read", "pdf render", "pdf validate"),
+    "docx": ("read", "check", "render"),
+    "xlsx": ("read", "check", "render"),
+    "pptx": ("read", "check", "render"),
+    "pdf": ("read", "check", "render"),
 }
 
 
@@ -77,46 +77,45 @@ class InputBoundaryTest(unittest.TestCase):
         self.assertEqual(envelope["issues"][0]["code"], code, f"{command} {input_name}")
         return envelope["issues"][0]
 
-    def test_every_reader_names_the_command_for_a_file_of_another_kind(self):
-        for kind, commands in READERS.items():
-            other_kind = "xlsx" if kind != "xlsx" else "docx"
-            for command in commands:
-                with self.subTest(command=command):
-                    issue = self.assert_refused(command, f"plain.{other_kind}", "WRONG_INPUT_FORMAT")
-                    self.assertIn("office doc read" if other_kind == "docx" else "office sheet read", issue["suggestion"])
+    def test_every_reader_names_what_it_takes_when_a_file_is_none_of_them(self):
+        for command in ("read", "check", "render"):
+            with self.subTest(command=command):
+                issue = self.assert_refused(command, "notes.txt", "WRONG_INPUT_FORMAT")
+                self.assertIn("its content is not in any Office or PDF format", issue["message"])
+                self.assertIn(".docx, .xlsx", issue["suggestion"])
 
     def test_every_reader_reads_a_file_by_its_content_whatever_its_extension(self):
         for kind, commands in READERS.items():
             misnamed = f"{kind}-content.{'docx' if kind != 'docx' else 'xlsx'}"
             (self.directory / misnamed).write_bytes((self.directory / f"plain.{kind}").read_bytes())
             for command in commands:
-                with self.subTest(command=command):
+                with self.subTest(command=command, kind=kind):
                     envelope, stderr = run_office([*command.split(), misnamed], self.directory)
                     self.assertNotIn("Traceback", stderr)
                     self.assertFalse({"WRONG_INPUT_FORMAT", "FILE_DAMAGED"} & {issue["code"] for issue in envelope["issues"]}, envelope["issues"])
                     self.assertTrue(envelope["summary"])
 
     def test_every_reader_answers_a_missing_file(self):
-        for commands in READERS.values():
+        for kind, commands in READERS.items():
             for command in commands:
-                with self.subTest(command=command):
-                    self.assert_refused(command, "missing.docx", "INPUT_NOT_FOUND")
+                with self.subTest(command=command, kind=kind):
+                    self.assert_refused(command, f"missing.{kind}", "INPUT_NOT_FOUND")
 
     def test_text_and_legacy_files_are_refused_with_what_they_are(self):
-        self.assertEqual(self.assert_refused("doc read", "notes.txt", "WRONG_INPUT_FORMAT")["message"], "notes.txt is not a Word document: its content is not in any Office or PDF format")
-        self.assertIn("office convert", self.assert_refused("sheet read", "legacy.xls", "WRONG_INPUT_FORMAT")["suggestion"])
+        self.assertEqual(self.assert_refused("read", "notes.txt", "WRONG_INPUT_FORMAT")["message"], "office read has nothing to do with notes.txt: its content is not in any Office or PDF format")
+        self.assertIn("office convert legacy.xls", self.assert_refused("read", "legacy.xls", "WRONG_INPUT_FORMAT")["suggestion"])
 
     def test_an_empty_file_is_named_empty_by_every_reader_and_convert(self):
         for kind, commands in READERS.items():
             (self.directory / f"empty.{kind}").write_bytes(b"")
             for command in commands:
-                with self.subTest(command=command):
+                with self.subTest(command=command, kind=kind):
                     self.assertEqual(self.assert_refused(command, f"empty.{kind}", "FILE_DAMAGED")["message"], f"empty.{kind} is empty (0 bytes)")
         envelope, _ = run_office(["convert", "empty.pdf", "empty.docx"], self.directory)
         self.assertEqual(envelope["summary"], "empty.pdf is empty (0 bytes)")
 
     def test_a_binary_workbook_is_sent_to_convert(self):
-        issue = self.assert_refused("sheet read", "binary.xlsb", "WRONG_INPUT_FORMAT")
+        issue = self.assert_refused("read", "binary.xlsb", "WRONG_INPUT_FORMAT")
         self.assertIn("binary Excel workbook", issue["message"])
         self.assertIn("office convert binary.xlsb <name>.xlsx", issue["suggestion"])
 
@@ -139,9 +138,13 @@ class InputBoundaryTest(unittest.TestCase):
         self.assertTrue((self.directory / "opened.md").exists())
 
     def test_a_truncated_pdf_is_refused_as_damaged_by_every_reader_and_convert(self):
-        for command in (*READERS["pdf"], "pdf edit"):
+        (self.directory / "append.json").write_text('[{"op": "append_section", "title": "추가"}]', encoding="utf-8")
+        for command in (*READERS["pdf"], "apply"):
             with self.subTest(command=command):
-                self.assertIn("ask the user", self.assert_refused(command, "truncated.pdf", "FILE_DAMAGED")["suggestion"])
+                envelope, stderr = run_office(["apply", "truncated.pdf", "append.json"] if command == "apply" else [command, "truncated.pdf"], self.directory)
+                self.assertNotIn("Traceback", stderr)
+                self.assertEqual(envelope["issues"][0]["code"], "FILE_DAMAGED")
+                self.assertIn("ask the user", envelope["issues"][0]["suggestion"])
         for target in ("truncated.md", "truncated.docx", "truncated.xlsx", "truncated.pptx"):
             with self.subTest(target=target):
                 envelope, stderr = run_office(["convert", "truncated.pdf", target], self.directory)
@@ -161,53 +164,54 @@ class InputBoundaryTest(unittest.TestCase):
             if kind == "pdf":
                 continue
             for command in commands:
-                with self.subTest(command=command):
+                with self.subTest(command=command, kind=kind):
                     self.assert_refused(command, f"cut-plain.{kind}", "FILE_DAMAGED")
-        self.assertIn("unclosed token", self.assert_refused("doc read", "broken-part.docx", "FILE_DAMAGED")["message"])
+        self.assertIn("unclosed token", self.assert_refused("read", "broken-part.docx", "FILE_DAMAGED")["message"])
         envelope, stderr = run_office(["convert", "broken-part.docx", "broken.md"], self.directory)
         self.assertNotIn("Traceback", stderr)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["FILE_DAMAGED"])
 
     def test_text_inputs_are_read_as_utf8_utf16_or_cp949_and_anything_else_is_named(self):
         for name in ("보고서.md", "utf16.md"):
-            envelope, _ = run_office(["doc", "export", name, "--output", "보고서.docx"], self.directory)
+            envelope, _ = run_office(["create", "보고서.docx", name], self.directory)
             self.assertEqual(envelope["status"], "ok", envelope["issues"])
-        envelope, _ = run_office(["convert", "실적.csv", "실적.xlsx"], self.directory)
+        envelope, _ = run_office(["create", "실적.xlsx", "실적.csv"], self.directory)
         self.assertEqual(envelope["status"], "ok", envelope["issues"])
-        rows, _ = run_office(["sheet", "read", "실적.xlsx"], self.directory)
+        rows, _ = run_office(["read", "실적.xlsx"], self.directory)
         self.assertIn("서울", json.dumps(rows, ensure_ascii=False))
-        for command in (["doc", "export", "undecodable.md", "--output", "x.docx"], ["convert", "undecodable.md", "x.html"]):
+        for command in (["create", "x.docx", "undecodable.md"], ["create", "x.html", "undecodable.md"]):
             with self.subTest(command=command):
                 envelope, stderr = run_office(command, self.directory)
                 self.assertNotIn("Traceback", stderr)
                 self.assertEqual([issue["code"] for issue in envelope["issues"]], ["WRONG_INPUT_FORMAT"])
-        issue = self.assert_refused("doc export", "pdf-named.md", "WRONG_INPUT_FORMAT")
-        self.assertIn("office pdf read", issue["suggestion"])
+        envelope, _ = run_office(["create", "report.docx", "pdf-named.md"], self.directory)
+        self.assertEqual(envelope["issues"][0]["code"], "WRONG_INPUT_FORMAT")
+        self.assertIn("office read pdf-named.md", envelope["issues"][0]["suggestion"])
 
     def test_a_wrong_password_is_refused_as_wrong(self):
-        envelope, _ = run_office(["pdf", "read", "locked.pdf", "--password", "guess"], self.directory)
+        envelope, _ = run_office(["read", "locked.pdf", "--password", "guess"], self.directory)
         self.assertEqual(envelope["issues"][0]["code"], "PDF_PASSWORD_REQUIRED")
         self.assertIn("does not open it", envelope["issues"][0]["message"])
 
     def test_an_edited_locked_pdf_stays_locked_with_the_same_password(self):
         edited = self.directory / "edited-locked.pdf"
         edited.write_bytes((self.directory / "locked.pdf").read_bytes())
-        envelope, _ = run_office(["pdf", "edit", edited.name, "--heading", "추가 조항", "--password", "sample-password"], self.directory)
+        (self.directory / "ops.json").write_text('[{"op": "append_section", "title": "추가 조항"}]', encoding="utf-8")
+        envelope, _ = run_office(["apply", edited.name, "ops.json", "--password", "sample-password"], self.directory)
         self.assertEqual(envelope["status"], "ok", envelope["issues"])
-        self.assert_refused("pdf read", edited.name, "PDF_PASSWORD_REQUIRED")
-        envelope, _ = run_office(["pdf", "read", edited.name, "--password", "sample-password"], self.directory)
+        self.assert_refused("read", edited.name, "PDF_PASSWORD_REQUIRED")
+        envelope, _ = run_office(["read", edited.name, "--password", "sample-password"], self.directory)
         self.assertEqual(envelope["details"]["pageCount"], 2)
         first, appended = envelope["details"]["pages"]
         self.assertEqual((appended["widthPoints"], appended["heightPoints"]), (first["widthPoints"], first["heightPoints"]))
         self.assertIn("추가 조항", appended["text"])
 
     def test_apply_checks_its_input_before_reading_the_operations(self):
-        (self.directory / "ops.json").write_text("[]", encoding="utf-8")
-        for command, other in (("doc apply", "plain.xlsx"), ("sheet apply", "plain.pptx"), ("deck apply", "plain.docx")):
-            with self.subTest(command=command):
-                envelope, stderr = run_office([*command.split(), other, "ops.json"], self.directory)
+        for damaged in ("cut-plain.docx", "cut-plain.xlsx", "cut-plain.pptx", "truncated.pdf"):
+            with self.subTest(file=damaged):
+                envelope, stderr = run_office(["apply", damaged, "missing-operations.json"], self.directory)
                 self.assertNotIn("Traceback", stderr)
-                self.assertEqual(envelope["issues"][0]["code"], "WRONG_INPUT_FORMAT")
+                self.assertEqual(envelope["issues"][0]["code"], "FILE_DAMAGED")
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ from openpyxl import Workbook
 from python_calamine import CalamineWorkbook
 
 from convert.convert_definitions import CONVERSION_APPROXIMATED
-from sheet.formula_cache import cache_formula_values
+from sheet.formulas.cache import cache_formula_values
 from core.office_result import Issue
 from core.excel_limits import fitting_sheet_name
 

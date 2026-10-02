@@ -5,16 +5,16 @@ import pathlib
 
 from deck.deck_definitions import NO_SLIDE_SECTIONS
 from deck.deck_kit import strip_deck_kit
-from core.office_result import OfficeArgumentParser, OfficeFailure, Result, run_command
-from core.office_outputs import output_file
+from core.office_arguments import route_arguments
+from core.office_result import OfficeFailure, Result, run_command
 from deck.resource_inlining import restore_authored_source
 from deck.slide_viewer import strip_screen_slide_viewer
 
 
 def main() -> Result:
     arguments = parse_arguments()
-    delivered_path = pathlib.Path(arguments.delivered_path)
-    source_path = pathlib.Path(arguments.source_path)
+    delivered_path = pathlib.Path(arguments.input)
+    source_path = pathlib.Path(arguments.output)
     source_text = restore_authored_source(strip_deck_kit(strip_screen_slide_viewer(delivered_path.read_text(encoding="utf-8"))))
     if "<section" not in source_text.casefold():
         raise OfficeFailure(NO_SLIDE_SECTIONS.issue("delivered HTML contains no slide sections", str(delivered_path)))
@@ -24,10 +24,7 @@ def main() -> Result:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser()
-    parser.add_argument("delivered_path", help="the delivered deck .html")
-    parser.add_argument("source_path", type=output_file(".html"), help="where to write slides.html")
-    return parser.parse_args()
+    return route_arguments("convert")
 
 
 if __name__ == "__main__":

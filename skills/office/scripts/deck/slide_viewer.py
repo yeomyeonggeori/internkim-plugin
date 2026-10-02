@@ -4,9 +4,10 @@ import pathlib
 import re
 
 from deck.deck_kit import slide_size
+from core.skill_paths import ASSETS_PATH
 
 
-SCRIPT_PATH = pathlib.Path(__file__).resolve().parent
+VIEWER_PATH = ASSETS_PATH / "slide-viewer"
 SLIDE_VIEWER_MARKER = "data-internkim-slide-viewer"
 SLIDE_VIEWER_BLOCK_PATTERNS = (
     rf"\s*<style\b(?=[^>]*\b{SLIDE_VIEWER_MARKER}\b)[^>]*>.*?</style>\s*",
@@ -32,8 +33,8 @@ def inject_screen_slide_viewer(source_text: str) -> str:
 
 
 def slide_viewer_markup() -> str:
-    style = sized_template(SCRIPT_PATH / "slide-viewer.css")
-    script = sized_template(SCRIPT_PATH / "slide-viewer.js")
+    style = sized_template(VIEWER_PATH / "slide-viewer.css")
+    script = sized_template(VIEWER_PATH / "slide-viewer.js")
     return (
         f"<style {SLIDE_VIEWER_MARKER}>\n{style}</style>\n"
         f"<script {SLIDE_VIEWER_MARKER}>\n{script}</script>"

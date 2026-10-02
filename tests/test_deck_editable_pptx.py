@@ -18,7 +18,7 @@ SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scri
 OFFICE_ENTRY = SCRIPTS_PATH.parent / "office"
 sys.path.insert(0, str(SCRIPTS_PATH.parent))
 
-from deck.editable_pptx import read_text_layers, write_editable_pptx  # noqa: E402
+from deck.pptx_export.editable import read_text_layers, write_editable_pptx  # noqa: E402
 from png_fixture import read_png, write_png  # noqa: E402
 from deck.resource_inlining import PAPERLOGY  # noqa: E402
 from fonts.truetype import read_truetype_face, sfnt_data  # noqa: E402
@@ -292,7 +292,7 @@ class RenderedEditablePptxTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             deck_path = Path(directory)
             (deck_path / "slides.html").write_text(DECK_SOURCE, encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path)
             envelope = json.loads(completed.stdout)
             layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
             with zipfile.ZipFile(deck_path / "build" / f"{deck_path.name}.pptx") as archive:

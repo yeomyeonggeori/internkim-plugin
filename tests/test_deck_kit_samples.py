@@ -92,7 +92,7 @@ class SampleDeckBuildTest(unittest.TestCase):
                 deck_path = copy_sample_deck(sample_path, Path(directory))
                 count = slide_count(deck_path)
                 completed = subprocess.run(
-                    [sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "all", "--slide-count", str(count)],
+                    [sys.executable, str(OFFICE_ENTRY), "create", f"build/{deck_path.name}.pptx", "slides.html", "--slide-count", str(count)],
                     capture_output=True,
                     text=True,
                     cwd=deck_path,
@@ -111,9 +111,9 @@ class SampleDeckBuildTest(unittest.TestCase):
             deck_path = Path(directory) / "shares"
             deck_path.mkdir()
             (deck_path / "slides.html").write_text(PERCENT_DONUT_DECK, encoding="utf-8")
-            subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path)
+            subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path)
             pptx_path = deck_path / "build" / "shares.pptx"
-            read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "read", str(pptx_path)], capture_output=True, text=True).stdout)
+            read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "read", str(pptx_path)], capture_output=True, text=True).stdout)
             texts = [shape.get("text", "") for slide in read["details"]["slides"] for shape in slide["shapes"]]
             self.assertEqual(texts.count("31%"), 1, texts)
             self.assert_pptx_keeps_the_layout(pptx_path)
@@ -124,7 +124,7 @@ class SampleDeckBuildTest(unittest.TestCase):
             deck_path = Path(directory) / "brand"
             deck_path.mkdir()
             (deck_path / "slides.html").write_text(BRAND_TOKEN_DECK, encoding="utf-8")
-            subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path)
+            subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path)
             layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
         chart = layout["slides"][1]["charts"][0]
         self.assertEqual(chart["colors"]["series"], ["rgb(228, 0, 43)"])
@@ -136,7 +136,7 @@ class SampleDeckBuildTest(unittest.TestCase):
             deck_path = Path(directory) / "particle"
             deck_path.mkdir()
             (deck_path / "slides.html").write_text(PARTICLE_TITLE_DECK, encoding="utf-8")
-            subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path)
+            subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path)
             layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
         lines = [line for block in layout["slides"][1]["blocks"] for paragraph in block["paragraphs"] for line in paragraph["lines"]]
         self.assertEqual(len(lines), 2, lines)
@@ -145,9 +145,9 @@ class SampleDeckBuildTest(unittest.TestCase):
         self.assertLess(max(widths) / min(widths), 1.5, lines)
 
     def assert_pptx_keeps_the_layout(self, pptx_path: Path):
-        check = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "check", str(pptx_path)], capture_output=True, text=True).stdout)
+        check = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "check", str(pptx_path)], capture_output=True, text=True).stdout)
         self.assertEqual([issue["message"] for issue in check["issues"]], [])
-        read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "read", str(pptx_path)], capture_output=True, text=True).stdout)
+        read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "read", str(pptx_path)], capture_output=True, text=True).stdout)
         texts = [shape.get("text", "") for slide in read["details"]["slides"] for shape in slide["shapes"]]
         for amount in legend_amounts(pptx_path.parent.parent):
             self.assertIn(amount, texts)

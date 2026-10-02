@@ -47,7 +47,7 @@ class PaperworkRenderTest(unittest.TestCase):
 
     def render(self, sections: list[dict]) -> list[str]:
         write_json(self.directory / "quote.json", quote(self.directory, sections))
-        envelope = run_office(["paperwork", "render", "quote.json", "quote.pdf"], self.directory)
+        envelope = run_office(["merge", "kr/quote", "quote.json", "quote.pdf"], self.directory)
         self.assertEqual(envelope["status"], "ok", envelope["issues"])
         completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", PAGE_TEXTS, "quote.pdf"], cwd=self.directory, capture_output=True, text=True, check=True)
         return json.loads(completed.stdout)
@@ -61,6 +61,37 @@ class PaperworkRenderTest(unittest.TestCase):
         drawn = (self.directory / "quote.pdf").read_bytes()
         self.assertGreaterEqual(len(re.findall(rb"/Subtype\s*/Image", drawn)), 2)
         self.assertIn(b"/SMask", drawn)
+
+    def test_an_international_form_prints_its_fixed_labels_in_english(self):
+        values = quote(self.directory, [{"title": "Notes", "bullets": ["Installation included"]}])
+        values.update({
+            "form": "intl/quote",
+            "title": "Quotation",
+            "profile": {"name": "Sample Electronics", "registrationNumber": "123-45-67890", "representative": "Alex Sample", "stampPath": str(self.directory / "seal.png")},
+            "approvalLine": ["Prepared", "Approved"],
+            "recipient": {"lines": ["Example Trading Co."]},
+            "meta": [{"label": "Total", "value": "USD 4,400"}],
+            "items": {"headers": ["Item", "Qty", "Amount"], "rows": [["Office chair", "10", "4,000"]], "totals": [{"label": "Total", "value": "4,400"}]},
+            "signature": {"date": "October 2, 2026", "line": "Sample Electronics CEO Alex Sample", "stamp": True},
+            "footer": "Valid for 30 days.",
+        })
+        write_json(self.directory / "quote.json", values)
+        envelope = run_office(["merge", "intl/quote", "quote.json", "quote.pdf"], self.directory)
+        self.assertEqual(envelope["status"], "ok", envelope["issues"])
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", PAGE_TEXTS, "quote.pdf"], cwd=self.directory, capture_output=True, text=True, check=True)
+        text = "".join(json.loads(completed.stdout))
+        self.assertEqual(re.findall(r"[\uac00-\ud7a3]+", text), [])
+        for expected in ("No. Q-20261002-001", "Registration No. 123-45-67890", "Representative Alex Sample", "To"):
+            self.assertIn(expected, text)
+
+    def test_a_form_names_hangul_only_where_its_content_holds_it(self):
+        values = quote(self.directory, [])
+        values.update({"profile": {"name": "Sample Electronics"}, "recipient": {"lines": ["주식회사 견본물산"]}, "meta": [], "signature": {"line": "Alex Sample"}, "footer": "", "title": "Quotation", "approvalLine": []})
+        values.pop("items")
+        write_json(self.directory / "quote.json", values)
+        self.assertEqual(run_office(["merge", "intl/quote", "quote.json", "quote.pdf"], self.directory)["status"], "ok")
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", PAGE_TEXTS, "quote.pdf"], cwd=self.directory, capture_output=True, text=True, check=True)
+        self.assertEqual(re.findall(r"[\uac00-\ud7a3]+", "".join(json.loads(completed.stdout))), ["주식회사", "견본물산"])
 
     def test_a_form_that_runs_past_a_page_numbers_every_page(self):
         long_sections = [{"title": f"제{number}조", "paragraphs": ["여러 쪽에 걸친 문서의 쪽 번호를 확인하는 문단입니다. " * 6]} for number in range(1, 16)]

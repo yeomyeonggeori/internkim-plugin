@@ -3,13 +3,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from doc.docx_layout import Layout
-from doc.docx_pagination import Paginator, displayed_page_numbers
-from doc.docx_preview import DocxModelBuilder
-from doc.docx_preview_html import PageWriter
+from doc.preview.layout import Layout
+from doc.preview.pagination import Paginator, displayed_page_numbers
+from doc.preview.document import DocxModelBuilder
+from doc.preview.html import PageWriter
 from render.office_preview import Preview, approximation_issues, blank_page_issues, draw_pages, write_preview
-from core.office_inputs import office_file
-from core.office_result import OfficeArgumentParser, Result, run_command
+from core.office_outputs import preview_directory
+from core.office_arguments import route_arguments
+from core.office_result import Result, run_command
 from fonts.preview import FontRegistry
 
 
@@ -27,10 +28,10 @@ def docx_preview(source_path: Path) -> tuple[Preview, list[dict]]:
 
 def main() -> Result:
     arguments = parse_arguments()
-    source_path = Path(arguments.source_path).expanduser()
+    source_path = Path(arguments.file).expanduser()
     if not source_path.is_file():
         raise FileNotFoundError(2, "no such file", str(source_path))
-    output_directory = Path(arguments.output_directory).expanduser() if arguments.output_directory else source_path.with_name(f"{source_path.stem}-preview")
+    output_directory = preview_directory(source_path, arguments.output_directory)
     preview, preview_fonts = docx_preview(source_path)
     preview_path = write_preview(preview, output_directory)
     drawn, drawing_issues = draw_pages(preview_path, preview_fonts, output_directory / f"{source_path.stem}.pdf")
@@ -40,10 +41,7 @@ def main() -> Result:
 
 
 def parse_arguments():
-    parser = OfficeArgumentParser()
-    parser.add_argument("source_path", type=office_file("docx"), help="the .docx to lay out")
-    parser.add_argument("--output-directory", help="where preview.html, the page images and the PDF go; default <name>-preview beside the file")
-    return parser.parse_args()
+    return route_arguments("render", "docx")
 
 
 if __name__ == "__main__":

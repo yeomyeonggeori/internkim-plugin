@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from deck.deck_kit import kit_length, kit_number, slide_size
+from powerpoint.definitions import BACKGROUND_SHARE_OF_SLIDE, DISTORTION_TOLERANCE, OVERLAP_RATIO
 
 
 PIXEL_TOLERANCE = 4
-OVERLAP_RATIO = 0.12
-DISTORTION_TOLERANCE = 0.05
 TEXT_PREVIEW_LENGTH = 40
 SMALLEST_TEXT_SHARE_OF_WIDTH = kit_length("size-floor") / slide_size()[0]
 VERTICAL_DEAD_ZONE_HEIGHT_RATIO = 0.27
@@ -15,7 +14,6 @@ LABEL_LINE_MAXIMUM = 2
 REPEATED_FIGURE_MINIMUM = 3
 MARK_BREADTH_MINIMUM = 0.45
 ROUND_SLOT_MINIMUM = 0.85
-BACKGROUND_SHARE_OF_SLIDE = 0.7
 
 
 def renderer_thresholds() -> dict[str, float]:

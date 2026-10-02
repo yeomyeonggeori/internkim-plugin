@@ -71,7 +71,7 @@ figure { margin: 0; width: 1200px; }
 def build(deck_path: Path, source: str) -> dict:
     deck_path.mkdir()
     (deck_path / "slides.html").write_text(source, encoding="utf-8")
-    completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path)
+    completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path)
     return json.loads(completed.stdout)
 
 

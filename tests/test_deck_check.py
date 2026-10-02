@@ -216,7 +216,7 @@ class DeckCheckCommandTest(unittest.TestCase):
     def test_the_command_prints_the_envelope_and_exits_one_on_errors(self):
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / "slides.html").write_text(kit_deck(COVER, '<section data-layout="hero"><h2>제목</h2></section>'), encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "check", "--slide-count", "2"], capture_output=True, text=True, cwd=directory)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "check", "slides.html", "--slide-count", "2"], capture_output=True, text=True, cwd=directory)
         envelope = json.loads(completed.stdout)
         self.assertEqual(completed.returncode, 1)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["LAYOUT_UNKNOWN"])

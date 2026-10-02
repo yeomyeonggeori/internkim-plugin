@@ -5,76 +5,49 @@ import os
 import pathlib
 import sys
 
-from core.office_commands import COMMANDS, FORMATS, Command, find_command, find_format
-from office_guide import formats_text, guide_text, guide_verbs
+from core.office_commands import TOOLS, VERBS, find_verb
+from core.office_help import usage_text, verb_help_text
 from core.office_result import DEPENDENCIES_UNAVAILABLE, UNKNOWN_COMMAND, OfficeFailure, failure_result, print_result, run_command
+from core.office_routing import Call, positional_arguments, resolve_call
 from core.office_schema import closest_name
-from core.office_setup import SETUP_SUMMARY, setup_result
+from office_setup import setup_result
+from core.retired_commands import RETIRED_FORMATS, find_retired, replacement_command
+from office_guide import guide_for
 from skill_runtime import ensure_requirements, environment_path
 
 
 SCRIPTS_PATH = pathlib.Path(__file__).resolve().parent
-PYTHON_COMMAND_SUMMARY = "run a task-local Python script with the office packages"
-GUIDE_COMMAND_SUMMARY = "print a format's commands, input fields and issue codes"
+HELP_WORDS = {"-h", "--help", "help"}
 MODULE_LAUNCHER = "import runpy, sys; sys.path[0] = sys.argv.pop(1); runpy.run_module(sys.argv.pop(1), run_name='__main__', alter_sys=True)"
 
 
 def main(arguments: list[str]) -> int:
-    if not arguments or arguments[0] in {"-h", "--help", "help"}:
-        print(usage())
+    if not arguments or arguments[0] in HELP_WORDS:
+        print(usage_text())
         return 0
     if arguments[0] == "guide":
-        return print_guide(arguments[1:])
+        return run_text_command(lambda: guide_for(arguments[1:]))
     if arguments[0] == "python":
         return run_python(arguments[1:])
     if arguments[0] == "setup":
         return run_command(lambda: setup_result(arguments[1:]))
-    command = find_command(arguments)
-    if command is None:
-        return run_command(lambda: reject_unknown_command(arguments[:2]))
-    return run_office_command(command, arguments[len(command.words):])
-
-
-def usage() -> str:
-    width = max(len(command.name) for command in COMMANDS)
-    lines = [
-        "usage: office <format> <verb> [arguments]",
-        "       office convert <input> <output>",
-        "       office guide <format> [verb [operation]]",
-        "       office python <script.py> [arguments]",
-        "       office setup [--with-ocr]",
-        "",
-    ]
-    lines.extend(f"  {command.name.ljust(width)}  {command.summary}" for command in COMMANDS)
-    lines.append(f"  {'guide'.ljust(width)}  {GUIDE_COMMAND_SUMMARY}")
-    lines.append(f"  {'python'.ljust(width)}  {PYTHON_COMMAND_SUMMARY}")
-    lines.append(f"  {'setup'.ljust(width)}  {SETUP_SUMMARY}")
-    lines.extend(["", "Each command's own --help lists its arguments."])
-    return "\n".join(lines)
-
-
-def print_guide(arguments: list[str]) -> int:
-    if not arguments or arguments[0] in {"-h", "--help", "help"}:
-        print(formats_text())
+    verb = find_verb(arguments[0])
+    if verb is None:
+        return run_command(lambda: reject_unknown_command(arguments))
+    if HELP_WORDS & set(arguments[1:]) and not positional_arguments(arguments[1:]):
+        print(verb_help_text(verb))
         return 0
-    return run_text_command(lambda: guide_for(arguments))
+    return run_routed(verb, arguments[1:])
 
 
-def guide_for(arguments: list[str]) -> str:
-    office_format = find_format(arguments[0])
-    if office_format is None:
-        reject_unknown_topic(arguments[0], [office_format.name for office_format in FORMATS], "office guide")
-    verb = arguments[1] if len(arguments) > 1 else None
-    if verb is not None and verb not in guide_verbs(office_format):
-        reject_unknown_topic(verb, guide_verbs(office_format), f"office guide {office_format.name}")
-    operation = arguments[2] if len(arguments) > 2 else None
-    return guide_text(office_format, verb, operation)
-
-
-def reject_unknown_topic(written: str, names: list[str], prefix: str):
-    match = closest_name(written, names)
-    suggestion = f"{prefix} {match}" if match else f"one of: {', '.join(names)}"
-    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"{prefix}: no topic {written!r}", written, suggestion))
+def run_routed(verb, arguments: list[str]) -> int:
+    try:
+        call = resolve_call(verb, arguments)
+    except OfficeFailure as failure:
+        return print_result(failure_result(failure.issues))
+    if call.needs_packages and not ensure_requirements(SCRIPTS_PATH):
+        return run_command(reject_unprepared_environment)
+    os.execve(sys.executable, [sys.executable, "-c", MODULE_LAUNCHER, str(SCRIPTS_PATH), call.module, *arguments], script_environment(call))
 
 
 def run_text_command(command) -> int:
@@ -86,33 +59,16 @@ def run_text_command(command) -> int:
     return 0
 
 
-def reject_unknown_command(words: list[str]):
-    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"office: unknown command {' '.join(words)!r}", " ".join(words), suggestion=unknown_command_suggestion(words)))
-
-
-def unknown_command_suggestion(words: list[str]) -> str | None:
-    format_name = words[0] if find_format(words[0]) else closest_name(words[0], [office_format.name for office_format in FORMATS])
-    if format_name is None:
-        return None
-    meant = closest_command(format_name, words[1:2])
-    if meant is not None:
-        return f"did you mean office {meant.name}? rerun with that command"
-    return format_commands_suggestion(format_name)
-
-
-def closest_command(format_name: str, verb_words: list[str]) -> Command | None:
-    commands = [command for command in COMMANDS if command.format_name == format_name]
-    if len(commands) == 1 and not commands[0].verb:
-        return commands[0]
-    if not verb_words:
-        return None
-    verb = verb_words[0] if any(command.verb == verb_words[0] for command in commands) else closest_name(verb_words[0], [command.verb for command in commands])
-    return next((command for command in commands if command.verb == verb), None)
-
-
-def format_commands_suggestion(format_name: str) -> str | None:
-    commands = [command.name for command in COMMANDS if command.format_name == format_name]
-    return f"run one of {', '.join(commands)}" if commands else None
+def reject_unknown_command(arguments: list[str]):
+    retired = find_retired(arguments)
+    if retired is not None:
+        replacement = replacement_command(retired, arguments[2:])
+        raise OfficeFailure(UNKNOWN_COMMAND.issue(f"office {retired.name} is now office {replacement.split()[1]}", retired.name, replacement))
+    names = [verb.name for verb in VERBS] + [tool.name for tool in TOOLS]
+    meant = None if arguments[0] in RETIRED_FORMATS else closest_name(arguments[0], names)
+    suggestion = f"office {meant}" if meant else f"one of: {', '.join(names)}"
+    written = " ".join(arguments[:2]) if arguments[0] in RETIRED_FORMATS else arguments[0]
+    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"office: unknown command {written!r}", arguments[0], suggestion))
 
 
 def reject_unprepared_environment():
@@ -128,18 +84,13 @@ def run_python(arguments: list[str]) -> int:
     os.execve(sys.executable, [sys.executable, *arguments], script_environment(None))
 
 
-def run_office_command(command: Command, arguments: list[str]) -> int:
-    if command.needs_packages and not ensure_requirements(SCRIPTS_PATH):
-        return run_command(reject_unprepared_environment)
-    os.execve(sys.executable, [sys.executable, "-c", MODULE_LAUNCHER, str(SCRIPTS_PATH), command.module, *arguments], script_environment(command))
-
-
-def script_environment(command: Command | None) -> dict[str, str]:
+def script_environment(call: Call | None) -> dict[str, str]:
     environment = os.environ.copy()
     python_paths = [str(SCRIPTS_PATH), environment.get("PYTHONPATH", "")]
     environment["PYTHONPATH"] = os.pathsep.join(path for path in python_paths if path)
-    if command is not None:
-        environment["OFFICE_COMMAND"] = f"office {command.name}"
+    if call is not None:
+        environment["OFFICE_COMMAND"] = f"office {call.verb.name}"
+        environment["OFFICE_ROUTE"] = call.route.name
     return environment
 
 

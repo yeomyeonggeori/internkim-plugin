@@ -10,7 +10,6 @@ from skill_runtime import PreparationFailed, environment_path, is_prepared, prep
 OCR_PATH = Path(__file__).resolve().parent
 HELPER_PATH = OCR_PATH / "ocr_lines.py"
 ENGINE_READY_MARKER = "engine-models.ready"
-OCR_DOWNLOAD_SIZE = "about 150 MB"
 
 
 def ocr_environment() -> Path:

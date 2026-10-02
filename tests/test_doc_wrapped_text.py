@@ -52,7 +52,7 @@ class WrappedRunTextTest(unittest.TestCase):
         ])
 
     def test_validate_finds_required_text_inside_insertions(self):
-        envelope = run_office(["doc", "validate", "wrapped.docx", "--required-text", "삽입된", "--required-text", "셀 삽입", "--forbidden-text", "삭제된"], self.directory)
+        envelope = run_office(["check", "wrapped.docx", "--required-text", "삽입된", "--required-text", "셀 삽입", "--forbidden-text", "삭제된"], self.directory)
         codes = [issue["code"] for issue in envelope["issues"]]
         self.assertNotIn("REQUIRED_TEXT_MISSING", codes)
         self.assertNotIn("FORBIDDEN_TEXT_PRESENT", codes)
@@ -62,7 +62,7 @@ class WrappedRunTextTest(unittest.TestCase):
             {"op": "replace_text", "find": "삽입된", "replace": "고친"},
             {"op": "replace_text", "find": "최견본", "replace": "박예시"},
         ])
-        envelope = run_office(["doc", "apply", "wrapped.docx", "ops.json"], self.directory)
+        envelope = run_office(["apply", "wrapped.docx", "ops.json"], self.directory)
         self.assertEqual(envelope["status"], "ok")
         texts = block_texts(self.directory, "wrapped.docx")
         self.assertEqual(texts[0], ("paragraph", "갑은 고친 문구"))

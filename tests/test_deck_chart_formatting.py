@@ -10,8 +10,8 @@ sys.path.insert(0, str(SCRIPTS_PATH))
 
 from charts.look import ChartLook  # noqa: E402
 from charts.svg import ChartModel, ChartSeries, chart_svg  # noqa: E402
-from deck.pptx_chart_look import chart_model  # noqa: E402
-from deck.pptx_description import chart_details  # noqa: E402
+from powerpoint.preview.chart_look import chart_model  # noqa: E402
+from powerpoint.description import chart_details  # noqa: E402
 
 
 C = "{http://schemas.openxmlformats.org/drawingml/2006/chart}"

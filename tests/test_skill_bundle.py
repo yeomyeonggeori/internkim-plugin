@@ -23,7 +23,7 @@ MARKETPLACE_PATHS = (
 
 sys.path.insert(0, str(OFFICE_SCRIPTS_PATH))
 
-from core.office_commands import COMMANDS, FORMATS  # noqa: E402
+from core.office_commands import CONVERSIONS, ROUTES, VERBS  # noqa: E402
 
 
 def file_digest(path):
@@ -34,12 +34,10 @@ def skill_files():
     return bundled_files(SKILLS_PATH)
 
 
-def office_command_table():
-    return COMMANDS
-
-
-def office_format_names():
-    return {office_format.name for office_format in FORMATS}
+def package_free_names():
+    routes = {route.name for route in ROUTES if not route.needs_packages}
+    conversions = {f"convert {conversion.source} to {conversion.target}" for conversion in CONVERSIONS if not conversion.needs_packages}
+    return routes | conversions
 
 
 def module_path(module: str) -> Path:
@@ -56,37 +54,29 @@ class SharedSkillRuntimeTest(unittest.TestCase):
 
 
 class OfficeEntryTest(unittest.TestCase):
-    def test_every_command_runs_a_bundled_module(self):
-        missing_modules = [command.module for command in office_command_table() if not module_path(command.module).is_file()]
-        self.assertEqual(missing_modules, [])
+    def test_every_route_runs_a_bundled_module(self):
+        modules = {route.module for route in ROUTES} | {conversion.module for conversion in CONVERSIONS}
+        self.assertEqual(sorted(module for module in modules if not module_path(module).is_file()), [])
 
-    def test_help_lists_every_command(self):
+    def test_help_lists_every_verb(self):
         help_text = subprocess.run([sys.executable, str(OFFICE_SCRIPTS_PATH / "office"), "--help"], capture_output=True, text=True, check=True).stdout
-        unlisted_commands = [command.name for command in office_command_table() if command.name not in help_text]
-        self.assertEqual(unlisted_commands, [])
+        self.assertEqual([verb.name for verb in VERBS if f"\n{verb.name} <" not in help_text], [])
 
-    def test_every_referenced_command_exists(self):
-        command_names = {command.name for command in office_command_table()} | {"python", "guide", "setup"}
-        command_names |= {f"guide {format_name}" for format_name in office_format_names()}
-        referenced_names = set()
-        for document_path in bundled_files(SKILLS_PATH / "office", "*.md"):
-            text = document_path.read_text(encoding="utf-8")
-            for words in re.findall(r"<skill>/scripts/office ([a-z]+)(?: ([a-z]+))?", text):
-                referenced_names.add(words[0] if words[0] == "python" or not words[1] else " ".join(words))
-        self.assertEqual(referenced_names - command_names, set())
-
-    def test_route_table_lists_every_command(self):
+    def test_every_verb_is_routed_or_documented_and_the_route_table_names_only_verbs(self):
         skill_text = (SKILLS_PATH / "office" / "SKILL.md").read_text(encoding="utf-8")
         route_table = skill_text.split("## Route the work")[1].split("\n## ")[0]
-        listed_names = set(re.findall(r"`([a-z]+(?: [a-z]+)?)`", route_table))
-        command_names = {command.name for command in office_command_table()}
-        self.assertEqual(command_names ^ listed_names, set())
+        listed = {command.removeprefix("office ").split()[0] for command in re.findall(r"`([a-z][^`]*)`", route_table) if not command.startswith("references/")}
+        verb_names = {verb.name for verb in VERBS} | {"guide"}
+        self.assertEqual(listed - verb_names, set())
+        documents = "\n".join(path.read_text(encoding="utf-8") for path in bundled_files(SKILLS_PATH / "office", "*.md"))
+        self.assertEqual([verb.name for verb in VERBS if f"office {verb.name}" not in documents and verb.name not in listed], [])
 
 
 DECK_SOURCE = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>예시</title></head><body data-theme="corporate">
 <section data-layout="cover"><h1>매출이 6% 늘었습니다</h1><p class="meta">이샘플</p></section>
 </body></html>"""
 QUOTE = {
+    "form": "kr/quote",
     "title": "견 적 서",
     "items": {
         "headers": ["품명", "수량", "단가", "공급가액"],
@@ -98,18 +88,18 @@ QUOTE = {
 
 def prepare_deck_restore(directory):
     (directory / "slides.html").write_text(DECK_SOURCE, encoding="utf-8")
-    subprocess.run([sys.executable, str(OFFICE_SCRIPTS_PATH / "office"), "deck", "build", "--format", "html", "--name", "deck"], capture_output=True, check=True, cwd=directory)
-    return ["deck", "restore", "build/deck.html", "restored.html"]
+    subprocess.run([sys.executable, str(OFFICE_SCRIPTS_PATH / "office"), "create", "build/deck.html", "slides.html"], capture_output=True, check=True, cwd=directory)
+    return ["convert", "build/deck.html", "restored.html"]
 
 
 def prepare_paperwork_check(directory):
     (directory / "quote.json").write_text(json.dumps(QUOTE, ensure_ascii=False), encoding="utf-8")
-    return ["paperwork", "check", "quote.json"]
+    return ["check", "quote.json"]
 
 
 PACKAGE_FREE_CASES = {
-    "deck restore": prepare_deck_restore,
-    "paperwork check": prepare_paperwork_check,
+    "convert html to html": prepare_deck_restore,
+    "check form": prepare_paperwork_check,
 }
 
 
@@ -120,7 +110,7 @@ def bare_interpreter(directory):
 
 class PackageFreeCommandTest(unittest.TestCase):
     def test_every_command_declared_package_free_has_a_case(self):
-        self.assertEqual(set(PACKAGE_FREE_CASES), {command.name for command in office_command_table() if not command.needs_packages})
+        self.assertEqual(set(PACKAGE_FREE_CASES), package_free_names())
 
     def test_each_package_free_command_runs_on_an_interpreter_without_the_skill_packages(self):
         with tempfile.TemporaryDirectory() as directory:

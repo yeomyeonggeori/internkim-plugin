@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Callable
 
-from paperwork.amounts import korean_number_words, parse_amount, truncate_to_won
+from paperwork.amounts import korean_number_words, parse_amount
+from paperwork.jurisdictions import find_jurisdiction
 from paperwork.template_fields import template_fields
 
 
@@ -23,7 +24,7 @@ DEFAULT_VALUES = {
 
 def derive_korean_total(context: dict) -> str | None:
     amount = parse_amount(context.get("totalAmount", ""))
-    return None if amount is None else korean_number_words(truncate_to_won(amount))
+    return None if amount is None else korean_number_words(int(find_jurisdiction("kr").money.rounded(amount)))
 
 
 LIST_FIELDS = {

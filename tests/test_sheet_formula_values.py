@@ -44,8 +44,7 @@ class FormulaValueTest(WorkbookFixture):
 
     def test_appended_rows_recompute_the_totals_that_were_already_there(self):
         self.create_pricing()
-        write_json(self.directory / "rows.json", [["Daegu", 5, 1, "=B5*C5"]])
-        envelope = run_office(["sheet", "edit", "book.xlsx", "--rows", "rows.json"], self.directory)
+        envelope = self.apply([{"op": "append_rows", "rows": [["Daegu", 5, 1, "=B5*C5"]]}])
         self.assertEqual(envelope["status"], "ok", envelope)
         cells = self.cells()
         self.assertEqual((cells["D5"]["formula"], cells["D5"]["value"]), ("B5*C5", "5"))

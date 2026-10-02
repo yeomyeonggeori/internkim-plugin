@@ -33,9 +33,9 @@ class ScannedStatementTest(unittest.TestCase):
         cls.temporary_directory.cleanup()
 
     def test_without_ocr_the_scan_is_named_with_the_rerun_that_reads_it(self):
-        envelope = run_office(["pdf", "read", "scanned-statement.pdf"], self.directory)
+        envelope = run_office(["read", "scanned-statement.pdf"], self.directory)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["PAGE_WITHOUT_TEXT"])
-        self.assertIn("office pdf read scanned-statement.pdf --ocr", envelope["issues"][0]["suggestion"])
+        self.assertIn("office read scanned-statement.pdf --ocr", envelope["issues"][0]["suggestion"])
         converted = run_office(["convert", "scanned-statement.pdf", "scan.md"], self.directory)
         self.assertIn("office convert scanned-statement.pdf scan.md --ocr", converted["issues"][0]["suggestion"])
         slides = run_office(["convert", "scanned-statement.pdf", "scan.pptx"], self.directory)
@@ -43,7 +43,7 @@ class ScannedStatementTest(unittest.TestCase):
 
     @unittest.skipUnless(ocr_python(), OCR_NOT_PREPARED)
     def test_read_with_ocr_gives_the_page_text_and_its_table(self):
-        envelope = run_office(["pdf", "read", "scanned-statement.pdf", "--ocr"], self.directory)
+        envelope = run_office(["read", "scanned-statement.pdf", "--ocr"], self.directory)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["PAGE_READ_BY_OCR"])
         page = envelope["details"]["pages"][0]
         self.assertTrue(page["readByOcr"])
@@ -65,16 +65,16 @@ class ScannedStatementTest(unittest.TestCase):
         envelope = run_office(["convert", "scanned-statement.pdf", "scan.pptx", "--ocr"], self.directory)
         self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("INVALID_VALUE", "--ocr")])
 
-    def test_an_engine_that_is_not_prepared_is_named_with_its_setup_and_the_page_still_answers(self):
+    def test_an_engine_that_is_not_prepared_is_a_setup_not_run(self):
         with tempfile.TemporaryDirectory() as root:
             office_entry = copy_skill(Path(root) / "office", ("python environment",))
             environment = {**os.environ, "PATH": str(Path(sys.executable).parent)}
-            completed = subprocess.run([sys.executable, str(office_entry), "pdf", "read", "scanned-statement.pdf", "--ocr"], capture_output=True, text=True, cwd=self.directory, env=environment)
+            completed = subprocess.run([sys.executable, str(office_entry), "read", "scanned-statement.pdf", "--ocr"], capture_output=True, text=True, cwd=self.directory, env=environment)
         self.assertNotIn("Traceback", completed.stderr)
         envelope = json.loads(completed.stdout)
-        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["OCR_UNAVAILABLE", "PAGE_WITHOUT_TEXT"])
-        self.assertIn("office setup --with-ocr", envelope["issues"][0]["message"])
-        self.assertNotIn("--ocr", envelope["issues"][1]["suggestion"])
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["DEPENDENCIES_UNAVAILABLE"])
+        self.assertIn("office setup", envelope["issues"][0]["suggestion"])
+        self.assertEqual(completed.returncode, 1)
 
 
 if __name__ == "__main__":

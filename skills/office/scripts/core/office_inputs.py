@@ -32,36 +32,35 @@ ZIP_SIGNATURE = b"PK\x03\x04"
 class InputKind:
     name: str
     description: str
-    reader: str
     main_content_types: frozenset[str] = frozenset()
 
 
-DOCX = InputKind("docx", "a Word document", "doc read", frozenset({
+DOCX = InputKind("docx", "a Word document", frozenset({
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml",
     "application/vnd.ms-word.document.macroEnabled.main+xml",
     "application/vnd.ms-word.template.macroEnabledTemplate.main+xml",
 }))
-XLSX = InputKind("xlsx", "an Excel workbook", "sheet read", frozenset({
+XLSX = InputKind("xlsx", "an Excel workbook", frozenset({
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.template.main+xml",
     "application/vnd.ms-excel.sheet.macroEnabled.main+xml",
     "application/vnd.ms-excel.template.macroEnabled.main+xml",
 }))
-PPTX = InputKind("pptx", "a PowerPoint deck", "deck read", frozenset({
+PPTX = InputKind("pptx", "a PowerPoint deck", frozenset({
     "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml",
     "application/vnd.openxmlformats-officedocument.presentationml.slideshow.main+xml",
     "application/vnd.openxmlformats-officedocument.presentationml.template.main+xml",
     "application/vnd.ms-powerpoint.presentation.macroEnabled.main+xml",
 }))
-PDF = InputKind("pdf", "a PDF", "pdf read")
-LEGACY_OFFICE = InputKind("legacy", "a pre-2007 Office file (.doc, .xls or .ppt)", "office convert")
-XLSB = InputKind("xlsb", "a binary Excel workbook (.xlsb)", "office convert", frozenset({
+PDF = InputKind("pdf", "a PDF")
+LEGACY_OFFICE = InputKind("legacy", "a pre-2007 Office file (.doc, .xls or .ppt)")
+XLSB = InputKind("xlsb", "a binary Excel workbook (.xlsb)", frozenset({
     "application/vnd.ms-excel.sheet.binary.macroEnabled.main",
 }))
-OTHER_PACKAGE = InputKind("package", "a zip package that is not a Word, Excel or PowerPoint file", "")
-DAMAGED_PACKAGE = InputKind("damaged-package", "a zip package cut short or damaged", "")
-OTHER = InputKind("other", "not in any Office or PDF format", "")
+OTHER_PACKAGE = InputKind("package", "a zip package that is not a Word, Excel or PowerPoint file")
+DAMAGED_PACKAGE = InputKind("damaged-package", "a zip package cut short or damaged")
+OTHER = InputKind("other", "not in any Office or PDF format")
 OPEN_XML_KINDS = (DOCX, XLSX, PPTX, XLSB)
 MACRO_ENABLED_CONTENT_TYPES = frozenset(content_type for kind in OPEN_XML_KINDS for content_type in kind.main_content_types if "macroEnabled" in content_type)
 KINDS_BY_NAME = {kind.name: kind for kind in (DOCX, XLSX, PPTX, PDF)}
@@ -75,10 +74,6 @@ def office_file(kind_name: str) -> Callable[[str], str]:
         return path
 
     return checked_path
-
-
-def add_password_argument(parser) -> None:
-    parser.add_argument("--password", help="the password that opens the PDF, when it has one")
 
 
 def require_kind(path: str, expected: InputKind) -> None:
@@ -183,8 +178,8 @@ def redirect_suggestion(path: str, actual: InputKind) -> str:
         return f"convert it first: office convert {path} <name>.docx, .xlsx or .pptx"
     if actual == XLSB:
         return f"convert it first: office convert {path} <name>.xlsx"
-    if actual.reader:
-        return f"read it with office {actual.reader} {path}"
+    if actual in KINDS_BY_NAME.values():
+        return f"read it with office read {path}"
     return "check that the path names the file the user meant"
 
 

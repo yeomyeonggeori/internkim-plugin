@@ -10,7 +10,7 @@ from doc_fixture import ContractFixture, run_office, write_json
 class DecorationFixture(ContractFixture):
     def apply(self, operations, *flags):
         write_json(self.directory / "ops.json", operations)
-        return run_office(["doc", "apply", "contract.docx", "ops.json", *flags], self.directory)
+        return run_office(["apply", "contract.docx", "ops.json", *flags], self.directory)
 
     def document(self):
         return Document(str(self.directory / "contract.docx"))

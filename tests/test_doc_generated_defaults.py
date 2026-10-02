@@ -31,13 +31,13 @@ class GeneratedDocumentTest(unittest.TestCase):
 
     def created(self, blocks=None, **specification):
         write_json(self.directory / "spec.json", {"title": "제목", "blocks": blocks or [{"type": "paragraph", "text": "본문"}], **specification})
-        envelope = run_office(["doc", "create", "created.docx", "--spec", "spec.json"], self.directory)
+        envelope = run_office(["create", "created.docx", "spec.json"], self.directory)
         self.assertEqual(envelope["status"], "ok", envelope)
         return self.directory / "created.docx"
 
     def exported(self, markdown):
         (self.directory / "source.md").write_text(markdown, encoding="utf-8")
-        envelope = run_office(["doc", "export", "source.md", "--output", "exported.docx"], self.directory)
+        envelope = run_office(["create", "exported.docx", "source.md"], self.directory)
         self.assertNotEqual(envelope["status"], "error", envelope)
         return self.directory / "exported.docx"
 
@@ -169,7 +169,7 @@ class ImageTest(GeneratedDocumentTest):
 
 class KoreanLanguageCheckTest(GeneratedDocumentTest):
     def codes(self, path):
-        return [issue["code"] for issue in run_office(["doc", "check", path.name], self.directory)["issues"]]
+        return [issue["code"] for issue in run_office(["check", path.name], self.directory)["issues"]]
 
     def test_a_generated_document_passes(self):
         self.assertNotIn("EAST_ASIA_LANGUAGE_NOT_KOREAN", self.codes(self.created()))
@@ -188,10 +188,10 @@ class KoreanLanguageCheckTest(GeneratedDocumentTest):
             run.get_or_add_rPr().append(language)
             document.save("created.docx")
         """, self.directory)
-        envelope = run_office(["doc", "check", path.name], self.directory)
+        envelope = run_office(["check", path.name], self.directory)
         issue = next(issue for issue in envelope["issues"] if issue["code"] == "EAST_ASIA_LANGUAGE_NOT_KOREAN")
         write_json(self.directory / "fix.json", issue["fix"])
-        self.assertEqual(run_office(["doc", "apply", path.name, "fix.json"], self.directory)["status"], "ok")
+        self.assertEqual(run_office(["apply", path.name, "fix.json"], self.directory)["status"], "ok")
         self.assertNotIn("EAST_ASIA_LANGUAGE_NOT_KOREAN", self.codes(path))
         self.assertNotIn("ja-JP", package_part(path, "word/document.xml"))
 

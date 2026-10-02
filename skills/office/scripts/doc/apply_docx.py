@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from doc.docx_tracking import DEFAULT_TRACKING_AUTHOR
-from doc.docx_editing import load_editing, save_editing
-from doc.docx_operations import DOCX_OPERATIONS
-from core.office_operations import apply_parser, run_apply
+from doc.operations.tracking import DEFAULT_TRACKING_AUTHOR
+from doc.operations.editing import load_editing, save_editing
+from doc.operations.operation_set import DOCX_OPERATIONS
+from core.office_arguments import route_arguments
+from core.office_operations import run_apply
 from core.office_result import Result, run_command
 
 
 def main() -> Result:
-    parser = apply_parser("docx")
-    parser.add_argument("--track", action="store_true", help="write text, paragraph, row and block edits as tracked changes others can accept or reject")
-    parser.add_argument("--author", default=DEFAULT_TRACKING_AUTHOR, help=f"author of tracked changes, default {DEFAULT_TRACKING_AUTHOR!r}")
-    arguments = parser.parse_args()
+    arguments = route_arguments("apply", "docx", author=DEFAULT_TRACKING_AUTHOR)
     tracking_author = (arguments.author.strip() or DEFAULT_TRACKING_AUTHOR) if arguments.track else None
     return run_apply(arguments, DOCX_OPERATIONS, lambda path: load_editing(path, tracking_author), save_editing)
 

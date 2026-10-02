@@ -14,7 +14,17 @@ PLACEHOLDER_LEFT = IssueKind("PLACEHOLDER_LEFT", ERROR, "template placeholder sy
 TEXT_CHECK_ISSUE_KINDS = (REQUIRED_TEXT_MISSING, FORBIDDEN_TEXT_PRESENT)
 
 
-def text_presence_issues(visible_text: str, required_text: list[str], forbidden_text: list[str]) -> list[Issue]:
-    missing = [REQUIRED_TEXT_MISSING.issue(f"required text is missing: {value}", location=value) for value in required_text if value not in visible_text]
-    present = [FORBIDDEN_TEXT_PRESENT.issue(f"forbidden text is present: {value}", location=value) for value in forbidden_text if value in visible_text]
+def text_presence_issues(visible_text: str, required_text: list[str] | tuple[str, ...], forbidden_text: list[str] | tuple[str, ...]) -> list[Issue]:
+    searched = comparable(visible_text)
+    missing = [REQUIRED_TEXT_MISSING.issue(f"required text is missing: {value}", location=value) for value in required_text if not appears(value, searched)]
+    present = [FORBIDDEN_TEXT_PRESENT.issue(f"forbidden text is present: {value}", location=value) for value in forbidden_text if appears(value, searched)]
     return missing + present
+
+
+def comparable(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip().casefold()
+
+
+def appears(value: str, searched: str) -> bool:
+    wanted = comparable(value)
+    return wanted in searched or wanted.replace(" ", "") in searched.replace(" ", "")

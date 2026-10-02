@@ -6,13 +6,13 @@ from pathlib import Path
 from docx.oxml.ns import qn
 from docx.text.paragraph import Paragraph as DocxParagraph
 
-from doc.docx_blocks import PARAGRAPH_TAG, TABLE_TAG, heading_level
-from doc.docx_package import open_document
-from doc.docx_text import live_runs, run_text, visible_text
+from doc.model.body import PARAGRAPH_TAG, TABLE_TAG, heading_level
+from doc.model.package import open_document
+from doc.model.text import live_runs, run_text, visible_text
 from fonts.registry import MONOSPACE, font_role
-from doc.docx_charts import RELATIONSHIP_NAMESPACE, chart_references, read_specification
-from doc.markdown_charts import Chart
-from doc.markdown_blocks import Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak
+from doc.model.charts import RELATIONSHIP_NAMESPACE, chart_references, read_specification
+from doc.blocks.charts import Chart
+from doc.blocks.markdown import Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak
 
 
 MARKDOWN_HEADING_LEVELS = 4

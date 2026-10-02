@@ -8,9 +8,9 @@ import re
 from fonts.registry import DECK, BundledFace, default_family
 from render.office_preview import data_uri
 from core.image_formats import WEB_IMAGE_TYPES
+from core.skill_paths import ASSETS_PATH
 
 
-SKILL_ASSET_PATH = pathlib.Path(__file__).resolve().parents[2] / "assets"
 SKILL_ASSET_MARKER = "office/assets/"
 PAPERLOGY = default_family(DECK)
 PAPERLOGY_FAMILY = PAPERLOGY.name
@@ -141,7 +141,7 @@ def resolve_skill_asset_path(resource_path: pathlib.Path) -> pathlib.Path | None
     if SKILL_ASSET_MARKER not in path_text:
         return None
     asset_relative_text = path_text.split(SKILL_ASSET_MARKER, 1)[1].lstrip("/")
-    asset_path = SKILL_ASSET_PATH / asset_relative_text
+    asset_path = ASSETS_PATH / asset_relative_text
     return asset_path if asset_path.exists() else None
 
 

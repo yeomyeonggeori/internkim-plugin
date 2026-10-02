@@ -6,20 +6,22 @@ from collections import defaultdict
 
 from openpyxl.utils import range_boundaries
 
-from sheet.formula_cache import evaluation_issues
-from sheet.formula_names import name_issues, sheet_is_missing
-from sheet.formula_references import formula_references, referenced_sheet_names
-from sheet.number_display import displayed_number_width
-from core.office_inputs import office_file
-from core.office_result import Issue, OfficeArgumentParser, Result, run_command
-from sheet.sheet_chart_references import chart_reference_issues
-from sheet.stale_values import stale_cached_value_issues
+from sheet.formulas.cache import evaluation_issues
+from sheet.formulas.names import name_issues, sheet_is_missing
+from sheet.formulas.references import formula_references, referenced_sheet_names
+from sheet.checks.number_display import displayed_number_width
+from core.number_format import displayed
+from core.office_arguments import route_arguments
+from core.office_result import Issue, Result, run_command
+from sheet.checks.chart_references import chart_reference_issues
+from sheet.formulas.stale_values import stale_cached_value_issues
 from sheet.sheet_definitions import BROKEN_DEFINED_NAME, FORMULA_ERROR, NUMBER_TOO_WIDE, PIVOT_VALUES_EMPTY
-from core.text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
-from sheet.text_values import text_value_issues
-from sheet.workbook_access import open_workbook
-from sheet.workbook_values import evaluate_workbook
-from sheet.xlsx_preview import sheet_print_width_issues
+from core.text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN, text_presence_issues
+from sheet.checks.text_values import text_value_issues
+from sheet.checks.tables import table_findings
+from sheet.workbook.access import open_workbook
+from sheet.formulas.evaluation import evaluate_workbook
+from sheet.preview.pages import sheet_print_width_issues
 
 
 DEFAULT_COLUMN_WIDTH = 8.43
@@ -28,12 +30,19 @@ WIDTH_MARGIN = 2
 
 
 def main() -> Result:
-    arguments = parse_arguments()
-    workbook = open_workbook(arguments.workbook_path)
-    evaluation = evaluate_workbook(arguments.workbook_path)
+    arguments = route_arguments("check", "xlsx")
+    workbook = open_workbook(arguments.file)
+    evaluation = evaluate_workbook(arguments.file)
+    table_issues, details = table_findings(workbook)
+    presence = text_presence_issues(visible_text(workbook, evaluation), arguments.required_text, arguments.forbidden_text)
+    issues = content_issues(workbook, arguments.file, evaluation) + table_issues + presence
+    return Result(summary=f"checked {arguments.file}: {len(issues)} issues", output_path=arguments.file, issues=tuple(issues), details=details)
+
+
+def content_issues(workbook, workbook_path: str, evaluation) -> list[Issue]:
     named = name_issues(workbook)
-    issues = (
-        stale_cached_value_issues(arguments.workbook_path, evaluation)
+    return (
+        stale_cached_value_issues(workbook_path, evaluation)
         + named
         + formula_error_issues(evaluation, {issue.location for issue in named})
         + defined_name_issues(workbook)
@@ -45,7 +54,20 @@ def main() -> Result:
         + evaluation_issues(evaluation)
         + sheet_print_width_issues(workbook)
     )
-    return Result(summary=f"checked {arguments.workbook_path}: {len(issues)} issues", output_path=arguments.workbook_path, issues=tuple(issues))
+
+
+def visible_text(workbook, evaluation) -> str:
+    return "\n".join(shown_text(cell, worksheet.title, evaluation) for worksheet in workbook.worksheets for row in worksheet.iter_rows() for cell in row if cell.value is not None)
+
+
+def shown_text(cell, sheet: str, evaluation) -> str:
+    if cell.data_type != "f":
+        return displayed(cell.value, cell.number_format).text
+    value = evaluation.values.get((sheet, cell.coordinate))
+    if value is None:
+        return ""
+    number = number_shown_in(cell, sheet, evaluation)
+    return displayed(number, cell.number_format).text if number is not None else value.text
 
 
 def cell_label(sheet: str, coordinate: str) -> str:
@@ -170,11 +192,6 @@ def placeholder_issues(workbook) -> list[Issue]:
                     issues.extend(PLACEHOLDER_LEFT.issue(f"{cell_label(worksheet.title, cell.coordinate)} still holds {placeholder}", cell_label(worksheet.title, cell.coordinate)) for placeholder in PLACEHOLDER_PATTERN.findall(cell.value))
     return issues
 
-
-def parse_arguments():
-    parser = OfficeArgumentParser()
-    parser.add_argument("workbook_path", type=office_file("xlsx"))
-    return parser.parse_args()
 
 
 if __name__ == "__main__":

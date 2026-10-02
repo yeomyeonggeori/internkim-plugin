@@ -2,11 +2,11 @@ from pathlib import Path
 import shutil
 
 from doc_fixture import SCRIPTS_PATH
-from core.office_setup import setup_steps
+from office_setup import setup_steps
 
 
 SKILL_PATH = SCRIPTS_PATH.parent
-PREPARED_LOCATIONS = {step.name: step.location.relative_to(SKILL_PATH) for step in setup_steps(with_ocr=True)}
+PREPARED_LOCATIONS = {step.name: step.location.relative_to(SKILL_PATH) for step in setup_steps()}
 
 
 def copy_skill(destination: Path, linked_pieces: tuple[str, ...] = ()) -> Path:

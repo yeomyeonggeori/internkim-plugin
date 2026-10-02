@@ -6,7 +6,7 @@ import unittest
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"
 sys.path.insert(0, str(SCRIPTS_PATH.parent))
 
-from deck.content_warnings import apply_missing_speaker_notes_warning  # noqa: E402
+from deck.review.content_warnings import apply_missing_speaker_notes_warning  # noqa: E402
 from deck.slide_structure import extract_notes, visible_slide_text  # noqa: E402
 
 

@@ -65,7 +65,7 @@ class SheetPreviewTest(unittest.TestCase):
         cls.temporary_directory = tempfile.TemporaryDirectory()
         cls.directory = Path(cls.temporary_directory.name)
         run_office_python(WORKBOOK, cls.directory)
-        cls.envelope = run_office(["sheet", "render", "실적.xlsx"], cls.directory)
+        cls.envelope = run_office(["render", "실적.xlsx"], cls.directory)
         cls.html = (cls.directory / "실적-preview" / "preview.html").read_text(encoding="utf-8")
         cls.pages = re.findall(r'<section data-page="(\d+)" style="([^"]*)">(.*?)</section>', cls.html, re.S)
 

@@ -4,107 +4,62 @@ import importlib
 from types import ModuleType
 
 from fonts.registry import FAMILIES, face_facts
-from core.office_commands import COMMANDS, FORMATS, Format
+from core.office_commands import EVERY_KIND, KINDS, VERBS, Kind, Route, Verb, find_kind, find_route, find_verb, kind_routes, route_label, verb_routes
+from core.office_help import route_accepts, verb_help_text
 from core.office_result import COMMAND_ISSUE_KINDS, UNKNOWN_COMMAND, VALUE_FILL_IN, IssueKind, OfficeFailure
 from core.office_schema import Field, Record, Shape, Variant, closest_name
 
 
-USAGE = "usage: office guide <format> [verb [operation]]"
+USAGE = "usage: office guide [verb] [kind] [operation]"
 ENVELOPE_LINE = (
     "Every command prints one JSON result: {status: ok|warning|error, summary, outputPath, "
     "issues: [{code, severity, message, location, suggestion, fix}], details}. It exits 1 when status is error. "
-    "suggestion is always text saying what to do; fix is a list of operations for the format's apply command that make that change, "
+    "suggestion is always text saying what to do; fix is a list of operations for office apply on the same file that make that change, "
     f"empty when no operation does, and a value in angle brackets such as {VALUE_FILL_IN} is yours to fill in; apply refuses an operation that still holds one. "
     "A null field counts as absent. A cell is text, a number, true/false, or null."
 )
 
 
-def guide_text(office_format: Format, verb: str | None = None, operation: str | None = None) -> str:
-    definitions = load_definitions(office_format)
-    if operation is not None:
-        return operation_text(office_format, definitions, verb, operation)
-    if verb is not None:
-        return verb_text(office_format, definitions, verb)
-    return index_text(office_format, definitions)
+def guide_for(arguments: list[str]) -> str:
+    if not arguments or arguments[0] in {"-h", "--help", "help"}:
+        return index_text()
+    verb = find_verb(arguments[0])
+    if verb is None:
+        return kind_text(require_kind(arguments[0]))
+    if len(arguments) == 1:
+        return verb_text(verb)
+    route = require_route(verb, arguments[1])
+    if len(arguments) == 2:
+        return route_text(route)
+    return operation_text(route, arguments[2])
 
 
-def index_text(office_format: Format, definitions: ModuleType) -> str:
-    lines = [f"office {office_format.name}: {office_format.summary}", "", *command_lines(office_format.name), "", ENVELOPE_LINE]
-    listed: list[Variant] = []
-    for label, shape in definitions.GUIDE_INPUTS:
-        lines.extend(["", *summary_lines(label, shape, listed)])
-    for title, section_lines in getattr(definitions, "GUIDE_SECTIONS", ()):
-        lines.extend(["", title, *section_lines()])
-    lines.extend(["", f"Issue codes (office guide {office_format.name} <verb> explains its own; every issue carries a message and a suggestion)"])
-    lines.extend(f"  {issue_command}: {', '.join(kind.code for kind in kinds)}" for issue_command, kinds in definitions.GUIDE_ISSUES)
-    lines.append(f"  any command: {', '.join(kind.code for kind in COMMAND_ISSUE_KINDS)}")
-    return "\n".join(lines)
+def require_kind(topic: str) -> Kind:
+    kind = find_kind(topic)
+    if kind is None:
+        reject_unknown_topic(topic, [verb.name for verb in VERBS] + [kind.name for kind in KINDS], "office guide")
+    return kind
 
 
-def verb_text(office_format: Format, definitions: ModuleType, verb: str) -> str:
-    command_name = f"{office_format.name} {verb}"
-    lines = [*command_lines(office_format.name, command_name)]
-    described: list[Record | Variant] = []
-    for label, shape in verb_inputs(definitions, command_name):
-        lines.extend(["", *input_lines(label, shape, described, command_name)])
-    for issue_command, kinds in definitions.GUIDE_ISSUES:
-        if issue_command == command_name:
-            lines.extend(["", f"Issues {issue_command} reports", *issue_lines(kinds)])
-    return "\n".join(lines)
+def require_route(verb: Verb, kind_name: str) -> Route:
+    route = find_route(verb.name, kind_name)
+    if route is None or route.kind == EVERY_KIND:
+        names = [route.kind for route in verb_routes(verb.name) if route.kind != EVERY_KIND]
+        reject_unknown_topic(kind_name, names, f"office guide {verb.name}")
+    return route
 
 
-def operation_text(office_format: Format, definitions: ModuleType, verb: str, operation: str) -> str:
-    command_name = f"{office_format.name} {verb}"
-    variants = [structure for _, shape in verb_inputs(definitions, command_name) for structure in shape.structures() if isinstance(structure, Variant)]
-    for variant in variants:
-        record = variant.record_named(operation)
-        if record is not None:
-            return "\n".join([f"office {command_name}, {variant.discriminator} \"{record.name}\": {record.description}", *field_lines(record.fields, "  "), *nested_structure_lines(record)])
-    names = [record.name for variant in variants for record in variant.records]
-    match = closest_name(operation, names)
-    suggestion = f"office guide {command_name} {match}" if match else f"one of: {', '.join(names)}" if names else f"office guide {command_name}"
-    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"office {command_name} has no operation {operation!r}", operation, suggestion))
+def reject_unknown_topic(written: str, names: list[str], prefix: str):
+    match = closest_name(written, names)
+    suggestion = f"{prefix} {match}" if match else f"one of: {', '.join(names)}" if names else prefix
+    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"{prefix}: no topic {written!r}", written, suggestion))
 
 
-def nested_structure_lines(record: Record) -> list[str]:
-    described: list[Record | Variant] = [record]
-    lines = []
-    for field in record.fields:
-        for structure in field.shape.structures():
-            if any(existing is structure for existing in described):
-                continue
-            described.append(structure)
-            lines.extend(structure_lines(structure))
-    return lines
-
-
-def verb_inputs(definitions: ModuleType, command_name: str) -> list[tuple[str, Shape]]:
-    return [(label, shape) for label, shape in definitions.GUIDE_INPUTS if label.startswith(command_name)]
-
-
-def summary_lines(label: str, shape: Shape, listed: list[Variant]) -> list[str]:
-    command_name = " ".join(label.split()[:2])
-    variants = [structure for structure in shape.structures() if isinstance(structure, Variant)]
-    lines = [f"{label}: {shape.label}; office guide {command_name} lists every field"]
-    for variant in variants:
-        if any(existing is variant for existing in listed):
-            lines.append(f"  {variant.discriminator}: the {variant.name} list above")
-            continue
-        listed.append(variant)
-        lines.append(f"  {variant.discriminator}: {', '.join(record.name for record in variant.records)}")
-    if variants:
-        lines.append(f"  office guide {command_name} <{variants[0].discriminator}> lists one {variants[0].discriminator}'s fields")
-    return lines
-
-
-def guide_verbs(office_format: Format) -> list[str]:
-    return [command.verb for command in COMMANDS if command.format_name == office_format.name]
-
-
-def formats_text() -> str:
-    width = max(len(office_format.name) for office_format in FORMATS)
-    lines = [USAGE, ""]
-    lines.extend(f"  {office_format.name.ljust(width)}  {office_format.summary}" for office_format in FORMATS)
+def index_text() -> str:
+    kind_width = max(len(kind.name) for kind in KINDS)
+    lines = [USAGE, "office --help lists the verbs and what each takes per kind.", "", "Kinds"]
+    lines.extend(f"  {kind.name.ljust(kind_width)}  {kind.label}: {kind.summary}" for kind in KINDS)
+    lines.extend(["", ENVELOPE_LINE, f"Any command can report {', '.join(issue.code for issue in COMMAND_ISSUE_KINDS)}."])
     return "\n".join([*lines, "", *font_lines()])
 
 
@@ -121,19 +76,110 @@ def family_label(family) -> str:
     return family.name if carried else f"{family.name}*"
 
 
-def load_definitions(office_format: Format) -> ModuleType:
-    return importlib.import_module(office_format.definitions_module)
+def definitions_for(route: Route) -> ModuleType:
+    kind = find_kind(route.kind)
+    module = kind.definitions_module if kind is not None else find_verb(route.verb).definitions_module
+    return importlib.import_module(module) if module else ModuleType("empty")
 
 
-def command_lines(format_name: str, command_name: str | None = None) -> list[str]:
-    commands = [command for command in COMMANDS if command.format_name == format_name and command_name in (None, command.name)]
-    width = max(len(command.name) for command in commands)
-    lines = ["Commands (each one's --help lists its arguments)"]
-    lines.extend(f"  office {command.name.ljust(width)}  {command.summary}" for command in commands)
+def route_inputs(route: Route) -> list[tuple[str, Shape]]:
+    return [(label, shape) for verb, kind, label, shape in getattr(definitions_for(route), "GUIDE_INPUTS", ()) if (verb, kind) == (route.verb, route.kind)]
+
+
+def route_issue_kinds(route: Route) -> tuple[IssueKind, ...]:
+    return next((kinds for verb, kind, kinds in getattr(definitions_for(route), "GUIDE_ISSUES", ()) if (verb, kind) == (route.verb, route.kind)), ())
+
+
+def topic_sections(module: ModuleType, topic: str) -> list[str]:
+    lines = []
+    for section_topic, title, section_lines in getattr(module, "GUIDE_SECTIONS", ()):
+        if section_topic == topic:
+            lines.extend(["", title, *section_lines()])
     return lines
 
 
-def input_lines(label: str, shape: Shape, described: list[Record | Variant], command_name: str) -> list[str]:
+def command_line(route: Route) -> str:
+    return f"  office {route.verb} {route_accepts(route)}: {route.summary}"
+
+
+def kind_text(kind: Kind) -> str:
+    routes = kind_routes(kind.name)
+    lines = [f"{kind.label}: {kind.summary}", "", "Commands (each verb's --help lists its options)", *(command_line(route) for route in routes)]
+    listed: list[Variant] = []
+    for route in routes:
+        for label, shape in route_inputs(route):
+            lines.extend(["", *summary_lines(route, label, shape, listed)])
+    lines.extend(topic_sections(importlib.import_module(kind.definitions_module), kind.name))
+    lines.extend(["", f"Issue codes (office guide <verb> {kind.name} explains a verb's own)"])
+    lines.extend(f"  {route.verb}: {', '.join(issue.code for issue in route_issue_kinds(route))}" for route in routes if route_issue_kinds(route))
+    return "\n".join(lines)
+
+
+def verb_text(verb: Verb) -> str:
+    whole = find_route(verb.name, EVERY_KIND)
+    if whole is not None:
+        return "\n".join([verb_help_text(verb, with_kinds=False), *topic_sections(definitions_for(whole), verb.name), *issue_explanations(route_issue_kinds(whole))])
+    issue_lines = [f"  {route.kind}: {', '.join(issue.code for issue in route_issue_kinds(route))}" for route in verb_routes(verb.name) if route_issue_kinds(route)]
+    heading = f"Issue codes by kind (office guide {verb.name} <kind> explains them)"
+    return "\n".join([verb_help_text(verb), *(["", heading, *issue_lines] if issue_lines else [])])
+
+
+def route_text(route: Route) -> str:
+    lines = [command_line(route).strip()]
+    described: list[Record | Variant] = []
+    for label, shape in route_inputs(route):
+        lines.extend(["", *input_lines(route, label, shape, described)])
+    kinds = route_issue_kinds(route)
+    if kinds:
+        lines.extend(["", f"Issues office {route.verb} reports for {route_label(route)}", *issue_lines(kinds)])
+    return "\n".join(lines)
+
+
+def issue_explanations(kinds: tuple[IssueKind, ...]) -> list[str]:
+    return ["", "Issues", *issue_lines(kinds)] if kinds else []
+
+
+def operation_text(route: Route, operation: str) -> str:
+    variants = [structure for _, shape in route_inputs(route) for structure in shape.structures() if isinstance(structure, Variant)]
+    for variant in variants:
+        record = variant.record_named(operation)
+        if record is not None:
+            return "\n".join([f"office {route.verb} {route_label(route)}, {variant.discriminator} \"{record.name}\": {record.description}", *field_lines(record.fields, "  "), *nested_structure_lines(record)])
+    names = [record.name for variant in variants for record in variant.records]
+    prefix = f"office guide {route.verb} {route.kind}"
+    match = closest_name(operation, names)
+    suggestion = f"{prefix} {match}" if match else f"one of: {', '.join(names)}" if names else prefix
+    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"office {route.verb} {route_label(route)} has no operation {operation!r}", operation, suggestion))
+
+
+def nested_structure_lines(record: Record) -> list[str]:
+    described: list[Record | Variant] = [record]
+    lines = []
+    for field in record.fields:
+        for structure in field.shape.structures():
+            if any(existing is structure for existing in described):
+                continue
+            described.append(structure)
+            lines.extend(structure_lines(structure))
+    return lines
+
+
+def summary_lines(route: Route, label: str, shape: Shape, listed: list[Variant]) -> list[str]:
+    topic = f"office guide {route.verb} {route.kind}"
+    variants = [structure for structure in shape.structures() if isinstance(structure, Variant)]
+    lines = [f"office {route.verb}, {label}: {shape.label}; {topic} lists every field"]
+    for variant in variants:
+        if any(existing is variant for existing in listed):
+            lines.append(f"  {variant.discriminator}: the {variant.name} list above")
+            continue
+        listed.append(variant)
+        lines.append(f"  {variant.discriminator}: {', '.join(record.name for record in variant.records)}")
+    if variants:
+        lines.append(f"  {topic} <{variants[0].discriminator}> lists one {variants[0].discriminator}'s fields")
+    return lines
+
+
+def input_lines(route: Route, label: str, shape: Shape, described: list[Record | Variant]) -> list[str]:
     lines = [f"{label}: {shape.label}"]
     for structure in shape.structures():
         if any(existing is structure for existing in described):
@@ -141,16 +187,16 @@ def input_lines(label: str, shape: Shape, described: list[Record | Variant], com
         described.append(structure)
         if isinstance(structure, Variant):
             described.extend(nested for record in structure.records for field in record.fields for nested in field.shape.structures())
-            lines.extend(variant_summary_lines(structure, command_name))
+            lines.extend(variant_summary_lines(route, structure))
         else:
             lines.extend(structure_lines(structure))
     return lines
 
 
-def variant_summary_lines(variant: Variant, command_name: str) -> list[str]:
+def variant_summary_lines(route: Route, variant: Variant) -> list[str]:
     lines = [f"  {variant.name}: {variant.description}; \"{variant.discriminator}\" picks one of"]
     lines.extend(f"    {variant.discriminator} \"{record.name}\": {record.description}" for record in variant.records)
-    lines.append(f"  office guide {command_name} <{variant.discriminator}> lists one {variant.discriminator}'s fields")
+    lines.append(f"  office guide {route.verb} {route.kind} <{variant.discriminator}> lists one {variant.discriminator}'s fields")
     return lines
 
 

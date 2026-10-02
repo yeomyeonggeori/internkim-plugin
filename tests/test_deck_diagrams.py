@@ -15,8 +15,8 @@ OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from deck.check_deck import CheckRequest, check_deck  # noqa: E402
-from deck.pptx_connectors import facing_route  # noqa: E402
-from deck.pptx_geometry import Box  # noqa: E402
+from powerpoint.model.connectors import facing_route  # noqa: E402
+from powerpoint.model.geometry import Box  # noqa: E402
 
 PROCESS = '<section data-layout="process"><h2>주문은 네 단계로 처리됩니다</h2><ol><li>주문 접수</li><li>재고 확인</li><li>출고</li><li class="pick">배송 완료</li></ol></section>'
 CYCLE = '<section data-layout="cycle"><h2>개선은 네 단계를 반복합니다</h2><ol><li>계획</li><li>실행</li><li>점검</li><li>개선</li></ol></section>'
@@ -62,10 +62,10 @@ class DiagramBuildTest(unittest.TestCase):
             deck_path = Path(directory) / "diagrams"
             deck_path.mkdir()
             (deck_path / "slides.html").write_text(DIAGRAM_DECK, encoding="utf-8")
-            envelope = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build", "--format", "pptx"], capture_output=True, text=True, cwd=deck_path).stdout)
+            envelope = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path).stdout)
             pptx_path = deck_path / "build" / "diagrams.pptx"
-            check = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "check", str(pptx_path)], capture_output=True, text=True).stdout)
-            read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "read", str(pptx_path)], capture_output=True, text=True).stdout)
+            check = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "check", str(pptx_path)], capture_output=True, text=True).stdout)
+            read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "read", str(pptx_path)], capture_output=True, text=True).stdout)
             layers = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
         self.assertTrue(envelope["details"]["acceptance"]["acceptable"], envelope["summary"])
         self.assertEqual([slide["boxesKeptAsPicture"] for slide in layers["slides"][1:6]], [0] * 5)

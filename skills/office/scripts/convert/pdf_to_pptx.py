@@ -14,7 +14,7 @@ import pypdfium2
 
 from core.css_color import hex_of
 from fonts.registry import OFFICE_KOREAN_FAMILY
-from doc.markdown_blocks import inline_segments, link_parts, strip_inline_markers
+from doc.blocks.markdown import inline_segments, link_parts, strip_inline_markers
 from core.office_inputs import unlocked_pdf_bytes
 from convert.pdf_to_blocks import MINIMUM_IMAGE_POINTS, Segment, crop, inside_any, page_image_bitmap, page_segments
 from pdf.pdf_tables import page_tables
