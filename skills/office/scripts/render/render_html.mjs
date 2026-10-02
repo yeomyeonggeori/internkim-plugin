@@ -16,6 +16,7 @@ import { generatedContentStyle, materializeGeneratedContent } from "./generated_
 import { createInlineStyleFilter } from "./inline_styles.mjs";
 import { createLayout, documentFragmentHtml } from "./layout_shim.mjs";
 import { extractNativeCharts } from "./native_charts.mjs";
+import { extractNativeIcons } from "./native_icons.mjs";
 import { attachConnectorShapes, extractNativeConnectors } from "./native_connectors.mjs";
 import { extractNativeTables, hideNativeTables, nativeCellAttribute, nativeTableAttribute } from "./native_tables.mjs";
 import { measurePageGeometry } from "./page_geometry.mjs";
@@ -200,6 +201,7 @@ async function writeLayers(request, renderer, layout, inlineStyles, document, pa
   const chartLayouts = extractNativeCharts({ pages });
   const tableLayouts = extractNativeTables({ pages });
   const pageConnectors = extractNativeConnectors({ pages });
+  const iconLayouts = await extractNativeIcons({ pages, renderer, directory: request.layers });
   insertMarkerProbes({ ...textAttributes, pages });
   const probeHost = document.getElementById(markerProbeHostId);
   if (probeHost) await layout.layOut(probeHost);
@@ -207,7 +209,7 @@ async function writeLayers(request, renderer, layout, inlineStyles, document, pa
   const textLayout = extractTextLayout({ ...textAttributes, pages });
   const boxLayouts = extractBoxLayout({ ...boxAttributes, pages });
   const connectorLayouts = attachConnectorShapes(pageConnectors, exportedShapeAttribute);
-  const slides = textLayout.slides.map((slide, index) => ({ ...slide, ...boxLayouts[index], ...chartLayouts[index], ...tableLayouts[index], ...connectorLayouts[index] }));
+  const slides = textLayout.slides.map((slide, index) => ({ ...slide, ...boxLayouts[index], ...chartLayouts[index], ...tableLayouts[index], ...connectorLayouts[index], ...iconLayouts[index] }));
   hideExportedText(textAttributes);
   hideExportedBoxes(boxAttributes);
   hideNativeTables();

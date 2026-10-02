@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import json
 import pathlib
 import re
 
@@ -8,6 +9,7 @@ import re
 KIT_PATH = pathlib.Path(__file__).resolve().parents[2] / "assets" / "deck-kit"
 KIT_STYLESHEET_PATH = KIT_PATH / "deck-kit.css"
 KIT_SCRIPT_PATH = KIT_PATH / "deck-kit.js"
+ICONS_PATH = KIT_PATH / "icons"
 KIT_MARKER = "data-internkim-deck-kit"
 DEFAULT_THEME = "editorial"
 KIT_BLOCK_PATTERNS = (
@@ -20,6 +22,12 @@ THEME_BLOCK_PATTERN = re.compile(r"((?::root,\s*)?\[data-theme=\"([a-z]+)\"\])\s
 COLOR_TOKEN_PATTERN = re.compile(r"--([a-z0-9-]+)\s*:\s*(#[0-9A-Fa-f]{3,8})\s*;")
 CHART_RENDERERS_PATTERN = re.compile(r"const chartRenderers = \{(.*?)\n  \};", re.DOTALL)
 CHART_TYPE_PATTERN = re.compile(r"^\s{4}([a-z0-9]+):", re.MULTILINE)
+ICON_USE_PATTERN = re.compile(r"\bdata-icon\s*=\s*[\"']([^\"']*)[\"']", re.IGNORECASE)
+SVG_COMMENT_PATTERN = re.compile(r"<!--.*?-->", re.DOTALL)
+SVG_ROOT_PATTERN = re.compile(r"<svg\b[^>]*>")
+SVG_SIZING_PATTERN = re.compile(r'\s(?:class|width|height)="[^"]*"')
+SPACE_BETWEEN_TAGS_PATTERN = re.compile(r"\s*(/?>)\s*")
+STRING_LIST_PATTERN = r"const {name} = (\[[^\]]*\]);"
 SLIDE_SIZE_PATTERN = re.compile(r"section\[data-layout\] \{[^}]*?\bwidth: (\d+)px;\s*height: (\d+)px;")
 
 
@@ -39,6 +47,7 @@ def inject_deck_kit(source_text: str) -> str:
         return source_text
     kit_markup = (
         f"<style {KIT_MARKER}>\n{KIT_STYLESHEET_PATH.read_text(encoding='utf-8')}</style>\n"
+        f"{icon_script(source_text)}"
         f"<script {KIT_MARKER}>\n{KIT_SCRIPT_PATH.read_text(encoding='utf-8')}</script>\n"
     )
     head_match = re.search(r"<head\b[^>]*>", source_text, flags=re.IGNORECASE)
@@ -85,3 +94,29 @@ def chart_types() -> tuple[str, ...]:
     renderers = CHART_RENDERERS_PATTERN.search(kit_script())
     return tuple(CHART_TYPE_PATTERN.findall(renderers.group(1))) if renderers else ()
 
+
+def kit_names(name: str) -> tuple[str, ...]:
+    return tuple(json.loads(re.search(STRING_LIST_PATTERN.format(name=name), kit_script()).group(1)))
+
+
+@functools.lru_cache(maxsize=None)
+def icon_names() -> tuple[str, ...]:
+    return tuple(sorted(path.stem for path in ICONS_PATH.glob("*.svg")))
+
+
+def icon_markup(name: str) -> str:
+    text = SVG_COMMENT_PATTERN.sub("", (ICONS_PATH / f"{name}.svg").read_text(encoding="utf-8"))
+    text = SVG_ROOT_PATTERN.sub(lambda root: SVG_SIZING_PATTERN.sub("", root.group(0)), text, count=1)
+    return SPACE_BETWEEN_TAGS_PATTERN.sub(r"\1", " ".join(text.split()))
+
+
+def used_icon_names(source_text: str) -> tuple[str, ...]:
+    written = {name.strip() for name in ICON_USE_PATTERN.findall(source_text)}
+    return tuple(name for name in icon_names() if name in written)
+
+
+def icon_script(source_text: str) -> str:
+    icons = {name: icon_markup(name) for name in used_icon_names(source_text)}
+    if not icons:
+        return ""
+    return f"<script {KIT_MARKER}>\nwindow.deckKitIcons = {json.dumps(icons, ensure_ascii=False)};\n</script>\n"

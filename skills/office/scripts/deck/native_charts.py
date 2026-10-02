@@ -141,11 +141,15 @@ def axis_ids_xml(axes: tuple[int, int]) -> str:
 
 def bar_plot_xml(layout: dict, kind: str, indexes: list[int], axes: tuple[int, int], context: TextContext) -> str:
     series = "".join(series_xml(layout, index, kind, context) for index in indexes)
-    overlap = '<c:overlap val="100"/>' if BAR_GROUPINGS[kind] != "clustered" else ""
+    overlap = f'<c:overlap val="{bar_overlap(layout, kind)}"/>'
     return (
         f'<c:barChart><c:barDir val="{BAR_DIRECTIONS[kind]}"/><c:grouping val="{BAR_GROUPINGS[kind]}"/><c:varyColors val="0"/>{series}'
         f'<c:gapWidth val="{layout["gapWidth"]}"/>{overlap}{axis_ids_xml(axes)}</c:barChart>'
     )
+
+
+def bar_overlap(layout: dict, kind: str) -> int:
+    return 100 if BAR_GROUPINGS[kind] != "clustered" else int(layout.get("overlap", 0))
 
 
 def line_plot_xml(layout: dict, indexes: list[int], axes: tuple[int, int], context: TextContext) -> str:

@@ -36,6 +36,7 @@ Work in `artifacts/<deck-slug>/`. First run `<skill>/scripts/office guide deck`:
 - Every part is a direct child of its `<section>`.
 - A title states the slide's conclusion as a sentence in the request's language. `<em>` colors key words.
 - Choose each slide's layout from its content. `office guide deck` lists every layout with its purpose and parts, and every chart attribute; write the other slides from it rather than from this example.
+- Without photos, a `data-icon` on cards, metrics, steps and agenda or closing items gives the deck a visual rhythm; `office guide deck` lists the icon names.
 
 ## Build and deliver
 

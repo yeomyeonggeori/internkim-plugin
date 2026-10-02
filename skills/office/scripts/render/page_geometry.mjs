@@ -1,7 +1,7 @@
 export const capacityAttribute = "data-kit-capacity";
 
 export function measurePageGeometry(pages, thresholds) {
-  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, labelLineMaximum, repeatedFigureMinimum, backgroundShareOfSlide, deadZoneShareOfSlide } = thresholds;
+  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, labelLineMaximum, repeatedFigureMinimum, backgroundShareOfSlide, deadZoneShareOfSlide, markBreadthMinimum, roundSlotMinimum } = thresholds;
 
   const isMeasurable = (element) => {
     const style = getComputedStyle(element);
@@ -326,13 +326,46 @@ export function measurePageGeometry(pages, thresholds) {
 
   const uniqueSorted = (values) => Array.from(new Set(values.map(round))).sort((first, second) => first - second);
 
+  const headingSelector = ":scope > :is(h1, h2, .eyebrow, .lead)";
+
+  const unionOf = (rects) => ({
+    left: Math.min(...rects.map((rect) => rect.left)),
+    top: Math.min(...rects.map((rect) => rect.top)),
+    right: Math.max(...rects.map((rect) => rect.right)),
+    bottom: Math.max(...rects.map((rect) => rect.bottom)),
+  });
+
+  const headingsOf = (page) => Array.from(page.querySelectorAll(headingSelector)).filter(isMeasurable);
+
+  const bodyElements = (page) => {
+    const outside = [...headingsOf(page), footerOf(page)].filter(Boolean);
+    return elementsOf(page).slice(1).filter((element) => !outside.some((part) => part.contains(element)));
+  };
+
+  const headingSides = (page) => {
+    const headings = headingsOf(page);
+    if (!headings.length) return {};
+    const bodyRects = contentRects(page, bodyElements(page));
+    if (!bodyRects.length) return {};
+    const heading = unionOf(headings.map((element) => element.getBoundingClientRect()));
+    const body = unionOf(bodyRects);
+    if (body.top >= heading.bottom - pixelTolerance) return { top: heading.bottom };
+    if (body.left >= heading.right - pixelTolerance) return { top: body.top, left: body.left };
+    if (body.right <= heading.left + pixelTolerance) return { top: body.top, right: body.right };
+    return {};
+  };
+
   const bodyFrame = (page, rects) => {
     const footer = footerOf(page);
-    const top = Math.min(...rects.map((rect) => rect.top));
-    const bottom = footer ? footer.getBoundingClientRect().top : Math.max(...rects.map((rect) => rect.bottom));
     const box = page.getBoundingClientRect();
     const style = getComputedStyle(page);
-    return { left: box.left + (parseFloat(style.paddingLeft) || 0), right: box.right - (parseFloat(style.paddingRight) || 0), top, bottom };
+    const sides = headingSides(page);
+    return {
+      left: sides.left ?? box.left + (parseFloat(style.paddingLeft) || 0),
+      right: sides.right ?? box.right - (parseFloat(style.paddingRight) || 0),
+      top: sides.top ?? Math.min(...rects.map((rect) => rect.top)),
+      bottom: footer ? footer.getBoundingClientRect().top : Math.max(...rects.map((rect) => rect.bottom)),
+    };
   };
 
   const largestEmptyRectangle = (frame, rects) => {
@@ -364,18 +397,72 @@ export function measurePageGeometry(pages, thresholds) {
     return best;
   };
 
+  const slackEvenness = 0.2;
+  const slackPasses = 4;
+
+  const isEven = (one, other) => Math.abs(one - other) <= slackEvenness * Math.max(one, other) + pixelTolerance;
+  const touches = (edge, side) => Math.abs(edge - side) <= pixelTolerance;
+  const overlapsAcross = (rect, start, end, [low, high]) => rect[low] < end - pixelTolerance && rect[high] > start + pixelTolerance;
+
+  const mirroredSlack = (region, frame, parts) => {
+    for (const [low, high, crossLow, crossHigh] of [["left", "right", "top", "bottom"], ["top", "bottom", "left", "right"]]) {
+      const atLow = touches(region[low], frame[low]);
+      const atHigh = touches(region[high], frame[high]);
+      if (atLow === atHigh) continue;
+      const beside = parts.filter((rect) => overlapsAcross(rect, region[crossLow], region[crossHigh], [crossLow, crossHigh]));
+      if (!beside.length) continue;
+      const slack = region[high] - region[low];
+      const reach = atLow ? Math.max(...beside.map((rect) => rect[high])) : Math.min(...beside.map((rect) => rect[low]));
+      const opposite = atLow ? frame[high] - reach : reach - frame[low];
+      if (!isEven(slack, opposite)) continue;
+      return { [crossLow]: region[crossLow], [crossHigh]: region[crossHigh], [low]: atLow ? reach : frame[low], [high]: atLow ? frame[high] : reach };
+    }
+    return null;
+  };
+
+  const unbalancedEmptyRectangle = (frame, parts) => {
+    const inside = parts.map((rect) => intersection(rect, frame)).filter((rect) => rect.right > rect.left && rect.bottom > rect.top);
+    let filled = inside;
+    for (let pass = 0; pass < slackPasses; pass += 1) {
+      const region = largestEmptyRectangle(frame, filled);
+      if (!region) return null;
+      const mirror = mirroredSlack(region, frame, inside);
+      if (!mirror) return region;
+      filled = [...filled, region, mirror];
+    }
+    return null;
+  };
+
   const figureRects = (page) => Array.from(page.querySelectorAll("figure")).filter(isMeasurable).map((figure) => figure.getBoundingClientRect());
+
+  const uncaptionedRects = (page) => contentRects(page, bodyElements(page).filter((element) => !element.closest("figcaption")));
+
+  const drawnFigureRects = (page) =>
+    Array.from(page.querySelectorAll("figure"))
+      .filter(isMeasurable)
+      .flatMap((figure) => Array.from(figure.children).filter((child) => child.tagName !== "FIGCAPTION" && isMeasurable(child)))
+      .map((child) => child.getBoundingClientRect());
+
+  const contentFrame = (frame, rects) => {
+    const inside = rects.map((rect) => intersection(rect, frame)).filter((rect) => rect.right > rect.left && rect.bottom > rect.top);
+    if (!inside.length) return null;
+    return { left: frame.left, right: frame.right, top: Math.min(...inside.map((rect) => rect.top)), bottom: Math.max(...inside.map((rect) => rect.bottom)) };
+  };
 
   const emptyRegion = (page) => {
     const rects = contentRects(page);
     if (!rects.length) return null;
-    const frame = bodyFrame(page, rects);
-    if (frame.bottom <= frame.top || frame.right <= frame.left) return null;
-    const region = largestEmptyRectangle(frame, [...rects, ...figureRects(page)]);
+    const body = bodyFrame(page, rects);
+    if (body.bottom <= body.top || body.right <= body.left) return null;
+    const parts = [...rects, ...figureRects(page)];
+    const frame = contentFrame(body, [...uncaptionedRects(page), ...drawnFigureRects(page)]);
+    if (!frame || frame.bottom <= frame.top) return null;
+    const region = unbalancedEmptyRectangle(frame, parts);
     if (!region) return null;
     const origin = page.getBoundingClientRect();
     const relative = (rect) => ({ left: round(rect.left - origin.left), top: round(rect.top - origin.top), right: round(rect.right - origin.left), bottom: round(rect.bottom - origin.top) });
-    return { ...relative(region), frame: relative(frame) };
+    const share = roundRatio(region.area / ((frame.right - frame.left) * (frame.bottom - frame.top)));
+    return { ...relative(region), frame: relative(frame), share };
   };
 
   const contentBoxOf = (box, rect) => {
@@ -416,6 +503,57 @@ export function measurePageGeometry(pages, thresholds) {
       .map(({ element, rect, empty }) => ({ ...describe(element), height: round(rect.bottom - rect.top), emptyHeight: round(empty) }));
   };
 
+  const coveredLength = (intervals) => {
+    let covered = 0;
+    let reach = -Infinity;
+    intervals.sort((first, second) => first[0] - second[0]).forEach(([start, end]) => {
+      covered += Math.max(0, end - Math.max(start, reach));
+      reach = Math.max(reach, end);
+    });
+    return covered;
+  };
+
+  const barBreadth = (chart) => {
+    const plot = chart.querySelector(".kit-plot-area, .kit-bar-area");
+    const bars = Array.from(chart.querySelectorAll(".kit-bar, .kit-segment")).filter(isMeasurable).map((bar) => bar.getBoundingClientRect());
+    if (!plot || !bars.length) return null;
+    const area = plot.getBoundingClientRect();
+    const isHorizontal = Boolean(chart.querySelector(".kit-bar.kit-horizontal"));
+    const along = isHorizontal ? ["top", "bottom"] : ["left", "right"];
+    const breadth = area[along[1]] - area[along[0]];
+    if (breadth <= 0) return null;
+    return { kind: "bars", share: roundRatio(coveredLength(bars.map((bar) => [bar[along[0]], bar[along[1]]])) / breadth), minimum: markBreadthMinimum };
+  };
+
+  const ringSlot = (chart, ring) => {
+    const figure = chart.closest("figure") || chart;
+    const box = figure.getBoundingClientRect();
+    const caption = Array.from(figure.children).find((child) => child.tagName === "FIGCAPTION" && isMeasurable(child));
+    const legend = chart.querySelector(".kit-donut-legend");
+    const ringBox = ring.getBoundingClientRect();
+    const legendBox = legend && isMeasurable(legend) ? legend.getBoundingClientRect() : null;
+    const besideLegend = legendBox && legendBox.top < ringBox.bottom && legendBox.bottom > ringBox.top ? legendBox.right - legendBox.left + Math.max(0, legendBox.left - ringBox.right) : 0;
+    const captionHeight = caption ? caption.getBoundingClientRect().bottom - Math.min(caption.getBoundingClientRect().top, ringBox.bottom) : 0;
+    return { width: box.width - besideLegend, height: box.height - captionHeight };
+  };
+
+  const ringFill = (chart) => {
+    const ring = chart.querySelector(".kit-donut-ring");
+    if (!ring || !isMeasurable(ring)) return null;
+    const box = ring.getBoundingClientRect();
+    const slot = ringSlot(chart, ring);
+    const largest = Math.max(slot.width, slot.height);
+    if (largest <= 0) return null;
+    return { kind: "round", share: roundRatio(Math.min(box.width, box.height) / largest), minimum: roundSlotMinimum };
+  };
+
+  const underfilledCharts = (page) =>
+    Array.from(page.querySelectorAll("[data-native-chart]"))
+      .filter(isMeasurable)
+      .map((chart) => ({ chart, fill: ringFill(chart) || barBreadth(chart) }))
+      .filter(({ fill }) => fill && fill.share < fill.minimum)
+      .map(({ chart, fill }) => ({ ...describe(chart.closest("figure") || chart), ...fill }));
+
   return pages.map((page, index) => ({
     index: index + 1,
     width: round(page.getBoundingClientRect().width),
@@ -434,6 +572,7 @@ export function measurePageGeometry(pages, thresholds) {
     longTitles: longTitles(page),
     longLabels: longLabels(page),
     repeatedFigures: repeatedFigures(page),
+    underfilledCharts: underfilledCharts(page),
     capacity: JSON.parse(page.getAttribute(capacityAttribute) || "[]"),
   }));
 }

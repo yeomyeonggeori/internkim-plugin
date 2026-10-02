@@ -33,6 +33,10 @@ from deck.deck_definitions import (
     THEME_UNKNOWN,
     TOO_FEW_LAYOUTS,
     FIRST_SLIDE_NOT_COVER,
+    ICON_HOST_CLASSES,
+    ICON_LIST_LAYOUTS,
+    ICON_MISPLACED,
+    ICON_UNKNOWN,
     ItemLimits,
     KitLayout,
     kit_layout,
@@ -40,7 +44,7 @@ from deck.deck_definitions import (
 )
 from charts.kinds import KIT_STACKED_CHARTS, is_round_kind
 from charts.numbers import chart_number, split_chart_list
-from deck.deck_kit import DEFAULT_THEME, chart_types, theme_palettes, uses_deck_kit
+from deck.deck_kit import DEFAULT_THEME, chart_types, icon_names, theme_palettes, uses_deck_kit
 from deck.deck_source import Element, find_all, normalized_text, parse_source, style_texts, visible_text
 from deck.design_tokens import design_front_matter
 from core.office_inputs import PPTX, require_kind
@@ -111,7 +115,7 @@ def check_deck(request: CheckRequest) -> Result:
 def deck_issues(request: CheckRequest, root: Element, slides: list[Slide], is_kit_deck: bool) -> list[Issue]:
     issues = []
     if is_kit_deck:
-        issues += theme_issues(root) + layout_issues(slides) + sequence_issues(slides)
+        issues += theme_issues(root) + layout_issues(slides) + sequence_issues(slides) + [issue for slide in slides for issue in icon_issues(slide)]
     issues += slide_count_issues(request.requested_slide_count, slides)
     for slide in slides:
         issues += empty_slide_issues(slide) + chart_issues(slide) + image_issues(slide, request.source_path.parent) + placeholder_issues(slide)
@@ -220,6 +224,32 @@ def slide_count_issues(requested_slide_count: int | None, slides: list[Slide]) -
     if requested_slide_count is None or requested_slide_count == len(slides):
         return []
     return [SLIDE_COUNT_MISMATCH.issue(f"slides.html has {len(slides)} slides, but {requested_slide_count} were requested", "deck")]
+
+
+ICON_ATTRIBUTE = "data-icon"
+LIST_TAGS = ("ol", "ul")
+
+
+def icon_issues(slide: Slide) -> list[Issue]:
+    hosts = icon_hosts(slide)
+    issues = []
+    for element in slide.element.descendants():
+        if ICON_ATTRIBUTE not in element.attributes:
+            continue
+        name = element.attributes[ICON_ATTRIBUTE].strip()
+        if name not in icon_names():
+            issues.append(ICON_UNKNOWN.issue(f'{slide.location}: data-icon="{name}" is not an icon the kit ships', slide.location, suggestion=names_suggestion(name, icon_names())))
+        if not any(element is host for host in hosts):
+            issues.append(ICON_MISPLACED.issue(f'{slide.location}: data-icon="{name}" is on a <{element.tag}>, where the kit draws no icon', slide.location))
+    return issues
+
+
+def icon_hosts(slide: Slide) -> list[Element]:
+    classed = [element for element in slide.element.descendants() if element.classes & set(ICON_HOST_CLASSES)]
+    if slide.layout not in ICON_LIST_LAYOUTS:
+        return classed
+    lists = [child for child in slide.element.child_elements() if child.tag in LIST_TAGS]
+    return classed + [item for items_list in lists for item in items_list.child_elements() if item.tag == "li"]
 
 
 def empty_slide_issues(slide: Slide) -> list[Issue]:

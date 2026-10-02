@@ -165,6 +165,7 @@ def editable_pptx_details(written: EditablePptx, layers_path: pathlib.Path) -> d
         "connectors": written.connector_count,
         "charts": written.chart_count,
         "tables": written.table_count,
+        "icons": written.icon_count,
         "boxesKeptAsPicture": written.boxes_kept_as_picture,
         "embeddedFonts": list(written.embedded_typefaces),
         "unembeddedFonts": list(written.unembedded_families),
