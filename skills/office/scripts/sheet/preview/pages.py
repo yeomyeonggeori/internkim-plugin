@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections import Counter
+from dataclasses import dataclass, field, replace
 import datetime
 import re
 
@@ -9,14 +10,14 @@ from openpyxl.utils import get_column_letter, range_boundaries
 
 from core.number_format import Displayed, displayed
 from render.office_preview import PageGeometry, Preview, escaped, page_section, pixels, positioned, style_attribute
-from core.units import emu_to_pixels, inches_to_pixels, points_to_pixels
+from core.units import emu_to_pixels, inches_to_pixels, millimetres_to_pixels, points_to_pixels
 from fonts.registry import OFFICE_KOREAN_FAMILY
 from fonts.preview import FontRegistry, FontRequest, css_font_family, draws_scripts_apart, script_font_family, script_runs
 from sheet.operations.formatting import STACKED_ROTATION, rotation_degrees
 from core.office_result import Issue
-from sheet.sheet_definitions import SHEET_PRINTS_WIDE
+from sheet.sheet_definitions import READABLE_PRINT_POINTS, SHEET_PRINTS_SMALL, SHEET_PRINTS_WIDE
 from sheet.operations.objects import EXCEL_DEFAULT_FIT_PAGES, is_fitted_to_pages
-from sheet.operations.charts import DEFAULT_ANCHOR_GAP
+from sheet.operations.charts import DEFAULT_ANCHOR_GAP, anchor_cell
 from sheet.preview.colors import css_color, theme_palette
 from sheet.preview.conditional import ConditionalStyles
 from sheet.preview.charts import chart_html, chart_kind, chart_title, drawing_box, image_html, is_whole
@@ -25,6 +26,7 @@ from core.page_sizes import DEFAULT_PAPER, PAPER_BY_SPREADSHEET_CODE
 
 DEFAULT_COLUMN_CHARACTERS = 8.43
 DEFAULT_ROW_POINTS = 15
+FIT_SEARCH_STEPS = 30
 MAXIMUM_DIGIT_PIXELS = 7
 CELL_PADDING_PIXELS = 2
 INDENT_PIXELS = 9
@@ -61,6 +63,32 @@ class PrintLayout:
     column_chunks: list[list[int]]
 
 
+@dataclass(frozen=True)
+class PrintExtent:
+    column_widths: list[float]
+    height: float
+
+
+@dataclass(frozen=True)
+class ChartMove:
+    chart: int
+    anchor: str
+
+
+@dataclass(frozen=True)
+class PageFit:
+    orientation: str
+    width_pages: int
+
+
+@dataclass(frozen=True)
+class PrintPlan:
+    moves: list[ChartMove]
+    fit: PageFit | None
+    scale: float
+    body_points: float
+
+
 class SheetPreviewer:
     def __init__(self, workbook, values, file_name: str, palette: tuple, fonts: FontRegistry, preview: Preview):
         self.workbook = workbook
@@ -82,15 +110,16 @@ class SheetPreviewer:
         title_height = sum(frame.heights[row] for row in frame.title_rows) * scale
         breaks = {brk.id for brk in worksheet.row_breaks.brk} if worksheet.row_breaks else set()
         body_rows = [row for row in frame.rows if row not in frame.title_rows]
-        row_chunks = chunks(body_rows, [frame.heights[row] * scale for row in body_rows], geometry.height - geometry.margin_top - geometry.margin_bottom - title_height, breaks)
-        self.print_issues.extend(print_width_issues(worksheet, layout))
+        row_chunks = chunks(body_rows, [frame.heights[row] * scale for row in body_rows], geometry.content_height - title_height, breaks)
+        self.print_issues.extend(print_layout_issues(worksheet, layout))
         return [(geometry, columns, frame.title_rows + rows, scale, frame) for columns in layout.column_chunks for rows in row_chunks]
 
     def print_layout(self, worksheet, sheet_values) -> PrintLayout | None:
         frame = self.frame(worksheet, sheet_values)
         if frame is None:
             return None
-        geometry, scale = self.page_geometry(worksheet, frame)
+        geometry = page_geometry(worksheet)
+        scale = print_scale(worksheet, frame_extent(frame), geometry)
         column_chunks = chunks(frame.columns, [frame.widths[column] * scale for column in frame.columns], geometry.content_width, set())
         return PrintLayout(frame, geometry, scale, column_chunks)
 
@@ -113,7 +142,7 @@ class SheetPreviewer:
         dimension = worksheet.row_dimensions.get(row) if hasattr(worksheet.row_dimensions, "get") else None
         if dimension is not None and dimension.height:
             return points_to_pixels(dimension.height)
-        default = points_to_pixels(worksheet.sheet_format.defaultRowHeight or DEFAULT_ROW_POINTS)
+        default = default_row_pixels(worksheet)
         wrapped = [column for column in columns if worksheet.cell(row=row, column=column).alignment.wrap_text and sheet_values.cell(row=row, column=column).value is not None]
         if not wrapped:
             return default
@@ -127,24 +156,6 @@ class SheetPreviewer:
         for paragraph in text.split("\n"):
             lines += max(1, int(self.fonts.width(request, paragraph) // max(width - 2 * CELL_PADDING_PIXELS, 1)) + 1)
         return lines * self.fonts.line_height(request) + 2
-
-    def page_geometry(self, worksheet, frame: SheetFrame) -> tuple[PageGeometry, float]:
-        setup = worksheet.page_setup
-        width_inches, height_inches = PAPER_BY_SPREADSHEET_CODE.get(int(setup.paperSize or DEFAULT_PAPER.spreadsheet_code), DEFAULT_PAPER).inches
-        if setup.orientation == "landscape":
-            width_inches, height_inches = height_inches, width_inches
-        margins = worksheet.page_margins
-        geometry = PageGeometry(
-            width=inches_to_pixels(width_inches),
-            height=inches_to_pixels(height_inches),
-            margin_top=inches_to_pixels(margins.top if margins.top is not None else 0.75),
-            margin_right=inches_to_pixels(margins.right if margins.right is not None else 0.7),
-            margin_bottom=inches_to_pixels(margins.bottom if margins.bottom is not None else 0.75),
-            margin_left=inches_to_pixels(margins.left if margins.left is not None else 0.7),
-            header_distance=inches_to_pixels(margins.header if margins.header is not None else 0.3),
-            footer_distance=inches_to_pixels(margins.footer if margins.footer is not None else 0.3),
-        )
-        return geometry, print_scale(worksheet, frame, geometry)
 
     def page_html(self, page_number: int, page_count: int, geometry: PageGeometry, columns: list[int], rows: list[int], scale: float, frame: SheetFrame) -> str:
         grid = self.grid_html(frame, columns, rows, scale)
@@ -289,6 +300,28 @@ class SheetPreviewer:
         return f"<div{style_attribute(clip)}>{''.join(html)}</div>"
 
 
+def page_geometry(worksheet) -> PageGeometry:
+    setup = worksheet.page_setup
+    width_inches, height_inches = PAPER_BY_SPREADSHEET_CODE.get(int(setup.paperSize or DEFAULT_PAPER.spreadsheet_code), DEFAULT_PAPER).inches
+    if page_orientation(worksheet) == "landscape":
+        width_inches, height_inches = height_inches, width_inches
+    margins = worksheet.page_margins
+    return PageGeometry(
+        width=inches_to_pixels(width_inches),
+        height=inches_to_pixels(height_inches),
+        margin_top=inches_to_pixels(margins.top if margins.top is not None else 0.75),
+        margin_right=inches_to_pixels(margins.right if margins.right is not None else 0.7),
+        margin_bottom=inches_to_pixels(margins.bottom if margins.bottom is not None else 0.75),
+        margin_left=inches_to_pixels(margins.left if margins.left is not None else 0.7),
+        header_distance=inches_to_pixels(margins.header if margins.header is not None else 0.3),
+        footer_distance=inches_to_pixels(margins.footer if margins.footer is not None else 0.3),
+    )
+
+
+def page_orientation(worksheet) -> str:
+    return "landscape" if worksheet.page_setup.orientation == "landscape" else "portrait"
+
+
 def page_content(page_number: int, frame: SheetFrame, columns: list[int], rows: list[int], drawings: list[dict]) -> dict:
     body_rows = [row for row in rows if row not in frame.title_rows] or rows
     cells = f"{get_column_letter(columns[0])}{body_rows[0]}:{get_column_letter(columns[-1])}{body_rows[-1]}"
@@ -357,34 +390,61 @@ def print_bounds(worksheet, sheet_values) -> tuple[int, int, int, int] | None:
     if area:
         first = area[0] if isinstance(area, (list, tuple)) else str(area).split(",")[0]
         return range_boundaries(first.split("!")[-1].replace("$", "").replace("'", ""))
+    return used_bounds(worksheet, sheet_values, [*sheet_charts(worksheet), *getattr(worksheet, "_images", [])])
+
+
+def used_bounds(worksheet, sheet_values, drawings: list) -> tuple[int, int, int, int] | None:
     used = [(cell.row, cell.column) for row in sheet_values.iter_rows() for cell in row if cell.value not in (None, "")]
     used += [(merged.max_row, merged.max_col) for merged in worksheet.merged_cells.ranges]
-    used += drawing_corners(worksheet)
+    used += [corner for top, left, bottom, right in drawing_spans(worksheet, drawings) for corner in ((top, left), (bottom, right))]
     if not used:
         return None
     return min(column for _, column in used), min(row for row, _ in used), max(column for _, column in used), max(row for row, _ in used)
 
 
-def drawing_spans(worksheet) -> list[tuple[int, int, int, int]]:
-    spans = [drawing_span(drawing) for drawing in [*getattr(worksheet, "_charts", []), *getattr(worksheet, "_images", [])]]
+def sheet_charts(worksheet) -> list:
+    return list(getattr(worksheet, "_charts", []))
+
+
+def drawing_spans(worksheet, drawings: list) -> list[tuple[int, int, int, int]]:
+    spans = [drawing_span(worksheet, drawing) for drawing in drawings]
     return [span for span in spans if span is not None]
 
 
-def drawing_span(drawing) -> tuple[int, int, int, int] | None:
+def drawing_span(worksheet, drawing) -> tuple[int, int, int, int] | None:
     start = getattr(drawing.anchor, "_from", None)
     end = getattr(drawing.anchor, "to", None)
     extent = getattr(drawing.anchor, "ext", None)
     if start is not None and end is not None:
         return start.row + 1, start.col + 1, end.row + 1, end.col + 1
     if start is not None and extent is not None:
-        rows = int(emu_to_pixels(extent.height) // points_to_pixels(DEFAULT_ROW_POINTS)) + 1
-        columns = int(emu_to_pixels(extent.width) // column_pixels(DEFAULT_COLUMN_CHARACTERS)) + 1
+        columns = cells_spanned(start.col + 1, emu_to_pixels(extent.width + (start.colOff or 0)), sheet_column_pixels(worksheet))
+        rows = cells_spanned(start.row + 1, emu_to_pixels(extent.height + (start.rowOff or 0)), lambda row: sheet_row_pixels(worksheet, row))
         return start.row + 1, start.col + 1, start.row + rows, start.col + columns
     return None
 
 
-def drawing_corners(worksheet) -> list[tuple[int, int]]:
-    return [corner for top, left, bottom, right in drawing_spans(worksheet) for corner in ((top, left), (bottom, right))]
+def cells_spanned(first: int, length: float, pixels_of) -> int:
+    count, covered = 0, 0.0
+    while covered < length:
+        covered += max(pixels_of(first + count), 1)
+        count += 1
+    return max(count, 1)
+
+
+def sheet_column_pixels(worksheet):
+    settings = column_dimension_map(worksheet)
+    default = default_column_width(worksheet)
+    return lambda column: 0 if settings.get(column, {}).get("hidden") else column_pixels(settings.get(column, {}).get("width") or default)
+
+
+def sheet_row_pixels(worksheet, row: int) -> float:
+    if row_hidden(worksheet, row):
+        return 0
+    dimension = worksheet.row_dimensions.get(row) if hasattr(worksheet.row_dimensions, "get") else None
+    if dimension is not None and dimension.height:
+        return points_to_pixels(dimension.height)
+    return default_row_pixels(worksheet)
 
 
 def column_dimension_map(worksheet) -> dict[int, dict]:
@@ -400,6 +460,10 @@ def column_dimension_map(worksheet) -> dict[int, dict]:
 def row_hidden(worksheet, row: int) -> bool:
     dimension = worksheet.row_dimensions.get(row) if hasattr(worksheet.row_dimensions, "get") else None
     return bool(dimension is not None and dimension.hidden)
+
+
+def default_row_pixels(worksheet) -> float:
+    return points_to_pixels(worksheet.sheet_format.defaultRowHeight or DEFAULT_ROW_POINTS)
 
 
 def default_column_width(worksheet) -> float:
@@ -426,6 +490,16 @@ def print_title_rows(worksheet, rows: list[int]) -> list[int]:
     return [row for row in rows if int(start) <= row <= int(end or start)]
 
 
+def sheet_print_issues(workbook) -> list[Issue]:
+    previewer = SheetPreviewer(workbook, workbook, "", theme_palette(workbook.loaded_theme), FontRegistry(), Preview(title=""))
+    layouts = [(worksheet, previewer.print_layout(worksheet, worksheet)) for worksheet in workbook.worksheets if worksheet.sheet_state == "visible"]
+    return [issue for worksheet, layout in layouts if layout is not None for issue in print_layout_issues(worksheet, layout)]
+
+
+def print_layout_issues(worksheet, layout: PrintLayout) -> list[Issue]:
+    return [*print_width_issues(worksheet, layout), *print_size_issues(worksheet, layout)]
+
+
 def print_width_issues(worksheet, layout: PrintLayout) -> list[Issue]:
     pages_wide = len(layout.column_chunks)
     if pages_wide <= chosen_width_pages(worksheet):
@@ -436,25 +510,172 @@ def print_width_issues(worksheet, layout: PrintLayout) -> list[Issue]:
         f"{worksheet.title} prints {pages_wide} pages wide: columns {get_column_letter(first_page[0])}-{get_column_letter(first_page[-1])} fill the first page "
         f"and {get_column_letter(rest[0])}-{get_column_letter(rest[-1])} print on {'a page' if pages_wide == 2 else 'pages'} of their own, so each printed row is cut apart"
     )
-    fix = [{"op": "set_page_setup", "sheet": worksheet.title, "fitToWidth": 1}]
-    return [SHEET_PRINTS_WIDE.issue(message, worksheet.title, chart_move_suggestion(worksheet, first_page), fix)]
+    plan = readable_print_plan(worksheet, layout, body_points(layout.frame))
+    return [print_layout_issue(SHEET_PRINTS_WIDE, message, worksheet, plan)]
 
 
-def chart_move_suggestion(worksheet, first_page: list[int]) -> str | None:
-    charts = [index for index, chart in enumerate(getattr(worksheet, "_charts", [])) if crosses_past(drawing_span(chart), first_page)]
-    if not charts:
-        return None
-    below = last_filled_row(worksheet) + DEFAULT_ANCHOR_GAP
-    named = ", ".join(str(index) for index in charts)
-    return f"apply the set_page_setup in fix to shrink the sheet onto one page wide; or, to keep the type size, move chart {named} under the tables with edit_chart \"anchor\": \"A{below}\""
+def print_size_issues(worksheet, layout: PrintLayout) -> list[Issue]:
+    points = body_points(layout.frame)
+    if layout.scale >= readable_scale(points):
+        return []
+    plan = readable_print_plan(worksheet, layout, points)
+    message = (
+        f"{worksheet.title} prints at {percent(layout.scale)} of full size, so its {format_points(points)} pt body text prints at {format_points(points * layout.scale)} pt, "
+        f"under the {READABLE_PRINT_POINTS} pt that stays readable on paper: {shrink_cause(worksheet, layout, plan)}"
+    )
+    return [print_layout_issue(SHEET_PRINTS_SMALL, message, worksheet, plan)]
 
 
-def last_filled_row(worksheet) -> int:
-    return max((cell.row for row in worksheet.iter_rows() for cell in row if cell.value not in (None, "")), default=0)
+def print_layout_issue(kind, message: str, worksheet, plan: PrintPlan) -> Issue:
+    return kind.issue(message, worksheet.title, plan_suggestion(worksheet, plan), plan_operations(worksheet, plan))
 
 
-def crosses_past(span: tuple[int, int, int, int] | None, first_page: list[int]) -> bool:
-    return span is not None and span[3] > first_page[-1]
+def readable_scale(points: float) -> float:
+    return min(1.0, READABLE_PRINT_POINTS / points)
+
+
+def body_points(frame: SheetFrame) -> float:
+    rows, columns = set(frame.rows), set(frame.columns)
+    sizes = Counter(
+        cell.font.sz or DEFAULT_FONT.sz
+        for row in frame.values.iter_rows() for cell in row
+        if cell.value not in (None, "") and cell.row in rows and cell.column in columns
+    )
+    return float(sizes.most_common(1)[0][0] if sizes else DEFAULT_FONT.sz)
+
+
+def readable_print_plan(worksheet, layout: PrintLayout, points: float) -> PrintPlan:
+    moves, extent = beside_chart_moves(worksheet, layout.frame)
+    minimum = readable_scale(points)
+    current = print_scale(worksheet, extent, layout.geometry)
+    if current >= minimum and pages_across(extent.column_widths, current, layout.geometry.content_width) <= chosen_width_pages(worksheet):
+        return PrintPlan(moves, None, current, points)
+    fit, scale = readable_fit(worksheet, extent, layout.geometry, minimum)
+    return PrintPlan(moves, fit, scale, points)
+
+
+def beside_chart_moves(worksheet, frame: SheetFrame) -> tuple[list[ChartMove], PrintExtent]:
+    charts = sheet_charts(worksheet)
+    images = list(getattr(worksheet, "_images", []))
+    content = used_bounds(worksheet, frame.values, images)
+    beside = [] if worksheet.print_area else [index for index, chart in enumerate(charts) if is_beside(drawing_span(worksheet, chart), content)]
+    if not beside:
+        return [], frame_extent(frame)
+    kept = used_bounds(worksheet, frame.values, [*images, *(chart for index, chart in enumerate(charts) if index not in beside)])
+    sizes = [chart_pixels(charts[index], frame) for index in beside]
+    row_pixels = default_row_pixels(worksheet)
+    return stacked_moves(beside, sizes, kept, row_pixels), moved_extent(worksheet, frame, kept, sizes, row_pixels)
+
+
+def is_beside(span: tuple[int, int, int, int] | None, content: tuple[int, int, int, int] | None) -> bool:
+    if span is None or content is None:
+        return False
+    top, _, _, right = span
+    _, _, last_column, last_row = content
+    return right > last_column and top <= last_row
+
+
+def chart_pixels(chart, frame: SheetFrame) -> tuple[float, float]:
+    box = drawing_box(chart.anchor, frame, frame.columns, frame.rows, 1.0) if hasattr(chart.anchor, "_from") else None
+    if box is not None:
+        return box.width, box.height
+    return millimetres_to_pixels(chart.width * 10), millimetres_to_pixels(chart.height * 10)
+
+
+def stacked_moves(indexes: list[int], sizes: list[tuple[float, float]], kept: tuple[int, int, int, int], row_pixels: float) -> list[ChartMove]:
+    first_column, _, _, last_row = kept
+    moves, row = [], last_row + DEFAULT_ANCHOR_GAP
+    for index, (_, height) in zip(indexes, sizes):
+        moves.append(ChartMove(index, f"{get_column_letter(first_column)}{row}"))
+        row += int(height // row_pixels) + DEFAULT_ANCHOR_GAP
+    return moves
+
+
+def moved_extent(worksheet, frame: SheetFrame, kept: tuple[int, int, int, int], sizes: list[tuple[float, float]], row_pixels: float) -> PrintExtent:
+    first_column, _, last_column, last_row = kept
+    widths = [frame.widths[column] for column in frame.columns if first_column <= column <= last_column]
+    widest = max(width for width, _ in sizes)
+    default_width = max(column_pixels(default_column_width(worksheet)), 1)
+    column = last_column + 1
+    while sum(widths) < widest:
+        widths.append(frame.widths.get(column, default_width))
+        column += 1
+    kept_height = sum(frame.heights[row] for row in frame.rows if row <= last_row)
+    moved_height = sum(height + (DEFAULT_ANCHOR_GAP - 1) * row_pixels for _, height in sizes)
+    return PrintExtent(widths, kept_height + moved_height)
+
+
+def frame_extent(frame: SheetFrame) -> PrintExtent:
+    return PrintExtent([frame.widths[column] for column in frame.columns], sum(frame.heights.values()))
+
+
+def readable_fit(worksheet, extent: PrintExtent, geometry: PageGeometry, minimum: float) -> tuple[PageFit, float]:
+    current = page_orientation(worksheet)
+    orientations = list(dict.fromkeys([current, "landscape"]))
+    widest_pages = pages_across(extent.column_widths, 1.0, geometry.content_width)
+    for pages in range(1, widest_pages + 1):
+        for orientation in orientations:
+            fit = PageFit(orientation, pages)
+            scale = fitted_scale(extent, oriented(geometry, orientation, current), pages, 0)
+            if scale >= minimum:
+                return fit, scale
+    return fit, scale
+
+
+def oriented(geometry: PageGeometry, orientation: str, current: str) -> PageGeometry:
+    return geometry if orientation == current else replace(geometry, width=geometry.height, height=geometry.width)
+
+
+def shrink_cause(worksheet, layout: PrintLayout, plan: PrintPlan) -> str:
+    columns = f"columns {get_column_letter(layout.frame.columns[0])}-{get_column_letter(layout.frame.columns[-1])}"
+    if plan.moves:
+        charts = sheet_charts(worksheet)
+        named = ", ".join(f"chart {move.chart} at {anchor_cell(charts[move.chart])}" for move in plan.moves)
+        return f"{named}, beside the data, widens the printed page to {columns}"
+    if is_fitted_to_pages(worksheet):
+        return f"its page setup fits {columns} onto {fitted_pages_text(worksheet)}"
+    return f"its page setup prints at a scale of {worksheet.page_setup.scale}%"
+
+
+def fitted_pages_text(worksheet) -> str:
+    width, height = fitted_page_count(worksheet.page_setup.fitToWidth), fitted_page_count(worksheet.page_setup.fitToHeight)
+    parts = [f"{pages_text(width)} wide" if width else "", f"{pages_text(height)} tall" if height else ""]
+    return " and ".join(part for part in parts if part)
+
+
+def plan_suggestion(worksheet, plan: PrintPlan) -> str:
+    steps = [f'move chart {move.chart} under the data with edit_chart "anchor": "{move.anchor}"' for move in plan.moves]
+    if plan.fit is not None:
+        turned = " in landscape" if plan.fit.orientation != page_orientation(worksheet) else ""
+        steps.append(f"fit the columns onto {pages_text(plan.fit.width_pages)} wide{turned}")
+    return f"apply the operations in fix: they {' and '.join(steps)}, so the sheet prints at {percent(plan.scale)} and its body text at {format_points(plan.body_points * plan.scale)} pt"
+
+
+def plan_operations(worksheet, plan: PrintPlan) -> list[dict]:
+    moves = [{"op": "edit_chart", "sheet": worksheet.title, "chart": move.chart, "anchor": move.anchor} for move in plan.moves]
+    return moves + ([page_fit_operation(worksheet, plan.fit)] if plan.fit is not None else [])
+
+
+def page_fit_operation(worksheet, fit: PageFit) -> dict:
+    operation = {"op": "set_page_setup", "sheet": worksheet.title}
+    if fit.orientation != page_orientation(worksheet):
+        operation["orientation"] = fit.orientation
+    operation["fitToWidth"] = fit.width_pages
+    if is_fitted_to_pages(worksheet) and fitted_page_count(worksheet.page_setup.fitToHeight):
+        operation["fitToHeight"] = 0
+    return operation
+
+
+def pages_text(count: int) -> str:
+    return "1 page" if count == 1 else f"{count} pages"
+
+
+def percent(scale: float) -> str:
+    return f"{scale:.0%}"
+
+
+def format_points(points: float) -> str:
+    return f"{points:.1f}".removesuffix(".0")
 
 
 def chosen_width_pages(worksheet) -> int:
@@ -463,27 +684,40 @@ def chosen_width_pages(worksheet) -> int:
     return max(1, int(worksheet.page_setup.fitToWidth))
 
 
-def sheet_print_width_issues(workbook) -> list[Issue]:
-    previewer = SheetPreviewer(workbook, workbook, "", theme_palette(workbook.loaded_theme), FontRegistry(), Preview(title=""))
-    layouts = [(worksheet, previewer.print_layout(worksheet, worksheet)) for worksheet in workbook.worksheets if worksheet.sheet_state == "visible"]
-    return [issue for worksheet, layout in layouts if layout is not None for issue in print_width_issues(worksheet, layout)]
+def print_scale(worksheet, extent: PrintExtent, geometry: PageGeometry) -> float:
+    if not is_fitted_to_pages(worksheet):
+        return (worksheet.page_setup.scale or 100) / 100
+    return fitted_scale(extent, geometry, fitted_page_count(worksheet.page_setup.fitToWidth), fitted_page_count(worksheet.page_setup.fitToHeight))
 
 
-def print_scale(worksheet, frame: SheetFrame, geometry: PageGeometry) -> float:
-    setup = worksheet.page_setup
-    properties = worksheet.sheet_properties.pageSetUpPr
-    if properties is not None and properties.fitToPage:
-        total_width = sum(frame.widths.values())
-        total_height = sum(frame.heights.values())
-        width_pages = EXCEL_DEFAULT_FIT_PAGES if setup.fitToWidth is None else int(setup.fitToWidth)
-        height_pages = EXCEL_DEFAULT_FIT_PAGES if setup.fitToHeight is None else int(setup.fitToHeight)
-        scales = [1.0]
-        if width_pages:
-            scales.append(geometry.content_width * width_pages / total_width)
-        if height_pages:
-            scales.append((geometry.height - geometry.margin_top - geometry.margin_bottom) * height_pages / total_height)
-        return min(scales)
-    return (setup.scale or 100) / 100
+def fitted_page_count(pages) -> int:
+    return EXCEL_DEFAULT_FIT_PAGES if pages is None else int(pages)
+
+
+def fitted_scale(extent: PrintExtent, geometry: PageGeometry, width_pages: int, height_pages: int) -> float:
+    scales = [1.0]
+    if width_pages:
+        scales.append(width_fit_scale(extent.column_widths, geometry.content_width, width_pages))
+    if height_pages and extent.height:
+        scales.append(geometry.content_height * height_pages / extent.height)
+    return min(scales)
+
+
+def width_fit_scale(widths: list[float], content_width: float, pages: int) -> float:
+    total = sum(widths)
+    if not total or pages_across(widths, 1.0, content_width) <= pages:
+        return 1.0
+    fitting, failing = 0.0, min(1.0, content_width * pages / total)
+    if pages_across(widths, failing, content_width) <= pages:
+        return failing
+    for _ in range(FIT_SEARCH_STEPS):
+        middle = (fitting + failing) / 2
+        fitting, failing = (middle, failing) if pages_across(widths, middle, content_width) <= pages else (fitting, middle)
+    return fitting
+
+
+def pages_across(widths: list[float], scale: float, content_width: float) -> int:
+    return len(chunks(list(range(len(widths))), [width * scale for width in widths], content_width, set()))
 
 
 def chunks(items: list[int], sizes: list[float], limit: float, breaks_after: set) -> list[list[int]]:

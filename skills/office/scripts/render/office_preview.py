@@ -35,6 +35,10 @@ class PageGeometry:
     def content_width(self) -> float:
         return self.width - self.margin_left - self.margin_right
 
+    @property
+    def content_height(self) -> float:
+        return self.height - self.margin_top - self.margin_bottom
+
 
 @dataclass
 class Preview:

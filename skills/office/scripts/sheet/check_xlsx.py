@@ -21,7 +21,7 @@ from sheet.checks.text_values import text_value_issues
 from sheet.checks.tables import table_findings
 from sheet.workbook.access import open_workbook
 from sheet.formulas.evaluation import evaluate_workbook
-from sheet.preview.pages import sheet_print_width_issues
+from sheet.preview.pages import sheet_print_issues
 
 
 DEFAULT_COLUMN_WIDTH = 8.43
@@ -52,7 +52,7 @@ def content_issues(workbook, workbook_path: str, evaluation) -> list[Issue]:
         + empty_pivot_issues(workbook)
         + placeholder_issues(workbook)
         + evaluation_issues(evaluation)
-        + sheet_print_width_issues(workbook)
+        + sheet_print_issues(workbook)
     )
 
 

@@ -86,7 +86,7 @@ class RenderedPagesTest(WorkbookFixture):
 
     def test_a_sheet_printing_pages_wide_is_a_print_defect_with_a_fit_to_width_fix(self):
         header = [f"항목{index}" for index in range(1, 13)]
-        self.create_workbook([{"title": "넓은표", "rows": [header, list(range(1, 13))], "columnWidths": {letter: 18 for letter in "ABCDEFGHIJKL"}}])
+        self.create_workbook([{"title": "넓은표", "rows": [header, list(range(1, 13))], "columnWidths": {letter: 10 for letter in "ABCDEFGHIJKL"}}])
         rendered, _ = self.render()
         checked = run_office(["check", "book.xlsx"], self.directory)
         for envelope in (rendered, checked):
@@ -108,6 +108,53 @@ class RenderedPagesTest(WorkbookFixture):
         self.apply([{"op": "add_chart", "type": "line", "range": "A1:B5", "anchor": "F2", "width": 20}])
         issue = next(issue for issue in run_office(["check", "book.xlsx"], self.directory)["issues"] if issue["code"] == "SHEET_PRINTS_WIDE")
         self.assertIn('edit_chart "anchor": "A7"', issue["suggestion"])
+
+    def test_a_chart_beside_the_data_that_shrinks_the_fitted_page_is_moved_under_the_data(self):
+        rows = [["지역", "목표", "실적", "달성률", "고객수", "비고"]] + [[f"지역{index}", 100 + index, 90 + index, 0.9, index, "-"] for index in range(1, 21)]
+        self.create_workbook([{"title": "요약", "rows": rows}])
+        self.apply([{"op": "add_chart", "type": "line", "range": "A1:C21", "anchor": "G2", "width": 20}, {"op": "set_page_setup", "fitToWidth": 1, "fitToHeight": 0}])
+        rendered, checked = self.render()[0], run_office(["check", "book.xlsx"], self.directory)
+        for envelope in (rendered, checked):
+            issue = next(issue for issue in envelope["issues"] if issue["code"] == "SHEET_PRINTS_SMALL")
+            self.assertIn("11 pt body text prints at", issue["message"])
+            self.assertIn("8 pt", issue["message"])
+            self.assertIn("chart 0", issue["message"])
+            self.assertEqual(issue["fix"], [{"op": "edit_chart", "sheet": "요약", "chart": 0, "anchor": "A23"}])
+        self.assertEqual(self.apply(issue["fix"])["status"], "ok")
+        print_codes = {"SHEET_PRINTS_SMALL", "SHEET_PRINTS_WIDE"}
+        self.assertEqual([issue["code"] for issue in run_office(["check", "book.xlsx"], self.directory)["issues"] if issue["code"] in print_codes], [])
+        self.assertEqual([issue["code"] for issue in self.render()[0]["issues"] if issue["code"] in print_codes], [])
+
+    def test_a_table_too_wide_to_read_on_one_page_turns_landscape_or_spreads_over_pages(self):
+        cases = (
+            (10, {"op": "set_page_setup", "sheet": "넓은표", "orientation": "landscape", "fitToWidth": 1}),
+            (12, {"op": "set_page_setup", "sheet": "넓은표", "fitToWidth": 2}),
+        )
+        for column_count, page_setup in cases:
+            with self.subTest(columns=column_count):
+                letters = "ABCDEFGHIJKL"[:column_count]
+                header = [f"항목{index}" for index in range(1, column_count + 1)]
+                self.create_workbook([{"title": "넓은표", "rows": [header, list(range(1, column_count + 1))], "columnWidths": {letter: 18 for letter in letters}}])
+                wide = next(issue for issue in run_office(["check", "book.xlsx"], self.directory)["issues"] if issue["code"] == "SHEET_PRINTS_WIDE")
+                self.assertEqual(wide["fix"], [page_setup])
+                self.assertEqual(self.apply([{"op": "set_page_setup", "fitToWidth": 1}])["status"], "ok")
+                small = next(issue for issue in run_office(["check", "book.xlsx"], self.directory)["issues"] if issue["code"] == "SHEET_PRINTS_SMALL")
+                self.assertEqual(small["fix"], [page_setup])
+                self.assertEqual(self.apply(small["fix"])["status"], "ok")
+                remaining = [issue["code"] for issue in run_office(["check", "book.xlsx"], self.directory)["issues"]]
+                self.assertNotIn("SHEET_PRINTS_SMALL", remaining)
+                self.assertNotIn("SHEET_PRINTS_WIDE", remaining)
+
+    def test_a_fit_that_keeps_the_text_readable_and_a_low_print_scale(self):
+        header = [f"항목{index}" for index in range(1, 10)]
+        self.create_workbook([{"title": "표", "rows": [header, list(range(1, 10))], "columnWidths": {letter: 12 for letter in "ABCDEFGHI"}}])
+        self.apply([{"op": "set_page_setup", "fitToWidth": 1}])
+        self.assertNotIn("SHEET_PRINTS_SMALL", [issue["code"] for issue in run_office(["check", "book.xlsx"], self.directory)["issues"]])
+        self.apply([{"op": "set_page_setup", "scale": 50}])
+        issue = next(issue for issue in run_office(["check", "book.xlsx"], self.directory)["issues"] if issue["code"] == "SHEET_PRINTS_SMALL")
+        self.assertIn("prints at 50% of full size", issue["message"])
+        self.assertEqual(self.apply(issue["fix"])["status"], "ok")
+        self.assertNotIn("SHEET_PRINTS_SMALL", [issue["code"] for issue in run_office(["check", "book.xlsx"], self.directory)["issues"]])
 
     def test_fit_to_one_page_tall_and_printed_gridlines_shape_the_pages(self):
         self.create_workbook([{"title": "일지", "rows": [["일자", "건수"]] + [[f"{day}일", day] for day in range(1, 151)]}])
