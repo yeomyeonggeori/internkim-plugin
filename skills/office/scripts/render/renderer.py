@@ -9,7 +9,8 @@ import subprocess
 import tempfile
 
 from fonts.registry import renderer_fonts
-from core.office_result import INPUT_NOT_FOUND, SETUP_COMMAND, SETUP_SUGGESTION, IssueKind, OfficeFailure, WARNING, ERROR
+from core.office_commands import SETUP_COMMAND
+from core.office_result import INPUT_NOT_FOUND, SETUP_SUGGESTION, IssueKind, OfficeFailure, WARNING, ERROR
 
 
 RENDER_DIRECTORY = pathlib.Path(__file__).resolve().parent

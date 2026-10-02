@@ -8,9 +8,9 @@ from pypdf import PdfReader
 
 from core.office_arguments import route_arguments
 from core.office_inputs import require_unlocked_pdf, unlocked_pdf_bytes
-from pdf.ocr.pdf_ocr import OcrFailed, read_pages_by_ocr
+from pdf.ocr.pdf_ocr import OcrUnavailable, read_pages_by_ocr
 from pdf.pdf_tables import line_texts, page_tables, stream_tables
-from pdf.pdf_definitions import OCR_FAILED, PAGE_READ_BY_OCR, PAGE_WITHOUT_TEXT, page_reading_suggestion
+from pdf.pdf_definitions import OCR_UNAVAILABLE, PAGE_READ_BY_OCR, PAGE_WITHOUT_TEXT, page_reading_suggestion
 from core.office_result import Issue, Result, run_command
 
 
@@ -46,8 +46,8 @@ def pages_read_by_ocr(data: bytes, pages: list[dict]) -> tuple[list[dict], list[
     scanned = [page["page"] for page in pages if not page["hasText"]]
     try:
         lines = read_pages_by_ocr(data, scanned)
-    except OcrFailed as reason:
-        return pages, [OCR_FAILED.issue(str(reason), f"pages {listed(scanned)}")]
+    except OcrUnavailable as reason:
+        return pages, [OCR_UNAVAILABLE.issue(str(reason), f"pages {listed(scanned)}")]
     pages = [with_ocr_text(page, lines[page["page"]]) if page["page"] in lines else page for page in pages]
     read = [page["page"] for page in pages if page.get("readByOcr")]
     return pages, [PAGE_READ_BY_OCR.issue(f"pages {listed(read)} were read by OCR", f"pages {listed(read)}")] if read else []

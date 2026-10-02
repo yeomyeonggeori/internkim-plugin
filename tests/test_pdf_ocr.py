@@ -12,6 +12,11 @@ from doc_fixture import run_office, run_office_python
 from pdf_fixture import SCANNED_STATEMENT_PDF, copy_pdf_fixture
 from skill_copy_fixture import copy_skill
 
+from core.office_commands import OCR_SETUP_COMMAND  # noqa: E402
+from pdf.ocr.ocr_environment import ocr_python  # noqa: E402
+
+OCR_NOT_PREPARED = f"the OCR engine is not prepared; run {OCR_SETUP_COMMAND}"
+
 
 AMOUNTS = ["금액", "1,440,000", "540,000", "1,192,500", "432,000", "420,000", "4,024,500"]
 
@@ -37,6 +42,7 @@ class ScannedStatementTest(unittest.TestCase):
         slides = run_office(["convert", "scanned-statement.pdf", "scan.pptx"], self.directory)
         self.assertNotIn("--ocr", slides["issues"][0]["suggestion"])
 
+    @unittest.skipUnless(ocr_python(), OCR_NOT_PREPARED)
     def test_read_with_ocr_gives_the_page_text_and_its_table(self):
         envelope = run_office(["read", "scanned-statement.pdf", "--ocr"], self.directory)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["PAGE_READ_BY_OCR"])
@@ -49,6 +55,7 @@ class ScannedStatementTest(unittest.TestCase):
         self.assertEqual([row[-1] for row in table], AMOUNTS)
         self.assertEqual([row[0] for row in table][1:], ["2026-09-02", "2026-09-09", "2026-09-16", "2026-09-23", "2026-09-30", "합계"])
 
+    @unittest.skipUnless(ocr_python(), OCR_NOT_PREPARED)
     def test_convert_with_ocr_writes_the_scanned_table_as_typed_cells(self):
         envelope = run_office(["convert", "scanned-statement.pdf", "scan.xlsx", "--ocr"], self.directory)
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["PAGE_READ_BY_OCR"])
@@ -59,16 +66,16 @@ class ScannedStatementTest(unittest.TestCase):
         envelope = run_office(["convert", "scanned-statement.pdf", "scan.pptx", "--ocr"], self.directory)
         self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("INVALID_VALUE", "--ocr")])
 
-    def test_an_engine_that_is_not_prepared_is_a_setup_not_run(self):
+    def test_an_engine_that_is_not_prepared_is_named_with_its_setup_and_the_page_still_answers(self):
         with tempfile.TemporaryDirectory() as root:
             office_entry = copy_skill(Path(root) / "office", ("python environment",))
             environment = {**os.environ, "PATH": str(Path(sys.executable).parent)}
             completed = subprocess.run([sys.executable, str(office_entry), "read", "scanned-statement.pdf", "--ocr"], capture_output=True, text=True, cwd=self.directory, env=environment)
         self.assertNotIn("Traceback", completed.stderr)
         envelope = json.loads(completed.stdout)
-        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["DEPENDENCIES_UNAVAILABLE"])
-        self.assertIn("office setup", envelope["issues"][0]["suggestion"])
-        self.assertEqual(completed.returncode, 1)
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["OCR_UNAVAILABLE", "PAGE_WITHOUT_TEXT"])
+        self.assertIn("office setup --with-ocr", envelope["issues"][0]["message"])
+        self.assertNotIn("--ocr", envelope["issues"][1]["suggestion"])
 
 
 if __name__ == "__main__":

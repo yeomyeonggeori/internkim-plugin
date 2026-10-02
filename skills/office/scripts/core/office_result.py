@@ -8,6 +8,8 @@ import logging
 import os
 from typing import Callable
 
+from core.office_commands import SETUP_COMMAND
+
 
 ERROR = "error"
 WARNING = "warning"
@@ -90,7 +92,6 @@ class OfficeFailure(Exception):
 
 
 DOCUMENTS_FOLDER = "~/documents"
-SETUP_COMMAND = "office setup"
 SETUP_SUGGESTION = f"run {SETUP_COMMAND} once; it needs uv, bun or node 18, and network access, and InternKim's host install runs it"
 
 VALUE_FILL_IN = "<value>"

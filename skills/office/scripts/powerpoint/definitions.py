@@ -6,7 +6,8 @@ import re
 from charts.kinds import DECK_CHART_KINDS
 from charts.look import LABEL_FLAGS
 from core.office_operations import OPERATION_ISSUE_KINDS
-from core.office_result import ERROR, SETUP_COMMAND, WARNING, Issue, IssueKind
+from core.office_commands import SETUP_COMMAND
+from core.office_result import ERROR, WARNING, Issue, IssueKind
 from core.template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
 from core.text_checks import TEXT_CHECK_ISSUE_KINDS
 from core.office_theme import THEME_SLOTS

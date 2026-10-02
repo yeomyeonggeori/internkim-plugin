@@ -86,7 +86,7 @@ class PreparedSkillTest(unittest.TestCase):
         cls.temporary_directory = tempfile.TemporaryDirectory()
         root = Path(cls.temporary_directory.name)
         cls.skill = root / "office"
-        cls.office_entry = copy_skill(cls.skill, ("ocr engine",))
+        cls.office_entry = copy_skill(cls.skill)
         cls.setup_completed, cls.setup_envelope = run(cls.office_entry, ["setup"], root, dict(os.environ))
         cls.requester = root / "requester"
         cls.work = cls.requester / "work"
@@ -105,8 +105,8 @@ class PreparedSkillTest(unittest.TestCase):
 
     def test_setup_lists_each_piece_where_the_skill_reads_it(self):
         steps = self.setup_envelope["details"]["steps"]
-        self.assertEqual([step["name"] for step in steps], ["python environment", "renderer packages", "ocr engine"])
-        self.assertEqual([step["state"] for step in steps], ["prepared", "prepared", "found"])
+        self.assertEqual([step["name"] for step in steps], ["python environment", "renderer packages"])
+        self.assertEqual({step["state"] for step in steps}, {"prepared"})
         self.assertEqual([Path(step["path"]) for step in steps], [self.skill.resolve() / PREPARED_LOCATIONS[step["name"]] for step in steps])
 
     def test_a_second_setup_finds_everything_and_changes_nothing(self):
