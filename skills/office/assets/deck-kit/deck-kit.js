@@ -41,6 +41,7 @@
   const keptInlineSelector = "em, strong, b, i, mark, small, span, a";
   const phrasingSelector = "em, strong, b, i, mark, a, span, code, sub, sup";
   const unkeptSelector = "aside, figure, table, svg, script, style, .kit-keep";
+  const firstQuantityColumn = 1;
   const numericCellPattern = /^[+\-−]?[₩$€£¥]?\s?[\d.,]+\s?(%p|%|[^\s\d()]{1,4}(\s[^\s\d()]{1,2})?)?(\s?\([^)]*\))?$/;
   const svgNamespace = "http://www.w3.org/2000/svg";
   const barScaleShare = 0.84;
@@ -604,7 +605,7 @@
     document.querySelectorAll("section[data-layout] table").forEach((table) => {
       const rows = Array.from(table.querySelectorAll("tr"));
       const width = Math.max(0, ...rows.map((row) => row.children.length));
-      for (let column = 0; column < width; column += 1) {
+      for (let column = firstQuantityColumn; column < width; column += 1) {
         const cells = rows.map((row) => row.children[column]).filter(Boolean);
         if (isNumericColumn(cells)) cells.forEach((cell) => cell.classList.add("kit-number"));
       }

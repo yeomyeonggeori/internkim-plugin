@@ -295,11 +295,9 @@ section[data-layout="timeline"] .step > ul { gap: 6px; }
 section[data-layout="table"] > table { width: 100%; border-collapse: collapse; font-size: calc(25px * var(--fit) * var(--grow)); line-height: 1.4; font-variant-numeric: tabular-nums; }
 section[data-layout="table"] th { padding: 0 20px 0.7em; border-bottom: 2px solid var(--ink); text-align: left; font-size: calc(var(--size-small) * var(--fit) * var(--grow)); font-weight: 700; color: var(--muted); vertical-align: bottom; }
 section[data-layout="table"] td { padding: 0.8em 20px; border-bottom: 1px solid var(--line); color: var(--ink-soft); vertical-align: middle; }
-section[data-layout="table"] :is(th, td):first-child { padding-left: 4px; }
 section[data-layout="table"] td:first-child { font-weight: 700; color: var(--ink); }
 section[data-layout="table"] :is(th, td).kit-number { text-align: right; white-space: nowrap; }
 section[data-layout="table"] tr.pick td { background: var(--surface-strong); font-weight: 700; color: var(--ink); }
-section[data-layout="table"] tr.pick td:first-child { padding-left: 20px; }
 section[data-layout="table"] tr.pick td.kit-number:last-child { color: var(--accent); }
 
 section[data-layout="chart"].kit-with-insight { --n: 3; }

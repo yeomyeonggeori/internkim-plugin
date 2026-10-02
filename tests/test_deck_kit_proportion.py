@@ -44,6 +44,9 @@ PROPORTION_DECK = """<!doctype html>
   <figure data-chart="stacked100" data-labels="개발, 영업, 운영, 디자인" data-series="혼합: 58, 41, 39, 55; 사무실: 14, 44, 46, 18; 원격: 28, 15, 15, 27" data-unit="%"><figcaption>직군별 선호 근무 형태, 단위 %</figcaption></figure></section>
 <section data-layout="chart"><h2>원격 비율이 높은 팀도 생산성이 떨어지지 않았습니다</h2>
   <figure data-chart="scatter" data-labels="A팀, B팀, C팀, D팀, E팀, F팀" data-series="원격 근무 비율: 20, 35, 40, 50, 60, 80; 생산성 지수: 101, 106, 109, 112, 113, 111" data-unit="%, "><figcaption>팀별 원격 근무 비율과 생산성 지수</figcaption></figure></section>
+<section data-layout="table"><h2>용량별로 세 가지 가격을 둡니다</h2>
+  <table><thead><tr><th>용량</th><th>가격</th><th>원가율</th></tr></thead>
+  <tbody><tr><td>350ml</td><td>3.2만 원</td><td>34%</td></tr><tr class="pick"><td>500ml</td><td>3.9만 원</td><td>31%</td></tr><tr><td>1,000ml</td><td>5.6만 원</td><td>29%</td></tr></tbody></table></section>
 <section data-layout="closing"><h2>세 가지를 결정해 주십시오</h2><ol><li>예산 승인</li><li>일정 확정</li><li>담당 지정</li></ol></section>
 </body>
 </html>
@@ -120,11 +123,14 @@ class ProportionedChartTest(unittest.TestCase):
     def issues(self, code: str) -> list[dict]:
         return [issue for issue in self.envelope["issues"] if issue["code"] == code]
 
-    def block_box(self, slide_index: int, text: str) -> dict:
+    def block(self, slide_index: int, text: str) -> dict:
         wanted = "".join(text.split())
-        boxes = [block["box"] for block in self.layout["slides"][slide_index]["blocks"] if block_text(block) == wanted]
-        self.assertTrue(boxes, text)
-        return boxes[0]
+        blocks = [block for block in self.layout["slides"][slide_index]["blocks"] if block_text(block) == wanted]
+        self.assertTrue(blocks, text)
+        return blocks[0]
+
+    def block_box(self, slide_index: int, text: str) -> dict:
+        return self.block(slide_index, text)["box"]
 
     def test_no_chart_leaves_most_of_its_room_empty(self):
         self.assertEqual(self.issues("CHART_UNDERFILLED"), [])
@@ -156,6 +162,12 @@ class ProportionedChartTest(unittest.TestCase):
         for label in chart["pointLabels"]:
             fill = chart["colors"]["points"][label["series"]][label["point"]]
             self.assertGreaterEqual(contrast(label["text"]["color"], fill), LEGIBLE_CONTRAST, (label, fill))
+
+    def test_a_table_stub_column_shares_one_start_edge_in_every_row(self):
+        stubs = [self.block(6, text) for text in ("용량", "350ml", "500ml", "1,000ml")]
+        self.assertEqual({stub["paragraphs"][0]["alignment"] for stub in stubs}, {"l"})
+        starts = [stub["box"]["left"] + stub["insets"]["left"] for stub in stubs]
+        self.assertLessEqual(max(starts) - min(starts), 1, starts)
 
     def test_scatter_axes_end_on_round_steps(self):
         chart = self.layout["slides"][5]["charts"][0]
