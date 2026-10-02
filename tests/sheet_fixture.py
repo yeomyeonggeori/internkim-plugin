@@ -45,13 +45,13 @@ class WorkbookFixture(unittest.TestCase):
 
     def create_workbook(self, sheets, name="book.xlsx"):
         write_json(self.directory / "spec.json", {"sheets": sheets})
-        envelope = run_office(["sheet", "create", name, "--spec", "spec.json"], self.directory)
+        envelope = run_office(["create", name, "spec.json"], self.directory)
         self.assertNotEqual(envelope["status"], "error", envelope)
         return envelope
 
     def apply(self, operations, *extra_arguments, name="book.xlsx"):
         write_json(self.directory / "ops.json", operations)
-        return run_office(["sheet", "apply", name, "ops.json", *extra_arguments], self.directory)
+        return run_office(["apply", name, "ops.json", *extra_arguments], self.directory)
 
     def cells(self, name="book.xlsx", part_name="xl/worksheets/sheet1.xml"):
         return stored_cells(self.directory / name, part_name)

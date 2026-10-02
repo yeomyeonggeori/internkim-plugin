@@ -9,9 +9,10 @@ from pathlib import Path
 OFFICE_SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 sys.path.insert(0, str(OFFICE_SCRIPTS_PATH))
 
-from skill_runtime import HANGUL_FONT_PATHS, find_bold_face  # noqa: E402
+from fonts.registry import SANS_BODY, default_family, resolved_face  # noqa: E402
+from fonts.font_files import bold_sibling  # noqa: E402
 
-SOURCE_FONT_PATHS = [Path(path) for path in HANGUL_FONT_PATHS if Path(path).exists()]
+SOURCE_FONT_PATH = resolved_face(default_family(SANS_BODY).name).path
 
 
 def save_renamed_font(source_path, target_path, postscript_name):
@@ -38,31 +39,35 @@ def embedded_font_names(pdf_path):
     names = set()
     for page in PdfReader(str(pdf_path)).pages:
         fonts = page["/Resources"].get("/Font", {})
-        names.update(str(fonts[key].get_object()["/BaseFont"]).split("+")[-1] for key in fonts)
+        names.update(str(face_font(fonts[key].get_object())["/BaseFont"]).split("+")[-1] for key in fonts)
     return names
+
+
+def face_font(font):
+    descendants = font.get("/DescendantFonts")
+    return descendants[0].get_object() if descendants else font
 
 
 def issue_codes(result):
     return [issue["code"] for issue in result["issues"]]
 
 
-@unittest.skipUnless(SOURCE_FONT_PATHS, "no Korean-capable font installed to derive test fonts from")
 class BoldFontTest(unittest.TestCase):
     def setUp(self):
         self.directory = Path(tempfile.mkdtemp())
         self.addCleanup(lambda: __import__("shutil").rmtree(self.directory, ignore_errors=True))
         self.regular_path = self.directory / "TestGothic.ttf"
-        save_renamed_font(SOURCE_FONT_PATHS[0], self.regular_path, "TestGothicRegular")
+        save_renamed_font(SOURCE_FONT_PATH, self.regular_path, "TestGothicRegular")
 
     def add_bold_sibling(self):
-        save_renamed_font(SOURCE_FONT_PATHS[0], self.directory / "TestGothicBold.ttf", "TestGothicBoldFace")
+        save_renamed_font(SOURCE_FONT_PATH, self.directory / "TestGothicBold.ttf", "TestGothicBoldFace")
 
     def create_pdf(self):
         specification = {"title": "Report", "fontPath": str(self.regular_path), "sections": [{"title": "Summary", "paragraphs": ["Body text"]}]}
         specification_path = self.directory / "spec.json"
         specification_path.write_text(json.dumps(specification))
         output_path = self.directory / "out.pdf"
-        result = run_office_script("pdf/create_pdf.py", str(output_path), "--spec", str(specification_path))
+        result = run_office_script("pdf/create_pdf.py", str(output_path), str(specification_path))
         return result, output_path
 
     def test_pdf_create_embeds_a_second_font_file_for_headings(self):
@@ -77,41 +82,36 @@ class BoldFontTest(unittest.TestCase):
         self.assertEqual(result["status"], "warning")
         self.assertEqual(embedded_font_names(output_path), {"TestGothicRegular"})
 
-    def test_doc_export_embeds_bold_for_headings(self):
+    def test_a_markdown_pdf_embeds_bold_for_headings(self):
         self.add_bold_sibling()
         markdown_path = self.directory / "content.md"
         markdown_path.write_text("# Title\n\nBody\n")
-        result = run_office_script("doc/export_document.py", str(markdown_path), "--format", "pdf", "--font-path", str(self.regular_path))
+        result = run_office_script("doc/export_document.py", str(markdown_path.with_suffix(".pdf")), str(markdown_path), "--font-path", str(self.regular_path))
         self.assertEqual(issue_codes(result), [])
         self.assertEqual(embedded_font_names(Path(result["outputPath"])), {"TestGothicRegular", "TestGothicBoldFace"})
 
-    def test_paperwork_render_embeds_bold_for_titles(self):
+    def test_a_form_embeds_bold_for_titles(self):
         self.add_bold_sibling()
         document = {"title": "Quote", "profile": {"name": "Sample Co"}, "sections": [{"title": "Terms", "paragraphs": ["Body"]}], "fontPath": str(self.regular_path)}
         document_path = self.directory / "document.json"
         document_path.write_text(json.dumps(document))
-        result = run_office_script("paperwork/render_paperwork.py", str(document_path), str(self.directory / "form.pdf"))
+        result = run_office_script("paperwork/merge_form.py", "intl/quote", str(document_path), str(self.directory / "form.pdf"))
         self.assertEqual(issue_codes(result), [])
         self.assertEqual(embedded_font_names(self.directory / "form.pdf"), {"TestGothicRegular", "TestGothicBoldFace"})
 
 
-class FindBoldFaceTest(unittest.TestCase):
+class BoldSiblingTest(unittest.TestCase):
     def test_a_bold_file_beside_the_regular_file_is_found(self):
         with tempfile.TemporaryDirectory() as directory:
             for name in ("NanumGothic.ttf", "NanumGothicBold.ttf", "NotoSansCJK-Regular.ttc", "NotoSansCJK-Bold.ttc"):
                 (Path(directory) / name).write_bytes(b"")
-            self.assertEqual(find_bold_face(Path(directory) / "NanumGothic.ttf"), (Path(directory) / "NanumGothicBold.ttf", 0))
-            self.assertEqual(find_bold_face(Path(directory) / "NotoSansCJK-Regular.ttc"), (Path(directory) / "NotoSansCJK-Bold.ttc", 0))
+            self.assertEqual(bold_sibling(Path(directory) / "NanumGothic.ttf"), Path(directory) / "NanumGothicBold.ttf")
+            self.assertEqual(bold_sibling(Path(directory) / "NotoSansCJK-Regular.ttc"), Path(directory) / "NotoSansCJK-Bold.ttc")
 
     def test_a_regular_file_alone_has_no_bold_face(self):
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / "NanumGothic.ttf").write_bytes(b"")
-            self.assertIsNone(find_bold_face(Path(directory) / "NanumGothic.ttf"))
-
-    @unittest.skipUnless(Path("/System/Library/Fonts/AppleSDGothicNeo.ttc").exists(), "macOS only")
-    def test_apple_sd_gothic_neo_bold_is_face_six_of_its_collection(self):
-        path = Path("/System/Library/Fonts/AppleSDGothicNeo.ttc")
-        self.assertEqual(find_bold_face(path), (path, 6))
+            self.assertIsNone(bold_sibling(Path(directory) / "NanumGothic.ttf"))
 
 
 if __name__ == "__main__":

@@ -1,12 +1,17 @@
 # Paperlogy Font Assets
 
-These files are vendored from `fonts-archive/Paperlogy` for deterministic slide rendering.
+Paperlogy (페이퍼로지) 1.001, designed by Lee Juim (이주임) with the PPT YouTuber Kim Dogyun (페이퍼로지).
 
-- `Paperlogy-4Regular.woff2`, `Paperlogy-4Regular.ttf`: 400
-- `Paperlogy-6SemiBold.woff2`, `Paperlogy-6SemiBold.ttf`: 600
-- `Paperlogy-7Bold.woff2`, `Paperlogy-7Bold.ttf`: 700
-- `Paperlogy-8ExtraBold.woff2`, `Paperlogy-8ExtraBold.ttf`: 800
+- Source: https://freesentation.blog/paperlogyfont
+- Download: https://github.com/Freesentation/paperlogy/raw/refs/heads/main/Paperlogy-1.001.zip
 
-The browser loads the WOFF2 files. The TTF files hold the same tables uncompressed and are embedded into the PPTX, because the system Python that builds a deck cannot decompress WOFF2.
+- `Paperlogy-4Regular.woff2`: 400
+- `Paperlogy-6SemiBold.woff2`: 600
+- `Paperlogy-7Bold.woff2`: 700
+- `Paperlogy-8ExtraBold.woff2`: 800
 
-Paperlogy is distributed under the SIL Open Font License 1.1. The license text is included in `OFL-1.1.txt`.
+These are the four weights the deck kit selects. The release also has Thin, ExtraLight, Light, Medium and Black.
+
+Each file is the release's TTF stored as WOFF2 with fontTools 4.62 (`fontTools.ttLib.woff2.compress(source, target, transform_tables=set())`). Leaving the glyph tables untransformed makes the skill's first-use unpacking fast; unpacking restores every table of the release file except DSIG, which WOFF2 does not carry. A deck exported as HTML carries these files as they are.
+
+Paperlogy is distributed under the SIL Open Font License 1.1. The license text from the release is `OFL.txt`.

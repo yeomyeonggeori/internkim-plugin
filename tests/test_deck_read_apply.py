@@ -58,12 +58,12 @@ class DeckEditFixture(DeckFixture):
 
     def apply(self, operations, *options):
         write_json(self.directory / "ops.json", operations)
-        return run_office(["deck", "apply", "fixture.pptx", "ops.json", *options], self.directory)
+        return run_office(["apply", "fixture.pptx", "ops.json", *options], self.directory)
 
 
 class ReadTest(DeckEditFixture):
     def test_slides_are_numbered_with_layout_shapes_and_notes(self):
-        envelope = run_office(["deck", "read", "fixture.pptx"], self.directory)
+        envelope = run_office(["read", "fixture.pptx"], self.directory)
         self.assertEqual(envelope["status"], "ok")
         slides = envelope["details"]["slides"]
         self.assertEqual([slide["slide"] for slide in slides], [1, 2, 3])
@@ -86,7 +86,7 @@ class ApplyTest(DeckEditFixture):
         edited = self.inspect()
         self.assertEqual(edited["titles"], ["다음 단계 요약", "2024 매출 보고"])
         self.assertEqual(edited["notes"], [None, "첫 노트\n둘째 줄"])
-        read = run_office(["deck", "read", "fixture.pptx"], self.directory)
+        read = run_office(["read", "fixture.pptx"], self.directory)
         self.assertEqual(read["details"]["slides"][1]["shapes"][1]["text"], "여명거리 3분기")
 
     def test_editing_keeps_every_layout_and_master_and_each_slides_layout(self):
@@ -101,7 +101,7 @@ class ApplyTest(DeckEditFixture):
 
     def test_a_replacement_keeps_the_formatting_of_the_run_it_starts_in(self):
         self.apply([{"op": "set_text", "slide": 1, "shape": 1, "text": "첫 줄\n둘째 줄"}])
-        read = run_office(["deck", "read", "fixture.pptx"], self.directory)
+        read = run_office(["read", "fixture.pptx"], self.directory)
         self.assertEqual(read["details"]["slides"][0]["shapes"][1]["text"], "첫 줄\n둘째 줄")
 
     def test_one_bad_operation_leaves_the_file_untouched(self):
@@ -112,6 +112,12 @@ class ApplyTest(DeckEditFixture):
         ])
         self.assertEqual([issue["code"] for issue in envelope["issues"]], ["TARGET_NOT_FOUND"])
         self.assertEqual(envelope["issues"][0]["location"], "ops[1].slide")
+        self.assertEqual((self.directory / "fixture.pptx").read_bytes(), original)
+
+    def test_an_operation_holding_a_fill_in_is_refused(self):
+        original = (self.directory / "fixture.pptx").read_bytes()
+        envelope = self.apply([{"op": "set_text", "slide": 1, "shape": 1, "text": "<value>"}])
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("FILL_IN_LEFT", "ops[0].text")])
         self.assertEqual((self.directory / "fixture.pptx").read_bytes(), original)
 
     def test_a_dry_run_reports_changes_and_writes_nothing(self):
@@ -150,18 +156,17 @@ class ApplyTest(DeckEditFixture):
 
 class GuideTest(unittest.TestCase):
     def test_the_guide_lists_every_operation_and_its_fields(self):
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", "deck"], capture_output=True, text=True, check=True)
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", "apply", "pptx"], capture_output=True, text=True, check=True)
         for operation in ("set_text", "find_replace", "set_notes", "delete_slide", "reorder"):
             self.assertIn(f'op "{operation}"', completed.stdout)
-        self.assertIn("deck apply <file.pptx> <ops.json>", completed.stdout)
+        self.assertIn("office apply .pptx", completed.stdout)
         self.assertIn("TARGET_NOT_FOUND", completed.stdout)
 
     def test_every_declared_operation_has_a_planner(self):
         code = """
-        import json, sys
-        sys.path.insert(0, sys.argv[1])
-        from pptx_operations import PPTX_OPERATIONS as operations
+        import json
+        from powerpoint.operations.operation_set import PPTX_OPERATIONS as operations
         print(json.dumps(sorted(operations.planners) == sorted(record.name for record in operations.shape.records)))
         """
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", textwrap.dedent(code), str(SCRIPTS_PATH / "deck")], capture_output=True, text=True, check=True)
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", textwrap.dedent(code)], capture_output=True, text=True, check=True)
         self.assertEqual(completed.stdout.strip(), "true")

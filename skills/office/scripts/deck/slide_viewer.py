@@ -3,11 +3,15 @@ from __future__ import annotations
 import pathlib
 import re
 
+from deck.deck_kit import slide_size
+from core.skill_paths import ASSETS_PATH
 
-SCRIPT_PATH = pathlib.Path(__file__).resolve().parent
+
+VIEWER_PATH = ASSETS_PATH / "slide-viewer"
+SLIDE_VIEWER_MARKER = "data-internkim-slide-viewer"
 SLIDE_VIEWER_BLOCK_PATTERNS = (
-    r"\s*<style\b(?=[^>]*\bdata-internkim-slide-viewer\b)[^>]*>.*?</style>\s*",
-    r"\s*<script\b(?=[^>]*\bdata-internkim-slide-viewer\b)[^>]*>.*?</script>\s*",
+    rf"\s*<style\b(?=[^>]*\b{SLIDE_VIEWER_MARKER}\b)[^>]*>.*?</style>\s*",
+    rf"\s*<script\b(?=[^>]*\b{SLIDE_VIEWER_MARKER}\b)[^>]*>.*?</script>\s*",
 )
 
 
@@ -29,9 +33,14 @@ def inject_screen_slide_viewer(source_text: str) -> str:
 
 
 def slide_viewer_markup() -> str:
-    style = (SCRIPT_PATH / "slide-viewer.css").read_text(encoding="utf-8")
-    script = (SCRIPT_PATH / "slide-viewer.js").read_text(encoding="utf-8")
+    style = sized_template(VIEWER_PATH / "slide-viewer.css")
+    script = sized_template(VIEWER_PATH / "slide-viewer.js")
     return (
-        f"<style data-internkim-slide-viewer>\n{style}</style>\n"
-        f"<script data-internkim-slide-viewer>\n{script}</script>"
+        f"<style {SLIDE_VIEWER_MARKER}>\n{style}</style>\n"
+        f"<script {SLIDE_VIEWER_MARKER}>\n{script}</script>"
     )
+
+
+def sized_template(path: pathlib.Path) -> str:
+    width, height = slide_size()
+    return path.read_text(encoding="utf-8").replace("__SLIDE_WIDTH__", str(width)).replace("__SLIDE_HEIGHT__", str(height))

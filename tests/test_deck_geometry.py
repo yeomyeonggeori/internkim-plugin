@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -10,10 +9,10 @@ import unittest
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"
 OFFICE_ENTRY = SCRIPTS_PATH.parent / "office"
 sys.path.insert(0, str(SCRIPTS_PATH.parent))
-sys.path.insert(0, str(SCRIPTS_PATH))
 
-from png_codec import write_png  # noqa: E402
-from render_review import build_review_report  # noqa: E402
+from png_fixture import write_png  # noqa: E402
+from render_fixture import can_render  # noqa: E402
+from deck.review.deck_review import build_review_report  # noqa: E402
 
 
 LONG_SLIDE_TEXT = "아주 긴 문장이 이어집니다. " * 120
@@ -57,8 +56,7 @@ def write_review_fixture(deck_path: Path, geometry_slides) -> Path:
     review_path.mkdir()
     for number in (1, 2):
         write_png(review_path / f"deck.{number:03d}.png", 32, 18, [[(255, 255, 255, 255)] * 32 for _ in range(18)])
-    if geometry_slides is not None:
-        (review_path / "geometry.json").write_text(json.dumps({"viewport": {"width": 1600, "height": 900}, "slides": geometry_slides}), encoding="utf-8")
+    (review_path / "geometry.json").write_text(json.dumps({"viewport": {"width": 1600, "height": 900}, "slides": geometry_slides}), encoding="utf-8")
     return source_path
 
 
@@ -75,19 +73,11 @@ class GeometryReviewTest(unittest.TestCase):
 
     def test_measured_findings_are_reported_on_their_own_slide_only(self):
         report, issues = self.review(MEASURED_SLIDES)
-        self.assertTrue(report["geometryMeasured"])
         self.assertEqual(slide_codes(report, issues, 1) & GEOMETRY_CODES, set())
         self.assertEqual(slide_codes(report, issues, 2) & GEOMETRY_CODES, GEOMETRY_CODES)
         overflow = next(issue for issue in issues if issue.kind.code == "CONTENT_OVERFLOW")
         self.assertIn("div.clipped", overflow.message)
         self.assertIn("273", overflow.message)
-
-    def test_a_missing_geometry_file_is_reported_not_guessed(self):
-        report, issues = self.review(None)
-        self.assertFalse(report["geometryMeasured"])
-        codes = {issue.kind.code for issue in issues}
-        self.assertIn("GEOMETRY_NOT_MEASURED", codes)
-        self.assertEqual(codes & GEOMETRY_CODES, set())
 
     def test_a_body_that_stops_high_above_its_footer_is_a_dead_zone_the_empty_band_check_missed(self):
         report, issues = self.review([measured_slide(1, TIMELINE_BANDS_ENDING_AT_62_PERCENT), measured_slide(2, RISK_TABLE_BANDS_ENDING_AT_72_PERCENT)])
@@ -101,25 +91,16 @@ class GeometryReviewTest(unittest.TestCase):
         report, issues = self.review(MEASURED_SLIDES[:1] + MEASURED_SLIDES[:1])
         self.assertGreater(report["slides"][0]["textCharacterCount"], 900)
         self.assertEqual({issue.kind.code for issue in issues} & (GEOMETRY_CODES | {"TEXT_OVERFLOW_RISK"}), set())
-        self.assertNotIn("textOverflowRisk", report["slides"][0]["risks"])
-
-
-def can_render_in_a_browser() -> bool:
-    has_browser = any(shutil.which(program) for program in ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "moli"))
-    has_mac_browser = Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome").exists()
-    return shutil.which("bun") is not None and (has_browser or has_mac_browser)
 
 
 class RenderedGeometryTest(unittest.TestCase):
-    @unittest.skipUnless(can_render_in_a_browser(), "needs bun and a browser that speaks the Chrome DevTools Protocol")
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_the_renderer_measures_an_overflowing_box_and_leaves_a_clean_slide_alone(self):
         with tempfile.TemporaryDirectory() as directory:
             deck_path = Path(directory)
             (deck_path / "slides.html").write_text(FIXTURE_SOURCE, encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build"], capture_output=True, text=True, cwd=deck_path)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pdf", "slides.html"], capture_output=True, text=True, cwd=deck_path)
             envelope = json.loads(completed.stdout)
-            if envelope["details"]["review"]["renderSource"] != "browser":
-                self.skipTest("the browser did not render the deck on this host")
             geometry = json.loads((deck_path / "build" / "review" / "geometry.json").read_text(encoding="utf-8"))
         clean, clipped = geometry["slides"]
         self.assertEqual(clean["overflow"], [])
@@ -128,6 +109,42 @@ class RenderedGeometryTest(unittest.TestCase):
         self.assertLess(clipped["contentBands"][-1][1], clipped["height"] / 3)
         dead_zones = {issue["location"]: issue["message"] for issue in envelope["issues"] if issue["code"] == "VERTICAL_DEAD_ZONE"}
         self.assertIn("empty below it", dead_zones["slide 2"])
+
+
+def cards_slide(sentence_count: int) -> str:
+    paragraph = "매장 운영 시간을 줄이고 발주 정확도를 높입니다. " * sentence_count
+    cards = "".join(f'<div class="card"><h3>{title}</h3><p>{paragraph}</p></div>' for title in ("품절 알림", "발주 추천", "매출 정산"))
+    return f'<section data-layout="cards"><h2>세 기능이 재고 업무를 줄입니다</h2>{cards}<aside class="notes">세 기능</aside></section>'
+
+
+def kit_deck(*slides: str) -> str:
+    return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>맞춤 시험</title></head><body data-theme="editorial">' + "".join(slides) + "</body></html>"
+
+
+LONG_STATEMENT = '<section data-layout="statement"><h2>' + "재고 관리 자동화로 매장 운영 시간을 줄이고 발주 정확도를 높이며 고객 만족도를 끌어올립니다. " * 6 + '</h2><aside class="notes">긴 문장</aside></section>'
+
+
+class KitCollisionTest(unittest.TestCase):
+    def build(self, source: str) -> dict:
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory) / "slides.html").write_text(source, encoding="utf-8")
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.pdf", "slides.html"], capture_output=True, text=True, cwd=directory)
+        return json.loads(completed.stdout)
+
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+    def test_cards_whose_text_spills_past_their_box_and_a_paragraph_long_title_are_defects(self):
+        envelope = self.build(kit_deck(cards_slide(30), LONG_STATEMENT))
+        acceptance = envelope["details"]["acceptance"]
+        self.assertFalse(acceptance["acceptable"])
+        defects = {(defect["code"], defect["location"]) for defect in acceptance["defects"]}
+        self.assertTrue({("CONTENT_OVERFLOW", "slide 1"), ("OUT_OF_FRAME", "slide 1"), ("TITLE_TOO_LONG", "slide 2")} <= defects, defects)
+        overflow = next(issue for issue in envelope["issues"] if (issue["code"], issue["location"]) == ("CONTENT_OVERFLOW", "slide 1"))
+        self.assertIn("characters where about", overflow["suggestion"])
+
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+    def test_the_kit_shrinks_cards_that_would_cover_the_title_until_they_fit(self):
+        envelope = self.build(kit_deck(cards_slide(12)))
+        self.assertTrue(envelope["details"]["acceptance"]["acceptable"], envelope["summary"])
 
 
 if __name__ == "__main__":

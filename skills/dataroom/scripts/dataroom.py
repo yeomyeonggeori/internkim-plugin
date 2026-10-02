@@ -13,7 +13,7 @@ import unicodedata
 import zipfile
 from pathlib import Path
 
-from skill_runtime import ensure_requirements
+from skill_runtime import ensure_requirements, setup_command
 
 TEMPLATE = json.loads((Path(__file__).resolve().parent.parent / "assets/template.json").read_text())
 
@@ -74,7 +74,8 @@ class Failure(Exception):
 
 
 def main():
-    if not ensure_requirements("dataroom"):
+    if not ensure_requirements():
+        print(f"error: the data room's Python packages are not prepared; run {setup_command()} once", file=sys.stderr)
         sys.exit(1)
     parser = build_parser()
     arguments = parser.parse_args()

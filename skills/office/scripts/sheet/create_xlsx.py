@@ -2,37 +2,50 @@
 from __future__ import annotations
 
 import csv
+import io
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
-from cell_values import typed_cell_value
-from formula_cache import cache_formula_values
-from office_result import INVALID_ARGUMENTS, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
-from office_schema import require_valid
-from sheet_definitions import WORKBOOK_SPECIFICATION
-from sheet_styling import style_table
+from openpyxl.utils import get_column_letter
+
+from sheet.workbook.cell_values import typed_cell_value
+from sheet.formulas.functions import written_value
+from core.office_inputs import read_text_input
+from core.office_operations import apply_batch, save_atomically
+from core.office_arguments import route_arguments
+from core.office_result import INVALID_VALUE, OfficeFailure, Result, read_json_file, run_command
+from core.office_schema import closest_name, require_valid
+from sheet.sheet_definitions import WORKBOOK_SPECIFICATION
+from sheet.operations.operation_set import SHEET_OPERATIONS, SheetEditing, save_editing
+from sheet.operations.styling import style_table
+from sheet.operations.sheets import validate_sheet_name
+from sheet.operations.written_cells import require_writable_rows
+from core.excel_limits import MAXIMUM_COLUMN, fitting_sheet_name
+from sheet.workbook.access import column_index
 
 
 def optional_text(value):
     return (value or "").strip()
 
 
-def read_specification(arguments):
-    if arguments.spec:
-        specification = read_json_file(arguments.spec)
-        location = "spec"
-    elif arguments.title or arguments.row:
-        specification = build_specification(arguments)
-        location = "arguments"
-    else:
-        raise OfficeFailure(INVALID_ARGUMENTS.issue("provide at least --title or --row, or pass --spec <file>"))
-    require_valid(WORKBOOK_SPECIFICATION, specification, location)
+def read_specification(specification_path):
+    specification = read_json_file(specification_path)
+    require_valid(WORKBOOK_SPECIFICATION, specification, "spec")
+    require_sheet_titles(specification, "spec")
     return specification
+
+
+def require_sheet_titles(specification, location):
+    taken = SimpleNamespace(sheetnames=[])
+    for index, sheet_specification in enumerate(specification["sheets"]):
+        title = sheet_specification["title"].strip()
+        validate_sheet_name(taken, title, f"{location}.sheets[{index}].title")
+        taken.sheetnames.append(title)
 
 
 def create_workbook(specification):
     from openpyxl import Workbook
-    from openpyxl.utils import get_column_letter
 
     workbook = Workbook()
     default_sheet = workbook.active
@@ -41,22 +54,23 @@ def create_workbook(specification):
     if workbook_title:
         workbook.properties.title = workbook_title
 
-    for sheet_specification in specification["sheets"]:
-        worksheet = add_sheet(workbook, sheet_specification, get_column_letter)
-        apply_default_formatting(worksheet, sheet_specification)
+    for index, sheet_specification in enumerate(specification["sheets"]):
+        worksheet = add_sheet(workbook, sheet_specification, get_column_letter, f"spec.sheets[{index}]")
+        apply_default_formatting(worksheet, sheet_specification, f"spec.sheets[{index}]")
 
     return workbook
 
 
-def add_sheet(workbook, sheet_specification, get_column_letter):
+def add_sheet(workbook, sheet_specification, get_column_letter, location):
     title = sheet_specification["title"].strip()
-    worksheet = workbook.create_sheet(title=title[:31])
+    worksheet = workbook.create_sheet(title=fitting_sheet_name(title))
     rows = read_rows(sheet_specification)
+    require_writable_rows(rows, sheet_specification["csvPath"].strip() if sheet_specification.get("csvPath") else f"{location}.rows")
     heading = optional_text(sheet_specification.get("heading"))
     if heading:
         worksheet.append([heading])
     for row in rows:
-        worksheet.append(["" if value is None else value for value in row])
+        worksheet.append([written_value(value) for value in row])
     default_freeze_panes = "A3" if heading else "A2"
     freeze_panes = sheet_specification.get("freezePanes", default_freeze_panes)
     header_row = header_row_index(sheet_specification)
@@ -88,59 +102,64 @@ def read_delimited_rows(sheet_specification):
     delimiter = sheet_specification.get("delimiter") or ","
     if delimiter == "\\t":
         delimiter = "\t"
-    with open(csv_path, newline="", encoding="utf-8-sig") as delimited_file:
-        return [[typed_cell_value(text) for text in row] for row in csv.reader(delimited_file, delimiter=delimiter)]
+    text = read_text_input(csv_path)
+    return [[typed_cell_value(value) for value in row] for row in csv.reader(io.StringIO(text, newline=""), delimiter=line_delimiter(text, delimiter))]
 
 
-def apply_default_formatting(worksheet, sheet_specification):
+def line_delimiter(text, delimiter):
+    first_line = text.split("\n", 1)[0]
+    return "\t" if delimiter == "," and "," not in first_line and "\t" in first_line else delimiter
+
+
+def apply_default_formatting(worksheet, sheet_specification, location):
     if worksheet.max_row == 0:
         return
     style_table(worksheet, bool(optional_text(sheet_specification.get("heading"))))
-    apply_column_widths(worksheet, sheet_specification)
-    apply_column_number_formats(worksheet, sheet_specification)
-
-
-def apply_column_widths(worksheet, sheet_specification):
-    for column_letter, width in (sheet_specification.get("columnWidths") or {}).items():
-        worksheet.column_dimensions[column_letter.upper()].width = max(float(width), 4.0)
-
-
-def apply_column_number_formats(worksheet, sheet_specification):
-    for column_letter, number_format in (sheet_specification.get("numberFormats") or {}).items():
-        for cell in worksheet[column_letter.upper()]:
+    headers = header_letters(worksheet, header_row_index(sheet_specification))
+    for column_letter, width in by_column_letter(sheet_specification, "columnWidths", headers, location).items():
+        worksheet.column_dimensions[column_letter].width = max(float(width), 4.0)
+    for column_letter, number_format in by_column_letter(sheet_specification, "numberFormats", headers, location).items():
+        for cell in worksheet[column_letter]:
             cell.number_format = number_format
 
 
-def parse_row(row_string):
-    return [typed_cell_value(cell.strip()) for cell in row_string.split(",")]
+def header_letters(worksheet, header_row):
+    return {str(cell.value): cell.column_letter for cell in worksheet[header_row] if cell.value not in (None, "")}
 
 
-def build_specification(arguments):
-    sheet_name = arguments.sheet or arguments.title or "Sheet1"
-    rows = [parse_row(row_string) for row_string in arguments.row]
-    sheet_specification = {"title": sheet_name, "rows": rows}
-    return {"title": arguments.title or "", "sheets": [sheet_specification]}
+def by_column_letter(sheet_specification, field, headers, location):
+    return {keyed_column_letter(key, headers, f"{location}.{field}.{key}"): value for key, value in (sheet_specification.get(field) or {}).items()}
 
 
-def parse_arguments():
-    parser = OfficeArgumentParser(description="Create an XLSX workbook from arguments or a JSON spec; office guide sheet describes the spec.")
-    parser.add_argument("output_path", help="Path to the output .xlsx file")
-    parser.add_argument("--title", metavar="TEXT", default="", help="Workbook title (also used as sheet name when --sheet is absent)")
-    parser.add_argument("--sheet", metavar="NAME", default=None, help="Sheet name (default: title or Sheet1)")
-    parser.add_argument("--row", action="append", default=[], metavar="CELLS", help="Add one row; comma-separated cell values (repeatable)")
-    parser.add_argument("--spec", metavar="JSON_PATH", help="Full workbook spec JSON for rich workbooks (multiple sheets, formulas, formats)")
-    return parser.parse_args()
+def keyed_column_letter(key, headers, location):
+    if key.strip().isascii() and key.strip().isalpha():
+        return get_column_letter(column_index(key, location))
+    meant = meant_column(key.strip(), headers)
+    suggestion = f'use "{meant[0]}", {meant[1]}' if meant else "use a column letter such as \"C\""
+    raise OfficeFailure(INVALID_VALUE.issue(f"{location}: {key!r} is not a column letter", location, suggestion))
+
+
+def meant_column(key, headers):
+    header = key if key in headers else closest_name(key, list(headers))
+    if header is not None:
+        return headers[header], f"the column headed {header!r}"
+    if key.isdigit() and 1 <= int(key) <= MAXIMUM_COLUMN:
+        return get_column_letter(int(key)), f"column number {key}"
+    return None
+
 
 
 def main():
-    arguments = parse_arguments()
-    specification = read_specification(arguments)
+    arguments = route_arguments("create", "xlsx")
+    specification = read_specification(arguments.source)
     workbook = create_workbook(specification)
-    output_path = Path(os.path.expanduser(arguments.output_path))
+    output_path = Path(os.path.expanduser(arguments.output))
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    workbook.save(output_path)
-    issues = cache_formula_values(str(output_path))
-    return Result(summary=f"created {output_path}", output_path=str(output_path), issues=tuple(issues))
+    editing = SheetEditing(workbook, None)
+    changes = apply_batch(SHEET_OPERATIONS, editing, specification.get("operations") or [])
+    issues = save_atomically(lambda temporary_path: save_editing(editing, temporary_path), str(output_path))
+    details = {"changes": changes} if changes else None
+    return Result(summary=f"created {output_path}", output_path=str(output_path), issues=tuple(issues), details=details)
 
 
 if __name__ == "__main__":

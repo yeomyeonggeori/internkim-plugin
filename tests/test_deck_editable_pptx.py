@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 import re
 import struct
@@ -12,19 +11,17 @@ import unittest
 from xml.etree import ElementTree
 import zipfile
 
-from test_deck_geometry import can_render_in_a_browser
+from render_fixture import can_render
 
 
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"
 OFFICE_ENTRY = SCRIPTS_PATH.parent / "office"
-FONTS_PATH = SCRIPTS_PATH.parents[1] / "assets" / "fonts" / "paperlogy"
 sys.path.insert(0, str(SCRIPTS_PATH.parent))
-sys.path.insert(0, str(SCRIPTS_PATH))
 
-from editable_pptx import read_text_layers, write_editable_pptx  # noqa: E402
-from png_codec import read_png, write_png  # noqa: E402
-from resource_inlining import VENDORED_PAPERLOGY_FONTS  # noqa: E402
-from truetype_font import read_truetype_face  # noqa: E402
+from deck.pptx_export.editable import read_text_layers, write_editable_pptx  # noqa: E402
+from png_fixture import read_png, write_png  # noqa: E402
+from deck.resource_inlining import PAPERLOGY  # noqa: E402
+from fonts.truetype import read_truetype_face, sfnt_data  # noqa: E402
 
 
 NAMESPACES = {
@@ -70,6 +67,10 @@ def run_properties(slide_xml: ElementTree.Element) -> list[ElementTree.Element]:
 
 def text_box_texts(slide_xml: ElementTree.Element) -> list[str]:
     return ["".join(text.text or "" for text in shape.iterfind(".//a:t", NAMESPACES)) for shape in slide_xml.iterfind(".//p:sp", NAMESPACES)]
+
+
+def table_cell_texts(slide_xml: ElementTree.Element) -> list[str]:
+    return ["".join(text.text or "" for text in cell.iterfind(".//a:t", NAMESPACES)) for cell in slide_xml.iterfind(".//a:tc", NAMESPACES)]
 
 
 def without_whitespace(text: str) -> str:
@@ -198,7 +199,7 @@ class EditablePptxPackageTest(unittest.TestCase):
         self.assertEqual(eot_size, len(font_data))
         self.assertEqual(version, 0x00020002)
         self.assertEqual(struct.unpack_from("<H", font_data, 34)[0], EOT_MAGIC_NUMBER)
-        self.assertEqual(font_data[-font_data_size:], (FONTS_PATH / "Paperlogy-4Regular.ttf").read_bytes())
+        self.assertEqual(font_data[-font_data_size:], sfnt_data(PAPERLOGY.path(PAPERLOGY.face(400))))
         self.assertIn('Extension="fntdata"', archive.read("[Content_Types].xml").decode())
 
     def test_text_boxes_never_autofit_and_wrap_inside_the_slide(self):
@@ -267,17 +268,6 @@ class EditablePptxPackageTest(unittest.TestCase):
         frame = shape_frames(ElementTree.fromstring(archive.read("ppt/slides/slide1.xml")))[-1]
         self.assertEqual(frame[2], 800 * EMU_PER_PIXEL)
 
-    def test_validate_counts_the_shapes_that_hold_content_and_not_the_rules_between_them(self):
-        rules = [{"geometry": "line", "from": {"x": 100, "y": 100 + row * 10}, "to": {"x": 900, "y": 100 + row * 10}, "line": {"color": "rgb(216, 212, 203)", "opacity": 1, "widthPx": 1}} for row in range(60)]
-        directory = Path(self.temporary_directory())
-        write_layers(directory / "review", [layout_block([layout_run("표 제목")], {"left": 100, "top": 20, "right": 900, "bottom": 70})], rules)
-        write_editable_pptx(read_text_layers(directory / "review", 1), [""], directory / "deck.pptx")
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "validate", str(directory / "deck.pptx")], capture_output=True, text=True)
-        envelope = json.loads(completed.stdout)
-        self.assertEqual(envelope["details"]["slides"][0]["shapeCount"], 62)
-        self.assertEqual(envelope["details"]["slides"][0]["contentShapeCount"], 2)
-        self.assertNotIn("TOO_MANY_SHAPES", [issue["code"] for issue in envelope["issues"]])
-
     def test_an_unknown_family_is_named_as_rendered_and_reported_unembedded(self):
         archive, written = self.write([layout_block([layout_run("Hello", fontFamily="Georgia")], {"left": 100, "top": 100, "right": 900, "bottom": 150})])
         self.assertEqual(written.unembedded_families, ("Georgia",))
@@ -287,25 +277,23 @@ class EditablePptxPackageTest(unittest.TestCase):
 
 
 class VendoredFontTest(unittest.TestCase):
-    def test_each_embedded_ttf_is_the_weight_its_browser_twin_is_declared_as(self):
-        for weight, woff2_name in VENDORED_PAPERLOGY_FONTS:
-            with self.subTest(font=woff2_name):
-                face = read_truetype_face((FONTS_PATH / woff2_name).with_suffix(".ttf"))
-                self.assertEqual(face.weight, weight)
-                self.assertTrue(face.family.startswith("Paperlogy "))
-                self.assertTrue(face.allows_embedding)
+    def test_each_paperlogy_face_is_the_weight_the_registry_declares(self):
+        for face in PAPERLOGY.faces:
+            with self.subTest(font=face.file_name):
+                truetype = read_truetype_face(PAPERLOGY.path(face))
+                self.assertEqual(truetype.weight, face.weight)
+                self.assertTrue(truetype.family.startswith("Paperlogy "))
+                self.assertTrue(truetype.allows_embedding)
 
 
 class RenderedEditablePptxTest(unittest.TestCase):
-    @unittest.skipUnless(can_render_in_a_browser(), "needs bun and a browser that speaks the Chrome DevTools Protocol")
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_the_pptx_holds_each_slides_visible_text_in_the_deck_font_inside_the_slide(self):
         with tempfile.TemporaryDirectory() as directory:
             deck_path = Path(directory)
             (deck_path / "slides.html").write_text(DECK_SOURCE, encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "deck", "build"], capture_output=True, text=True, cwd=deck_path, env={**os.environ, "FORMATS": "pptx"})
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path)
             envelope = json.loads(completed.stdout)
-            if envelope["details"]["pptx"]["source"] != "browser":
-                self.skipTest("the browser did not render the deck on this host")
             layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
             with zipfile.ZipFile(deck_path / "build" / f"{deck_path.name}.pptx") as archive:
                 slides = [ElementTree.fromstring(archive.read(f"ppt/slides/slide{number}.xml")) for number in range(1, len(layout["slides"]) + 1)]
@@ -314,6 +302,8 @@ class RenderedEditablePptxTest(unittest.TestCase):
             backgrounds = [read_png(deck_path / "build" / "review" / "pptx-layers" / f"background.{number:03}.png") for number in range(1, len(slides) + 1)]
         self.assertEqual(envelope["details"]["pptx"]["textKeptAsPicture"], ["잠정"])
         self.assertEqual(notes, ["표지 노트", None, "표 노트"])
+        self.assertEqual(table_cell_texts(slides[2]), ["지역", "3분기", "수도권", "₩25억"])
+        self.assertNotIn("수도권", "".join(text_box_texts(slides[2])))
         self.assert_boxes_are_shapes_and_left_the_picture(slides, backgrounds)
         narrow, = [lines for lines in paragraph_lines(slides[1]) if "".join(lines).startswith("연간물류비")]
         self.assertGreater(len(narrow), 1)
@@ -323,8 +313,8 @@ class RenderedEditablePptxTest(unittest.TestCase):
                 visible = without_whitespace(measured["visibleText"])
                 for picture_text in measured["pictureTexts"]:
                     visible = visible.replace(without_whitespace(picture_text), "", 1)
-                self.assertEqual(without_whitespace("".join(text_box_texts(slide))), visible)
-                measured_lines = [[without_whitespace(line["text"]) for line in paragraph["lines"]] for block in measured["blocks"] for paragraph in block["paragraphs"]]
+                self.assertEqual(without_whitespace("".join(text_box_texts(slide) + table_cell_texts(slide))), visible)
+                measured_lines = [[without_whitespace(line["text"]) for line in paragraph["lines"]] for block in measured["blocks"] if not block["cell"] for paragraph in block["paragraphs"]]
                 self.assertEqual(paragraph_lines(slide), measured_lines)
                 for properties in run_properties(slide):
                     self.assertTrue(properties.find("a:latin", NAMESPACES).get("typeface").startswith("Paperlogy "))

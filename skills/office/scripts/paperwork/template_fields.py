@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-from pathlib import Path
 import re
 import zipfile
 from xml.etree import ElementTree
 
+from core.template_merge import placeholder_paths
+from paperwork.forms import TEMPLATES_ROOT
 
-TEMPLATES_PATH = Path(__file__).resolve().parents[2] / "assets" / "templates"
+
+TEMPLATES_PATH = TEMPLATES_ROOT / "kr"
 WORD_NAMESPACE = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 TEMPLATE_PARTS = re.compile(r"word/(document|header\d*|footer\d*)\.xml")
-TAG_PATTERN = re.compile(r"\{\{(.*?)\}\}|\{%-?p?\s*(.*?)\s*-?%\}")
-FOR_PATTERN = re.compile(r"for\s+(\w+)\s+in\s+(\w+)")
-IDENTIFIER_PATTERN = re.compile(r"(?<![\w.])[A-Za-z_]\w*")
-RESERVED_WORDS = {"if", "elif", "else", "endif", "endfor", "for", "in", "not", "and", "or", "loop", "true", "false", "none"}
 
 
 def template_names() -> list[str]:
@@ -30,25 +28,5 @@ def template_paragraphs(template_name: str) -> list[str]:
     ]
 
 
-def template_tags(template_name: str) -> list[str]:
-    return [
-        expression.strip() or statement
-        for paragraph in template_paragraphs(template_name)
-        for expression, statement in TAG_PATTERN.findall(paragraph)
-    ]
-
-
-def template_list_fields(template_name: str) -> list[str]:
-    loops = [FOR_PATTERN.fullmatch(tag) for tag in template_tags(template_name)]
-    return sorted({loop.group(2) for loop in loops if loop})
-
-
 def template_fields(template_name: str) -> list[str]:
-    tags = template_tags(template_name)
-    loop_variables = {loop.group(1) for loop in map(FOR_PATTERN.fullmatch, tags) if loop}
-    identifiers = {
-        identifier
-        for tag in tags
-        for identifier in IDENTIFIER_PATTERN.findall(FOR_PATTERN.sub(lambda loop: loop.group(2), tag))
-    }
-    return sorted(identifiers - RESERVED_WORDS - loop_variables)
+    return sorted({path.split(".", 1)[0] for paragraph in template_paragraphs(template_name) for path in placeholder_paths(paragraph)})

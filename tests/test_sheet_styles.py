@@ -79,7 +79,7 @@ class DefaultTableStyleTest(WorkbookFixture):
             {"title": "Sales", "csvPath": "sales.csv"},
             {"title": "Calculated", "rows": [["item", "double"], ["A", "=2*5"], ["B", 7]]},
         ]})
-        envelope = run_office(["sheet", "create", "book.xlsx", "--spec", "spec.json"], self.directory)
+        envelope = run_office(["create", "book.xlsx", "spec.json"], self.directory)
         self.assertEqual(envelope["status"], "ok", envelope)
 
     def apply(self, operations):

@@ -6,6 +6,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from openpyxl import load_workbook
+
+from sheet_fixture import WorkbookFixture, run_office, write_json
+
 OFFICE_SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 
 
@@ -14,7 +18,7 @@ def create_workbook(directory, rows):
     specification_path.write_text(json.dumps({"sheets": [{"title": "Sheet", "rows": rows}]}, ensure_ascii=False), encoding="utf-8")
     workbook_path = Path(directory) / "book.xlsx"
     completed = subprocess.run(
-        [sys.executable, str(OFFICE_SCRIPTS_PATH / "sheet" / "create_xlsx.py"), str(workbook_path), "--spec", str(specification_path)],
+        [sys.executable, str(OFFICE_SCRIPTS_PATH / "sheet" / "create_xlsx.py"), str(workbook_path), str(specification_path)],
         capture_output=True,
         text=True,
         env={**os.environ, "PYTHONPATH": str(OFFICE_SCRIPTS_PATH)},
@@ -29,6 +33,25 @@ def column_width(rows, letter):
 
     with tempfile.TemporaryDirectory() as directory:
         return load_workbook(create_workbook(directory, rows))["Sheet"].column_dimensions[letter].width
+
+
+class SpecColumnKeyTest(WorkbookFixture):
+    def create(self, field, mapping):
+        write_json(self.directory / "spec.json", {"sheets": [{"title": "S", "rows": [["품목", "금액"], ["사과", 1500]], field: mapping}]})
+        return run_office(["create", "book.xlsx", "spec.json"], self.directory)
+
+    def test_a_key_that_is_not_a_column_letter_is_refused_with_the_column_it_meant(self):
+        cases = {("numberFormats", "2"): "B", ("numberFormats", "금액"): "B", ("columnWidths", "품목"): "A"}
+        for (field, key), meant in cases.items():
+            with self.subTest(field=field, key=key):
+                envelope = self.create(field, {key: "#,##0" if field == "numberFormats" else 20})
+                self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("INVALID_VALUE", f"spec.sheets[0].{field}.{key}")])
+                self.assertIn(f'use "{meant}"', envelope["issues"][0]["suggestion"])
+                self.assertFalse((self.directory / "book.xlsx").exists())
+
+    def test_a_column_letter_formats_its_column(self):
+        self.assertEqual(self.create("numberFormats", {"b": "#,##0"})["status"], "ok")
+        self.assertEqual(load_workbook(self.directory / "book.xlsx")["S"]["B2"].number_format, "#,##0")
 
 
 class KoreanColumnWidthTest(unittest.TestCase):

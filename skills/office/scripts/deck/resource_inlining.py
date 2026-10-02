@@ -1,37 +1,20 @@
 from __future__ import annotations
 
-import base64
 import html
 import mimetypes
 import pathlib
 import re
 
+from fonts.registry import DECK, BundledFace, default_family
+from render.office_preview import data_uri
+from core.image_formats import WEB_IMAGE_TYPES
+from core.skill_paths import ASSETS_PATH
 
-SKILL_ASSET_PATH = pathlib.Path(__file__).resolve().parents[2] / "assets"
+
 SKILL_ASSET_MARKER = "office/assets/"
-PAPERLOGY_FAMILY = "Paperlogy"
-VENDORED_PAPERLOGY_FAMILY = "PaperlogyLocal"
-VENDORED_PAPERLOGY_FONTS = (
-    (400, "Paperlogy-4Regular.woff2"),
-    (600, "Paperlogy-6SemiBold.woff2"),
-    (700, "Paperlogy-7Bold.woff2"),
-    (800, "Paperlogy-8ExtraBold.woff2"),
-)
-PAPERLOGY_ALIASES = {
-    "fonts/Paperlogy-Regular.woff2": "fonts/paperlogy/Paperlogy-4Regular.woff2",
-    "fonts/Paperlogy-Medium.woff2": "fonts/paperlogy/Paperlogy-6SemiBold.woff2",
-    "fonts/Paperlogy-SemiBold.woff2": "fonts/paperlogy/Paperlogy-6SemiBold.woff2",
-    "fonts/Paperlogy-Bold.woff2": "fonts/paperlogy/Paperlogy-7Bold.woff2",
-    "fonts/Paperlogy-ExtraBold.woff2": "fonts/paperlogy/Paperlogy-8ExtraBold.woff2",
-}
-IMAGE_MIME_TYPES = {
-    "jpg": "image/jpeg",
-    "jpeg": "image/jpeg",
-    "png": "image/png",
-    "gif": "image/gif",
-    "webp": "image/webp",
-    "svg": "image/svg+xml",
-}
+PAPERLOGY = default_family(DECK)
+PAPERLOGY_FAMILY = PAPERLOGY.name
+VENDORED_PAPERLOGY_FAMILY = PAPERLOGY.web_name
 FONT_MIME_TYPES = {
     ".woff2": "font/woff2",
     ".woff": "font/woff",
@@ -39,14 +22,18 @@ FONT_MIME_TYPES = {
     ".ttf": "font/ttf",
 }
 REMOTE_URL_PREFIXES = ("data:", "http:", "https:")
+VENDORED_FONTS_MARKER = "data-internkim-vendored-fonts"
+SOURCE_ATTRIBUTE = "data-internkim-source"
+SOURCE_COMMENT_PREFIX = "internkim-source:"
+VENDORED_FAMILY_INSERTION = f' "{VENDORED_PAPERLOGY_FAMILY}",'
 
 
 def inject_vendored_paperlogy_fallback(source_text: str) -> str:
     source_text = add_paperlogy_local_to_font_family_lists(source_text)
     font_style = vendored_paperlogy_fallback_style()
-    if "data-internkim-vendored-fonts" in source_text:
+    if VENDORED_FONTS_MARKER in source_text:
         return re.sub(
-            r"<style\b[^>]*data-internkim-vendored-fonts[^>]*>.*?</style>",
+            rf"<style\b[^>]*{VENDORED_FONTS_MARKER}[^>]*>.*?</style>",
             font_style,
             source_text,
             count=1,
@@ -54,11 +41,11 @@ def inject_vendored_paperlogy_fallback(source_text: str) -> str:
         )
     style_match = re.search(r"<style\b[^>]*>", source_text, flags=re.IGNORECASE)
     if style_match:
-        return insert_text(source_text, style_match.start(), "\n" + font_style + "\n")
+        return insert_text(source_text, style_match.start(), font_style + "\n")
     head_match = re.search(r"</head>", source_text, flags=re.IGNORECASE)
     if head_match:
-        return insert_text(source_text, head_match.start(), "<style>\n" + font_style + "\n</style>\n")
-    return "<style>\n" + font_style + "\n</style>\n" + source_text
+        return insert_text(source_text, head_match.start(), font_style + "\n")
+    return font_style + "\n" + source_text
 
 
 def insert_text(source_text: str, insert_index: int, inserted_text: str) -> str:
@@ -66,31 +53,31 @@ def insert_text(source_text: str, insert_index: int, inserted_text: str) -> str:
 
 
 def add_paperlogy_local_to_font_family_lists(source_text: str) -> str:
-    if "PaperlogyLocal" in source_text:
+    if VENDORED_PAPERLOGY_FAMILY in source_text:
         return source_text
+    family, local = re.escape(PAPERLOGY_FAMILY), re.escape(VENDORED_PAPERLOGY_FAMILY)
     source_text = re.sub(
-        r'(["\']Paperlogy["\']\s*,)(?!\s*["\']PaperlogyLocal["\'])',
-        r'\1 "PaperlogyLocal",',
+        rf'(["\']{family}["\']\s*,)(?!\s*["\']{local}["\'])',
+        r'\1' + VENDORED_FAMILY_INSERTION,
         source_text,
     )
     return re.sub(
-        r'(?<![-\w])Paperlogy\s*,(?!\s*["\']?PaperlogyLocal)',
-        'Paperlogy, "PaperlogyLocal",',
+        rf'(?<![-\w]){family}\s*,(?!\s*["\']?{local})',
+        f"{PAPERLOGY_FAMILY}," + VENDORED_FAMILY_INSERTION,
         source_text,
     )
 
 
 def vendored_paperlogy_fallback_style() -> str:
-    rules = [paperlogy_local_font_face(weight, file_name) for weight, file_name in VENDORED_PAPERLOGY_FONTS]
-    return '<style data-internkim-vendored-fonts>' + "\n".join(rules) + "</style>"
+    rules = [paperlogy_local_font_face(face) for face in PAPERLOGY.faces]
+    return f'<style {VENDORED_FONTS_MARKER}>' + "\n".join(rules) + "</style>"
 
 
-def paperlogy_local_font_face(weight: int, file_name: str) -> str:
-    font_path = SKILL_ASSET_PATH / "fonts" / "paperlogy" / file_name
+def paperlogy_local_font_face(face: BundledFace) -> str:
     return (
         f'@font-face {{ font-family: "{VENDORED_PAPERLOGY_FAMILY}"; '
-        f"font-weight: {weight}; font-style: normal; font-display: swap; "
-        f'src: url("{base64_data_url("font/woff2", font_path)}") format("woff2"); }}'
+        f"font-weight: {face.weight}; font-style: normal; font-display: swap; "
+        f'src: url("{base64_data_url("font/woff2", PAPERLOGY.path(face))}") format("woff2"); }}'
     )
 
 
@@ -101,7 +88,7 @@ def inline_local_images(source_text: str, base_path: pathlib.Path) -> str:
         image_path = local_resource_path(match.group(1), base_path)
         if image_path is None:
             return match.group(0)
-        return f'src="{base64_data_url(image_mime_type(image_path), image_path)}"'
+        return f'src="{base64_data_url(image_mime_type(image_path), image_path)}" {SOURCE_ATTRIBUTE}="{match.group(1)}"'
 
     return re.sub(image_pattern, replace_image, source_text, flags=re.IGNORECASE)
 
@@ -114,9 +101,16 @@ def inline_local_fonts(source_text: str, base_path: pathlib.Path) -> str:
         if font_path is None:
             return match.group(0)
         quote = match.group(1) or ""
-        return f"url({quote}{base64_data_url(font_mime_type(font_path), font_path)}{quote})"
+        return f"url({quote}{base64_data_url(font_mime_type(font_path), font_path)}{quote})/*{SOURCE_COMMENT_PREFIX}{match.group(2)}*/"
 
     return re.sub(font_pattern, replace_font, source_text, flags=re.IGNORECASE)
+
+
+def restore_authored_source(delivered_text: str) -> str:
+    restored = re.sub(rf"<style\b[^>]*{VENDORED_FONTS_MARKER}[^>]*>.*?</style>\n?", "", delivered_text, flags=re.IGNORECASE | re.DOTALL)
+    restored = restored.replace(VENDORED_FAMILY_INSERTION, "")
+    restored = re.sub(rf'src="data:[^"]*" {SOURCE_ATTRIBUTE}="([^"]*)"', r'src="\1"', restored)
+    return re.sub(rf"url\((['\"]?)data:[^)'\"]*\1\)/\*{SOURCE_COMMENT_PREFIX}([^*]*)\*/", r"url(\1\2\1)", restored)
 
 
 def local_resource_path(escaped_url: str, base_path: pathlib.Path) -> pathlib.Path | None:
@@ -147,30 +141,17 @@ def resolve_skill_asset_path(resource_path: pathlib.Path) -> pathlib.Path | None
     if SKILL_ASSET_MARKER not in path_text:
         return None
     asset_relative_text = path_text.split(SKILL_ASSET_MARKER, 1)[1].lstrip("/")
-    asset_path = SKILL_ASSET_PATH / asset_relative_text
-    if asset_path.exists():
-        return asset_path
-    return resolve_paperlogy_alias(asset_relative_text)
-
-
-def resolve_paperlogy_alias(asset_relative_text: str) -> pathlib.Path | None:
-    aliased_path = PAPERLOGY_ALIASES.get(asset_relative_text)
-    if aliased_path is None:
-        return None
-    resolved_path = SKILL_ASSET_PATH / aliased_path
-    if resolved_path.exists():
-        return resolved_path
-    return None
+    asset_path = ASSETS_PATH / asset_relative_text
+    return asset_path if asset_path.exists() else None
 
 
 def base64_data_url(mime_type: str, path: pathlib.Path) -> str:
-    encoded = base64.b64encode(path.read_bytes()).decode()
-    return f"data:{mime_type};base64,{encoded}"
+    return data_uri(mime_type, path.read_bytes())
 
 
 def image_mime_type(path: pathlib.Path) -> str:
     extension = path.suffix.lower().removeprefix(".")
-    return IMAGE_MIME_TYPES.get(extension) or guessed_mime_type(path)
+    return WEB_IMAGE_TYPES.get(extension) or guessed_mime_type(path)
 
 
 def font_mime_type(path: pathlib.Path) -> str:

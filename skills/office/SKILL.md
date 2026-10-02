@@ -1,26 +1,30 @@
 ---
 name: office
-description: Create, read, edit, validate, and attach office files — Word .docx, PDF, Excel .xlsx/.csv/.tsv, slide decks (HTML, PDF, PPTX), and standardized Korean company forms and contracts on letterhead. Use for reports, memos, letters, workbooks, formulas, decks, pitch decks, PowerPoint, Keynote, 워드, 문서, 보고서, PDF, 엑셀, 스프레드시트, 표, 발표자료, 파워포인트, 피피티, 견적서, 거래명세서, 청구서, 발주서, 품의서, 지출결의서, 회의록, 주간업무보고, 출장보고서, 재직증명서, 경력증명서, 휴가신청서, 위임장, 오퍼레터, 근로계약서, 비밀유지계약서, NDA, 업무협약서, MOU, 용역계약서, quotation, invoice, purchase order, certificate, and contract requests.
-compatibility: Requires python3 and uv, with network access on first run to install python-docx, docxtpl, fpdf2, pypdf, pypdfium2, openpyxl, and python-pptx. Korean PDFs need a Korean-capable TTF or TTC font. Deck rendering needs bun and a browser that speaks the Chrome DevTools Protocol. Company forms and reading attached files need InternKim's tool server.
+description: Create, read, edit, validate, and attach office files — Word .docx, PDF, Excel .xlsx/.csv/.tsv, slide decks (HTML, PDF, PPTX), and standardized company forms and contracts on letterhead. Use for reports, memos, letters, workbooks, formulas, decks, pitch decks, PowerPoint, Keynote, 워드, 문서, 보고서, PDF, 엑셀, 스프레드시트, 표, 발표자료, 파워포인트, 피피티, 견적서, 거래명세서, 청구서, 발주서, 품의서, 지출결의서, 회의록, 주간업무보고, 출장보고서, 재직증명서, 경력증명서, 휴가신청서, 위임장, 오퍼레터, 근로계약서, 비밀유지계약서, NDA, 업무협약서, MOU, 용역계약서, quotation, invoice, purchase order, certificate, and contract requests.
+compatibility: Requires python3, uv, and bun or node 18; no browser or office suite. `scripts/office setup` prepares the Python packages, the renderer and the OCR engine once, and InternKim's host install runs it; no other command installs anything. Company forms and reading attached files need InternKim's tool server.
 metadata:
   kim.intern.tool-references: "read company_info_get company_info_set company_document_register company_document_update company_document_list company_document_search"
 ---
 
 # Office Files
 
-One command, `<skill>/scripts/office <format> <verb> [arguments]`, writes and checks every office file. Pick the row for the work, read only that row's reference, and follow it. `<skill>/scripts/office --help` lists every command, and each command's own `--help` lists its arguments.
+One command, `<skill>/scripts/office <verb> <file> [options]`, makes and checks every office file. The verbs mean the same for every format, and the file's format picks what each does: `create` makes a new file from a source, `read` lists what a file holds, `apply` edits it with a batch of operations, `merge` fills a template or a bundled form, `check` finds what is wrong before delivery, `render` draws pages to look at, `convert` turns a file into another format. `<skill>/scripts/office --help` lists what each verb takes, and `office <verb> --help` its options.
 
 ## Route the work
 
-| Work | Commands | Reference |
+| Work | Command | Reference |
 | --- | --- | --- |
-| Word document, report, memo, letter, template; a PDF whose words matter more than their placement | `doc export`, `doc create`, `doc edit`, `doc read`, `doc apply`, `doc merge`, `doc check`, `doc validate` | `references/doc.md` |
-| Existing PDF to read, look at, extract, split, merge, or append to; a PDF whose placement is the point | `pdf read`, `pdf render`, `pdf create`, `pdf edit`, `pdf validate` | `references/pdf.md` |
-| Workbook, CSV or TSV cleanup, formulas, charts | `sheet create`, `sheet edit`, `sheet read`, `sheet apply`, `sheet check`, `sheet validate` | `references/sheet.md` |
-| Deck, presentation, PPTX, or checking an existing .pptx | `deck build`, `deck validate`, `deck read`, `deck apply`, `deck restore`, `deck accept`, `deck image` | `references/deck.md` |
-| Standardized company form or contract on letterhead (견적서, 품의서, 증명서, 계약서, NDA, MOU) | `paperwork check`, `paperwork render`, `paperwork fill` | `references/paperwork.md` |
+| Report, memo, letter or other document, as .docx or .pdf | `create <title>.docx <title>.md` | `references/doc.md` |
+| Change an existing .docx, .xlsx, .pptx or .pdf | `read`, then `apply` | the format's reference |
+| Read, look at or take apart an existing PDF | `read`, `render` | `references/pdf.md` |
+| Workbook, CSV or TSV cleanup, formulas, charts | `create <title>.xlsx <data>.csv`, then `apply` | `references/sheet.md` |
+| Deck, presentation, PPTX | `create build/<deck>.pdf slides.html` | `references/deck.md` |
+| Fill a user's .docx, .xlsx or .pptx template | `merge` | `references/doc.md` |
+| Company form or contract on letterhead: quotation, invoice, approval request, certificate, NDA, MOU | `merge <jurisdiction>/<form>` | `references/paperwork.md` |
+| Another format of a file | `convert` | `office guide convert` |
+| Verify before attaching | `check`, `render` | the format's reference |
 
-A standardized form belongs to paperwork even when it ships as .docx or PDF: its letterhead, approval boxes, seals, and fixed clauses live there. Work the listed commands do not cover, such as merging PDFs or restyling a document, goes in a task-local Python file run with `<skill>/scripts/office python <script.py> [arguments]`, which provides every office package.
+A standardized form belongs to `merge <jurisdiction>/<form>` even when it ships as .docx or PDF: its letterhead, approval boxes, seals, and fixed clauses live there. Work no verb covers, such as merging PDFs, goes in a task-local Python file run with `<skill>/scripts/office python <script.py> [arguments]`, which provides every office package.
 
 ## Rules for every format
 
@@ -32,14 +36,14 @@ A standardized form belongs to paperwork even when it ships as .docx or PDF: its
 
 **File naming.** Documents, PDFs, and workbooks live at `~/documents/<title>.<ext>`, with any Markdown source beside them. Decks live in `artifacts/<deck-slug>/` and deliver from `artifacts/<deck-slug>/build/`. Company forms go to the storage directory their registration returns.
 
-**Results.** Every command prints one JSON result: `status` is ok, warning, or error, and each issue carries a stable `code`, a `location`, and a `suggestion`. `<skill>/scripts/office guide <format>` lists every input field and every code a command reports.
+**Results.** Every command prints one JSON result: `status` is ok, warning, or error, and each issue carries a stable `code`, a `location`, a `suggestion` sentence, and `fix`: operations to pass as they are to `apply` on the same file once any `<value>` is filled in. `<skill>/scripts/office guide <kind>` indexes a kind of file's commands and codes, `guide <verb> <kind>` one command's fields, and `guide <verb> <kind> <operation>` one operation's.
 
-**Verify before attaching.** Run the format's `validate` command, or reopen the file, before delivery. Pass the source names, dates, totals, and key labels as `--required-text` where the validator takes it. Read every warning, revise real problems, then attach only the accepted final output. Say what visual uncertainty remains.
+**Verify before attaching.** Run `check` on the final file and look at the pages `render` draws. Pass the source names, dates, totals, and key labels as `--required-text`. Read every warning, revise real problems, then attach only the accepted final output. Say what visual uncertainty remains.
 
-**Korean fonts.** Korean text needs a Korean-capable font. The commands find one from a single list (Nanum Gothic, Noto Sans CJK, Apple SD Gothic Neo); never fall back to a built-in Latin font for Korean. Decks use the bundled Paperlogy font.
+**Fonts.** The skill ships its fonts and draws every page with them, so a page looks the same on any host; `<skill>/scripts/office guide` lists each family and its kind. A font a file names that the skill does not ship is drawn with the shipped family of its kind. A .docx or .pptx carries the shipped fonts it uses, so the recipient needs nothing installed; a workbook cannot carry fonts and keeps Office's own. Pass a font path only when the user supplies a font file.
 
-**Dependencies.** The `office` command installs its packages into its own environment on first use. Never run pip or uv yourself, and keep dependency caches apart from source documents.
+**Dependencies.** `<skill>/scripts/office setup` prepares everything the commands read, and no other command installs anything. A command that reports `DEPENDENCIES_UNAVAILABLE` or `RENDERER_UNAVAILABLE` names the setup to run; when that setup cannot write into the skill directory, tell the user the skill was not prepared. Never run pip or uv yourself, and keep dependency caches apart from source documents.
 
-**Tool server.** Only company forms (`company_info_*`, `company_document_*`) and reading an attached file (`read`) call InternKim's tool server. Every other command needs only a shell and Python.
+**Tool server.** Only company forms (`company_info_*`, `company_document_*`) and reading an attached file (`read`) call InternKim's tool server. Every other command runs locally.
 
 **Contracts.** A contract is a draft for review; say so when delivering it, without adding disclaimer text to the document.

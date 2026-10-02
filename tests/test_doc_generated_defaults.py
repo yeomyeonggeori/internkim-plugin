@@ -1,10 +1,17 @@
 from pathlib import Path
 import re
+import sys
 import tempfile
 import unittest
 import zipfile
 
-from doc_fixture import run_office, run_office_python, write_json
+from doc_fixture import SCRIPTS_PATH, run_office, run_office_python, write_json
+
+sys.path.insert(0, str(SCRIPTS_PATH))
+
+from fonts.registry import SANS_BODY, default_family  # noqa: E402
+
+DOCUMENT_FONT = default_family(SANS_BODY).name
 
 
 def package_part(document_path, part_name):
@@ -24,13 +31,13 @@ class GeneratedDocumentTest(unittest.TestCase):
 
     def created(self, blocks=None, **specification):
         write_json(self.directory / "spec.json", {"title": "제목", "blocks": blocks or [{"type": "paragraph", "text": "본문"}], **specification})
-        envelope = run_office(["doc", "create", "created.docx", "--spec", "spec.json"], self.directory)
+        envelope = run_office(["create", "created.docx", "spec.json"], self.directory)
         self.assertEqual(envelope["status"], "ok", envelope)
         return self.directory / "created.docx"
 
     def exported(self, markdown):
         (self.directory / "source.md").write_text(markdown, encoding="utf-8")
-        envelope = run_office(["doc", "export", "source.md", "--output", "exported.docx"], self.directory)
+        envelope = run_office(["create", "exported.docx", "source.md"], self.directory)
         self.assertNotEqual(envelope["status"], "error", envelope)
         return self.directory / "exported.docx"
 
@@ -43,7 +50,7 @@ class KoreanLanguageTest(GeneratedDocumentTest):
         self.assertRegex(settings, r'<w:themeFontLang [^>]*w:eastAsia="ko-KR"')
         for style_id in ("Title", "Heading1", "Heading2", "Heading3"):
             fonts = re.search(r"<w:rFonts [^>]*/>", style_xml(styles, style_id)).group(0)
-            self.assertIn('w:eastAsia="맑은 고딕"', fonts, style_id)
+            self.assertIn(f'w:eastAsia="{DOCUMENT_FONT}"', fonts, style_id)
             self.assertNotIn("Theme=", fonts, style_id)
 
     def test_created_document_is_korean_by_default(self):
@@ -162,7 +169,7 @@ class ImageTest(GeneratedDocumentTest):
 
 class KoreanLanguageCheckTest(GeneratedDocumentTest):
     def codes(self, path):
-        return [issue["code"] for issue in run_office(["doc", "check", path.name], self.directory)["issues"]]
+        return [issue["code"] for issue in run_office(["check", path.name], self.directory)["issues"]]
 
     def test_a_generated_document_passes(self):
         self.assertNotIn("EAST_ASIA_LANGUAGE_NOT_KOREAN", self.codes(self.created()))
@@ -181,10 +188,10 @@ class KoreanLanguageCheckTest(GeneratedDocumentTest):
             run.get_or_add_rPr().append(language)
             document.save("created.docx")
         """, self.directory)
-        envelope = run_office(["doc", "check", path.name], self.directory)
+        envelope = run_office(["check", path.name], self.directory)
         issue = next(issue for issue in envelope["issues"] if issue["code"] == "EAST_ASIA_LANGUAGE_NOT_KOREAN")
-        write_json(self.directory / "fix.json", [issue["suggestion"]])
-        self.assertEqual(run_office(["doc", "apply", path.name, "fix.json"], self.directory)["status"], "ok")
+        write_json(self.directory / "fix.json", issue["fix"])
+        self.assertEqual(run_office(["apply", path.name, "fix.json"], self.directory)["status"], "ok")
         self.assertNotIn("EAST_ASIA_LANGUAGE_NOT_KOREAN", self.codes(path))
         self.assertNotIn("ja-JP", package_part(path, "word/document.xml"))
 

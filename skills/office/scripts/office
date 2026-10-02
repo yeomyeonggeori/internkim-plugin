@@ -5,88 +5,92 @@ import os
 import pathlib
 import sys
 
-from office_commands import COMMANDS, Command, find_command, find_format
-from office_guide import formats_text, guide_text
-from office_result import DEPENDENCIES_UNAVAILABLE, UNKNOWN_COMMAND, OfficeFailure, run_command
-from skill_runtime import ensure_requirements
+from core.office_commands import TOOLS, VERBS, find_verb
+from core.office_help import usage_text, verb_help_text
+from core.office_result import DEPENDENCIES_UNAVAILABLE, UNKNOWN_COMMAND, OfficeFailure, failure_result, print_result, run_command
+from core.office_routing import Call, positional_arguments, resolve_call
+from core.office_schema import closest_name
+from office_setup import setup_result
+from core.retired_commands import RETIRED_FORMATS, find_retired, replacement_command
+from office_guide import guide_for
+from skill_runtime import ensure_requirements, environment_path
 
 
-SKILL_NAME = "office"
 SCRIPTS_PATH = pathlib.Path(__file__).resolve().parent
-PYTHON_COMMAND_SUMMARY = "run a task-local Python script with the office packages installed"
-GUIDE_COMMAND_SUMMARY = "print a format's commands, input fields and issue codes"
+HELP_WORDS = {"-h", "--help", "help"}
+MODULE_LAUNCHER = "import runpy, sys; sys.path[0] = sys.argv.pop(1); runpy.run_module(sys.argv.pop(1), run_name='__main__', alter_sys=True)"
 
 
 def main(arguments: list[str]) -> int:
-    if not arguments or arguments[0] in {"-h", "--help", "help"}:
-        print(usage())
+    if not arguments or arguments[0] in HELP_WORDS:
+        print(usage_text())
         return 0
     if arguments[0] == "guide":
-        return print_guide(arguments[1:])
+        return run_text_command(lambda: guide_for(arguments[1:]))
     if arguments[0] == "python":
         return run_python(arguments[1:])
-    command = find_command(arguments[:2])
-    if command is None:
-        return run_command(lambda: reject_unknown_command(arguments[:2]))
-    return run_office_command(command, arguments[2:])
+    if arguments[0] == "setup":
+        return run_command(lambda: setup_result(arguments[1:]))
+    verb = find_verb(arguments[0])
+    if verb is None:
+        return run_command(lambda: reject_unknown_command(arguments))
+    if HELP_WORDS & set(arguments[1:]) and not positional_arguments(arguments[1:]):
+        print(verb_help_text(verb))
+        return 0
+    return run_routed(verb, arguments[1:])
 
 
-def usage() -> str:
-    width = max(len(command.name) for command in COMMANDS)
-    lines = [
-        "usage: office <format> <verb> [arguments]",
-        "       office guide <format>",
-        "       office python <script.py> [arguments]",
-        "",
-    ]
-    lines.extend(f"  {command.name.ljust(width)}  {command.summary}" for command in COMMANDS)
-    lines.append(f"  {'guide'.ljust(width)}  {GUIDE_COMMAND_SUMMARY}")
-    lines.append(f"  {'python'.ljust(width)}  {PYTHON_COMMAND_SUMMARY}")
-    lines.extend(["", "Each command's own --help lists its arguments."])
-    return "\n".join(lines)
+def run_routed(verb, arguments: list[str]) -> int:
+    try:
+        call = resolve_call(verb, arguments)
+    except OfficeFailure as failure:
+        return print_result(failure_result(failure.issues))
+    if call.needs_packages and not ensure_requirements(SCRIPTS_PATH):
+        return run_command(reject_unprepared_environment)
+    os.execve(sys.executable, [sys.executable, "-c", MODULE_LAUNCHER, str(SCRIPTS_PATH), call.module, *arguments], script_environment(call))
 
 
-def print_guide(arguments: list[str]) -> int:
-    office_format = find_format(arguments[0]) if arguments else None
-    if office_format is None:
-        print(formats_text())
-        return 0 if not arguments else 2
-    print(guide_text(office_format))
+def run_text_command(command) -> int:
+    try:
+        text = command()
+    except OfficeFailure as failure:
+        return print_result(failure_result(failure.issues))
+    print(text)
     return 0
 
 
-def reject_unknown_command(words: list[str]):
-    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"office: unknown command {' '.join(words)!r}", " ".join(words)))
+def reject_unknown_command(arguments: list[str]):
+    retired = find_retired(arguments)
+    if retired is not None:
+        replacement = replacement_command(retired, arguments[2:])
+        raise OfficeFailure(UNKNOWN_COMMAND.issue(f"office {retired.name} is now office {replacement.split()[1]}", retired.name, replacement))
+    names = [verb.name for verb in VERBS] + [tool.name for tool in TOOLS]
+    meant = None if arguments[0] in RETIRED_FORMATS else closest_name(arguments[0], names)
+    suggestion = f"office {meant}" if meant else f"one of: {', '.join(names)}"
+    written = " ".join(arguments[:2]) if arguments[0] in RETIRED_FORMATS else arguments[0]
+    raise OfficeFailure(UNKNOWN_COMMAND.issue(f"office: unknown command {written!r}", arguments[0], suggestion))
 
 
-def reject_missing_dependencies():
-    raise OfficeFailure(DEPENDENCIES_UNAVAILABLE.issue("office dependencies could not be installed"))
+def reject_unprepared_environment():
+    raise OfficeFailure(DEPENDENCIES_UNAVAILABLE.issue(f"the office Python environment at {environment_path(SCRIPTS_PATH)} is not prepared", str(environment_path(SCRIPTS_PATH))))
 
 
 def run_python(arguments: list[str]) -> int:
     if not arguments:
         print("usage: office python <script.py> [arguments]", file=sys.stderr)
         return 2
-    if not ensure_requirements(SKILL_NAME):
-        return 1
+    if not ensure_requirements(SCRIPTS_PATH):
+        return run_command(reject_unprepared_environment)
     os.execve(sys.executable, [sys.executable, *arguments], script_environment(None))
 
 
-def run_office_command(command: Command, arguments: list[str]) -> int:
-    if command.needs_packages and not ensure_requirements(SKILL_NAME):
-        return run_command(reject_missing_dependencies)
-    script_path = str(SCRIPTS_PATH / command.script)
-    if script_path.endswith(".sh"):
-        os.execvpe("bash", ["bash", script_path, *arguments], script_environment(command))
-    os.execve(sys.executable, [sys.executable, script_path, *arguments], script_environment(command))
-
-
-def script_environment(command: Command | None) -> dict[str, str]:
+def script_environment(call: Call | None) -> dict[str, str]:
     environment = os.environ.copy()
     python_paths = [str(SCRIPTS_PATH), environment.get("PYTHONPATH", "")]
     environment["PYTHONPATH"] = os.pathsep.join(path for path in python_paths if path)
-    if command is not None:
-        environment["OFFICE_COMMAND"] = f"office {command.name}"
+    if call is not None:
+        environment["OFFICE_COMMAND"] = f"office {call.verb.name}"
+        environment["OFFICE_ROUTE"] = call.route.name
     return environment
 
 

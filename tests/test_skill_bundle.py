@@ -1,12 +1,15 @@
 import ast
 import hashlib
 import json
+import os
 import re
-import runpy
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
+
+from bundle_fixture import bundled_files
 
 
 REPOSITORY_PATH = Path(__file__).resolve().parents[1]
@@ -20,21 +23,25 @@ MARKETPLACE_PATHS = (
 
 sys.path.insert(0, str(OFFICE_SCRIPTS_PATH))
 
+from core.office_commands import CONVERSIONS, ROUTES, VERBS  # noqa: E402
+
 
 def file_digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def skill_files():
-    return sorted(path for path in SKILLS_PATH.rglob("*") if path.is_file())
+    return bundled_files(SKILLS_PATH)
 
 
-def office_command_table():
-    return runpy.run_path(str(OFFICE_SCRIPTS_PATH / "office_commands.py"))["COMMANDS"]
+def package_free_names():
+    routes = {route.name for route in ROUTES if not route.needs_packages}
+    conversions = {f"convert {conversion.source} to {conversion.target}" for conversion in CONVERSIONS if not conversion.needs_packages}
+    return routes | conversions
 
 
-def office_format_names():
-    return {office_format.name for office_format in runpy.run_path(str(OFFICE_SCRIPTS_PATH / "office_commands.py"))["FORMATS"]}
+def module_path(module: str) -> Path:
+    return OFFICE_SCRIPTS_PATH.joinpath(*module.split(".")).with_suffix(".py")
 
 
 class SharedSkillRuntimeTest(unittest.TestCase):
@@ -47,38 +54,103 @@ class SharedSkillRuntimeTest(unittest.TestCase):
 
 
 class OfficeEntryTest(unittest.TestCase):
-    def test_every_command_runs_a_bundled_script(self):
-        missing_scripts = [command.script for command in office_command_table() if not (OFFICE_SCRIPTS_PATH / command.script).is_file()]
-        self.assertEqual(missing_scripts, [])
+    def test_every_route_runs_a_bundled_module(self):
+        modules = {route.module for route in ROUTES} | {conversion.module for conversion in CONVERSIONS}
+        self.assertEqual(sorted(module for module in modules if not module_path(module).is_file()), [])
 
-    def test_help_lists_every_command(self):
+    def test_help_lists_every_verb(self):
         help_text = subprocess.run([sys.executable, str(OFFICE_SCRIPTS_PATH / "office"), "--help"], capture_output=True, text=True, check=True).stdout
-        unlisted_commands = [command.name for command in office_command_table() if command.name not in help_text]
-        self.assertEqual(unlisted_commands, [])
+        self.assertEqual([verb.name for verb in VERBS if f"\n{verb.name} <" not in help_text], [])
 
-    def test_every_referenced_command_exists(self):
-        command_names = {command.name for command in office_command_table()} | {"python", "guide"}
-        command_names |= {f"guide {format_name}" for format_name in office_format_names()}
-        referenced_names = set()
-        for document_path in (SKILLS_PATH / "office").rglob("*.md"):
-            text = document_path.read_text(encoding="utf-8")
-            for words in re.findall(r"<skill>/scripts/office ([a-z]+)(?: ([a-z]+))?", text):
-                referenced_names.add(words[0] if words[0] == "python" or not words[1] else " ".join(words))
-        self.assertEqual(referenced_names - command_names, set())
-
-    def test_route_table_lists_every_command(self):
+    def test_every_verb_is_routed_or_documented_and_the_route_table_names_only_verbs(self):
         skill_text = (SKILLS_PATH / "office" / "SKILL.md").read_text(encoding="utf-8")
         route_table = skill_text.split("## Route the work")[1].split("\n## ")[0]
-        listed_names = set(re.findall(r"`([a-z]+ [a-z]+)`", route_table))
-        command_names = {command.name for command in office_command_table()}
-        self.assertEqual(command_names ^ listed_names, set())
+        listed = {command.removeprefix("office ").split()[0] for command in re.findall(r"`([a-z][^`]*)`", route_table) if not command.startswith("references/")}
+        verb_names = {verb.name for verb in VERBS} | {"guide"}
+        self.assertEqual(listed - verb_names, set())
+        documents = "\n".join(path.read_text(encoding="utf-8") for path in bundled_files(SKILLS_PATH / "office", "*.md"))
+        self.assertEqual([verb.name for verb in VERBS if f"office {verb.name}" not in documents and verb.name not in listed], [])
+
+
+DECK_SOURCE = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>예시</title></head><body data-theme="corporate">
+<section data-layout="cover"><h1>매출이 6% 늘었습니다</h1><p class="meta">이샘플</p></section>
+</body></html>"""
+QUOTE = {
+    "form": "kr/quote",
+    "title": "견 적 서",
+    "items": {
+        "headers": ["품명", "수량", "단가", "공급가액"],
+        "rows": [["의자", "10", "50,000", "500,000"]],
+        "totals": [{"label": "공급가액 합계", "value": "500,000원"}, {"label": "부가세", "value": "50,000원"}, {"label": "총 합계", "value": "550,000원"}],
+    },
+}
+
+
+def prepare_deck_restore(directory):
+    (directory / "slides.html").write_text(DECK_SOURCE, encoding="utf-8")
+    subprocess.run([sys.executable, str(OFFICE_SCRIPTS_PATH / "office"), "create", "build/deck.html", "slides.html"], capture_output=True, check=True, cwd=directory)
+    return ["convert", "build/deck.html", "restored.html"]
+
+
+def prepare_paperwork_check(directory):
+    (directory / "quote.json").write_text(json.dumps(QUOTE, ensure_ascii=False), encoding="utf-8")
+    return ["check", "quote.json"]
+
+
+PACKAGE_FREE_CASES = {
+    "convert html to html": prepare_deck_restore,
+    "check form": prepare_paperwork_check,
+}
+
+
+def bare_interpreter(directory):
+    subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(directory)], check=True)
+    return directory / "bin" / "python"
+
+
+class PackageFreeCommandTest(unittest.TestCase):
+    def test_every_command_declared_package_free_has_a_case(self):
+        self.assertEqual(set(PACKAGE_FREE_CASES), package_free_names())
+
+    def test_each_package_free_command_runs_on_an_interpreter_without_the_skill_packages(self):
+        with tempfile.TemporaryDirectory() as directory:
+            interpreter = bare_interpreter(Path(directory) / "bare")
+            environment = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
+            for name, prepare in PACKAGE_FREE_CASES.items():
+                with self.subTest(command=name):
+                    working_directory = Path(directory) / name.replace(" ", "-")
+                    working_directory.mkdir()
+                    arguments = prepare(working_directory)
+                    completed = subprocess.run([str(interpreter), str(OFFICE_SCRIPTS_PATH / "office"), *arguments], capture_output=True, text=True, cwd=working_directory, env=environment)
+                    self.assertNotIn("ModuleNotFoundError", completed.stderr)
+                    self.assertEqual(json.loads(completed.stdout)["status"], "ok", completed.stdout)
+
+
+OWNED_LITERALS = {
+    "1048576": "core/excel_limits.py",
+    "16384": "core/excel_limits.py",
+    "12700": "core/units.py",
+    "914400": "core/units.py",
+}
+
+
+class OwnedLiteralTest(unittest.TestCase):
+    def test_excel_limits_and_emu_sizes_are_written_only_where_they_are_owned(self):
+        scripts = bundled_files(OFFICE_SCRIPTS_PATH, "*.py")
+        written_elsewhere = sorted(
+            (literal, str(path.relative_to(OFFICE_SCRIPTS_PATH)))
+            for path in scripts
+            for literal, owner in OWNED_LITERALS.items()
+            if str(path.relative_to(OFFICE_SCRIPTS_PATH)) != owner and re.search(rf"(?<![0-9.]){literal}(?![0-9])", path.read_text(encoding="utf-8"))
+        )
+        self.assertEqual(written_elsewhere, [])
 
 
 class OldPythonTest(unittest.TestCase):
     def test_modern_annotations_are_never_evaluated_at_definition_time(self):
         offending_paths = [
             str(path.relative_to(SKILLS_PATH))
-            for path in (SKILLS_PATH / "office" / "scripts").rglob("*.py")
+            for path in bundled_files(OFFICE_SCRIPTS_PATH, "*.py")
             if uses_modern_annotations(path) and not postpones_annotations(path)
         ]
         self.assertEqual(offending_paths, [], "Python 3.9, the macOS Command Line Tools interpreter, cannot evaluate list[str] or X | None")

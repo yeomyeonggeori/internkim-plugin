@@ -1,76 +1,77 @@
 #!/usr/bin/env python3
-import hashlib
+import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 
 
-BOOTSTRAP_DISABLE_ENVIRONMENT_PREFIX = "INTERNKIM_SKILL_BOOTSTRAP_DISABLE"
-SKILL_CACHE_DIRECTORY_NAME = "internkim-skills"
-
-# Debian's fonts-nanum installs the first, the internkim package carries the
-# second, fonts-noto-cjk installs the third, and older layouts the fourth; macOS
-# carries the fifth. AppleGothic.ttf is deliberately
-# absent: it is a legacy AAT face with no OS/2 table, so fpdf2's add_font raises
-# KeyError: 'OS/2' and a host holding only that font has no Korean font at all.
-HANGUL_FONT_PATHS = [
-    "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
-    "/usr/share/fonts/truetype/internkim/NanumGothic.ttf",
-    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-    "/System/Library/Fonts/AppleSDGothicNeo.ttc",
-]
-
-# Debian's fonts-nanum installs NanumGothicBold.ttf beside NanumGothic.ttf and
-# fonts-noto-cjk installs NotoSansCJK-Bold.ttc beside the Regular one, so a bold
-# face is found by name next to its regular file. Apple SD Gothic Neo keeps all
-# weights in one collection, where face 6 is Bold.
-HANGUL_BOLD_COLLECTION_FACES = {
-    "/System/Library/Fonts/AppleSDGothicNeo.ttc": 6,
-}
+SCRIPTS_DIRECTORY = Path(__file__).resolve().parent
+ENVIRONMENT_DIRECTORY_NAME = ".venv"
+REQUIREMENTS_FILE_NAME = "requirements.txt"
+LOCK_FILE_NAME = "pylock.toml"
+REQUIRES_PYTHON_PATTERN = re.compile(r'^requires-python = ">=(\d+)\.(\d+)"$', re.MULTILINE)
 
 
-def find_bold_face(regular_font_path):
-    regular_path = Path(regular_font_path)
-    collection_face = HANGUL_BOLD_COLLECTION_FACES.get(str(regular_path))
-    if collection_face is not None and regular_path.exists():
-        return regular_path, collection_face
-    for bold_path in bold_sibling_paths(regular_path):
-        if bold_path.exists():
-            return bold_path, 0
-    return None
+class PreparationFailed(Exception):
+    pass
 
 
-def bold_sibling_paths(regular_path):
-    stem = regular_path.stem
-    bold_stems = [f"{stem}Bold", f"{stem}-Bold"]
-    if "Regular" in stem:
-        bold_stems.insert(0, stem.replace("Regular", "Bold"))
-    return [regular_path.with_name(bold_stem + regular_path.suffix) for bold_stem in bold_stems]
-
-
-def ensure_requirements(skill_name):
-    requirements_path = Path(__file__).with_name("requirements.txt")
-    if not requirements_path.exists() or requirements_path.read_text(encoding="utf-8").strip() == "":
+def ensure_requirements(directory=SCRIPTS_DIRECTORY):
+    if not has_requirements(directory):
         return True
-    if os.environ.get(bootstrap_disable_environment_variable(skill_name)) == "1":
-        return False
-    environment_path = dependency_environment_path(skill_name)
-    python_path = environment_path / "bin" / "python"
-    if is_running_in(environment_path):
+    if is_running_in(environment_path(directory)):
         return True
-
-    try:
-        create_dependency_environment(python_path, environment_path)
-        install_requirements_if_needed(python_path, requirements_path, environment_path)
-    except Exception as error_value:
-        sys.stderr.write(f"warning: {skill_name} dependency bootstrap failed: {error_value}\n")
+    if not is_prepared(directory):
         return False
-
-    reexecute_python(python_path)
+    reexecute_python(environment_path(directory) / "bin" / "python")
     return False
+
+
+def prepare_environment(directory=SCRIPTS_DIRECTORY):
+    if not has_requirements(directory) or is_prepared(directory):
+        return False
+    lock = lock_path(directory)
+    if not lock.exists():
+        raise PreparationFailed(f"{lock} is missing; compile it from {REQUIREMENTS_FILE_NAME} with the command its header records")
+    environment = environment_path(directory)
+    if environment.exists():
+        shutil.rmtree(environment)
+    run_uv(["uv", "venv", "--quiet", "--python", interpreter_for(lock), str(environment)])
+    run_uv(["uv", "pip", "sync", "--quiet", "--compile-bytecode", "--python", str(environment / "bin" / "python"), str(lock)])
+    shutil.copyfile(lock, environment / LOCK_FILE_NAME)
+    return True
+
+
+def environment_path(directory=SCRIPTS_DIRECTORY):
+    return directory / ENVIRONMENT_DIRECTORY_NAME
+
+
+def lock_path(directory=SCRIPTS_DIRECTORY):
+    return directory / LOCK_FILE_NAME
+
+
+def has_requirements(directory):
+    requirements = directory / REQUIREMENTS_FILE_NAME
+    return requirements.exists() and requirements.read_text(encoding="utf-8").strip() != ""
+
+
+def is_prepared(directory):
+    environment = environment_path(directory)
+    installed_lock = environment / LOCK_FILE_NAME
+    lock = lock_path(directory)
+    if not (environment / "bin" / "python").exists() or not installed_lock.exists() or not lock.exists():
+        return False
+    return installed_lock.read_bytes() == lock.read_bytes()
+
+
+def interpreter_for(lock):
+    match = REQUIRES_PYTHON_PATTERN.search(lock.read_text(encoding="utf-8"))
+    if match is None or sys.version_info[:2] >= (int(match.group(1)), int(match.group(2))):
+        return sys.executable
+    return f">={match.group(1)}.{match.group(2)}"
 
 
 def reexecute_python(python_path):
@@ -81,116 +82,69 @@ def reexecute_python(python_path):
     )
 
 
-def create_dependency_environment(python_path, environment_path):
-    if python_path.exists():
-        return
-    result = subprocess.run(
-        ["uv", "venv", "--python", sys.executable, str(environment_path)],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        env=uv_environment(),
-        check=False,
-    )
+def run_uv(command):
+    try:
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=uv_environment(os.environ), check=False)
+    except FileNotFoundError as error:
+        raise PreparationFailed("uv is not on PATH") from error
     if result.returncode != 0:
-        message = (result.stderr or result.stdout or "uv venv failed").strip()
-        raise RuntimeError(message)
+        raise PreparationFailed((result.stderr or result.stdout or f"{' '.join(command[:3])} failed").strip())
 
 
-def install_requirements_if_needed(python_path, requirements_path, environment_path):
-    marker_path = environment_path / f".requirements-{requirements_hash(requirements_path)}.installed"
-    if marker_path.exists():
-        return
-    install_requirements(python_path, requirements_path)
-    marker_path.write_text("ok\n", encoding="utf-8")
-
-
-def requirements_hash(requirements_path):
-    return hashlib.sha256(requirements_path.read_bytes()).hexdigest()[:16]
-
-
-def install_requirements(python_path, requirements_path):
-    result = subprocess.run(
-        [
-            "uv",
-            "pip",
-            "install",
-            "--quiet",
-            "--python",
-            str(python_path),
-            "-r",
-            str(requirements_path),
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        env=uv_environment(),
-        check=False,
-    )
-    if result.returncode != 0:
-        message = (result.stderr or result.stdout or "uv pip install failed").strip()
-        raise RuntimeError(message)
-
-
-def uv_environment():
-    environment = os.environ.copy()
-    dependency_cache = uv_cache_path(environment)
-    dependency_cache.mkdir(parents=True, exist_ok=True)
-    environment["UV_CACHE_DIR"] = str(dependency_cache)
-    environment["UV_LINK_MODE"] = "copy"
-    return environment
-
-
-def uv_cache_path(environment):
+def uv_environment(environment):
+    prepared = {**environment, "UV_LINK_MODE": "copy"}
     configured_cache = environment.get("UV_CACHE_DIR", "").strip()
-    if configured_cache != "":
-        return Path(configured_cache)
-    return skill_cache_path(environment) / "uv"
+    if configured_cache and not is_writable_directory(Path(configured_cache)):
+        del prepared["UV_CACHE_DIR"]
+    return prepared
 
 
-def dependency_environment_path(skill_name):
-    return skill_cache_path(os.environ) / "environments" / safe_name(skill_name)
+def is_writable_directory(path):
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return False
+    return os.access(path, os.W_OK)
 
 
-def skill_cache_path(environment):
-    return cache_home_path(environment) / SKILL_CACHE_DIRECTORY_NAME
+def is_running_in(environment):
+    return Path(sys.prefix).resolve() == environment.resolve()
 
 
-def cache_home_path(environment):
-    configured_cache_home = environment.get("XDG_CACHE_HOME", "").strip()
-    if configured_cache_home != "":
-        return Path(configured_cache_home)
-    return Path.home() / ".cache"
+def setup_command():
+    return f"python3 {Path(__file__).resolve()} setup"
 
 
-def is_running_in(environment_path):
-    return Path(sys.prefix).resolve() == environment_path.resolve()
+def setup_envelope():
+    try:
+        prepared = prepare_environment()
+    except PreparationFailed as reason:
+        issue = {
+            "code": "SETUP_FAILED",
+            "severity": "error",
+            "message": f"the Python environment could not be prepared: {reason}",
+            "location": "python environment",
+            "suggestion": "put uv on PATH and allow network access, then rerun setup",
+        }
+        return {"status": "error", "summary": issue["message"], "issues": [issue], "details": {"steps": []}}, 1
+    step = {"name": "python environment", "state": "prepared" if prepared else "found", "path": str(environment_path())}
+    return {"status": "ok", "summary": f"{SCRIPTS_DIRECTORY.parent.name} is ready", "issues": [], "details": {"steps": [step]}}, 0
 
 
-def safe_name(value):
-    normalized = re.sub(r"[^a-zA-Z0-9_.-]+", "-", value.strip()).strip("-")
-    if normalized == "":
-        return "default"
-    return normalized.lower()
-
-
-def bootstrap_disable_environment_variable(skill_name):
-    return f"{BOOTSTRAP_DISABLE_ENVIRONMENT_PREFIX}_{environment_suffix(skill_name)}"
-
-
-def environment_suffix(skill_name):
-    normalized = re.sub(r"[^A-Z0-9]+", "_", skill_name.upper()).strip("_")
-    if normalized == "":
-        return "DEFAULT"
-    return normalized
+def print_envelope(envelope, stream):
+    print(json.dumps(envelope, ensure_ascii=False, indent=2), file=stream)
 
 
 def main():
+    if sys.argv[1:2] == ["setup"]:
+        envelope, exit_code = setup_envelope()
+        print_envelope(envelope, sys.stdout)
+        sys.exit(exit_code)
     if len(sys.argv) < 3 or sys.argv[1] != "python":
-        print("usage: skill_runtime.py python <script.py> [args...]", file=sys.stderr)
+        print("usage: skill_runtime.py setup\n       skill_runtime.py python <script.py> [args...]", file=sys.stderr)
         sys.exit(2)
-    skill_name = Path(__file__).parents[1].name
-    if not ensure_requirements(skill_name):
+    if not ensure_requirements():
+        print(f"error: the Python environment is not prepared; run {setup_command()} once", file=sys.stderr)
         sys.exit(1)
     os.execv(sys.executable, [sys.executable, *sys.argv[2:]])
 

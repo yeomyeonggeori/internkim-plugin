@@ -3,40 +3,60 @@ from __future__ import annotations
 
 import re
 
-from docx import Document
 from docx.oxml.ns import qn
 from docx.text.paragraph import Paragraph
 
-from doc_definitions import BROKEN_INTERNAL_REFERENCE, EAST_ASIA_FONT_MISSING, EAST_ASIA_LANGUAGE_NOT_KOREAN, STALE_TABLE_OF_CONTENTS, TRACKED_CHANGES_PRESENT
-from docx_defaults import KOREAN_LANGUAGE
-from docx_language import effective_east_asia_language
-from docx_styles import run_styles
-from docx_blocks import PARAGRAPH_TAG, body_block_elements, element_text, heading_level
-from office_result import Issue, OfficeArgumentParser, Result, run_command
-from text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN, contains_korean
+from doc.doc_definitions import BROKEN_INTERNAL_REFERENCE, EAST_ASIA_LANGUAGE_NOT_KOREAN, STALE_TABLE_OF_CONTENTS, TRACKED_CHANGES_PRESENT
+from doc.checks.content import chart_empty_issues, field_result_issues, heading_issues, missing_image_issues, unresolved_comment_issues
+from doc.model.defaults import KOREAN_LANGUAGE
+from doc.model.language import east_asia_font_issues, effective_east_asia_language
+from doc.model.package import open_document
+from doc.checks.quality import quality_findings
+from doc.checks.pages import stranded_heading_issues
+from doc.operations.references import bookmark_names
+from doc.model.revisions import collect_revisions, describe_pending
+from doc.model.body import PARAGRAPH_TAG, body_block_elements, element_text, heading_level
+from core.office_arguments import route_arguments
+from core.office_result import VALUE_FILL_IN, Issue, Result, run_command
+from core.text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
+from core.text_script import has_hangul
 
 
 FIELD_REFERENCE_PATTERN = re.compile(r"^\s*(?:REF|PAGEREF|NOTEREF)\s+(\S+)", re.IGNORECASE)
 MERGE_FIELD_PATTERN = re.compile(r"^\s*MERGEFIELD\s+(\S+)", re.IGNORECASE)
 TABLE_OF_CONTENTS_PATTERN = re.compile(r"^\s*TOC\b", re.IGNORECASE)
 CONTENTS_HEADING_DEPTH = 3
-DEFAULT_EAST_ASIA_FONT = "맑은 고딕"
 
 
 def main() -> Result:
-    arguments = parse_arguments()
-    document = Document(arguments.document_path)
+    arguments = route_arguments("check", "docx")
+    document = open_document(arguments.file)
+    quality_issues, details = quality_findings(document, arguments.required_text, arguments.forbidden_text)
+    issues = distinct(content_issues(document, arguments.file) + quality_issues)
+    return Result(summary=f"checked {arguments.file}: {len(issues)} issues", output_path=arguments.file, issues=tuple(issues), details=details)
+
+
+def content_issues(document, document_path: str) -> list[Issue]:
     elements = body_block_elements(document)
-    issues = (
+    return (
         placeholder_issues(elements)
         + part_placeholder_issues(document)
         + reference_issues(document, elements)
         + table_of_contents_issues(document, elements)
         + east_asia_font_issues(document)
         + east_asia_language_issues(document)
-        + tracked_change_issues(document)
+        + tracked_change_issues(document, elements)
+        + missing_image_issues(document, elements)
+        + chart_empty_issues(document, elements)
+        + heading_issues(document, elements)
+        + unresolved_comment_issues(document, elements)
+        + field_result_issues(elements, fields_update_on_open(document))
+        + stranded_heading_issues(document_path)
     )
-    return Result(summary=f"checked {arguments.document_path}: {len(issues)} issues", output_path=arguments.document_path, issues=tuple(issues))
+
+
+def distinct(issues: list[Issue]) -> list[Issue]:
+    return list({(issue.kind.code, issue.message, issue.location): issue for issue in issues}.values())
 
 
 def placeholder_issues(elements: list) -> list[Issue]:
@@ -59,7 +79,7 @@ def part_placeholder_issues(document) -> list[Issue]:
 
 def placeholders_in(element, location: str, block_index: int | None) -> list[Issue]:
     issues = [
-        PLACEHOLDER_LEFT.issue(f"{location} still holds {placeholder}", location, suggestion=replace_suggestion(placeholder, block_index))
+        PLACEHOLDER_LEFT.issue(f"{location} still holds {placeholder}", location, fix=[replacement(placeholder, block_index)])
         for paragraph in element.iter(qn("w:p"))
         for placeholder in PLACEHOLDER_PATTERN.findall(element_text(paragraph))
     ]
@@ -71,11 +91,11 @@ def placeholders_in(element, location: str, block_index: int | None) -> list[Iss
     return issues
 
 
-def replace_suggestion(placeholder: str, block_index: int | None) -> dict:
-    suggestion = {"op": "replace_text", "find": placeholder, "replace": "<value>"}
+def replacement(placeholder: str, block_index: int | None) -> dict:
+    operation = {"op": "replace_text", "find": placeholder, "replace": VALUE_FILL_IN}
     if block_index is not None:
-        suggestion["block"] = block_index
-    return suggestion
+        operation["block"] = block_index
+    return operation
 
 
 def field_instructions(element) -> list[str]:
@@ -94,10 +114,6 @@ def field_instructions(element) -> list[str]:
             complex_fields.append("".join(current))
             current = None
     return simple + complex_fields
-
-
-def bookmark_names(document) -> set[str]:
-    return {bookmark.get(qn("w:name")) for bookmark in document.element.body.iter(qn("w:bookmarkStart"))}
 
 
 def reference_issues(document, elements: list) -> list[Issue]:
@@ -126,7 +142,7 @@ def table_of_contents_issues(document, elements: list) -> list[Issue]:
     missing = [heading for heading in headings if heading and heading not in contents_text]
     if not missing:
         return []
-    return [STALE_TABLE_OF_CONTENTS.issue(f"the table of contents does not list {len(missing)} headings, such as {missing[0]!r}", location, suggestion={"op": "update_fields_on_open"})]
+    return [STALE_TABLE_OF_CONTENTS.issue(f"the table of contents does not list {len(missing)} headings, such as {missing[0]!r}", location, fix=[{"op": "update_fields_on_open"}])]
 
 
 def fields_update_on_open(document) -> bool:
@@ -145,56 +161,20 @@ def normalized(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def east_asia_font_issues(document) -> list[Issue]:
-    if default_east_asia_font_is_set(document):
-        return []
-    runs = [run for run in document.element.body.iter(qn("w:r")) if contains_korean(element_text(run))]
-    unfonted = [run for run in runs if not run_names_east_asia_font(run, document)]
-    if not unfonted:
-        return []
-    return [EAST_ASIA_FONT_MISSING.issue(f"{len(unfonted)} runs of Korean text have no East Asian font", "document", suggestion={"op": "set_east_asia_font", "font": DEFAULT_EAST_ASIA_FONT})]
-
-
-def default_east_asia_font_is_set(document) -> bool:
-    fonts = document.styles.element.find(f"{qn('w:docDefaults')}/{qn('w:rPrDefault')}/{qn('w:rPr')}/{qn('w:rFonts')}")
-    return names_east_asia_font(fonts)
-
-
-def names_east_asia_font(run_fonts) -> bool:
-    return run_fonts is not None and bool(run_fonts.get(qn("w:eastAsia")) or run_fonts.get(qn("w:eastAsiaTheme")))
-
-
-def run_names_east_asia_font(run, document) -> bool:
-    run_properties = run.find(qn("w:rPr"))
-    if run_properties is not None and names_east_asia_font(run_properties.find(qn("w:rFonts"))):
-        return True
-    return any(style_names_east_asia_font(style) for style in run_styles(run, document))
-
-
-def style_names_east_asia_font(style) -> bool:
-    run_properties = style.find(qn("w:rPr"))
-    return run_properties is not None and names_east_asia_font(run_properties.find(qn("w:rFonts")))
-
-
 def east_asia_language_issues(document) -> list[Issue]:
-    runs = [run for run in document.element.body.iter(qn("w:r")) if contains_korean(element_text(run))]
+    runs = [run for run in document.element.body.iter(qn("w:r")) if has_hangul(element_text(run))]
     mistagged = [run for run in runs if effective_east_asia_language(run, document) != KOREAN_LANGUAGE]
     if not mistagged:
         return []
-    return [EAST_ASIA_LANGUAGE_NOT_KOREAN.issue(f"{len(mistagged)} runs of Korean text have an East Asian language other than ko-KR", "document", suggestion={"op": "set_korean_language"})]
+    return [EAST_ASIA_LANGUAGE_NOT_KOREAN.issue(f"{len(mistagged)} runs of Korean text have an East Asian language other than ko-KR", "document", fix=[{"op": "set_korean_language"}])]
 
 
-def tracked_change_issues(document) -> list[Issue]:
-    revisions = sum(1 for _ in document.element.body.iter(qn("w:ins"), qn("w:del")))
-    if revisions == 0:
+def tracked_change_issues(document, elements: list) -> list[Issue]:
+    revisions = collect_revisions(document.element.body, elements)
+    if not revisions:
         return []
-    return [TRACKED_CHANGES_PRESENT.issue(f"the document holds {revisions} tracked insertions or deletions", "document")]
+    return [TRACKED_CHANGES_PRESENT.issue(f"the document holds tracked changes: {describe_pending(revisions)}", "document")]
 
-
-def parse_arguments():
-    parser = OfficeArgumentParser(description="Check a .docx for placeholders left, broken internal references, a stale table of contents, missing East Asian fonts, a wrong East Asian language, and tracked changes. Issues suggest a doc apply operation where one fixes them.")
-    parser.add_argument("document_path")
-    return parser.parse_args()
 
 
 if __name__ == "__main__":

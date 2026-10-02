@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from skill_runtime import HANGUL_FONT_PATHS
+from fonts.registry import BODY_SIZE_POINTS, SANS_BODY, default_family
 
 COLOR_INK = (0x1C, 0x24, 0x30)
 COLOR_MUTED = (0x6A, 0x72, 0x80)
@@ -8,13 +8,11 @@ COLOR_RULE = (0x37, 0x41, 0x51)
 COLOR_BORDER = (0x9C, 0xA3, 0xAF)
 COLOR_HEADER_FILL = (0xF3, 0xF4, 0xF6)
 
-FONT_KOREAN_DOCX = "맑은 고딕"
-LATIN_FALLBACK_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-FONT_CANDIDATE_PATHS_PDF = HANGUL_FONT_PATHS + [LATIN_FALLBACK_FONT_PATH]
+FONT_KOREAN_DOCX = default_family(SANS_BODY).name
 
 SIZE_TITLE = 18.0
 SIZE_CLAUSE_HEADING = 11.0
-SIZE_BODY = 10.5
+SIZE_BODY = BODY_SIZE_POINTS
 SIZE_SMALL = 8.5
 SIZE_LETTERHEAD_NAME = 11.5
 SIZE_LETTERHEAD_DETAIL = 7.5

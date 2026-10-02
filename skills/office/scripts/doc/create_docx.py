@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
 import os
 from pathlib import Path
 
@@ -10,41 +9,36 @@ from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt
 
-from doc_definitions import DOCUMENT_SPECIFICATION, TABLE_FILE
-from docx_defaults import apply_korean_defaults, set_page, usable_width_inches
-from docx_tables import add_space_after_table, format_table
-from docx_lists import add_list_paragraph, start_list
-from office_result import INVALID_ARGUMENTS, INVALID_VALUE, Issue, OfficeArgumentParser, OfficeFailure, Result, read_json_file, run_command
-from office_schema import require_valid
+from doc.doc_definitions import DOCUMENT_SPECIFICATION
+from doc.model.defaults import DOCUMENT_FONT, apply_korean_defaults, set_page, usable_width_inches
+from fonts.docx_embedding import save_document
+from doc.model.tables import add_space_after_table, format_table
+from doc.model.lists import add_list_paragraph, start_list
+from core.office_arguments import route_arguments
+from core.office_result import INVALID_VALUE, Issue, OfficeFailure, Result, read_json_file, run_command
+from core.office_schema import require_valid
+from fonts.registry import BODY_SIZE_POINTS
 
 
-DEFAULT_FONT_NAME = "맑은 고딕"
-DEFAULT_FONT_SIZE = 10.5
+DEFAULT_FONT_NAME = DOCUMENT_FONT
 SIZED_STYLE_NAMES = ["Normal", "Title", "Heading 1", "Heading 2", "Heading 3", "Heading 4"]
 LIST_BLOCK_TYPES = ("bullets", "numbered")
 
 
 def main() -> Result:
-    arguments = parse_arguments()
-    specification = read_specification(arguments)
+    arguments = route_arguments("create", "docx")
+    specification = read_specification(arguments.source)
     document = create_document(specification)
-    output_path = Path(os.path.expanduser(arguments.output_path))
+    output_path = Path(os.path.expanduser(arguments.output))
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    document.save(output_path)
+    save_document(document, output_path)
     return Result(summary=f"created {output_path}", output_path=str(output_path))
 
 
-def read_specification(arguments: argparse.Namespace) -> dict:
-    if arguments.spec:
-        specification = read_json_file(arguments.spec)
-        location = "spec"
-    elif arguments.title or arguments.ordered_arguments:
-        specification = build_specification(arguments)
-        location = "arguments"
-    else:
-        raise OfficeFailure(INVALID_ARGUMENTS.issue("provide at least --title, --heading, --paragraph, --bullet, or --table; or pass --spec <file>"))
-    require_valid(DOCUMENT_SPECIFICATION, specification, location)
-    require_rectangular_tables(specification["blocks"], f"{location}.blocks")
+def read_specification(specification_path: str) -> dict:
+    specification = read_json_file(specification_path)
+    require_valid(DOCUMENT_SPECIFICATION, specification, "spec")
+    require_rectangular_tables(specification["blocks"], "spec.blocks")
     return specification
 
 
@@ -74,7 +68,7 @@ def create_document(specification: dict) -> Document:
     document = Document()
     set_document_page(document.sections[0], specification.get("page") or {})
     font_name = (specification.get("fontName") or DEFAULT_FONT_NAME).strip()
-    set_text_sizes(document, float(specification.get("fontSize") or DEFAULT_FONT_SIZE))
+    set_text_sizes(document, float(specification.get("fontSize") or BODY_SIZE_POINTS))
     apply_korean_defaults(document, font_name)
     add_title(document, specification.get("title") or "")
     for block in specification["blocks"]:
@@ -153,73 +147,6 @@ def read_column_widths(block: dict, width: int, table_width: float) -> list[floa
     if isinstance(column_widths, list) and len(column_widths) == width:
         return [float(value) for value in column_widths]
     return [table_width / width for _ in range(width)]
-
-
-def load_table_block(table_path: str) -> dict:
-    table_data = read_json_file(table_path)
-    require_valid(TABLE_FILE, table_data, table_path)
-    if isinstance(table_data, list):
-        return {"type": "table", "rows": normalize_table_rows(table_data)}
-    block = {"type": "table", "rows": normalize_table_rows(table_data["rows"])}
-    if table_data.get("columnWidthsInches") is not None:
-        block["columnWidthsInches"] = table_data["columnWidthsInches"]
-    return block
-
-
-def normalize_table_rows(rows: list) -> list[list[str]]:
-    if isinstance(rows[0], dict):
-        header = list(rows[0].keys())
-        return [header] + [[stringify_cell(row.get(key)) for key in header] for row in rows]
-    return [[stringify_cell(value) for value in row] for row in rows]
-
-
-def stringify_cell(value: object) -> str:
-    return "" if value is None else str(value)
-
-
-class AppendOrderedBlockAction(argparse.Action):
-    def __call__(self, parser, namespace, values, option_string=None):
-        namespace.ordered_arguments.append((option_string.lstrip("-"), values))
-
-
-def build_specification(arguments: argparse.Namespace) -> dict:
-    blocks = []
-    pending_bullet_items = []
-    for kind, value in arguments.ordered_arguments:
-        if kind == "bullet":
-            pending_bullet_items.append(value)
-            continue
-        flush_pending_bullets(blocks, pending_bullet_items)
-        blocks.append(build_inline_block(kind, value))
-    flush_pending_bullets(blocks, pending_bullet_items)
-    return {"title": arguments.title or "", "blocks": blocks}
-
-
-def flush_pending_bullets(blocks: list[dict], pending_bullet_items: list[str]) -> None:
-    if not pending_bullet_items:
-        return
-    blocks.append({"type": "bullets", "items": list(pending_bullet_items)})
-    pending_bullet_items.clear()
-
-
-def build_inline_block(kind: str, value: str) -> dict:
-    if kind == "heading":
-        return {"type": "heading", "level": 1, "text": value}
-    if kind == "paragraph":
-        return {"type": "paragraph", "text": value}
-    return load_table_block(value)
-
-
-def parse_arguments() -> argparse.Namespace:
-    parser = OfficeArgumentParser(description="Create a DOCX file from arguments or a JSON spec; office guide doc describes the spec.")
-    parser.add_argument("output_path", help="Path to the output .docx file")
-    parser.add_argument("--title", metavar="TEXT", default="", help="Document title")
-    parser.add_argument("--heading", action=AppendOrderedBlockAction, dest="ordered_arguments", default=[], metavar="TEXT", help="Add a level-1 heading (repeatable, position-sensitive)")
-    parser.add_argument("--paragraph", action=AppendOrderedBlockAction, dest="ordered_arguments", default=[], metavar="TEXT", help="Add a paragraph (repeatable, position-sensitive)")
-    parser.add_argument("--bullet", action=AppendOrderedBlockAction, dest="ordered_arguments", default=[], metavar="TEXT", help="Add a bullet item (repeatable, position-sensitive; consecutive bullets merge into one list)")
-    parser.add_argument("--table", action=AppendOrderedBlockAction, dest="ordered_arguments", default=[], metavar="JSON_PATH", help="Add a table from a JSON rows file (repeatable, position-sensitive)")
-    parser.add_argument("--spec", metavar="JSON_PATH", help="Full {title,page,fontName,fontSize,blocks} spec for rich structure")
-    return parser.parse_args()
 
 
 if __name__ == "__main__":

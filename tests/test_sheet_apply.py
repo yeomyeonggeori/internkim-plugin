@@ -47,20 +47,92 @@ class WorkbookEditTest(WorkbookFixture):
         return envelope
 
     def formulas(self, sheet):
-        envelope = run_office(["sheet", "read", "fixture.xlsx", "--sheet", sheet, "--where", "formula"], self.directory)
+        envelope = run_office(["read", "fixture.xlsx", "--sheet", sheet, "--where", "formula"], self.directory)
         return {cell["cell"]: cell["formula"] for cell in envelope["details"]["range"]["cells"]}
 
     def values(self, sheet):
-        envelope = run_office(["sheet", "read", "fixture.xlsx", "--sheet", sheet, "--where", "formula"], self.directory)
+        envelope = run_office(["read", "fixture.xlsx", "--sheet", sheet, "--where", "formula"], self.directory)
         return {cell["cell"]: cell["value"] for cell in envelope["details"]["range"]["cells"]}
 
     def sheet_info(self, sheet="Sales"):
-        envelope = run_office(["sheet", "read", "fixture.xlsx"], self.directory)
+        envelope = run_office(["read", "fixture.xlsx"], self.directory)
         return next(info for info in envelope["details"]["sheets"] if info["name"] == sheet), envelope["details"]["definedNames"]
 
     def chart_references(self):
         series = load_workbook(self.directory / "fixture.xlsx")["Sales"]._charts[0].series[0]
         return series.tx.strRef.f, series.cat.numRef.f if series.cat.numRef else series.cat.strRef.f, series.val.numRef.f
+
+
+class MisspelledInputTest(WorkbookEditTest):
+    def test_a_misspelled_operation_field_or_sheet_names_the_closest_one(self):
+        envelope = self.apply([{"op": "set_cel", "cell": "A1"}, {"op": "format_range", "range": "A1", "fontcolor": "FF0000"}], name="fixture.xlsx")
+        self.assertEqual([issue["suggestion"] for issue in envelope["issues"]], ['use "op": "set_cell"', "rename the field to 'fontColor'"])
+        envelope = self.apply([{"op": "set_cell", "sheet": "sales", "cell": "A1"}], name="fixture.xlsx")
+        self.assertEqual(envelope["issues"][0]["suggestion"], 'use "sheet": "Sales"')
+        self.assertIn("it has Sales, Summary", envelope["issues"][0]["message"])
+
+    def test_a_short_korean_sheet_name_with_one_wrong_letter_names_the_sheet(self):
+        self.create_workbook([{"title": "실적", "rows": [["a", "b"], [1, 2]]}, {"title": "분석", "rows": [["c"], [3]]}])
+        issue = self.apply([{"op": "set_cell", "sheet": "실젹", "cell": "A9", "value": 1}])["issues"][0]
+        self.assertEqual((issue["code"], issue["suggestion"]), ("TARGET_NOT_FOUND", 'use "sheet": "실적"'))
+
+    def test_a_sheet_name_close_to_none_lists_the_names(self):
+        self.create_workbook([{"title": "실적", "rows": [["a", "b"], [1, 2]]}, {"title": "분석", "rows": [["c"], [3]]}])
+        issue = self.apply([{"op": "set_cell", "sheet": "요약표", "cell": "A9", "value": 1}])["issues"][0]
+        self.assertEqual(issue["suggestion"], "use one of the sheet names: 실적, 분석")
+
+
+class SpecificSuggestionTest(WorkbookEditTest):
+    def refusal(self, operations):
+        envelope = self.apply(operations, name="fixture.xlsx")
+        self.assertEqual(envelope["status"], "error", envelope)
+        return envelope["issues"][0]
+
+    def test_an_address_names_what_is_wrong_with_it(self):
+        issue = self.refusal([{"op": "set_cell", "sheet": "Sales", "cell": "ZZZZ99999999", "value": 1}])
+        self.assertIn("column ZZZZ is past XFD and row 99999999 is outside 1 to 1048576", issue["message"])
+        issue = self.refusal([{"op": "add_chart", "sheet": "Sales", "type": "bar", "range": "A1:B4", "anchor": "ZZ"}])
+        self.assertEqual((issue["location"], issue["suggestion"]), ("ops[0].anchor", 'use a cell such as "ZZ1"'))
+        issue = self.refusal([{"op": "add_chart", "type": "line", "range": "Sales!A1:B4"}])
+        self.assertEqual(issue["suggestion"], 'put the sheet in its own field and the cells here: "sheet": "Sales", "range": "A1:B4"')
+        envelope = run_office(["read", "fixture.xlsx", "--range", "A1:ZZZ"], self.directory)
+        self.assertIn("in the corner ZZZ of 'A1:ZZZ', column ZZZ is past XFD and the row number is missing", envelope["summary"])
+        envelope = run_office(["read", "fixture.xlsx", "--range", "XFE1"], self.directory)
+        self.assertEqual(envelope["status"], "error")
+
+    def test_a_taken_sheet_name_suggests_a_free_one(self):
+        issue = self.refusal([{"op": "add_sheet", "name": "Sales"}])
+        self.assertEqual(issue["suggestion"], 'pick a name no sheet has, such as "name": "Sales (2)"')
+        issue = self.refusal([{"op": "rename_sheet", "sheet": "Summary", "name": "sales"}])
+        self.assertEqual(issue["suggestion"], 'pick a name no sheet has, such as "name": "sales (2)"')
+
+    def test_a_field_written_under_another_word_names_the_field_it_means(self):
+        issues = self.apply([{"op": "add_chart", "sheet": "Sales", "type": "line", "data": "A1:B4"}], name="fixture.xlsx")["issues"]
+        self.assertEqual([(issue["location"], issue["suggestion"]) for issue in issues], [("ops[0].data", "rename the field to 'range'")])
+        write_json(self.directory / "spec.json", {"sheets": [{"name": "매출", "data": [["월", "매출"], ["1월", 5]]}]})
+        issues = run_office(["create", "book.xlsx", "spec.json"], self.directory)["issues"]
+        self.assertEqual([issue["suggestion"] for issue in issues], ["rename the field to 'title'", "rename the field to 'rows'"])
+
+    def test_rows_written_as_objects_are_answered_with_the_lists_they_mean(self):
+        write_json(self.directory / "spec.json", {"sheets": [{"title": "매출", "rows": [{"담당자": "이샘플", "매출": 5}, {"매출": 6, "담당자": "박예시"}]}]})
+        issue = run_office(["create", "book.xlsx", "spec.json"], self.directory)["issues"][0]
+        self.assertEqual((issue["code"], issue["location"]), ("WRONG_TYPE", "spec.sheets[0].rows"))
+        self.assertIn("spec.sheets[0].rows[1] lists its keys in another order", issue["message"])
+        self.assertIn('[["담당자", "매출"], ["이샘플", 5], ["박예시", 6]]', issue["suggestion"])
+
+
+class TextLimitTest(WorkbookEditTest):
+    def test_text_past_an_excel_limit_is_refused_with_the_limit(self):
+        issue = self.apply([{"op": "add_chart", "sheet": "Sales", "type": "bar", "range": "A1:B4", "title": "가" * 3000}], name="fixture.xlsx")["issues"][0]
+        self.assertEqual((issue["code"], issue["location"]), ("INVALID_VALUE", "ops[0].title"))
+        self.assertIn("more than the 255", issue["message"])
+        issue = self.apply([{"op": "set_cell", "sheet": "Sales", "cell": "A9", "value": "x" * 32768}], name="fixture.xlsx")["issues"][0]
+        self.assertIn("an Excel cell holds at most 32767", issue["message"])
+        write_json(self.directory / "spec.json", {"sheets": [{"title": "2026년 3분기 영업 실적 지역별 담당자별 상세 분석 보고서", "rows": [["a"]]}]})
+        issue = run_office(["create", "book.xlsx", "spec.json"], self.directory)["issues"][0]
+        self.assertEqual(issue["location"], "spec.sheets[0].title")
+        self.assertIn("at most 31 characters", issue["message"])
+        self.assertFalse((self.directory / "book.xlsx").exists())
 
 
 class InsertAndDeleteTest(WorkbookEditTest):
@@ -136,7 +208,7 @@ class BatchTest(WorkbookEditTest):
             {"op": "rename_sheet", "sheet": "Extra", "name": "Later"},
             {"op": "set_cell", "sheet": "Later", "cell": "A2", "value": 7},
         ])
-        envelope = run_office(["sheet", "read", "fixture.xlsx", "--sheet", "Later"], self.directory)
+        envelope = run_office(["read", "fixture.xlsx", "--sheet", "Later"], self.directory)
         self.assertEqual(envelope["details"]["range"]["values"], [[61], [7]])
 
     def test_one_bad_operation_leaves_the_file_byte_identical(self):
@@ -149,6 +221,45 @@ class BatchTest(WorkbookEditTest):
         self.assertEqual(envelope["issues"][0]["location"], "ops[1].sheet")
         self.assertEqual((self.directory / "fixture.xlsx").read_bytes(), original)
         self.assertEqual(sorted(path.name for path in self.directory.iterdir() if path.name.startswith(".office-")), [])
+
+    def test_a_formula_that_reads_its_own_cell_writes_nothing(self):
+        original = (self.directory / "fixture.xlsx").read_bytes()
+        envelope = self.apply([
+            {"op": "set_cell", "sheet": "Sales", "cell": "A2", "value": "renamed"},
+            {"op": "set_cell", "sheet": "Sales", "cell": "B6", "value": "=SUM(B2:B6)"},
+        ], name="fixture.xlsx")
+        self.assertEqual((envelope["status"], envelope["outputPath"]), ("error", None))
+        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("CIRCULAR_REFERENCE", "Sales!B6")])
+        self.assertIn("nothing was written", envelope["summary"])
+        self.assertEqual((self.directory / "fixture.xlsx").read_bytes(), original)
+
+    def test_a_circular_reference_the_workbook_already_had_does_not_block_another_edit(self):
+        run_office_python("""
+            from openpyxl import load_workbook
+            workbook = load_workbook("fixture.xlsx")
+            workbook["Summary"]["B1"] = "=B1+1"
+            workbook.save("fixture.xlsx")
+        """, self.directory)
+        envelope = self.apply([{"op": "set_cell", "sheet": "Sales", "cell": "A2", "value": "renamed"}], name="fixture.xlsx")
+        self.assertEqual(envelope["status"], "ok", envelope)
+        self.assertEqual(load_workbook(self.directory / "fixture.xlsx")["Sales"]["A2"].value, "renamed")
+
+    def test_a_formula_that_does_not_parse_is_refused_where_it_is(self):
+        original = (self.directory / "fixture.xlsx").read_bytes()
+        cases = (
+            ({"op": "set_cell", "sheet": "Sales", "cell": "A3", "value": "=SUM(Z1:Z3"}, "ops[0].value", "leaves SUM( open"),
+            ({"op": "set_range", "sheet": "Sales", "cell": "F1", "values": [[1], ["=B2+"]]}, "ops[0].values[1][0]", "ends with the operator +"),
+            ({"op": "set_cell", "sheet": "Sales", "cell": "A3", "value": "=SUM(B2:B4))"}, "ops[0].value", "a ) that closes nothing"),
+            ({"op": "set_cell", "sheet": "Sales", "cell": "A3", "value": "=B2+*B3"}, "ops[0].value", "nothing before the operator *"),
+            ({"op": "add_conditional_format", "sheet": "Sales", "range": "B2:B4", "rule": "formula", "formula": '=$B2>"a'}, "ops[0].formula", "never closes"),
+        )
+        for operation, location, problem in cases:
+            with self.subTest(operation=operation):
+                envelope = self.apply([operation], name="fixture.xlsx")
+                self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("FORMULA_SYNTAX", location)])
+                self.assertIn(problem, envelope["summary"])
+        self.assertEqual((self.directory / "fixture.xlsx").read_bytes(), original)
+        self.edit([{"op": "set_cell", "sheet": "Sales", "cell": "A3", "value": "=SUM(Z1:Z3", "type": "text"}])
 
     def test_a_dry_run_reports_each_change_and_writes_nothing(self):
         original = (self.directory / "fixture.xlsx").read_bytes()
@@ -181,7 +292,7 @@ class CellAndStyleTest(WorkbookEditTest):
             {"op": "set_cell", "sheet": "Sales", "cell": "F2", "value": "=B2+1", "type": "text"},
             {"op": "set_range", "sheet": "Sales", "cell": "F3", "values": [[1, "=F3*2"], ["=x", None]], "type": "auto"},
         ])
-        envelope = run_office(["sheet", "read", "fixture.xlsx", "--range", "F1:G4"], self.directory)
+        envelope = run_office(["read", "fixture.xlsx", "--range", "F1:G4"], self.directory)
         selected = envelope["details"]["range"]
         self.assertEqual(selected["formulas"], [["=B2+1", None], [None, None], [None, "=F3*2"], ["=x", None]])
         self.assertEqual(selected["values"][0][0], 11)
@@ -221,7 +332,7 @@ class CellAndStyleTest(WorkbookEditTest):
     def test_a_chart_is_added_from_a_block_with_its_header_and_categories(self):
         self.edit([{"op": "add_chart", "sheet": "Sales", "type": "line", "range": "A1:B4", "title": "Amounts", "anchor": "G20"}])
         sales, _ = self.sheet_info()
-        self.assertEqual(sales["charts"], 2)
+        self.assertEqual([chart["type"] for chart in sales["charts"]], ["bar", "line"])
         chart = load_workbook(self.directory / "fixture.xlsx")["Sales"]._charts[1]
         self.assertEqual(type(chart).__name__, "LineChart")
         self.assertEqual(chart.series[0].val.numRef.f, "'Sales'!$B$2:$B$4")
@@ -266,8 +377,7 @@ class MacroWorkbookTest(WorkbookFixture):
 
     def test_a_macro_workbook_keeps_its_macros_when_rows_are_appended(self):
         self.build_macro_workbook()
-        write_json(self.directory / "rows.json", [[3, "=A3*2"]])
-        envelope = run_office(["sheet", "edit", str(self.directory / "macro.xlsm"), "--rows", "rows.json"], self.directory)
+        envelope = self.apply([{"op": "append_rows", "rows": [[3, "=A3*2"]]}], name="macro.xlsm")
         self.assertEqual(envelope["status"], "ok", envelope)
         with zipfile.ZipFile(self.directory / "macro.xlsm") as archive:
             self.assertEqual(archive.read("xl/vbaProject.bin"), b"FAKE-VBA-PAYLOAD")
