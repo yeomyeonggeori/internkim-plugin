@@ -3,7 +3,7 @@ name: dataroom
 description: File, find and share the company's document archive. Use for 데이터룸, 자료실, 문서 보관, 실사 자료, 증빙, 계약서 찾기, data room, due diligence, archive, evidence and filing received documents. Office creates documents; company-data records metrics.
 compatibility: Requires python3 and a terminal. In InternKim, use the internkim MCP server declared by this plugin.
 metadata:
-  kim.intern.tool-references: "company_dataroom_get company_dataroom_category_update company_dataroom_role_update company_dataroom_share_add company_dataroom_share_delete company_document_classify company_document_register company_document_update company_document_list company_document_search company_document_upload company_document_download bash"
+  kim.intern.tool-references: "dataroom_get dataroom_category_update dataroom_role_update dataroom_member_update dataroom_links_get dataroom_link_add dataroom_link_delete dataroom_share_add dataroom_share_delete company_document_classify company_document_register company_document_update company_document_list company_document_search company_document_upload company_document_download bash"
 ---
 
 # Data room
@@ -13,7 +13,7 @@ categories, reader roles, document metadata and stored files. Blueclaw accesses
 it as the requester. A standalone export is a local tree with `company.json`
 and `INDEX.md`; its folders do not enforce access control.
 
-Read `company_dataroom_get` when live categories or roles are needed. Codes
+Read `dataroom_get` when live categories or roles are needed. Codes
 are stable mnemonic letters: a parent has one, an intermediate category has
 two. Documents go in categories without children, including a parent with no
 children, or `X`, the unclassified inbox. Parents with children are not filing
@@ -60,8 +60,17 @@ by matching old folder names.
 
 ## Share
 
-Read roles and grants with `company_dataroom_get`. Assign an existing reader
-role with `company_dataroom_share_add` to the specified member, internal
+For a code-protected link, read `dataroom_links_get` for roles the requester can
+share. Use `dataroom_link_add` with the chosen role, label, lifetime and download
+permission. The default lifetime is three days and the maximum is seven days.
+Return `/share/links/<linkID>` on the company's web origin and the six digit code
+displayed once. The recipient enters the code and accepts the confidentiality
+notice without an account. `dataroom_link_delete` revokes an exact linkID.
+Administrators use `dataroom_member_update` to replace an employee's direct
+reader roles; circle grants still apply.
+
+Read roles and grants with `dataroom_get`. Assign an existing reader
+role with `dataroom_share_add` to the specified member, internal
 circle, external email or explicitly public audience. The recipient reads
 current and future documents in that role's categories. A parent grant also
 covers future children. An external email accepts the invitation using that
@@ -69,7 +78,7 @@ verified email and remains a guest, outside company membership and circles.
 Return `/share/invitations/<shareID>` for an email invitation, or
 `/share/<companyID>` for a published room, using the company's web origin.
 
-Use `company_dataroom_role_update` for a custom role's `readableCategories`.
+Use `dataroom_role_update` for a custom role's `readableCategories`.
 Read affected recipients before editing an existing role because access
 changes immediately. Reader roles do not grant editing or administrative
 rights. Public publication requires an explicit request and never includes
