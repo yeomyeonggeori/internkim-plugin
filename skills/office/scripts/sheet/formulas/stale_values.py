@@ -24,7 +24,7 @@ def stale_cached_value_issues(path: str, evaluation: Evaluation) -> list[Issue]:
     by_sheet = defaultdict(list)
     for (sheet, coordinate), computed in sorted(evaluation.values.items(), key=reading_order):
         value = stored[sheet][coordinate].value
-        if value is None or not agrees(value, computed):
+        if not agrees(value, computed):
             by_sheet[sheet].append((f"{sheet}!{coordinate}", value, computed))
     return [stale_issue(sheet, cells) for sheet, cells in by_sheet.items()]
 
@@ -35,6 +35,8 @@ def reading_order(item) -> tuple:
 
 
 def agrees(stored: object, computed: CachedValue) -> bool:
+    if stored is None:
+        return computed.cell_type == TEXT and computed.text == ""
     if computed.cell_type == NUMBER:
         return is_number(stored) and math.isclose(serial_number(stored), float(computed.text), rel_tol=RELATIVE_TOLERANCE, abs_tol=ABSOLUTE_TOLERANCE)
     if computed.cell_type == BOOLEAN:

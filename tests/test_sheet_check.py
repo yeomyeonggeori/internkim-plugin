@@ -143,6 +143,7 @@ summary = workbook.create_sheet("Summary")
 summary.append(["units", "=SUM('원본 데이터'!B2:B301)"])
 summary.append(["revenue", "=SUM('원본 데이터'!D2:D301)"])
 summary.append(["busiest", '="R"&COUNTIF(\'원본 데이터\'!A2:A301,"R3")'])
+summary.append(["shown blank", '=IF(B1>0,"","none")'])
 workbook.create_sheet("빈 시트")
 workbook.save("book.xlsx")
 """
