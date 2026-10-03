@@ -43,3 +43,7 @@ def korean_group_words(group: int) -> str:
 
 def korean_amount_in_words(amount: int) -> str:
     return f"일금 {korean_number_words(amount)}원정"
+
+
+def korean_amount_line(amount: int) -> str:
+    return f"일금 {korean_number_words(amount)}원整 (₩{amount:,}) (부가세 포함)"

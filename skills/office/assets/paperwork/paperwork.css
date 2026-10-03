@@ -40,3 +40,6 @@ h1 { font-size: $title; font-weight: 700; text-align: center; margin: 0; line-he
 .signature .signer { display: flex; justify-content: center; align-items: center; font-size: 12pt; font-weight: 700; }
 .signature .seal { position: relative; display: flex; margin-left: 2mm; }
 .signature .stamp { position: absolute; width: 16mm; height: 16mm; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.closing, .sign-off { break-inside: avoid; }
+.items td, .meta-value, .totals p { word-break: keep-all; }
+.items td.align-right, .totals .value { white-space: nowrap; }

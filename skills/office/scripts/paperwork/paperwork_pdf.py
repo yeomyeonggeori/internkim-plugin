@@ -90,18 +90,24 @@ def hex_color(color: tuple[int, int, int]) -> str:
 def paperwork_html(document: dict, jurisdiction: Jurisdiction) -> str:
     profile = document.get("profile", {})
     labels = jurisdiction.labels
-    parts = (
+    heading = [
         letterhead_html(profile, labels),
         approval_html(document.get("approvalLine") or []),
         title_html(document, labels),
         recipient_html(document.get("recipient"), labels),
         meta_html(document.get("meta") or []),
-        items_html(document.get("items")),
-        "".join(section_html(section) for section in document.get("sections") or []),
-        notes_html(document.get("notes") or []),
-        signature_html(document.get("signature"), profile, labels),
-    )
+    ]
+    body = [part for part in (*items_html(document.get("items")), *(section_html(section) for section in document.get("sections") or [])) if part]
+    sign_off = [notes_html(document.get("notes") or []), signature_html(document.get("signature"), profile, labels)]
+    parts = [*heading, *body[:-1], closing_html(body[-1:], sign_off)]
     return f'<div class="page" lang="{jurisdiction.language}">' + "\n".join(part for part in parts if part) + "</div>"
+
+
+def closing_html(closed: list[str], sign_off: list[str]) -> str:
+    signed = "".join(sign_off)
+    if not signed:
+        return "".join(closed)
+    return f'<div class="closing">{"".join(closed)}<div class="sign-off">{signed}</div></div>'
 
 
 def text_of(value: object) -> str:
@@ -182,14 +188,14 @@ def multiline(value: object) -> str:
     return "<br>".join(html.escape(line) for line in text_of(value).split("\n"))
 
 
-def items_html(items: dict | None) -> str:
+def items_html(items: dict | None) -> tuple[str, str]:
     if items is None:
-        return ""
+        return ("", "")
     headers = items["headers"]
     alignments = column_alignments(items.get("aligns"), len(headers))
     head = "".join(f"<th>{escaped(header)}</th>" for header in headers)
     body = "".join(item_row_html(row, alignments) for row in items.get("rows") or [])
-    return f'<table class="items"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>{totals_html(items.get("totals") or [])}'
+    return (f'<table class="items"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>', totals_html(items.get("totals") or []))
 
 
 def column_alignments(aligns: object, column_count: int) -> list[str]:

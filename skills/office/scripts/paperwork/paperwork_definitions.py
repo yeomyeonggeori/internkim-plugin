@@ -12,6 +12,8 @@ from doc.doc_definitions import GLYPH_NOT_COVERED
 from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE
 
 
+REGISTERED_DOCUMENT_NUMBER = "<the number company_document_register returned>"
+
 LABELED_VALUE = Record("labeled value", "one label and its value", (
     Field("label", CellValue(), "the label"),
     Field("value", CellValue(), "the value"),
@@ -36,6 +38,7 @@ ITEMS = Record("items", "the item table with its totals", (
     Field("headers", ListOf(CellValue(), non_empty=True), "column headers", required=True),
     Field("rows", ListOf(ListOf(CellValue())), "item rows"),
     Field("aligns", ListOf(CellValue()), "L, C or R per column; anything else aligns left"),
+    Field("untaxedRows", ListOf(Number(minimum=0, integer=True)), "indexes, from 0, of the rows that carry no tax, such as exempt or zero-rated supplies; their tax cell holds 0 and the tax total leaves their amounts out"),
     Field("totals", ListOf(LABELED_VALUE), "right-aligned total lines, the last one emphasized"),
 ))
 
@@ -61,7 +64,7 @@ FORM_FIELD = Field("form", Text(non_empty=True), "the form these values fill, <j
 PAPERWORK_DOCUMENT = Record("document", "the values office merge draws on letterhead as a .pdf; each spec under references/paperwork has its skeleton", (
     FORM_FIELD,
     Field("title", Text(non_empty=True), "centered document title", required=True),
-    Field("documentNumber", CellValue(), "printed under the title after the jurisdiction's document-number label"),
+    Field("documentNumber", CellValue(), "the number company_document_register returned for this document, as it is; printed under the title after the jurisdiction's document-number label"),
     Field("profile", PROFILE, "company profile for the letterhead", required=True),
     Field("approvalLine", ListOf(Text()), "approval box captions, left to right"),
     Field("recipient", RECIPIENT, "addressee"),
@@ -145,12 +148,19 @@ def jurisdiction_lines() -> list[str]:
 
 def jurisdiction_summary(jurisdiction: Jurisdiction) -> list[str]:
     columns = jurisdiction.columns
-    tax = f"{jurisdiction.tax_rate_percent}% of each row's amount when rows have a {columns.tax} column, else of the supply total" if jurisdiction.tax_rate_percent is not None else "taxRatePercent when the values state it, else the tax line is only added to the total"
-    words = f"; meta \"{jurisdiction.amount_in_words.label}\" holds the amount in words: {jurisdiction.amount_in_words.example}" if jurisdiction.amount_in_words else ""
+    rate = f"{jurisdiction.tax_rate_percent}%" if jurisdiction.tax_rate_percent is not None else "taxRatePercent, when the values state it,"
+    tax = f"{rate} of each row's amount when rows have a {columns.tax} column, else of the supply total; a row in items.untaxedRows carries none"
+    if jurisdiction.tax_rate_percent is None:
+        tax += "; without a stated rate the tax line is only added to the total"
+    words = amount_in_words_summary(jurisdiction.amount_in_words) if jurisdiction.amount_in_words else ""
     return [
         f"  {jurisdiction.code} ({jurisdiction.name}): labels in {jurisdiction.language}; dates {jurisdiction.date_format}; currency {jurisdiction.money.currency or 'as the form names it'}",
         f"    item columns {columns.quantity}, {columns.unit_price}, {columns.amount}, {columns.tax}; tax {tax}; rounding: {jurisdiction.money.rounding_rule}{words}",
     ]
+
+
+def amount_in_words_summary(words) -> str:
+    return f"; merge writes an empty meta \"{words.label}\" value from the grand total, such as \"{words.line(1_000_000)}\" for 1,000,000, and checks one written by hand ({words.example})"
 
 
 def template_guide_lines() -> list[str]:

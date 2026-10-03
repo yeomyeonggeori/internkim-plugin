@@ -20,7 +20,7 @@ A summary of the week's work and issues, shared with a manager or the team. It i
 {
   "form": "kr/weekly-report",
   "title": "주 간 업 무 보 고",
-  "documentNumber": "WR-<YYYYMMDD>-<sequence>",
+  "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
   "meta": [
     { "label": "보고자", "value": "<name>" },

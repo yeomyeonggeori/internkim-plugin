@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from fonts.registry import DECK, default_family
-from deck.deck_kit import DEFAULT_THEME, chart_types, icon_names, kit_names, slide_size, theme_palettes
+from deck.deck_kit import DEFAULT_THEME, chart_types, icon_names, kit_names, kit_number, slide_size, theme_palettes
 from deck.layout_thresholds import EMPTY_REGION_SHARE_MAXIMUM, LABEL_LINE_MAXIMUM, MARK_BREADTH_MINIMUM, REPEATED_FIGURE_MINIMUM, ROUND_SLOT_MINIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
 from core.office_commands import EVERY_KIND
 from core.office_result import ERROR, WARNING, IssueKind
@@ -61,6 +61,7 @@ LAST_SLIDE_NOT_CLOSING = IssueKind("LAST_SLIDE_NOT_CLOSING", WARNING, "a deck of
 SLIDE_WITHOUT_CONTENT = IssueKind("SLIDE_WITHOUT_CONTENT", ERROR, "a slide has no visible text, image or chart", "give the slide its content or delete it")
 CHART_DATA_INVALID = IssueKind("CHART_DATA_INVALID", ERROR, "a chart's data attributes do not parse or do not line up", "give data-labels and data-values (or data-series) the same number of plain numbers")
 IMAGE_NOT_FOUND = IssueKind("IMAGE_NOT_FOUND", ERROR, "an image is remote or its file does not exist, so the slide would show an empty box", "download it with office image and point src at the local file, or remove the image")
+MOTIF_NOT_DRAWN = IssueKind("MOTIF_NOT_DRAWN", ERROR, "a data-motif names no motif the kit draws, sits on a part other than a cover <section>, or shares the cover with a photo that takes its place", "use a motif office guide slides lists on the cover <section>, or drop it")
 ICON_HOST_CLASSES = kit_names("iconHostClasses")
 ICON_LIST_LAYOUTS = kit_names("iconListLayouts")
 ICON_HOSTS = f"a {', '.join('.' + name for name in ICON_HOST_CLASSES)}, or an <li> of an {' or '.join(ICON_LIST_LAYOUTS)} list"
@@ -87,6 +88,7 @@ SOURCE_CHECK_ISSUE_KINDS = (
     CHART_DATA_INVALID,
     ICON_UNKNOWN,
     ICON_MISPLACED,
+    MOTIF_NOT_DRAWN,
     IMAGE_NOT_FOUND,
     PLACEHOLDER_LEFT,
     *TEXT_CHECK_ISSUE_KINDS,
@@ -141,11 +143,16 @@ def selector_matches(selector: str, tag: str, classes: set[str], attributes: dic
     return tag == selector
 
 
+COVER_MOTIF_DESCRIPTIONS = {
+    "panel": "a plain panel in the theme's cover color",
+    "rings": "that panel with three quarter-circle arcs in its corner",
+}
+COVER_MOTIF_CHOICES = " or ".join(f'"{name}" ({description})' for name, description in COVER_MOTIF_DESCRIPTIONS.items())
 TITLE = LayoutPart("h2")
 KIT_LAYOUTS = (
-    KitLayout("cover", "first slide: the deck's claim, a lead line and a .meta line with presenter and date; an <img> fills the right panel", (LayoutPart("h1"), LayoutPart("img", 0))),
+    KitLayout("cover", f"first slide: the deck's claim, a lead line and a .meta line with presenter and date; an <img> fills a panel on the right; without a photo the cover is text on the background unless data-motif on its <section> picks {COVER_MOTIF_CHOICES}", (LayoutPart("h1"), LayoutPart("img", 0))),
     KitLayout("agenda", "the order of the talk, three to six items", (TITLE, LayoutPart("ol|ul"))),
-    KitLayout("section", "a divider before a part of the talk; the .eyebrow holds its number", (TITLE,)),
+    KitLayout("section", "a divider before a part of the talk, on the deck's dark feature color; the .eyebrow holds its number", (TITLE,)),
     KitLayout("statement", "one sentence the audience must remember; <em> marks the words in the accent color", (TITLE,)),
     KitLayout("number", "one number that carries the slide, with its .label and the points that explain it", (TITLE, LayoutPart(".value"), LayoutPart(".label", 0))),
     KitLayout("kpi", "two to four metrics in one unit system, each a .kpi with .value, .label and a change line", (TITLE, LayoutPart(".kpi", 2, 4))),
@@ -154,7 +161,7 @@ KIT_LAYOUTS = (
     KitLayout("timeline", "a sequence of three to six .step blocks, each with a .label date, <h3> and <p>; .done fills the dot", (TITLE, LayoutPart(".step", 3, 6))),
     KitLayout("table", "rows and columns the audience must read; numeric cells align right by themselves, tr.pick highlights a row", (TITLE, LayoutPart("table"))),
     KitLayout("chart", "a trend, ranking or share drawn from data attributes, with an optional .insight beside it", (TITLE, LayoutPart("figure[data-chart]"), LayoutPart(".insight", 0))),
-    KitLayout("quote", "a customer's or expert's words in a <blockquote> with a .by line", (LayoutPart("blockquote"),)),
+    KitLayout("quote", "a customer's or expert's words in a <blockquote> with a .by line, under a large quotation mark in the accent color", (LayoutPart("blockquote"),)),
     KitLayout("image", "a photo that carries meaning on the left half, the text on the right", (TITLE, LayoutPart("img"))),
     KitLayout("closing", "the decision or next actions as .card blocks or an <ol>, on the deck's dark feature color", (TITLE, LayoutPart(".card", 0, 4))),
     KitLayout("process", "steps in order, each an <li> of an <ol> drawn as a box with an arrow to the next", (TITLE, LayoutPart("ol", items=ItemLimits(3, 6)))),
@@ -184,7 +191,7 @@ CHART_ATTRIBUTES = (
     "data-values: one number per label, for a single series",
     "numbers are separated by a comma and a space, so \"1,200, 1,350\" is two numbers, and the unit goes in data-unit, never in the numbers",
     "data-series: \"name: 1, 2, 3; other: 4, 5, 6\" for several series, each with one number per label",
-    "combo: the last series is a line on its own axis, the ones before it are columns",
+    f"combo: the last series is a line over the columns before it, on their axis; it gets its own axis on the right, zero level with theirs, when data-unit gives it another unit or the two differ more than {kit_number('separateAxisRatio')}-fold",
     "scatter: two series, the horizontal axis first and the vertical second; each label names one point",
     "stacked100: each column shows its series as shares of the column's total",
     "area: the series stacked as bands over the labels, a total over time and what it is made of",

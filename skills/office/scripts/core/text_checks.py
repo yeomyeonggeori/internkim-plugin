@@ -7,7 +7,7 @@ from core.office_result import ERROR, Issue, IssueKind
 
 PLACEHOLDER_PATTERN = re.compile(r"\{\{.*?\}\}|\{%.*?%\}|(?i:lorem ipsum)|\b(?:TODO|TBD|FIXME)\b|(?<![A-Za-z])X{2,}(?![A-Za-z])|○○|(?i:\[(?:insert|placeholder)[^\]]*\])")
 
-REQUIRED_TEXT_MISSING = IssueKind("REQUIRED_TEXT_MISSING", ERROR, "a --required-text value does not appear in the file's visible text", "put the source fact in the visible content, then rebuild")
+REQUIRED_TEXT_MISSING = IssueKind("REQUIRED_TEXT_MISSING", ERROR, "a --required-text value does not appear in the file's visible text", "each value is one fact matched whole, commas included: pass every fact as its own --required-text, and put a fact that is truly absent in the visible content, then rebuild")
 FORBIDDEN_TEXT_PRESENT = IssueKind("FORBIDDEN_TEXT_PRESENT", ERROR, "a --forbidden-text value appears in the file's visible text", "remove the unsupported text, then rebuild")
 PLACEHOLDER_LEFT = IssueKind("PLACEHOLDER_LEFT", ERROR, "template placeholder syntax, a merge field, or draft text such as TODO or lorem ipsum is still in the text", "replace it with the real value")
 

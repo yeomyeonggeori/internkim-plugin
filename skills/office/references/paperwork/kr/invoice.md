@@ -11,7 +11,7 @@ An external document asking a customer to pay for goods or services already supp
 
 - recipient: the recipient's company name is required, with the contact's name when given
 - The supplier's details (사업자등록번호 business registration number, 업태 business type, 종목 business item, 대표자 representative) get no table of their own: profile.legalAttributes already prints them on the letterhead.
-- meta: 합계금액 (total, also in Korean words), 청구일자 (invoice date), 지급기한 (payment due date), 입금계좌 (bank account, profile.bankAccount); all required
+- meta: 합계금액 (total in Korean words and figures; leave its value empty and merge writes it from the grand total), 청구일자 (invoice date), 지급기한 (payment due date), 입금계좌 (bank account, profile.bankAccount); all required
 - items: use only the 품명 (item), 규격 (spec), 수량 (quantity), 단위 (unit) and 단가 (unit price) the requester gave, at least one row
 - items.totals: 공급가액 합계 (supply total) → 부가세(10%) (VAT) → 총 청구금액 (total billed), in that order
 - signature: issue date + "<company name> 대표이사 <representative name>", stamp true
@@ -22,11 +22,11 @@ An external document asking a customer to pay for goods or services already supp
 {
   "form": "kr/invoice",
   "title": "청 구 서",
-  "documentNumber": "I-<YYYYMMDD>-<sequence>",
+  "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
   "recipient": { "label": "수신", "lines": ["<recipient company name>", "<contact name> 님"] },
   "meta": [
-    { "label": "합계금액", "value": "일금 <amount in Korean words>원整 (₩<amount with thousands separators>) (부가세 포함)" },
+    { "label": "합계금액", "value": "" },
     { "label": "청구일자", "value": "<YYYY-MM-DD>" },
     { "label": "지급기한", "value": "<YYYY-MM-DD>" },
     { "label": "입금계좌", "value": "<profile.bankAccount>" }

@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -102,6 +103,26 @@ class LineAndRuleTest(unittest.TestCase):
         self.assertIn("최견본 팀장)<br><strong>제안사:</strong>", page)
         self.assertIn("<hr>", page)
 
+
+
+    def test_a_line_break_in_a_table_cell_is_a_line_break_in_every_output(self):
+        table = "| 기관 | 서명 |\n| --- | --- |\n| 기관명: 견본재단<br>대표자: 최견본 | 날짜: 2026-03-02<br/>장소: 서울 |\n| Example Labs<BR />CTO Alex Sample | **확인**<br>(인) |\n"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            (directory / "table.md").write_text(table, encoding="utf-8")
+            self.assertEqual(run_office(["create", "table.docx", "table.md"], directory)["status"], "ok")
+            cells = next(block for block in run_office(["read", "table.docx"], directory)["details"]["blocks"] if block["kind"] == "table")["cells"]
+            self.assertEqual(cells[1:], [["기관명: 견본재단\n대표자: 최견본", "날짜: 2026-03-02\n장소: 서울"], ["Example Labs\nCTO Alex Sample", "확인\n(인)"]])
+            (directory / "applied.md").write_text("시작\n", encoding="utf-8")
+            run_office(["create", "applied.docx", "applied.md"], directory)
+            (directory / "operations.json").write_text(json.dumps([{"op": "insert_markdown", "at": "end", "markdown": table}]), encoding="utf-8")
+            self.assertEqual(run_office(["apply", "applied.docx", "operations.json"], directory)["status"], "ok")
+            applied = next(block for block in run_office(["read", "applied.docx"], directory)["details"]["blocks"] if block["kind"] == "table")["cells"]
+            self.assertEqual(applied, cells)
+            self.assertEqual(run_office(["create", "table.pdf", "table.md"], directory)["status"], "ok")
+            text = pdf_text(directory / "table.pdf", directory)
+            self.assertNotIn("<br", text.lower())
+            self.assertIn("대표자: 최견본", text)
 
 
 class MathTest(unittest.TestCase):

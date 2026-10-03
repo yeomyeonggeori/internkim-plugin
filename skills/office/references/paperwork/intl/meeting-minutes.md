@@ -19,7 +19,7 @@ An internal record of what was discussed and decided in a meeting, kept so atten
 {
   "form": "intl/meeting-minutes",
   "title": "Meeting Minutes",
-  "documentNumber": "MM-<YYYYMMDD>-<sequence>",
+  "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
   "meta": [
     { "label": "Meeting", "value": "<meeting name>" },

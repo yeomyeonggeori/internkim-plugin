@@ -106,7 +106,7 @@ FLAGS = (
     Flag("--track", "write text, paragraph, row and block edits as tracked changes others can accept or reject"),
     Flag("--author", "author of tracked changes", "NAME"),
     Flag("--allow-loss", "save even when content the editor cannot carry, such as form controls, would be dropped"),
-    Flag("--required-text", "a source fact that must appear; repeat for each fact", "TEXT", repeatable=True),
+    Flag("--required-text", "a source fact that must appear, matched whole, commas included; repeat the flag for each fact", "TEXT", repeatable=True),
     Flag("--forbidden-text", "text that must not appear, such as an unsupported claim; repeat for each", "TEXT", repeatable=True),
     Flag("--slide-count", "the slide count the user asked for; a different count is an error", "N", number=int),
     Flag("--minimum-pages", "the fewest pages the file may have", "N", number=int),

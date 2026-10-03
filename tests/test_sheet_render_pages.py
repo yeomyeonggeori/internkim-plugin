@@ -4,8 +4,42 @@ import zipfile
 
 from openpyxl import load_workbook
 
-from sheet_fixture import WorkbookFixture, run_office
+from sheet_fixture import WorkbookFixture, run_office, run_office_python
 
+ROW_EMU = 190500
+CHART_AT_ROW = r"""
+from openpyxl import Workbook
+from openpyxl.chart import BarChart, Reference
+from openpyxl.drawing.spreadsheet_drawing import AnchorMarker, OneCellAnchor
+from openpyxl.drawing.xdr import XDRPositiveSize2D
+
+workbook = Workbook()
+sheet = workbook.active
+sheet.title = "{title}"
+for row in [["item", "amount"], ["a", 4], ["b", -2], ["c", 7]]:
+    sheet.append(row)
+if {last_row}:
+    sheet.cell(row={last_row}, column=1, value="note")
+chart = BarChart()
+chart.title = "{title}"
+chart.add_data(Reference(sheet, min_col=2, min_row=1, max_row=4), titles_from_data=True)
+sheet.add_chart(chart, OneCellAnchor(_from=AnchorMarker(col=3, row={top}), ext=XDRPositiveSize2D(2857500, {height})))
+workbook.save("book.xlsx")
+"""
+TWO_CELL_CHART = r"""
+from openpyxl import Workbook
+from openpyxl.chart import LineChart, Reference
+from openpyxl.drawing.spreadsheet_drawing import AnchorMarker, TwoCellAnchor
+
+workbook = Workbook()
+sheet = workbook.active
+for row in [["week", "visits"], ["w1", 30], ["w2", 45], ["w3", 41]]:
+    sheet.append(row)
+chart = LineChart()
+chart.add_data(Reference(sheet, min_col=2, min_row=1, max_row=4), titles_from_data=True)
+sheet.add_chart(chart, TwoCellAnchor(_from=AnchorMarker(col=3, row=2), to=AnchorMarker(col=9, row={end_row}, rowOff={end_offset})))
+workbook.save("book.xlsx")
+"""
 MONTHS = [["month", "sales", "margin"], ["Jan", 120, 0.21], ["Feb", 150, 0.24], ["Mar", 90, 0.18], ["Apr", 170, 0.27]]
 
 
@@ -59,6 +93,41 @@ class RenderedPagesTest(WorkbookFixture):
         self.assertTrue(contents[0]["cells"].startswith("A1:") and contents[1]["cells"].startswith("A"))
         self.assertEqual([page["drawings"] for page in contents], [[{"chart": "Daily sales", "type": "line", "shown": "part, cut at the page edge"}]] * 2)
         self.assertEqual(len(self.chart_svgs(preview)), 2)
+
+    def chart_at_row(self, title, top, height, last_row=0):
+        run_office_python(CHART_AT_ROW.format(title=title, top=top, height=height, last_row=last_row), self.directory)
+        envelope, _ = self.render()
+        return envelope
+
+    def test_a_drawing_reaches_a_row_only_as_far_as_it_can_be_seen(self):
+        for title, top, rows, overshoot, last_printed in (
+            ("Edge", 0, 10, 1500, 10),
+            ("매출 차트", 5, 17, 4000, 22),
+            ("Tiny", 12, 3, 900, 15),
+            ("Half a row", 5, 17, ROW_EMU // 2, 23),
+            ("Exact", 20, 8, 0, 28),
+        ):
+            with self.subTest(title=title):
+                contents = self.chart_at_row(title, top, rows * ROW_EMU + overshoot)["details"]["pageContents"]
+                self.assertEqual([page["cells"].split(":")[1][1:] for page in contents], [str(last_printed)])
+
+    def test_a_two_cell_drawing_ends_in_the_row_its_corner_is_seen_in(self):
+        for end_row, end_offset, last_printed in ((20, 0, 20), (20, 1000, 20), (20, ROW_EMU // 2, 21), (35, 0, 35)):
+            with self.subTest(end_row=end_row, end_offset=end_offset):
+                run_office_python(TWO_CELL_CHART.format(end_row=end_row, end_offset=end_offset), self.directory)
+                contents = self.render()[0]["details"]["pageContents"]
+                self.assertEqual([page["cells"].split(":")[1][1:] for page in contents], [str(last_printed)])
+
+    def test_a_drawing_ending_a_hair_past_a_page_break_is_whole_on_its_page_and_absent_from_the_next(self):
+        envelope = self.chart_at_row("Quarterly", 29, 17 * ROW_EMU + 1500, last_row=60)
+        contents = envelope["details"]["pageContents"]
+        self.assertEqual([page.get("drawings") for page in contents], [[{"chart": "Quarterly", "type": "column", "shown": "whole"}], None])
+        self.assertNotIn("BLANK_PAGE", [issue["code"] for issue in envelope["issues"]])
+
+    def test_a_drawing_ending_a_hair_into_the_next_page_adds_no_page(self):
+        envelope = self.chart_at_row("Quarterly", 29, 17 * ROW_EMU + 1500)
+        self.assertEqual(envelope["details"]["pageCount"], 1)
+        self.assertNotIn("BLANK_PAGE", [issue["code"] for issue in envelope["issues"]])
 
     def test_a_long_heading_stays_on_one_line_and_a_merged_title_does_not_grow_its_row(self):
         heading = "판매 실적 원본 데이터 (판매실적_2026.csv · 2026-04~2026-09)"

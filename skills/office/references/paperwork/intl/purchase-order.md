@@ -21,7 +21,7 @@ An external document ordering goods or services from a supplier. Delivery date a
 {
   "form": "intl/purchase-order",
   "title": "Purchase Order",
-  "documentNumber": "PO-<YYYYMMDD>-<sequence>",
+  "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
   "recipient": { "label": "To", "lines": ["<supplier company name>", "Attn: <contact name>"] },
   "meta": [

@@ -153,14 +153,14 @@ class NativeChartPackageTest(unittest.TestCase):
 
     def test_a_combo_chart_draws_its_last_series_as_a_line_on_a_second_axis(self):
         revenue, margin = {"name": "매출", "values": [96, 104, 128]}, {"name": "이익률", "values": [11.2, 12.5, 14.2]}
-        combo = chart_layout("combo", [revenue, margin], units=["억", "%"], decimals=[0, 1], valueRange={"minimum": 0, "maximum": 213}, secondaryRange={"minimum": 1, "maximum": 16})
+        combo = chart_layout("combo", [revenue, margin], units=["억", "%"], decimals=[0, 1], valueRange={"minimum": 0, "maximum": 213}, secondaryRange={"minimum": 0, "maximum": 16, "step": 4})
         _, presentation = self.write([combo])
         chart = chart_frame(presentation.slides[0]).chart
         self.assertEqual([plot.__class__.__name__ for plot in chart.plots], ["BarPlot", "LinePlot"])
         self.assertEqual([[series.name for series in plot.series] for plot in chart.plots], [["매출"], ["이익률"]])
         axes = chart._chartSpace.findall(f".//{qn('c:valAx')}")
         self.assertEqual([axis.find(f"{qn('c:scaling')}/{qn('c:max')}").get("val") for axis in axes], ["213", "16"])
-        self.assertEqual(axes[1].find(qn("c:numFmt")).get("formatCode"), '#,##0.0"%"')
+        self.assertEqual(axes[1].find(qn("c:numFmt")).get("formatCode"), '#,##0"%"', "ticks every whole step need no decimals")
 
     def test_a_scatter_chart_plots_the_first_series_across_and_names_each_point(self):
         stores = ["강남점", "판교점", "부산점"]

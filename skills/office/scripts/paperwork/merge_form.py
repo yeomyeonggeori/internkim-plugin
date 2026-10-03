@@ -5,6 +5,7 @@ from pathlib import Path
 
 from core.office_arguments import route_arguments
 from core.office_result import DOCUMENTS_FOLDER, INVALID_VALUE, PERMISSION_DENIED, WRONG_TYPE, Issue, OfficeFailure, Result, read_json_file, run_command
+from paperwork.check_amounts import amount_issues, with_amount_in_words
 from paperwork.fill_template import fill_template
 from paperwork.forms import Form, require_form
 from paperwork.paperwork_pdf import render_paperwork_pdf
@@ -40,10 +41,11 @@ def form_values(form: Form, values_path: str) -> dict:
 def write_form(form: Form, values: dict, output_path: Path) -> list[Issue]:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     if output_path.suffix.lower() == ".pdf":
-        return render_paperwork_pdf(load_document(values), form.jurisdiction, output_path)
+        document = with_amount_in_words(load_document(values))
+        return [*amount_issues(document), *render_paperwork_pdf(document, form.jurisdiction, output_path)]
     if form.template_path is not None:
         fill_template(form.slug, values, output_path)
-        return []
+        return list(amount_issues(values))
     generate_docx(load_contract_document(values), output_path)
     return []
 

@@ -21,7 +21,7 @@ An internal approval document that asks for a decision inside the company. It se
 {
   "form": "kr/approval-request",
   "title": "품 의 서",
-  "documentNumber": "AR-<YYYYMMDD>-<sequence>",
+  "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
   "approvalLine": ["담당", "검토", "대표"],
   "meta": [

@@ -37,6 +37,7 @@ from deck.deck_definitions import (
     ICON_LIST_LAYOUTS,
     ICON_MISPLACED,
     ICON_UNKNOWN,
+    MOTIF_NOT_DRAWN,
     ItemLimits,
     KitLayout,
     kit_layout,
@@ -44,7 +45,7 @@ from deck.deck_definitions import (
 )
 from charts.kinds import KIT_STACKED_CHARTS, is_round_kind
 from charts.numbers import chart_number, split_chart_list
-from deck.deck_kit import DEFAULT_THEME, chart_types, icon_names, theme_palettes, uses_deck_kit
+from deck.deck_kit import DEFAULT_THEME, chart_types, icon_names, kit_names, theme_palettes, uses_deck_kit
 from deck.deck_source import Element, find_all, normalized_text, parse_source, style_texts, visible_text
 from deck.design_tokens import design_front_matter
 from core.office_arguments import route_arguments
@@ -116,7 +117,7 @@ def check_deck(request: CheckRequest) -> Result:
 def deck_issues(request: CheckRequest, root: Element, slides: list[Slide], is_kit_deck: bool) -> list[Issue]:
     issues = []
     if is_kit_deck:
-        issues += theme_issues(root) + layout_issues(slides) + sequence_issues(slides) + [issue for slide in slides for issue in icon_issues(slide)]
+        issues += theme_issues(root) + layout_issues(slides) + sequence_issues(slides) + [issue for slide in slides for issue in icon_issues(slide)] + motif_issues(root, slides)
     issues += slide_count_issues(request.requested_slide_count, slides)
     for slide in slides:
         issues += empty_slide_issues(slide) + chart_issues(slide) + image_issues(slide, request.source_path.parent) + placeholder_issues(slide)
@@ -243,6 +244,33 @@ def icon_issues(slide: Slide) -> list[Issue]:
         if not any(element is host for host in hosts):
             issues.append(ICON_MISPLACED.issue(f'{slide.location}: data-icon="{name}" is on a <{element.tag}>, where the kit draws no icon', slide.location))
     return issues
+
+
+MOTIF_ATTRIBUTE = "data-motif"
+
+
+def motif_issues(root: Element, slides: list[Slide]) -> list[Issue]:
+    sections = {id(slide.element): slide for slide in slides}
+    issues = []
+    for element in [root, *root.descendants()]:
+        if MOTIF_ATTRIBUTE not in element.attributes:
+            continue
+        reason = motif_problem(element, sections.get(id(element)))
+        if reason:
+            location = sections[id(element)].location if id(element) in sections else element.tag
+            issues.append(MOTIF_NOT_DRAWN.issue(f'{location}: data-motif="{element.attributes[MOTIF_ATTRIBUTE]}" {reason}', location, suggestion=names_suggestion(element.attributes[MOTIF_ATTRIBUTE].strip(), kit_names("coverMotifs"))))
+    return issues
+
+
+def motif_problem(element: Element, slide: Slide | None) -> str | None:
+    name = element.attributes[MOTIF_ATTRIBUTE].strip()
+    if name not in kit_names("coverMotifs"):
+        return "is not a motif the kit draws"
+    if slide is None or slide.layout != COVER_LAYOUT:
+        return f"is on a <{element.tag}>; only a cover <section> draws one"
+    if any(child.tag == "img" for child in slide.element.child_elements()):
+        return "shares the cover with an <img>, which fills the panel instead"
+    return None
 
 
 def icon_hosts(slide: Slide) -> list[Element]:

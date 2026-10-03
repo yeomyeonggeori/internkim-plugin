@@ -93,6 +93,45 @@ class PaperworkRenderTest(unittest.TestCase):
         completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", PAGE_TEXTS, "quote.pdf"], cwd=self.directory, capture_output=True, text=True, check=True)
         self.assertEqual(re.findall(r"[\uac00-\ud7a3]+", "".join(json.loads(completed.stdout))), ["주식회사", "견본물산"])
 
+    def priced(self, form: str, supply: int, tax: int, words: str) -> dict:
+        values = quote(self.directory, [])
+        values.update({
+            "form": form,
+            "meta": [{"label": "합계금액", "value": words}, {"label": "발행일자", "value": "2026-03-02"}],
+            "items": {"headers": ["품명", "수량", "단가", "공급가액", "세액"], "rows": [["견본 품목", "1", f"{supply:,}", f"{supply:,}", f"{tax:,}"]],
+                      "totals": [{"label": "공급가액 합계", "value": f"{supply:,}원"}, {"label": "부가세", "value": f"{tax:,}원"}, {"label": "총 합계", "value": f"{supply + tax:,}원"}]},
+        })
+        return values
+
+    def merged_text(self, values: dict) -> tuple[dict, str]:
+        write_json(self.directory / "form.json", values)
+        envelope = run_office(["merge", values["form"], "form.json", "form.pdf"], self.directory)
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", PAGE_TEXTS, "form.pdf"], cwd=self.directory, capture_output=True, text=True, check=True)
+        return envelope, "".join(json.loads(completed.stdout))
+
+    def test_an_amount_left_unspelled_is_written_in_words_from_the_grand_total(self):
+        cases = [
+            ("kr/quote", 9_091_637, 909_163, "일금 일천만팔백원整 (₩10,000,800) (부가세 포함)"),
+            ("kr/invoice", 910_911_822, 91_091_182, "일금 일십억이백만삼천사원整 (₩1,002,003,004) (부가세 포함)"),
+            ("kr/purchase-order", 50_000, 5_000, "일금 오만오천원整 (₩55,000) (부가세 포함)"),
+        ]
+        for form, supply, tax, expected in cases:
+            with self.subTest(form=form):
+                envelope, text = self.merged_text(self.priced(form, supply, tax, ""))
+                self.assertEqual(envelope["status"], "ok", envelope["issues"])
+                self.assertIn(expected, text)
+
+    def test_the_words_follow_the_last_total_line_when_a_form_has_more_than_three(self):
+        values = self.priced("kr/quote", 1_000_000, 90_000, "")
+        values["items"]["totals"] = [{"label": "공급가액 합계", "value": "1,000,000원"}, {"label": "특별할인", "value": "100,000원"}, {"label": "부가세", "value": "90,000원"}, {"label": "총 합계", "value": "990,000원"}]
+        envelope, text = self.merged_text(values)
+        self.assertIn("일금 구십구만원整 (₩990,000) (부가세 포함)", text)
+
+    def test_a_misspelled_amount_is_reported_by_merge(self):
+        envelope, text = self.merged_text(self.priced("kr/invoice", 25_228_000, 2_522_800, "일금 이천칠백칠십오만영백팔십원整"))
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["AMOUNT_IN_WORDS_MISMATCH"])
+        self.assertIn("이천칠백칠십오만팔백", envelope["issues"][0]["suggestion"])
+
     def test_a_form_that_runs_past_a_page_numbers_every_page(self):
         long_sections = [{"title": f"제{number}조", "paragraphs": ["여러 쪽에 걸친 문서의 쪽 번호를 확인하는 문단입니다. " * 6]} for number in range(1, 16)]
         pages = self.render(long_sections)

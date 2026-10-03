@@ -40,6 +40,7 @@ class SheetCheckTest(WorkbookFixture):
     def test_each_problem_is_reported_once_where_it_is(self):
         self.assertEqual(self.findings(), {
             ("FORMULA_ERROR", "Sales!B1"),
+            ("STALE_CACHED_VALUE", "Sales!E1"),
             ("MISSING_SHEET_REFERENCE", "Sales!B2"),
             ("BROKEN_DEFINED_NAME", "Orphan"),
             ("NUMBER_TOO_WIDE", "Sales!C1"),
@@ -127,6 +128,50 @@ class StaleCachedValueTest(WorkbookFixture):
         self.assertEqual(self.apply(issue["fix"])["status"], "ok")
         self.assertEqual(self.findings(), [])
         self.assertEqual(stored_cells(self.directory / "book.xlsx")["C2"]["value"], "20")
+
+
+UNCACHED_FORMULAS = r"""
+from openpyxl import Workbook
+
+workbook = Workbook()
+source = workbook.active
+source.title = "원본 데이터"
+source.append(["region", "units", "price", "revenue"])
+for index in range(1, 301):
+    source.append([f"R{index % 7}", index, 1000 + index, f"=B{index + 1}*C{index + 1}"])
+summary = workbook.create_sheet("Summary")
+summary.append(["units", "=SUM('원본 데이터'!B2:B301)"])
+summary.append(["revenue", "=SUM('원본 데이터'!D2:D301)"])
+summary.append(["busiest", '="R"&COUNTIF(\'원본 데이터\'!A2:A301,"R3")'])
+summary.append(["shown blank", '=IF(B1>0,"","none")'])
+workbook.create_sheet("빈 시트")
+workbook.save("book.xlsx")
+"""
+
+
+class MissingCachedValueTest(WorkbookFixture):
+    def setUp(self):
+        super().setUp()
+        run_office_python(UNCACHED_FORMULAS, self.directory)
+
+    def stale_issues(self):
+        return [issue for issue in run_office(["check", "book.xlsx"], self.directory)["issues"] if issue["code"] == "STALE_CACHED_VALUE"]
+
+    def test_a_formula_written_without_its_value_is_reported_on_every_sheet_that_has_one(self):
+        issues = self.stale_issues()
+        self.assertEqual([issue["location"] for issue in issues], ["Summary!B1", "원본 데이터!D2"])
+        self.assertIn("3 formula cells on Summary store no value", issues[0]["message"])
+        self.assertIn("300 formula cells on 원본 데이터 store no value", issues[1]["message"])
+        self.assertEqual([issue["fix"] for issue in issues], [[{"op": "recalculate"}]] * 2)
+
+    def test_recalculate_stores_every_computed_value(self):
+        self.assertEqual(self.apply(self.stale_issues()[0]["fix"])["status"], "ok")
+        self.assertEqual(self.stale_issues(), [])
+        values = load_workbook(self.directory / "book.xlsx", data_only=True)
+        self.assertEqual(values["Summary"]["B1"].value, 45150)
+        self.assertEqual(values["Summary"]["B2"].value, sum(index * (1000 + index) for index in range(1, 301)))
+        self.assertEqual(values["Summary"]["B3"].value, "R43")
+        self.assertEqual(values["원본 데이터"]["D301"].value, 300 * 1300)
 
 
 CHART_FIXTURE = """

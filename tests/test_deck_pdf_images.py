@@ -54,10 +54,10 @@ class PdfImageTest(unittest.TestCase):
 
 
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
-    def test_the_cover_rings_reach_the_pdf(self):
+    def test_chosen_cover_rings_reach_the_pdf(self):
         with tempfile.TemporaryDirectory() as directory:
             deck_path = Path(directory)
-            (deck_path / "slides.html").write_text(DECK.replace('<img src="images/shelves.png" alt="진열대">', ""), encoding="utf-8")
+            (deck_path / "slides.html").write_text(DECK.replace('<img src="images/shelves.png" alt="진열대">', "").replace('<section data-layout="cover">', '<section data-layout="cover" data-motif="rings">'), encoding="utf-8")
             envelope = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pdf", "slides.html"], capture_output=True, text=True, cwd=deck_path).stdout)
             page = pypdfium2.PdfDocument(envelope["outputPath"])[0].render(scale=4 / 3).to_pil().convert("L")
         panel = page.getpixel((1500, 300))

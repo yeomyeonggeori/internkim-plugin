@@ -20,7 +20,7 @@ An internal document requesting management sign-off on a proposed action, purcha
 {
   "form": "intl/approval-request",
   "title": "Internal Approval Request",
-  "documentNumber": "AR-<YYYYMMDD>-<sequence>",
+  "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
   "approvalLine": ["Prepared", "Reviewed", "Approved"],
   "meta": [

@@ -19,7 +19,7 @@ A document confirming that a named individual was employed by the company during
 {
   "form": "intl/career-certificate",
   "title": "Certificate of Employment History",
-  "documentNumber": "CC-<YYYYMMDD>-<sequence>",
+  "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
   "meta": [
     { "label": "Full name", "value": "<full name>" },

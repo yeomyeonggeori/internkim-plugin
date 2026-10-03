@@ -56,11 +56,13 @@
   const columnKinds = new Set(["column", "stacked", "stacked100", "combo"]);
   const roundKinds = new Set(["donut", "pie"]);
   const lineInsetShare = 5;
+  const motifAttribute = "data-motif";
+  const coverMotifs = ["panel", "rings"];
   const coverRingRadii = [442, 342, 242];
   const groupedNumberPattern = /^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/;
   const twoAxisTypes = new Set(["combo", "scatter"]);
-  const comboColumnShare = 0.6;
-  const comboLineBand = [0.68, 0.92];
+  const separateAxisRatio = 10;
+  const belowLabelShare = 0.12;
   const insideLabelSeries = 3;
   const insideLabelInks = ["var(--on-accent)", "var(--ink)", "var(--bg)"];
   const scatterLabelSwitchShare = 70;
@@ -454,9 +456,16 @@
     });
   }
 
-  function addCoverRings() {
+  function coverMotif(slide) {
+    const name = (slide.getAttribute(motifAttribute) || "").trim();
+    return coverMotifs.includes(name) && !slide.querySelector(":scope > img") ? name : null;
+  }
+
+  function drawCoverPanels() {
     document.querySelectorAll("section[data-layout='cover']").forEach((slide) => {
-      if (slide.querySelector(":scope > img, :scope > .kit-ring")) return;
+      const motif = coverMotif(slide);
+      if (slide.querySelector(":scope > img") || motif) slide.classList.add("kit-paneled");
+      if (motif !== "rings" || slide.querySelector(":scope > .kit-ring")) return;
       coverRingRadii.forEach((radius) => slide.appendChild(element("span", "kit-ring", { width: `${radius}px`, height: `${radius}px` })));
     });
   }
@@ -1031,21 +1040,16 @@
     return { minimum, maximum, share: (value) => (value - minimum) / (maximum - minimum) };
   }
 
+  function withRoomBelow(low, high) {
+    return low < 0 ? low - (high - low) * belowLabelShare : low;
+  }
+
   function niceRange(values, includeZero) {
     const minimum = Math.min(...values);
     const maximum = Math.max(...values);
-    if (includeZero) return scaledRange(Math.min(0, minimum), Math.max(0, maximum));
+    if (includeZero) return scaledRange(withRoomBelow(Math.min(0, minimum), Math.max(0, maximum)), Math.max(0, maximum));
     const padding = (maximum - minimum || Math.abs(maximum) || 1) * 0.25;
     return scaledRange(minimum - padding, maximum + padding * 0.6);
-  }
-
-  function bandRange(values, lowShare, highShare) {
-    const minimum = Math.min(...values);
-    const maximum = Math.max(...values);
-    const span = maximum - minimum || Math.abs(maximum) || 1;
-    const whole = span / (highShare - lowShare);
-    const bottom = minimum - (maximum === minimum ? span / 2 : 0) - whole * lowShare;
-    return scaledRange(bottom, bottom + whole);
   }
 
   function resolvedChannels(host, color) {
@@ -1136,16 +1140,15 @@
   function columnRange(data, mode, totals) {
     if (mode === "percent") return scaledRange(0, 100);
     if (mode === "stacked") return niceRange(totals, true);
-    const range = niceRange(data.series.flatMap((item) => item.values), true);
-    return mode === "combo" ? scaledRange(range.minimum, range.maximum / comboColumnShare) : range;
+    return niceRange(data.series.flatMap((item) => item.values), true);
   }
 
-  function renderColumns(figure, data, chart, formats, mode) {
+  function renderColumns(figure, data, chart, formats, mode, fixedRange) {
     const { area, categories } = categoryAxis(chart, "");
     const colors = seriesColors(data.series.length);
     const stacks = mode === "stacked" || mode === "percent";
     const totals = data.labels.map((_, category) => data.series.reduce((sum, item) => sum + Math.max(0, item.values[category]), 0));
-    const range = columnRange(data, mode, totals);
+    const range = fixedRange || columnRange(data, mode, totals);
     const top = (value) => (1 - range.share(value)) * 100;
     const zero = top(0);
     const slot = 100 / data.labels.length;
@@ -1297,20 +1300,65 @@
     area.appendChild(element("div", "kit-baseline kit-faint", { top: "100%" }));
   }
 
+  function largestMagnitude(values) {
+    return Math.max(0, ...values.map(Math.abs));
+  }
+
+  function lineNeedsOwnAxis(columnValues, lineValues, unitsDiffer) {
+    if (unitsDiffer) return true;
+    const columns = largestMagnitude(columnValues);
+    const line = largestMagnitude(lineValues);
+    if (!columns || !line) return false;
+    return Math.max(columns, line) / Math.min(columns, line) > separateAxisRatio;
+  }
+
+  function stepsBeyond(extent, step) {
+    return extent > 0 ? Math.floor(extent / step) + 1 : 0;
+  }
+
+  function zeroAlignedRanges(groups) {
+    const steps = groups.map((values) => roundStep((Math.max(0, ...values) - Math.min(0, ...values)) / tickIntervals || 1));
+    const below = Math.max(...groups.map((values, index) => stepsBeyond(-withRoomBelow(Math.min(0, ...values), Math.max(0, ...values)), steps[index])));
+    const above = Math.max(...groups.map((values, index) => stepsBeyond(Math.max(0, ...values), steps[index]))) || (below ? 0 : 1);
+    return steps.map((step) => ({ ...scaledRange(-below * step, above * step), step }));
+  }
+
+  function comboRanges(columnValues, lineValues, ownAxis) {
+    if (ownAxis) return zeroAlignedRanges([columnValues, lineValues]);
+    const shared = zeroAlignedRanges([[...columnValues, ...lineValues]])[0];
+    return [shared, shared];
+  }
+
+  function addRightTicks(chart, area, range, unit) {
+    chart.classList.add("kit-right-axis");
+    const row = element("div", "kit-axis-row");
+    const rail = element("div", "kit-tick-rail");
+    area.replaceWith(row);
+    row.append(area, rail);
+    axisTicks(range, unit).forEach(({ share, text }) => {
+      const tick = element("span", `kit-tick kit-right ${edgeTickClasses[100 - share] || ""}`.trim(), { top: percent(100 - share) });
+      tick.textContent = text;
+      rail.appendChild(tick);
+    });
+  }
+
   function renderCombo(figure, data, chart, formats) {
     const columns = { labels: data.labels, series: data.series.slice(0, -1) };
     const line = data.series[data.series.length - 1];
     const lineIndex = data.series.length - 1;
     const color = seriesColors(data.series.length)[lineIndex];
-    const { area, xOf, range: columnScale } = renderColumns(figure, columns, chart, formats, "combo");
-    const range = bandRange(line.values, comboLineBand[0], comboLineBand[1]);
-    const position = (index, value) => ({ x: xOf(index), y: (1 - range.share(value)) * 100 });
+    const columnValues = columns.series.flatMap((item) => item.values);
+    const ownAxis = lineNeedsOwnAxis(columnValues, line.values, formats[0].unit !== formats[lineIndex].unit);
+    const [columnScale, lineScale] = comboRanges(columnValues, line.values, ownAxis);
+    const { area, xOf } = renderColumns(figure, columns, chart, formats, "combo", columnScale);
+    const position = (index, value) => ({ x: xOf(index), y: (1 - lineScale.share(value)) * 100 });
     const points = line.values.map((value, index) => [position(index, value).x * 10, position(index, value).y * 10]);
     area.appendChild(polylineLayer(color, points, false));
     addDots(area, line.values, color, position);
-    lineLabels(line.values, lineIndex, formats[lineIndex].format, position, data.labels.length <= 8, () => false).forEach((label) => area.appendChild(label));
+    lineLabels(line.values, lineIndex, formats[lineIndex].format, position, data.labels.length <= 8, (index, value) => value < 0).forEach((label) => area.appendChild(label));
+    if (ownAxis) addRightTicks(chart, area, lineScale, formats[lineIndex].unit);
     chart.primaryRange = columnScale;
-    chart.secondaryRange = range;
+    chart.secondaryRange = ownAxis ? lineScale : null;
   }
 
   function roundStep(span) {
@@ -1474,7 +1522,8 @@
   }
 
   function rangeLimits(range) {
-    return range ? { minimum: range.minimum, maximum: range.maximum } : null;
+    if (!range) return null;
+    return range.step ? { minimum: range.minimum, maximum: range.maximum, step: range.step } : { minimum: range.minimum, maximum: range.maximum };
   }
 
   function nativeBars(type, data) {
@@ -1520,7 +1569,7 @@
       gapWidth: gapWidth(type, data),
       overlap: barOverlap(type, data),
       colors: { series: seriesColors(data.series.length), points: pointColors(figure, type, data), grid: "var(--line)", background: "var(--bg)" },
-      text: { category: ".kit-category", legend: ".kit-legend > span, .kit-donut-legend span", share: ".kit-donut-legend b", axisTitle: ".kit-axis-title" },
+      text: { category: ".kit-category", legend: ".kit-legend > span, .kit-donut-legend span", share: ".kit-donut-legend b", axisTitle: ".kit-axis-title", tick: ".kit-tick" },
     };
   }
 
@@ -1668,7 +1717,7 @@
   }
 
   async function fitTickGutters(slide, layOut) {
-    const charts = Array.from(slide.querySelectorAll(".kit-scatter"));
+    const charts = Array.from(slide.querySelectorAll(".kit-scatter, .kit-right-axis"));
     charts.forEach((chart) => chart.style.removeProperty("--tick-gutter"));
     if (!charts.length) return;
     if (layOut) await layOut(slide);
@@ -1712,7 +1761,7 @@
     addListIndexes();
     groupComparisonPoints();
     groupSteps();
-    addCoverRings();
+    drawCoverPanels();
     addQuoteMarks();
     markNumericCells();
     keepMixedWords();
@@ -1726,6 +1775,7 @@
     for (const slide of slides()) {
       resetChartFit(slide);
       clearItemBounds(slide);
+      await fitTickGutters(slide, layOut);
       await fitSlide(slide, layOut);
       await boundItemSlack(slide, layOut);
       await balanceTitles(slide, layOut);
