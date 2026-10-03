@@ -11,7 +11,7 @@ A memorandum of understanding recording that two organizations intend to coopera
 
 - Both parties: for organization A and organization B, the name and the representative
 - The purpose of the cooperation
-- The whole field of cooperation (`cooperationItems`) and what each organization carries out (`orgARoles`, `orgBRoles`), item by item, never invented
+- The whole field of cooperation (`cooperationItems`) and what each organization carries out (`orgARoles`, `orgBRoles`), item by item
 - The signing date
 - A term the request is silent on takes its customary value, written out: the working council meets `매분기 1회`, confidentiality survives 3 years, the agreement runs 2 years, extension notice 1 month before expiry
 
@@ -58,4 +58,4 @@ A memorandum of understanding recording that two organizations intend to coopera
 ## Rules
 
 - When the requester wants the agreement legally binding, they want a contract: point them to a contract form such as service-agreement instead of removing `bindingEffect`.
-- Say in one line of the reply that delivers it that this is a draft for legal review. Never invent missing information; party details not received stay empty strings.
+- Say in one line of the reply that delivers it that this is a draft for legal review.

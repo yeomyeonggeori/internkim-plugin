@@ -44,5 +44,4 @@ An internal status document summarizing one person's or team's work for a given 
 
 - The reporting period must match the actual week being reported on; do not assume it is the current calendar week without confirming with the requester.
 - If section 4 has nothing to report, write "None this week" rather than omitting the section.
-- Never invent names, amounts, dates, attendees, or decisions — use only requester-provided facts and ask when a required field is missing.
 - Do not set `approvalLine`; this is a status report, not an approval request.

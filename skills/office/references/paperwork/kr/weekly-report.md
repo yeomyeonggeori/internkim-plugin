@@ -44,6 +44,4 @@ A summary of the week's work and issues, shared with a manager or the team. It i
 ## Rules
 
 - Never add an approvalLine.
-- Use only the done, in-progress and planned work the reporter gave; never invent work or results that were not mentioned.
-- When the issues or requests are unclear, do not decide on your own; ask the requester.
 - Space the title's characters apart: "주 간 업 무 보 고".

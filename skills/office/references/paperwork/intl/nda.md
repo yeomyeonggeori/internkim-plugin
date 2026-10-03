@@ -63,5 +63,4 @@ An agreement protecting confidential information shared between two parties for 
 ## Rules
 
 - Confirm with the requester whether this is one-way or mutual disclosure before drafting; if one-way, adjust Article 3 so the obligation falls on the receiving party only.
-- Never invent party names, addresses, amounts, durations, or governing law — use only requester-provided facts, and ask when any are missing.
 - This document is a draft for legal review; say so when delivering it.

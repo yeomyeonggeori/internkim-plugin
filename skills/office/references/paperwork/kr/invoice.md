@@ -63,6 +63,5 @@ An external document asking a customer to pay for goods or services already supp
 
 - Write amounts with thousands separators and put "원" only on the total values. Always state whether VAT is excluded or included.
 - Calculate tax as 10% of the supply amount and check that the totals equal the sum of the rows.
-- Never leave 지급기한 or 입금계좌 out of meta. When a value is missing, never invent it; ask the requester.
-- When the item, unit price or quantity is missing, never invent it; ask the requester.
+- Never leave 지급기한 or 입금계좌 out of meta.
 - Space the title's characters apart: "청 구 서".

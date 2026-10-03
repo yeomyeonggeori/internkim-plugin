@@ -66,7 +66,7 @@ SIGNATURE = Record("signature", "the dated signature line", (
 
 FORM_FIELD = Field("form", Text(non_empty=True), "the form these values fill, <jurisdiction>/<form> such as kr/quote; office merge takes it from its first argument and office check from here")
 
-PAPERWORK_DOCUMENT = Record("document", "the values office merge draws on letterhead as a .pdf; each spec under references/paperwork has its skeleton", (
+PAPERWORK_DOCUMENT = Record("document", "the values office merge draws on letterhead as a .pdf; each spec under references/paperwork has its skeleton; a value written null is drawn as a blank to fill by hand and listed in details.blanks", (
     FORM_FIELD,
     Field("title", Text(non_empty=True), "centered document title", required=True),
     Field("documentNumber", CellValue(), "the number company_document_register returned for this document, as it is; printed under the title after the jurisdiction's document-number label"),
@@ -174,6 +174,7 @@ def template_guide_lines() -> list[str]:
         "  clauses: {<clause key>: {heading?, paragraphs}} replaces that clause's text, keeping its place and number",
         "  addedClauses: [{key, heading, paragraphs, after?}] adds a clause after the clause named by after, else last; its key names its subject and is no template clause's key",
         "  removedClauses: [<clause key>] leaves a clause out only when the request removes it; numbers close up",
+        "  a term written null prints a blank line to fill by hand where the clause states it, and merge lists it in details.blanks",
         "  clause paragraphs may write {{ <term> }} to state a term and {{ article:<clause key> }} for that clause's number",
         "  term types: " + "; ".join(f"{name}: {meaning}" for name, meaning in TERM_TYPES.items()),
     ]

@@ -48,5 +48,3 @@ A document by which a principal grants a named agent authority to act on the pri
 ## Rules
 
 - Never write the delegated powers as a blanket grant such as "full authority for all matters"; enumerate each specific act the principal actually intends to delegate.
-- Never invent names, amounts, durations, or governing law — use requester-provided facts and ask when the principal's name, agent's name, ID or registration number, address, delegated powers, or effective period is missing.
-- If the effective period is not given, do not invent an expiration date; ask the requester.

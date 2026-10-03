@@ -52,5 +52,4 @@ A report of what a business trip covered, what it achieved and what follows from
 - A trip with no expenses to settle omits the items block.
 - Write amounts with thousands separators and "원", and state whether VAT is included or excluded.
 - Check that the total in items.totals equals the sum of the row amounts.
-- Use only the destination, period, outcomes and follow-ups the traveler gave; never invent missing information, ask the requester.
 - Space the title's characters apart: "출 장 보 고 서".

@@ -61,5 +61,4 @@ An external document that records a completed transaction between the supplier a
 
 - Write amounts with thousands separators and put "원" only on the total values. Always state whether VAT is excluded or included.
 - Calculate tax as 10% of the supply amount and check that the totals equal the sum of the rows.
-- When the buyer's name, item, unit price, quantity or transaction date is missing, never invent it; ask the requester.
 - Space the title's characters apart: "거 래 명 세 서".

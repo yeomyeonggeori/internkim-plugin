@@ -7,10 +7,11 @@ import re
 from core.office_result import ERROR, WRONG_TYPE, Issue, IssueKind
 from core.office_schema import closest_name
 from paperwork.amounts import korean_number_words, parse_amount
+from paperwork.blanks import Blank, is_left_blank
 from paperwork.contract_template import PLACEHOLDER, Article, Bullets, ContractTemplate, Numbered, Piece, Term, Text, article_label, placeholders
 
 
-MISSING_TERM = IssueKind("MISSING_TERM", ERROR, "a term a printed clause states has no value; a template never supplies one", "give the value the request states; when the request is silent, the form's spec names the customary value to write")
+MISSING_TERM = IssueKind("MISSING_TERM", ERROR, "a term a printed clause states has no value; a template never supplies one", "give the value the request states; when the request is silent, write the customary value the form's spec names, or null to leave a blank to fill by hand")
 INVALID_TERM = IssueKind("INVALID_TERM", ERROR, "a term's value is not of the term's type", "write the value as the type office guide form names")
 UNKNOWN_TERM = IssueKind("UNKNOWN_TERM", ERROR, "a value or a clause names a term the contract template does not have, so nothing would print it", "correct the name, or state the term in a clause through clauses or addedClauses")
 TERM_NOT_STATED = IssueKind("TERM_NOT_STATED", ERROR, "a term has a value but no printed clause states it, so the contract would say something else or nothing", "write {{ <term> }} where the replacing clause states it, or leave the term out when the contract no longer states it")
@@ -19,6 +20,7 @@ DUPLICATE_CLAUSE = IssueKind("DUPLICATE_CLAUSE", ERROR, "two clauses cover one k
 
 CONTRACT_ISSUE_KINDS = (MISSING_TERM, INVALID_TERM, UNKNOWN_TERM, TERM_NOT_STATED, UNKNOWN_CLAUSE, DUPLICATE_CLAUSE)
 CLAUSE_FIELDS = ("clauses", "addedClauses", "removedClauses")
+BLANK_LINE = "__________"
 RESERVED_FIELDS = ("form", *CLAUSE_FIELDS)
 NUMBER = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
 
@@ -263,7 +265,7 @@ def check_required_terms(planning: Planning, stated: dict[str, list[str]]) -> No
         needed.setdefault(term.source if term.is_derived else name, set()).update(clause_keys)
     for name, clause_keys in needed.items():
         term = planning.template.term(name)
-        if term.is_optional or not is_blank(planning.values.get(name)):
+        if term.is_optional or is_left_blank(planning.values, name) or not is_blank(planning.values.get(name)):
             continue
         location = f"values.{name}"
         planning.add(MISSING_TERM, f"{location}: the contract states {name} ({term.meaning}) in {', '.join(sorted(clause_keys))} and the values give none", location)
@@ -308,24 +310,37 @@ def build_plan(planning: Planning, articles: list[PrintedArticle], labels: dict[
     plan.articles = [(template.article_heading.format(number=number, heading=article.heading), blocks_of(article.pieces, values, labels)) for number, article in enumerate(articles, start=1)]
     plan.closing = blocks_of(template.closing, values, labels)
     plan.signatures = [[filled(line, values, labels) for line in column] for column in template.signatures]
+    left_blank = blank_terms(planning, stated)
     plan.details = {
         "clauses": [{"number": labels[article.key], "key": article.key, "heading": article.heading, "source": article.source} for article in articles],
-        "terms": {name: values[name] for name in sorted(stated) if name in values},
+        "terms": {name: None if name in left_blank else values[name] for name in sorted(stated) if name in values},
+        "blanks": [Blank(f"values.{name}", template.term(name).meaning).to_json() for name in sorted(left_blank)],
     }
     return plan
 
 
+def blank_terms(planning: Planning, stated: dict[str, list[str]]) -> set[str]:
+    sources = {term.source for term in planning.template.terms if term.is_derived and term.name in stated}
+    return {name for name in (*stated, *sources) if is_left_blank(planning.values, name) and not planning.template.term(name).is_derived}
+
+
 def resolved_values(planning: Planning) -> dict:
-    values = {name: written_value(value) for name, value in planning.values.items() if name not in RESERVED_FIELDS}
+    values = {name: written_value(planning.template.term(name), value) for name, value in planning.values.items() if name not in RESERVED_FIELDS}
     for term in planning.template.terms:
-        if term.is_derived:
-            amount = parse_amount(values.get(term.source, ""))
-            if amount is not None:
-                values[term.name] = korean_number_words(int(amount))
+        if not term.is_derived:
+            continue
+        if is_left_blank(planning.values, term.source):
+            values[term.name] = BLANK_LINE
+            continue
+        amount = parse_amount(values.get(term.source, ""))
+        if amount is not None:
+            values[term.name] = korean_number_words(int(amount))
     return values
 
 
-def written_value(value: object) -> object:
+def written_value(term: Term | None, value: object) -> object:
+    if value is None:
+        return [BLANK_LINE] if term is not None and term.type == "list" else BLANK_LINE
     if isinstance(value, list):
         return [str(item).strip() for item in value]
     if isinstance(value, float):

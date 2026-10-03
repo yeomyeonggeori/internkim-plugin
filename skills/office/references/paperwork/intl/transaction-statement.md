@@ -54,5 +54,4 @@ An external document confirming goods or services already supplied to a customer
 
 - Use thousands separators for all amounts and state the currency the requester provides. Always state whether VAT is included, excluded, or not applicable.
 - Put the VAT rate in `taxRatePercent`, and verify the totals match the sum of the item rows before filling the skeleton.
-- Never invent names, amounts, dates, attendees, or decisions — use only requester-provided facts and ask when a required field is missing.
 - The transaction date must reflect actual delivery, not the document issue date, unless the requester states they are the same.

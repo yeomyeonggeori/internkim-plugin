@@ -44,3 +44,4 @@ h1 { font-size: $title; font-weight: 700; text-align: center; margin: 0; line-he
 .closing, .sign-off { break-inside: avoid; }
 .items td, .meta-value, .totals p { word-break: keep-all; }
 .items td.align-right, .totals .value { white-space: nowrap; }
+.blank { display: inline-block; min-width: 28mm; height: 1.15em; border-bottom: 0.6pt solid $ink; vertical-align: bottom; }

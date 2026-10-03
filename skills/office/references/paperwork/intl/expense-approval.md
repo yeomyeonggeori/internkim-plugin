@@ -53,5 +53,4 @@ An internal document requesting approval to reimburse or process an expense alre
 
 - Use thousands separators for all amounts and state the currency the requester provides. Always state whether tax/VAT is included in each amount.
 - Record the payment method exactly as stated (corporate card or bank transfer); never assume one when the requester has not said which was used.
-- Never invent names, amounts, dates, attendees, or decisions — use only requester-provided facts and ask when a required field is missing.
 - Subtotal and Tax are the sums of the rows and Total is their sum; `office check` reports any that are not, at the tax rate the values state in taxRatePercent.

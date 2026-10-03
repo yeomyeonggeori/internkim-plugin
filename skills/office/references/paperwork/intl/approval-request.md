@@ -53,5 +53,4 @@ An internal document requesting management sign-off on a proposed action, purcha
 
 - Use thousands separators for all amounts and state the currency the requester provides. Always state whether tax/VAT is included when amounts are shown.
 - Keep section 2 (Details) as plain paragraphs when no amounts are involved; switch to the items table only when line items or costs are part of the request.
-- Never invent names, amounts, dates, attendees, or decisions — use only requester-provided facts and ask when a required field is missing.
 - Do not fill in approval outcomes or signatures on behalf of approvers; approvalLine boxes stay empty for the approvers to complete.

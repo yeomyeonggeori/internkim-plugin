@@ -55,5 +55,4 @@ An external document ordering goods or services from a supplier. It is issued on
 
 - Write amounts with thousands separators and put "원" only on the total values. Always state whether VAT is excluded or included.
 - Calculate tax as 10% of the supply amount and check that the totals equal the sum of the rows.
-- When the delivery date, delivery place, payment terms, supplier name, item, unit price or quantity is missing, never invent it; ask the requester.
 - Space the title's characters apart: "발 주 서".

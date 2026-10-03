@@ -51,5 +51,4 @@ An external letter offering a position and its compensation to a candidate the c
 
 ## Rules
 
-- Never invent names, salary, dates or terms; ask the requester for what is missing.
 - When the workplace, position or start date is not settled, write the unsettled state into the value itself, such as "추후 확정" (to be confirmed).

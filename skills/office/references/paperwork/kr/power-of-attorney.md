@@ -48,5 +48,3 @@ An external document proving that the principal (위임인) entrusts the agent (
 ## Rules
 
 - Never write the delegated matters as a blanket grant such as "일체의 권한을 위임함" (all powers delegated); list item by item, concretely, the acts the principal actually wants to entrust.
-- Use only the names, dates of birth, addresses, phones, period and delegated matters of the principal and agent that the requester gave; never invent them, and ask the requester when one is missing.
-- When the period of delegation is missing, never invent an end date; ask the requester.

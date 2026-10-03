@@ -7,6 +7,7 @@ from decimal import Decimal
 from core.office_arguments import route_arguments
 from core.office_result import WRONG_TYPE, Issue, IssueKind, OfficeFailure, Result, read_json_file, run_command
 from paperwork.amounts import parse_amount
+from paperwork.blanks import form_blanks, is_left_blank
 from paperwork.contract_plan import plan_contract
 from paperwork.forms import form_of
 from paperwork.jurisdictions import Jurisdiction
@@ -51,9 +52,10 @@ class Fact:
 class Reading:
     facts: tuple[Fact, ...] = ()
     unreadable: tuple[Issue, ...] = ()
+    has_blanks: bool = False
 
     def merge(self, other: "Reading") -> "Reading":
-        return Reading(self.facts + other.facts, self.unreadable + other.unreadable)
+        return Reading(self.facts + other.facts, self.unreadable + other.unreadable, self.has_blanks or other.has_blanks)
 
 
 @dataclass(frozen=True)
@@ -78,9 +80,11 @@ def main() -> Result:
     reading = read_document(with_amount_in_words(document), rules)
     if template is not None:
         return contract_result(template, document, reading, rules)
-    if not reading.facts and not reading.unreadable:
-        return Result(summary="no amounts to check", issues=(NO_AMOUNTS_FOUND.issue("the input holds no amounts to check"),))
-    return amount_result(reading, rules)
+    blanks = {"blanks": [blank.to_json() for blank in form_blanks(document)]}
+    if not reading.facts and not reading.unreadable and not reading.has_blanks:
+        return Result(summary="no amounts to check", issues=(NO_AMOUNTS_FOUND.issue("the input holds no amounts to check"),), details=blanks)
+    checked = amount_result(reading, rules)
+    return Result(summary=checked.summary, issues=checked.issues, details={**(checked.details or {}), **blanks})
 
 
 def contract_result(template, document: dict, reading: Reading, rules: Rules) -> Result:
@@ -122,7 +126,7 @@ def read_priced_form(document: dict, rules: Rules) -> Reading:
     untaxed = untaxed_rows(items)
     rows_reading = read_rows(items.get("headers", []), items.get("rows", []), untaxed, rules)
     totals = items.get("totals", [])
-    if len(totals) != TOTAL_LINE_COUNT:
+    if len(totals) != TOTAL_LINE_COUNT or rows_reading.has_blanks or any(is_left_blank(total, "value") for total in totals):
         return rows_reading
     stated = [parse_amount(total.get("value", "")) if isinstance(total, dict) else None for total in totals]
     untaxed_amount = sum((amount for index, amount in row_amounts(rows_reading) if index in untaxed), Decimal(0))
@@ -159,6 +163,8 @@ def read_rows(headers: list, rows: list, untaxed: frozenset[int], rules: Rules) 
 
 def read_row(row: list, index: int, columns: list[int], tax_column: int | None, rules: Rules, is_untaxed: bool) -> Reading:
     read_columns = columns if tax_column is None else [*columns, tax_column]
+    if any(is_left_blank(row, column) for column in read_columns):
+        return Reading(has_blanks=True)
     locations = [f"items.rows[{index}][{column}]" for column in read_columns]
     values = [parse_cell(row, column) for column in read_columns]
     unreadable = tuple(unreadable_issue(location) for value, location in zip(values, locations) if value is None)
@@ -243,6 +249,8 @@ def amount_issues(document: dict) -> tuple[Issue, ...]:
 
 
 def read_contract_amount(document: dict, rules: Rules) -> Reading:
+    if is_left_blank(document, "totalAmount"):
+        return Reading(has_blanks=True)
     if parse_amount(document["totalAmount"]) is None:
         return Reading(unreadable=(unreadable_issue("totalAmount"),))
     return Reading()

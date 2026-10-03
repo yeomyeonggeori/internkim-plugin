@@ -43,5 +43,4 @@ A document confirming that a named individual was employed by the company during
 
 ## Rules
 
-- Never invent names, amounts, durations, or governing law — use requester-provided facts and ask when full name, date of birth, department, title, duties, start date, end date, or purpose is missing.
 - Do not include reason for departure, performance evaluation, or salary; this document certifies employment history only.

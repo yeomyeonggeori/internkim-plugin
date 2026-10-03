@@ -63,5 +63,4 @@ The standard non-disclosure agreement the Ministry of SMEs and Startups recommen
 ## Rules
 
 - Never fix 갑 or 을 as the disclosing or receiving party on your own. A one-way agreement replaces `purpose` to name who discloses.
-- Party details not received stay empty strings; never invent an address, representative or court.
 - Say in one line of the reply that delivers it that this is a draft for legal review.
