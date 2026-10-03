@@ -1,0 +1,68 @@
+{
+  "title": "업 무 협 약 서",
+  "articleHeading": "제{number}조 ({heading})",
+  "terms": [
+    {"name": "orgAName", "type": "text", "meaning": "first organization's name"},
+    {"name": "orgARepresentative", "type": "text", "meaning": "first organization's representative", "optional": true},
+    {"name": "orgBName", "type": "text", "meaning": "second organization's name"},
+    {"name": "orgBRepresentative", "type": "text", "meaning": "second organization's representative", "optional": true},
+    {"name": "purpose", "type": "text", "meaning": "what the cooperation is for"},
+    {"name": "cooperationItems", "type": "list", "meaning": "fields of cooperation, one numbered item each"},
+    {"name": "orgARoles", "type": "list", "meaning": "what the first organization carries out"},
+    {"name": "orgBRoles", "type": "list", "meaning": "what the second organization carries out"},
+    {"name": "councilMeetingFrequency", "type": "text", "meaning": "how often the working council meets regularly, such as 매분기 1회"},
+    {"name": "confidentialitySurvivalYears", "type": "number", "meaning": "years the confidentiality duty survives the agreement's end"},
+    {"name": "termYears", "type": "number", "meaning": "years the agreement is in force from signing"},
+    {"name": "renewalNoticeMonths", "type": "number", "meaning": "months before expiry by which a party gives written notice to extend"},
+    {"name": "contractDate", "type": "text", "meaning": "signing date, YYYY년 M월 D일"}
+  ],
+  "preamble": [
+    "{{ orgAName }}과 {{ orgBName }}(이하 \"양 기관\"이라 한다)은 {{ purpose }}를 위하여 양 기관의 긴밀한 업무협력이 필요함을 깊이 인식하여 다음과 같이 협약을 체결한다."
+  ],
+  "articles": [
+    {"key": "purpose", "heading": "목적", "paragraphs": [
+      "본 협약은 양 기관의 상호발전을 위하여 {{ orgAName }}와 {{ orgBName }} 간의 협력관계를 긴밀히 함에 그 목적이 있다."
+    ]},
+    {"key": "cooperation", "heading": "협력분야", "paragraphs": [
+      "본 협약에 따른 협력분야는 다음과 같다.",
+      {"numbered": "cooperationItems"},
+      "① {{ orgAName }}는 다음 각 호의 사항을 적극 이행한다.",
+      {"numbered": "orgARoles"},
+      "② {{ orgBName }}는 다음 각 호의 사항을 적극 이행한다.",
+      {"numbered": "orgBRoles"},
+      "③ 양 기관은 이 외에 기타 상호 협의에 따른 사항에 대하여 협력한다."
+    ]},
+    {"key": "publicity", "heading": "홍보", "paragraphs": [
+      "① 양 기관은 정보교환 또는 협력사항 등에 대한 보도자료를 작성·배포시 사전 통보한다. ② 양 기관은 상호 협력한 사항에 대한 보도자료를 배포할 경우 사전에 상대방 기관과 협의하여 작성·배포하고, \"양 기관 협력\" 문구를 반드시 명기한다."
+    ]},
+    {"key": "council", "heading": "실무협의회 구성 및 운영", "paragraphs": [
+      "① 본 협약서에 규정한 협력분야의 효율적 추진과 세부 업무의 상호 협의를 위하여 실무협의회를 구성한다. ② 실무협의회는 {{ orgAName }} 실무담당자와 {{ orgBName }} 실무담당자로 구성·운영하며, 양 기관간의 원활한 업무협조를 위해 필요한 경우 각 기관에 간사 1인을 추가로 둘 수 있다. ③ 실무협의회는 {{ councilMeetingFrequency }} 정기 개최하며, 양 기관이 필요하다고 판단하는 경우 수시 개최할 수 있다."
+    ]},
+    {"key": "confidentiality", "heading": "비밀유지", "paragraphs": [
+      "① {{ orgAName }}와 {{ orgBName }}는 상호 업무협력을 수행함에 있어 취득한 정보에 대하여 비밀을 유지하여야 한다. ② {{ orgAName }}와 {{ orgBName }}의 비밀유지 의무는 본 협약이 종료된 이후에도 {{ confidentialitySurvivalYears }}년간 유지된다."
+    ]},
+    {"key": "costs", "heading": "비용부담", "paragraphs": [
+      "업무협력을 위하여 소요되는 비용은 상호 협의를 통해 조정, 분담한다."
+    ]},
+    {"key": "consultation", "heading": "협의조정", "paragraphs": [
+      "본 협약서의 해석상 의견차가 있거나 추가 협의사항이 발생한 경우에는 {{ article:council }}의 실무협의회를 통해 조정하며, 본 협약서에 언급하지 아니한 사항에 대해서는 양 기관이 별도로 협의하여 정한다."
+    ]},
+    {"key": "effect", "heading": "협약의 효력", "paragraphs": [
+      "① 본 협약서의 효력은 협약 체결일로부터 발생하며, 유효기간은 {{ termYears }}년으로 한다. ② 본 협약서는 유효기간 만료 {{ renewalNoticeMonths }}개월 전까지 어느 일방으로부터 연장에 관한 서면 통보가 있을 경우 상호 합의하에 협약기간을 연장할 수 있다. ③ 양 기관은 서면 합의에 의하여 본 협약을 해지할 수 있으며, 어느 일방이 해지를 요청하는 경우 상대방과 사전 협의를 거쳐야 한다."
+    ]},
+    {"key": "bindingEffect", "heading": "법적 구속력", "paragraphs": [
+      "이 협약은 법률적 구속력을 갖지 아니하며, 이 협약을 기반으로 파생되는 사업은 구체적인 조건과 기간을 명시하는 개별 계약에 의한다. 다만 {{ article:confidentiality }} 비밀유지는 그러하지 아니하다."
+    ]}
+  ],
+  "closing": [
+    "",
+    "이 협약의 내용을 성실히 준행하고 협약을 증명하기 위하여 본 협약서 2부를 작성하여 양 기관의 대표자가 서명(날인)한 후 각 1부씩 보관한다.",
+    "",
+    {"centered": "{{ contractDate }}"},
+    ""
+  ],
+  "signatures": [
+    ["(기관A)", "기관명: {{ orgAName }}", "대표자: {{ orgARepresentative }} (서명 또는 인)"],
+    ["(기관B)", "기관명: {{ orgBName }}", "대표자: {{ orgBRepresentative }} (서명 또는 인)"]
+  ]
+}

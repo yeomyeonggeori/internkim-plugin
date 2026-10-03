@@ -9,7 +9,7 @@ An internal document requesting management sign-off on a proposed action, purcha
 
 ## Required fields
 
-- approvalLine: ["Prepared", "Reviewed", "Approved"] unless the requester specifies a different chain
+- approvalLine: the approvers the request names, in its order, each `{"role", "name"}`; when it names none, the roles "Prepared", "Reviewed", "Approved" without names
 - meta: requester (with team), date, subject
 - sections: 1. Purpose, 2. Details (use an items table when amounts are involved), 3. Expected impact
 - notes: "Submitted for your approval."
@@ -22,7 +22,7 @@ An internal document requesting management sign-off on a proposed action, purcha
   "title": "Internal Approval Request",
   "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
-  "approvalLine": ["Prepared", "Reviewed", "Approved"],
+  "approvalLine": [{ "role": "<role>", "name": "<name>" }],
   "meta": [
     { "label": "Requester", "value": "<name>, <team>" },
     { "label": "Date", "value": "<YYYY-MM-DD>" },

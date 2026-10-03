@@ -5,26 +5,29 @@ filename: 근로계약서_<employee name>_<YYYYMMDD>.docx
 
 ## Purpose
 
-An employment contract that follows the Ministry of Employment and Labor's standard form as it is. It is made from the BUNDLED template (`employment-contract`), which already contains every item Article 17 of the Labor Standards Act (근로기준법 제17조) requires: the components, calculation and payment of wages, contractual working hours, the weekly paid holiday, annual paid leave, and the place and content of work. Only the context JSON values need filling.
+An employment contract that follows the Ministry of Employment and Labor's standard form, made from the bundled `employment-contract` template. It holds every item Article 17 of the Labor Standards Act (근로기준법 제17조) requires: the components, calculation and payment of wages, contractual working hours, the weekly paid holiday, annual paid leave, and the place and content of work. `references/paperwork.md` says how a requested clause replaces or joins the template's.
 
-## Required fields (confirm with the requester)
+## Required terms (confirm with the requester)
 
-- Contract type: open-ended or fixed-term (fixed-term includes `endDate`)
-- Employee: name, address and phone / start date / workplace / duties
+- Contract type: open-ended (an empty `endDate` leaves the contract-period line out) or fixed-term
+- Employee: name, start date, workplace, duties; address and phone when given
 - Contractual working hours (start, end, break), working days and the weekly paid holiday
-- Wages: monthly salary (or daily or hourly wage), whether there is a bonus and how much, whether there are allowances and what they are, payday, payment method
-- Which of the four social insurances apply (a startup's regular employee by default: all four checked)
+- Wages: monthly salary (or daily or hourly wage), bonus, other allowances (`없음` when there are none), payday, payment method
+- Social insurance: each of 고용보험, 산재보험, 국민연금, 건강보험 checked ☑ or unchecked ☐; a regular employee customarily has all four
 
-## Included clauses (already in the template)
+## Clauses
 
-- Preamble: the employer and the employee as parties
-- 1. 근로개시일 (start date): writes "근로개시일: start"; a filled `endDate` adds the paragraph "근로계약기간: start~end", and an empty one leaves it out, which makes the contract open-ended
-- 2. 근무장소 (workplace) / 3. 업무의 내용 (duties) / 4. 소정근로시간 (working hours: start, end, break) / 5. 근무일 및 휴일 (working days and holidays)
-- 6. 임금 (wages): all five parts, monthly salary, bonus, other pay, payday and payment method
-- 7. 연차유급휴가 (annual paid leave) / 8. 사회보험 적용여부 (social insurance)
-- 9. 근로계약서 교부 (handing over the contract, as Article 17 requires)
-- 10. 근로계약·취업규칙 등의 성실한 이행의무 (duty to honour the contract and work rules) / 11. 기타 (other)
-- Closing: contract date, signature blocks for employer and employee
+- `start` 1. 근로개시일: `startDate`; a filled `endDate` adds the contract period
+- `workplace` 2. 근무장소
+- `duties` 3. 업무의 내용
+- `hours` 4. 소정근로시간
+- `workDays` 5. 근무일 및 휴일
+- `wages` 6. 임금: all five parts
+- `annualLeave` 7. 연차유급휴가
+- `insurance` 8. 사회보험 적용여부: `insurances`
+- `delivery` 9. 근로계약서 교부
+- `faithfulPerformance` 10. 근로계약, 취업규칙 등의 성실한 이행의무
+- `other` 11. 기타
 
 ## Context JSON skeleton
 
@@ -48,12 +51,12 @@ An employment contract that follows the Ministry of Employment and Labor's stand
   "weeklyHoliday": "<weekly paid holiday>",
   "monthlySalary": "<monthly salary>",
   "bonus": "<whether there is a bonus, and the amount>",
-  "otherAllowances": "<allowances, or '없음' when there are none>",
+  "otherAllowances": "<allowances, or 없음>",
   "payday": "<payday>",
   "paymentMethod": "<payment method>",
   "employeeAddress": "<employee address>",
   "employeePhone": "<employee phone>",
-  "insurances": "☑ 고용보험  ☑ 산재보험  ☑ 국민연금  ☑ 건강보험",
+  "insurances": "<☑ or ☐ before each of 고용보험, 산재보험, 국민연금, 건강보험>",
   "contractDate": "<YYYY년 M월 D일>"
 }
 ```
@@ -65,15 +68,8 @@ An employment contract that follows the Ministry of Employment and Labor's stand
 }
 ```
 
-## Context value check (self-check before delivery)
-
-- Are the salary, dates and hours the requester gave written exactly? Are values the requester did not give left as empty strings rather than invented?
-- Are all five wage parts (monthly salary, bonus, other pay, payday, payment method) filled?
-- Does the presence of `endDate` match the contract type the requester stated (fixed-term or open-ended)?
-- When the requester's instructions on social insurance differ, was `insurances` changed to match?
-
 ## Rules
 
-- This is a draft based on the Ministry's reference form, and the company is responsible for the final review (say so in one line of the reply that delivers it).
-- Never invent the employee's personal details (address, phone); leave them as empty strings when missing.
-- For a part-time worker (for example under 15 hours a week), say that this template has no per-day working hours table and no overtime premium rate, and when needed write the whole contract with the extra clauses as a .docx from a JSON spec (`office create <output>.docx <spec>.json`).
+- This is a draft based on the Ministry's reference form, and the company is responsible for the final review; say so in one line of the reply that delivers it.
+- Never invent the employee's personal details; leave address and phone as empty strings when missing.
+- A part-time worker's per-day working hours or overtime premium rate goes in an added clause.

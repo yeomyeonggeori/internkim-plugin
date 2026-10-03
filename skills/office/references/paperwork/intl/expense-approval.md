@@ -9,10 +9,10 @@ An internal document requesting approval to reimburse or process an expense alre
 
 ## Required fields
 
-- approvalLine: ["Prepared", "Reviewed", "Approved"] unless the requester specifies a different chain
+- approvalLine: the approvers the request names, in its order, each `{"role", "name"}`; when it names none, the roles "Prepared", "Reviewed", "Approved" without names
 - meta: requester, expense date, department, payment method (corporate card / bank transfer)
-- items: Description, Vendor, Amount (right-aligned); at least one row
-- items.totals: total amount requested
+- items: one row per account the spending is booked to, with Account, Description, Vendor, Amount (before tax) and Tax, amounts right-aligned; a row without tax writes 0 as its Tax
+- items.totals: Subtotal, Tax, Total, in that order
 - notes: whether receipts/tax invoices are attached
 
 ## Document JSON skeleton
@@ -23,7 +23,7 @@ An internal document requesting approval to reimburse or process an expense alre
   "title": "Expense Approval",
   "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
-  "approvalLine": ["Prepared", "Reviewed", "Approved"],
+  "approvalLine": [{ "role": "<role>", "name": "<name>" }],
   "meta": [
     { "label": "Requester", "value": "<name>" },
     { "label": "Expense date", "value": "<YYYY-MM-DD>" },
@@ -31,10 +31,14 @@ An internal document requesting approval to reimburse or process an expense alre
     { "label": "Payment method", "value": "<corporate card | bank transfer>" }
   ],
   "items": {
-    "headers": ["Description", "Vendor", "Amount"],
-    "aligns": ["L", "L", "R"],
-    "rows": [["<description>", "<vendor>", "<amount>"]],
-    "totals": [{ "label": "Total", "value": "<amount> <currency>" }]
+    "headers": ["Account", "Description", "Vendor", "Amount", "Tax"],
+    "aligns": ["L", "L", "L", "R", "R"],
+    "rows": [["<account>", "<description>", "<vendor>", "<amount before tax>", "<tax>"]],
+    "totals": [
+      { "label": "Subtotal", "value": "<subtotal> <currency>" },
+      { "label": "Tax", "value": "<tax total> <currency>" },
+      { "label": "Total", "value": "<total> <currency>" }
+    ]
   },
   "notes": ["Receipts and tax invoices attached."],
   "signature": { "date": "<Month D, YYYY>", "line": "<requester name>", "stamp": false }
@@ -50,4 +54,4 @@ An internal document requesting approval to reimburse or process an expense alre
 - Use thousands separators for all amounts and state the currency the requester provides. Always state whether tax/VAT is included in each amount.
 - Record the payment method exactly as stated (corporate card or bank transfer); never assume one when the requester has not said which was used.
 - Never invent names, amounts, dates, attendees, or decisions — use only requester-provided facts and ask when a required field is missing.
-- Verify the total matches the sum of the item rows before filling the skeleton.
+- Subtotal and Tax are the sums of the rows and Total is their sum; `office check` reports any that are not, at the tax rate the values state in taxRatePercent.

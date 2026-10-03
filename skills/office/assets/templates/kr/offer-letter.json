@@ -1,0 +1,51 @@
+{
+  "title": "채 용 제 안 서",
+  "articleHeading": "{heading}",
+  "terms": [
+    {"name": "candidateName", "type": "text", "meaning": "candidate's name"},
+    {"name": "companyName", "type": "text", "meaning": "employer's trade name"},
+    {"name": "representative", "type": "text", "meaning": "employer's representative"},
+    {"name": "position", "type": "text", "meaning": "position offered"},
+    {"name": "department", "type": "text", "meaning": "team or department"},
+    {"name": "workplace", "type": "text", "meaning": "place of work"},
+    {"name": "startDate", "type": "text", "meaning": "planned first day"},
+    {"name": "salary", "type": "text", "meaning": "annual salary"},
+    {"name": "equity", "type": "text", "meaning": "stock options; blank leaves the line out"},
+    {"name": "benefits", "type": "list", "meaning": "each benefit"},
+    {"name": "probationNote", "type": "text", "meaning": "probation terms; blank leaves the paragraph out"},
+    {"name": "expiryDate", "type": "text", "meaning": "last day the offer stands"},
+    {"name": "offerDate", "type": "text", "meaning": "date of the letter"}
+  ],
+  "preamble": [
+    "{{ candidateName }}님께, 안녕하세요. {{ companyName }}에서 함께 일하게 되어 기쁜 마음으로 아래와 같이 채용을 제안드립니다."
+  ],
+  "articles": [
+    {"key": "position", "heading": "포지션 요약", "paragraphs": [
+      "직위: {{ position }}",
+      "소속: {{ department }}",
+      "근무지: {{ workplace }}",
+      "입사예정일: {{ startDate }}"
+    ]},
+    {"key": "compensation", "heading": "보상", "paragraphs": [
+      "연봉: {{ salary }}",
+      {"text": "스톡옵션: {{ equity }}", "when": "equity"}
+    ]},
+    {"key": "benefits", "heading": "복리후생", "paragraphs": [
+      {"bullets": "benefits"},
+      {"text": "{{ probationNote }}", "when": "probationNote"}
+    ]},
+    {"key": "conditions", "heading": "제안 조건", "paragraphs": [
+      "본 제안은 발송일로부터 {{ expiryDate }}까지 유효하며, 최종 입사는 배경확인 결과에 따라 확정됩니다.",
+      "본 제안 내용에 대해 궁금한 점이 있으시면 언제든 회신 부탁드립니다."
+    ]}
+  ],
+  "closing": [
+    "",
+    "다시 한번 좋은 인연으로 함께하게 되기를 기대합니다.",
+    "",
+    {"centered": "{{ offerDate }}"},
+    "{{ companyName }}",
+    "대표이사 {{ representative }}"
+  ],
+  "signatures": []
+}

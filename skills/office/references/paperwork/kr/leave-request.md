@@ -9,7 +9,7 @@ An internal document in which an employee applies for leave and gets it approved
 
 ## Required fields
 
-- approvalLine: ["담당", "승인"]
+- approvalLine: the approvers the request names, in its order, each `{"role", "name"}`; when it names none, the roles "담당", "승인" without names
 - meta: 신청자 (applicant), 소속/직위 (department and position), 휴가종류 (type of leave), 휴가기간 (leave period), 사유 (reason), 비상연락처 (emergency contact)
 - 휴가종류 uses the type the requester named (연차 annual, 반차 half-day, 병가 sick, 경조 family event, and so on) as it is
 - signature: application date + the applicant's name, stamp false
@@ -22,7 +22,7 @@ An internal document in which an employee applies for leave and gets it approved
   "title": "휴 가 신 청 서",
   "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
-  "approvalLine": ["담당", "승인"],
+  "approvalLine": [{ "role": "<role>", "name": "<name>" }],
   "meta": [
     { "label": "신청자", "value": "<name>" },
     { "label": "소속/직위", "value": "<department> / <position>" },
@@ -40,7 +40,6 @@ An internal document in which an employee applies for leave and gets it approved
 ## Fixed wording
 
 - notes: "위와 같이 휴가를 신청합니다."
-- approvalLine is always the two boxes ["담당", "승인"].
 
 ## Rules
 

@@ -4,8 +4,8 @@ from core.office_result import ERROR, WARNING, IssueKind
 from core.office_schema import AnyOf, Boolean, CellValue, Field, ListOf, Number, Record, Text, Variant
 from paperwork.paperwork_design import FONT_KOREAN_DOCX
 from fonts.font_files import FONT_PATH_MEANING
-from paperwork.template_context import caller_fields, default_values, derived_values, list_fields, optional_paragraph_fields
-from paperwork.template_fields import template_names
+from paperwork.contract_plan import CONTRACT_ISSUE_KINDS
+from paperwork.contract_template import TERM_TYPES, ContractTemplate
 from paperwork.forms import Form, form_slugs
 from paperwork.jurisdictions import JURISDICTIONS, Jurisdiction
 from doc.doc_definitions import GLYPH_NOT_COVERED
@@ -53,6 +53,11 @@ PAPERWORK_SECTION = Record("section", "a titled block of paragraphs and bullets"
     Field("bullets", ListOf(CellValue()), "bullet items"),
 ))
 
+APPROVER = Record("approver", "one approval box: the role on top and, when the request names one, the approver under it", (
+    Field("role", Text(non_empty=True), "the box caption, such as the approver's title", required=True),
+    Field("name", CellValue(), "the approver's name the request gives"),
+))
+
 SIGNATURE = Record("signature", "the dated signature line", (
     Field("date", CellValue(), "date line"),
     Field("line", CellValue(), "signer line; the jurisdiction's seal mark, where it has one, is appended"),
@@ -66,7 +71,7 @@ PAPERWORK_DOCUMENT = Record("document", "the values office merge draws on letter
     Field("title", Text(non_empty=True), "centered document title", required=True),
     Field("documentNumber", CellValue(), "the number company_document_register returned for this document, as it is; printed under the title after the jurisdiction's document-number label"),
     Field("profile", PROFILE, "company profile for the letterhead", required=True),
-    Field("approvalLine", ListOf(Text()), "approval box captions, left to right"),
+    Field("approvalLine", ListOf(AnyOf((Text(), APPROVER))), "approval boxes left to right, each a role or {role, name}; the approvers the request names, in its order"),
     Field("recipient", RECIPIENT, "addressee"),
     Field("meta", ListOf(LABELED_VALUE), "label-value table under the title"),
     Field("items", ITEMS, "item table"),
@@ -127,18 +132,18 @@ GUIDE_INPUTS = (
     ("merge", "form", "the values for a .docx without a bundled template", CONTRACT_DOCUMENT),
 )
 GUIDE_ISSUES = (
-    ("merge", "form", (GLYPH_NOT_COVERED, RENDERER_UNAVAILABLE, RENDER_FAILED)),
-    ("check", "form", AMOUNT_ISSUE_KINDS),
+    ("merge", "form", (GLYPH_NOT_COVERED, RENDERER_UNAVAILABLE, RENDER_FAILED, *CONTRACT_ISSUE_KINDS)),
+    ("check", "form", (*AMOUNT_ISSUE_KINDS, *CONTRACT_ISSUE_KINDS)),
 )
 
 
 def form_lines() -> list[str]:
     lines = []
     for jurisdiction in JURISDICTIONS:
-        with_template = [slug for slug in form_slugs(jurisdiction.code) if Form(jurisdiction, slug).template_path is not None]
+        with_template = [slug for slug in form_slugs(jurisdiction.code) if Form(jurisdiction, slug).contract_template is not None]
         lines.append(f"  {jurisdiction.code}: {', '.join(form_slugs(jurisdiction.code))}")
         if with_template:
-            lines.append(f"    a bundled .docx template fills these, from the fields below: {', '.join(with_template)}")
+            lines.append(f"    a bundled contract template prints these as .docx, from the terms below: {', '.join(with_template)}")
     return lines
 
 
@@ -164,33 +169,28 @@ def amount_in_words_summary(words) -> str:
 
 
 def template_guide_lines() -> list[str]:
-    lines = []
-    for name in template_names():
-        lines.append(f"  {name}")
-        lines.append(f"    required: {', '.join(caller_fields(name))}")
-        lines.extend(list_lines(name) + default_lines(name) + optional_lines(name) + derived_lines(name))
+    lines = [
+        "  a template prints every clause it lists; each {{ term }} a printed clause states is a typed value the values give, and no template supplies one",
+        "  clauses: {<clause key>: {heading?, paragraphs}} replaces that clause's text, keeping its place and number",
+        "  addedClauses: [{key, heading, paragraphs, after?}] adds a clause after the clause named by after, else last; its key names its subject and is no template clause's key",
+        "  removedClauses: [<clause key>] leaves a clause out only when the request removes it; numbers close up",
+        "  clause paragraphs may write {{ <term> }} to state a term and {{ article:<clause key> }} for that clause's number",
+        "  term types: " + "; ".join(f"{name}: {meaning}" for name, meaning in TERM_TYPES.items()),
+    ]
+    for jurisdiction in JURISDICTIONS:
+        for slug in form_slugs(jurisdiction.code):
+            template = Form(jurisdiction, slug).contract_template
+            if template is not None:
+                lines.extend(template_lines(f"{jurisdiction.code}/{slug}", template))
     return lines
 
 
-def list_lines(template_name: str) -> list[str]:
-    fields = list_fields(template_name)
-    return [f"    non-empty lists, one numbered paragraph per item: {', '.join(fields)}"] if fields else []
-
-
-def optional_lines(template_name: str) -> list[str]:
-    fields = optional_paragraph_fields(template_name)
-    return [f"    paragraph left out when blank: {', '.join(fields)}"] if fields else []
-
-
-def default_lines(template_name: str) -> list[str]:
-    defaults = default_values(template_name)
-    if not defaults:
-        return []
-    return ["    defaults: " + ", ".join(f"{field}={value!r}" for field, value in defaults.items())]
-
-
-def derived_lines(template_name: str) -> list[str]:
-    return [f"    derived when empty: {field}" for field in derived_values(template_name)]
+def template_lines(name: str, template: ContractTemplate) -> list[str]:
+    return [
+        f"  {name}",
+        "    clauses: " + ", ".join(template.article_keys),
+        *(f"    {term.describe()}" for term in template.terms),
+    ]
 
 
 def amount_rule_lines() -> list[str]:
@@ -205,6 +205,6 @@ def amount_rule_lines() -> list[str]:
 GUIDE_SECTIONS = (
     ("form", "Forms (office merge <jurisdiction>/<form> <values.json> <output>; each one's spec is references/paperwork/<jurisdiction>/<form>.md)", form_lines),
     ("form", "Jurisdictions", jurisdiction_lines),
-    ("form", "Fields of the bundled .docx templates", template_guide_lines),
+    ("form", "Terms and clauses of the bundled contract templates", template_guide_lines),
     ("form", "Amount rules of office check <values.json>", amount_rule_lines),
 )

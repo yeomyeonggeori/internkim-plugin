@@ -156,12 +156,17 @@ def representative_identity(profile: dict, labels: Labels) -> list[str]:
     return [f"{text_of(profile.get('representativeTitle')) or labels.representative_title} {representative}"]
 
 
-def approval_html(labels: list) -> str:
-    if not labels:
+def approval_html(approvers: list) -> str:
+    if not approvers:
         return ""
-    headers = "".join(f"<th>{escaped(label)}</th>" for label in labels)
-    boxes = "<td></td>" * len(labels)
+    entries = [approver if isinstance(approver, dict) else {"role": approver} for approver in approvers]
+    headers = "".join(f"<th>{escaped(entry.get('role'))}</th>" for entry in entries)
+    boxes = "".join(approver_box(entry.get("name")) for entry in entries)
     return f'<div class="approval"><table><tr>{headers}</tr><tr>{boxes}</tr></table></div>'
+
+
+def approver_box(name: object) -> str:
+    return f'<td><span class="approver">{escaped(name)}</span></td>' if text_of(name) else "<td></td>"
 
 
 def title_html(document: dict, labels: Labels) -> str:

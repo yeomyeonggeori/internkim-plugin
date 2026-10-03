@@ -20,11 +20,11 @@ One command, `<skill>/scripts/office <verb> <file> [options]`, makes and checks 
 | Workbook, CSV or TSV cleanup, formulas, charts | `create <title>.xlsx <data>.csv`, then `apply` | `references/sheet.md` |
 | Deck, presentation, PPTX | `create build/<deck>.pdf slides.html` | `references/deck.md` |
 | Fill a user's .docx, .xlsx or .pptx template | `merge` | `references/doc.md` |
-| Company form or contract on letterhead: quotation, invoice, approval request, certificate, NDA, MOU | `merge <jurisdiction>/<form>` | `references/paperwork.md` |
+| A document the form catalog has: quote, transaction statement, invoice, purchase order, approval request, expense approval, business trip report, meeting minutes, weekly report, leave request, employment certificate, career certificate, power of attorney, offer letter, employment contract, NDA, MOU, service agreement | `merge <jurisdiction>/<form>` | `references/paperwork.md` |
 | Another format of a file | `convert` | `office guide convert` |
 | Verify before attaching | `check`, `render` | the format's reference |
 
-A standardized form belongs to `merge <jurisdiction>/<form>` even when it ships as .docx or PDF: its letterhead, approval boxes, seals, and fixed clauses live there. Work no verb covers, such as merging PDFs, goes in a task-local Python file run with `<skill>/scripts/office python <script.py> [arguments]`, which provides every office package.
+A document the catalog has belongs to `merge <jurisdiction>/<form>` in either language and whatever format or wording the request uses: its letterhead, approval boxes, seal, and fixed clauses live there, and `create` is only for documents the catalog lacks. Work no verb covers, such as merging PDFs, goes in a task-local Python file run with `<skill>/scripts/office python <script.py> [arguments]`, which provides every office package.
 
 ## Rules for every format
 
