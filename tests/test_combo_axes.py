@@ -72,6 +72,31 @@ class OfficeComboAxesTest(unittest.TestCase):
         self.assertEqual(axes[1].find(f"{C}delete").get("val"), "0")
 
 
+class DocumentPreviewAxesTest(unittest.TestCase):
+    def preview_look(self, series):
+        from doc.model.charts import ChartSpecification, chart_space, read_specification
+
+        class ChartPart:
+            blob = ElementTree.tostring(chart_space(ChartSpecification("combo", ("A", "B", "C"), tuple(series))))
+
+        return read_specification(ChartPart()).look(("#4472C4", "#C0504D"))
+
+    def test_the_word_preview_draws_the_axes_the_chart_part_holds(self):
+        series = [("Bookings", (1200.0, 1500.0, 1900.0), False), ("Refunds", (-14.0, -9.0, -6.0), True)]
+        look = self.preview_look(series)
+        self.assertLessEqual(look.secondary_limits[0], -14)
+        self.assertAlmostEqual(zero_share(*look.value_limits), zero_share(*look.secondary_limits))
+
+    def test_a_chart_part_without_limits_stays_automatic(self):
+        from doc.model.charts import read_specification
+
+        class ChartPart:
+            blob = ElementTree.tostring(combo_chart_space(("A", "B"), [("Sales", (5.0, 7.0), False), ("Share", (-0.2, 0.4), True)], False))
+
+        look = read_specification(ChartPart()).look(("#4472C4", "#C0504D"))
+        self.assertEqual((look.value_limits, look.secondary_limits), ((None, None), (None, None)))
+
+
 ONE_UNIT = '<figure data-chart="combo" data-labels="2023, 2024, 2025, 2026" data-series="Revenue: 8.2, 19.5, 36.8, 61; Operating profit: -12.4, -7.1, -1.9, 4.3" data-unit="M"><figcaption>Revenue and operating profit, USD M</figcaption></figure>'
 TWO_UNITS = '<figure data-chart="combo" data-labels="FY24, FY25, FY26, FY27" data-series="Revenue: 850, 920, 1010, 1100; Operating margin: -4.2, -1.1, 2.5, 6.8" data-unit="M, %"><figcaption>Revenue USD M, margin %</figcaption></figure>'
 NEGATIVE_COLUMNS = '<figure data-chart="combo" data-labels="1분기, 2분기, 3분기, 4분기" data-series="순현금흐름: -40, -15, 10, 35; 누적 고객: 1.2, 2.8, 4.5, 7.1" data-unit="억, 천명"><figcaption>분기별 순현금흐름과 누적 고객</figcaption></figure>'

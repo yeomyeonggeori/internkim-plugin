@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from docx.opc.constants import CONTENT_TYPE, RELATIONSHIP_TYPE
 from docx.opc.part import Part
@@ -11,7 +11,7 @@ from pptx.chart.chart import Chart
 from pptx.enum.chart import XL_LEGEND_POSITION
 from pptx.oxml import parse_xml as parse_chart_xml
 
-from charts.combo import CHART_NAMESPACE, category_chart_data, combo_chart_space, lines_need_own_axis
+from charts.combo import CHART_NAMESPACE, category_chart_data, combo_axis_ranges, combo_chart_space, lines_need_own_axis
 from charts.kinds import COMBO_CHART_KIND, OFFICE_CHART_KINDS, ROUND_CHART_KINDS, document_kind, drawn_kind, is_stacked_kind, office_chart_type, plot_kind
 from charts.look import ChartLook, document_look
 from charts.svg import ChartModel, ChartSeries
@@ -19,6 +19,8 @@ from charts.svg import ChartModel, ChartSeries
 
 RELATIONSHIP_NAMESPACE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 DRAWN_KINDS = {drawn_kind(kind) for kind in OFFICE_CHART_KINDS}
+AxisLimits = tuple[float | None, float | None, float | None]
+AUTOMATIC_AXIS: AxisLimits = (None, None, None)
 CHART_TEXT_SIZE = "1000"
 
 
@@ -30,6 +32,7 @@ class ChartSpecification:
     title: str = ""
     legend: bool | None = None
     secondary_axis: bool | None = None
+    value_axes: tuple[AxisLimits, ...] | None = None
 
     @property
     def uses_secondary_axis(self) -> bool:
@@ -63,7 +66,16 @@ class ChartSpecification:
         )
 
     def look(self, colors: tuple[str, ...]) -> ChartLook:
-        return document_look(colors, len(self.series), self.kind in ROUND_CHART_KINDS, is_stacked_kind(self.kind), self.shows_legend, None)
+        look = document_look(colors, len(self.series), self.kind in ROUND_CHART_KINDS, is_stacked_kind(self.kind), self.shows_legend, None)
+        primary, secondary = (*self.axis_limits(), AUTOMATIC_AXIS, AUTOMATIC_AXIS)[:2]
+        return replace(look, value_limits=primary[:2], major_unit=primary[2], secondary_limits=secondary[:2])
+
+    def axis_limits(self) -> tuple[AxisLimits, ...]:
+        if self.value_axes is not None:
+            return self.value_axes
+        if not self.uses_secondary_axis:
+            return ()
+        return tuple((axis.minimum, axis.maximum, axis.step) for axis in combo_axis_ranges(list(self.series)))
 
 
 @dataclass
@@ -188,7 +200,28 @@ def read_specification(chart_part) -> ChartSpecification:
     title = "".join(text.text or "" for text in root.iterfind(f".//{{{CHART_NAMESPACE}}}title//{{http://schemas.openxmlformats.org/drawingml/2006/main}}t"))
     legend = root.find(f".//{{{CHART_NAMESPACE}}}legend") is not None
     secondary = len(root.findall(f".//{{{CHART_NAMESPACE}}}valAx")) > 1
-    return ChartSpecification(combined, categories, tuple(series), title, legend, secondary if combined == COMBO_CHART_KIND else None)
+    return ChartSpecification(combined, categories, tuple(series), title, legend, secondary if combined == COMBO_CHART_KIND else None, plotted_axis_limits(root, plot_charts))
+
+
+def plotted_axis_limits(root, plot_charts: list) -> tuple[AxisLimits, ...]:
+    value_axes = {child_value(axis, "axId"): axis for axis in root.iter(f"{{{CHART_NAMESPACE}}}valAx")}
+    plotted = []
+    for plot_chart in plot_charts:
+        identifiers = [identifier.get("val") for identifier in plot_chart.findall(f"{{{CHART_NAMESPACE}}}axId")]
+        axis = next((value_axes[identifier] for identifier in identifiers if identifier in value_axes), None)
+        if axis is not None and all(axis is not seen for seen in plotted):
+            plotted.append(axis)
+    return tuple(axis_limits_of(axis) for axis in plotted)
+
+
+def axis_limits_of(axis) -> AxisLimits:
+    scaling = axis.find(f"{{{CHART_NAMESPACE}}}scaling")
+    return (number_value(scaling, "min"), number_value(scaling, "max"), number_value(axis, "majorUnit"))
+
+
+def number_value(parent, tag: str) -> float | None:
+    value = child_value(parent, tag) if parent is not None else None
+    return float(value) if value is not None and is_number(value) else None
 
 
 def plot_chart_kind(plot_chart) -> str:

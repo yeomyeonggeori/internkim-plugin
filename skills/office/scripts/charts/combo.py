@@ -104,10 +104,14 @@ def add_secondary_axes(root, line_chart) -> None:
     value_axis.addnext(hidden_category)
 
 
-def align_axis_zeros(root, series: list[ComboSeries]) -> None:
+def combo_axis_ranges(series: list[ComboSeries]) -> list[AxisRange]:
     columns = [value for _, values, is_line in series if not is_line for value in values]
     lines = [value for _, values, is_line in series if is_line for value in values]
-    for axis, limits in zip(root.findall(f".//{{{CHART_NAMESPACE}}}valAx"), zero_aligned_ranges([columns, lines])):
+    return zero_aligned_ranges([columns, lines])
+
+
+def align_axis_zeros(root, series: list[ComboSeries]) -> None:
+    for axis, limits in zip(root.findall(f".//{{{CHART_NAMESPACE}}}valAx"), combo_axis_ranges(series)):
         set_limits(axis, limits)
 
 
