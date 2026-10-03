@@ -40,7 +40,7 @@ class SheetCheckTest(WorkbookFixture):
     def test_each_problem_is_reported_once_where_it_is(self):
         self.assertEqual(self.findings(), {
             ("FORMULA_ERROR", "Sales!B1"),
-            ("STALE_CACHED_VALUE", "Sales!B1"),
+            ("STALE_CACHED_VALUE", "Sales!E1"),
             ("MISSING_SHEET_REFERENCE", "Sales!B2"),
             ("BROKEN_DEFINED_NAME", "Orphan"),
             ("NUMBER_TOO_WIDE", "Sales!C1"),

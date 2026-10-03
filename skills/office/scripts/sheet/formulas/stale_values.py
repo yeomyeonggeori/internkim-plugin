@@ -36,7 +36,7 @@ def reading_order(item) -> tuple:
 
 def agrees(stored: object, computed: CachedValue) -> bool:
     if stored is None:
-        return computed.cell_type == TEXT and computed.text == ""
+        return computed.cell_type == ERROR or (computed.cell_type == TEXT and computed.text == "")
     if computed.cell_type == NUMBER:
         return is_number(stored) and math.isclose(serial_number(stored), float(computed.text), rel_tol=RELATIVE_TOLERANCE, abs_tol=ABSOLUTE_TOLERANCE)
     if computed.cell_type == BOOLEAN:
