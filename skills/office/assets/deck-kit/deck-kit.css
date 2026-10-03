@@ -180,10 +180,13 @@ section[data-layout] :where(.up) { color: var(--accent); }
 section[data-layout] :where(.down) { color: var(--muted); }
 
 section[data-layout="cover"] {
-  grid-template-columns: minmax(0, 1fr) 616px;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto auto auto 96px;
-  column-gap: 96px;
   padding-top: 88px;
+}
+section[data-layout="cover"].kit-paneled {
+  grid-template-columns: minmax(0, 1fr) 616px;
+  column-gap: 96px;
   padding-right: 0;
 }
 section[data-layout="cover"] > :is(.eyebrow, h1, h2, .lead, .meta) { grid-column: 1; position: relative; z-index: 1; }
@@ -191,7 +194,7 @@ section[data-layout="cover"] > .eyebrow { grid-row: 1; font-size: calc(22px * va
 section[data-layout="cover"] > :is(h1, h2) { grid-row: 3; font-size: calc(var(--size-display) * var(--fit)); font-weight: 800; line-height: 1.14; letter-spacing: -0.04em; }
 section[data-layout="cover"] > .lead { grid-row: 4; margin-top: 32px; }
 section[data-layout="cover"] > .meta { grid-row: 5; margin-top: 56px; padding-top: 24px; border-top: 2px solid var(--ink); font-size: calc(22px * var(--fit)); font-weight: 600; color: var(--ink-soft); }
-section[data-layout="cover"] { background-image: linear-gradient(90deg, var(--bg) 0 984px, var(--cover-panel, var(--accent)) 984px); }
+section[data-layout="cover"].kit-paneled { background-image: linear-gradient(90deg, var(--bg) 0 984px, var(--cover-panel, var(--accent)) 984px); }
 section[data-layout="cover"] > .kit-ring { grid-column: -2 / -1; grid-row: 1 / -1; align-self: end; justify-self: end; border-top: 2px solid rgba(255, 255, 255, 0.16); border-left: 2px solid rgba(255, 255, 255, 0.16); border-top-left-radius: 100%; }
 section[data-layout="cover"] > img { grid-column: 2; grid-row: 1 / -1; position: relative; z-index: 1; margin: -88px 0 0 0; width: 616px; height: 900px; max-width: none; object-fit: cover; }
 

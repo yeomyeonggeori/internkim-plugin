@@ -56,6 +56,8 @@
   const columnKinds = new Set(["column", "stacked", "stacked100", "combo"]);
   const roundKinds = new Set(["donut", "pie"]);
   const lineInsetShare = 5;
+  const motifAttribute = "data-motif";
+  const coverMotifs = ["panel", "rings"];
   const coverRingRadii = [442, 342, 242];
   const groupedNumberPattern = /^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/;
   const twoAxisTypes = new Set(["combo", "scatter"]);
@@ -454,9 +456,16 @@
     });
   }
 
-  function addCoverRings() {
+  function coverMotif(slide) {
+    const name = (slide.getAttribute(motifAttribute) || "").trim();
+    return coverMotifs.includes(name) && !slide.querySelector(":scope > img") ? name : null;
+  }
+
+  function drawCoverPanels() {
     document.querySelectorAll("section[data-layout='cover']").forEach((slide) => {
-      if (slide.querySelector(":scope > img, :scope > .kit-ring")) return;
+      const motif = coverMotif(slide);
+      if (slide.querySelector(":scope > img") || motif) slide.classList.add("kit-paneled");
+      if (motif !== "rings" || slide.querySelector(":scope > .kit-ring")) return;
       coverRingRadii.forEach((radius) => slide.appendChild(element("span", "kit-ring", { width: `${radius}px`, height: `${radius}px` })));
     });
   }
@@ -1752,7 +1761,7 @@
     addListIndexes();
     groupComparisonPoints();
     groupSteps();
-    addCoverRings();
+    drawCoverPanels();
     addQuoteMarks();
     markNumericCells();
     keepMixedWords();
