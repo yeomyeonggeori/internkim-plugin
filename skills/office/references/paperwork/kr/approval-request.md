@@ -22,7 +22,7 @@ An internal approval document that asks for a decision inside the company. It se
   "form": "kr/approval-request",
   "title": "품 의 서",
   "documentNumber": "<the number company_document_register returned>",
-  "profile": { ...company profile... },
+  "company": "<the company-profile.json path company_info_get answered>",
   "approvalLine": [{ "role": "<role>", "name": "<name>" }],
   "meta": [
     { "label": "기안자", "value": "<team> <name>" },

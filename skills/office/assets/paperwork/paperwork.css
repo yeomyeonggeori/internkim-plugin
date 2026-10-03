@@ -4,7 +4,7 @@ p { margin: 0; }
 .letterhead .logo { height: 10mm; }
 .company { display: flex; flex-direction: column; align-items: flex-end; text-align: right; margin-left: auto; }
 .company .name { font-size: $letterhead_name; font-weight: 700; line-height: 1.4; }
-.company .detail { font-size: $letterhead_detail; color: $muted; line-height: 1.45; white-space: pre; }
+.company .detail { font-size: $letterhead_detail; color: $muted; line-height: 1.45; white-space: pre-wrap; }
 .approval { display: flex; justify-content: flex-end; margin-bottom: 4mm; }
 .approval table { border-collapse: collapse; font-size: 8pt; }
 .approval table { border-collapse: separate; border-spacing: 0; border-top: 0.6pt solid $border; border-left: 0.6pt solid $border; }

@@ -40,6 +40,15 @@ def write_json(path, value):
     Path(path).write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
 
 
+def write_form_values(path, values):
+    form_values = dict(values)
+    profile = form_values.pop("profile", None)
+    if profile is not None:
+        write_json(Path(path).parent / "company-profile.json", profile)
+        form_values["company"] = "company-profile.json"
+    write_json(path, form_values)
+
+
 def block_texts(working_directory, document_name):
     envelope = run_office(["read", document_name], working_directory)
     return [(block["kind"], block.get("text", block.get("cells"))) for block in envelope["details"]["blocks"]]

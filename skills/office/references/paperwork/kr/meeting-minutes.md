@@ -22,7 +22,7 @@ A record of the agenda, decisions and action items of a meeting. It is for recor
   "form": "kr/meeting-minutes",
   "title": "회 의 록",
   "documentNumber": "<the number company_document_register returned>",
-  "profile": { ...company profile... },
+  "company": "<the company-profile.json path company_info_get answered>",
   "meta": [
     { "label": "회의명", "value": "<meeting name>" },
     { "label": "일시", "value": "<YYYY-MM-DD HH:MM>" },

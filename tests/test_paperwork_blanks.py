@@ -5,7 +5,7 @@ import subprocess
 import sys
 import unittest
 
-from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, run_office, write_json
+from doc_fixture import OFFICE_ENTRY, SCRIPTS_PATH, run_office, write_form_values
 from render_fixture import can_render
 from test_paperwork_templates import ContractRun, codes, complete_values, contract_templates, stated_terms
 
@@ -78,7 +78,7 @@ class FormBlankListTest(unittest.TestCase):
         self.directory = Path(self.enterContext(tempfile.TemporaryDirectory()))
 
     def check(self, values: dict) -> dict:
-        write_json(self.directory / "values.json", values)
+        write_form_values(self.directory / "values.json", values)
         return run_office(["check", "values.json"], self.directory)
 
     def test_check_lists_every_blank_with_the_label_it_stands_under(self):
@@ -127,7 +127,7 @@ class FormBlankListTest(unittest.TestCase):
 @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
 class FormBlankMergeTest(FormBlankListTest):
     def merge(self, values: dict) -> tuple[dict, str]:
-        write_json(self.directory / "values.json", values)
+        write_form_values(self.directory / "values.json", values)
         envelope = run_office(["merge", "kr/purchase-order", "values.json", "발주서.pdf"], self.directory)
         text = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", PAGE_TEXT, "발주서.pdf"], cwd=self.directory, capture_output=True, text=True, check=True).stdout
         return envelope, json.loads(text)
