@@ -20,7 +20,7 @@ An internal status document summarizing one person's or team's work for a given 
   "form": "intl/weekly-report",
   "title": "Weekly Report",
   "documentNumber": "<the number company_document_register returned>",
-  "profile": { ...company profile... },
+  "company": "<the company-profile.json path company_info_get answered>",
   "meta": [
     { "label": "Author", "value": "<name>" },
     { "label": "Team", "value": "<team>" },

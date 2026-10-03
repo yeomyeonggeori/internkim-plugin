@@ -146,13 +146,14 @@ def letterhead_html(profile: dict, labels: Labels) -> str:
 
 def letterhead_detail_lines(profile: dict, labels: Labels) -> list[str]:
     identity = [*legal_identity(profile, labels), *representative_identity(profile, labels)]
-    contact = "  ".join(part for part in (text_of(profile.get(field)) for field in ("phone", "email", "website")) if part)
+    numbers = [f"{label} {text_of(profile.get(field))}" for field, label in (("phone", labels.phone), ("fax", labels.fax)) if text_of(profile.get(field))]
+    contact = "  ".join([*numbers, *(text_of(profile.get(field)) for field in ("email", "website") if text_of(profile.get(field)))])
     return [line for line in ("  ".join(identity), text_of(profile.get("address")), contact) if line]
 
 
 def legal_identity(profile: dict, labels: Labels) -> list[str]:
     attributes = profile.get("legalAttributes")
-    pairs = [(text_of(attribute.get("label")), text_of(attribute.get("value"))) for attribute in (attributes if isinstance(attributes, list) else [])[:2] if isinstance(attribute, dict)]
+    pairs = [(text_of(attribute.get("label")), text_of(attribute.get("value"))) for attribute in (attributes if isinstance(attributes, list) else []) if isinstance(attribute, dict)]
     labeled = [f"{label} {value}" for label, value in pairs if label and value]
     registration = text_of(profile.get("registrationNumber"))
     return labeled or ([f"{labels.registration_number} {registration}"] if registration else [])

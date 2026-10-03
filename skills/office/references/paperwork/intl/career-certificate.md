@@ -20,7 +20,7 @@ A document confirming that a named individual was employed by the company during
   "form": "intl/career-certificate",
   "title": "Certificate of Employment History",
   "documentNumber": "<the number company_document_register returned>",
-  "profile": { ...company profile... },
+  "company": "<the company-profile.json path company_info_get answered>",
   "meta": [
     { "label": "Full name", "value": "<full name>" },
     { "label": "Date of birth", "value": "<YYYY-MM-DD>" },

@@ -14,6 +14,8 @@ class Labels:
     registration_number: str
     representative_title: str
     seal_mark: str
+    phone: str
+    fax: str
 
 
 @dataclass(frozen=True)
@@ -63,7 +65,7 @@ JURISDICTIONS = (
         code="intl",
         name="international, the default",
         language="en",
-        labels=Labels(document_number="No.", recipient="To", registration_number="Registration No.", representative_title="Representative", seal_mark=""),
+        labels=Labels(document_number="No.", recipient="To", registration_number="Registration No.", representative_title="Representative", seal_mark="", phone="Tel", fax="Fax"),
         columns=ItemColumns(quantity="Qty", unit_price="Unit price", amount="Amount", tax="Tax"),
         money=Money(currency="", minor_unit_digits=2, rounding=ROUND_HALF_UP, rounding_rule="every computed amount rounds half up to the cent"),
         tax_rate_percent=None,
@@ -74,7 +76,7 @@ JURISDICTIONS = (
         code="kr",
         name="Korea",
         language="ko",
-        labels=Labels(document_number="문서번호", recipient="수신", registration_number="사업자등록번호", representative_title="대표", seal_mark="(인)"),
+        labels=Labels(document_number="문서번호", recipient="수신", registration_number="사업자등록번호", representative_title="대표", seal_mark="(인)", phone="전화", fax="팩스"),
         columns=ItemColumns(quantity="수량", unit_price="단가", amount="공급가액", tax="세액"),
         money=Money(currency="KRW", minor_unit_digits=0, rounding=ROUND_DOWN, rounding_rule="every computed amount drops its fraction below one won (truncates toward zero)"),
         tax_rate_percent=Decimal(10),
