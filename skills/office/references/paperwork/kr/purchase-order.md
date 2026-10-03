@@ -22,7 +22,7 @@ An external document ordering goods or services from a supplier. It is issued on
   "form": "kr/purchase-order",
   "title": "발 주 서",
   "documentNumber": "<the number company_document_register returned>",
-  "profile": { ...company profile... },
+  "company": "<the company-profile.json path company_info_get answered>",
   "recipient": { "label": "수신", "lines": ["<supplier company name>", "<contact name> 님"] },
   "meta": [
     { "label": "발주일자", "value": "<YYYY-MM-DD>" },

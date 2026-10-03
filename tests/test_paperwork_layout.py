@@ -5,7 +5,7 @@ import sys
 import tempfile
 import unittest
 
-from doc_fixture import OFFICE_ENTRY, run_office, write_json
+from doc_fixture import OFFICE_ENTRY, run_office, write_form_values
 from render_fixture import can_render
 
 
@@ -63,7 +63,7 @@ class PaperworkLayoutTest(unittest.TestCase):
         self.directory = Path(self.enterContext(tempfile.TemporaryDirectory()))
 
     def page_texts(self, values: dict) -> list[str]:
-        write_json(self.directory / "values.json", values)
+        write_form_values(self.directory / "values.json", values)
         envelope = run_office(["merge", values["form"], "values.json", "form.pdf"], self.directory)
         self.assertEqual(envelope["status"], "ok", envelope["issues"])
         completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", PAGE_TEXTS, "form.pdf"], cwd=self.directory, capture_output=True, text=True, check=True)

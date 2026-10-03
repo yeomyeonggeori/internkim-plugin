@@ -20,7 +20,7 @@ A document confirming that a named individual is currently employed by the compa
   "form": "intl/employment-certificate",
   "title": "Certificate of Employment",
   "documentNumber": "<the number company_document_register returned>",
-  "profile": { ...company profile... },
+  "company": "<the company-profile.json path company_info_get answered>",
   "meta": [
     { "label": "Full name", "value": "<full name>" },
     { "label": "Date of birth", "value": "<YYYY-MM-DD>" },

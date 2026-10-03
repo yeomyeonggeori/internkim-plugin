@@ -10,7 +10,7 @@ An external document that records a completed transaction between the supplier a
 ## Required fields
 
 - recipient: the buyer's company name is required, with the contact's name when given. When the buyer's business registration number (사업자등록번호) was given, add it on the line after the company name.
-- The supplier's details (사업자등록번호 business registration number, 업태 business type, 종목 business item, 대표자 representative) get no table of their own: profile.legalAttributes already prints them on the letterhead.
+- The supplier's details (사업자등록번호 business registration number, 업태 business type, 종목 business item, 대표자 representative) get no table of their own: the company profile's legalAttributes already print them on the letterhead.
 - meta: 거래일자 (transaction date) is required, and the last meta row is always the receiver's confirmation box (인수자)
 - items: use only the 품명 (item), 규격 (spec), 수량 (quantity), 단위 (unit) and 단가 (unit price) the requester gave, at least one row
 - items.totals: 공급가액 합계 (supply total) → 세액 합계 (tax total) → 총 합계 (grand total), in that order
@@ -23,7 +23,7 @@ An external document that records a completed transaction between the supplier a
   "form": "kr/transaction-statement",
   "title": "거 래 명 세 서",
   "documentNumber": "<the number company_document_register returned>",
-  "profile": { ...company profile... },
+  "company": "<the company-profile.json path company_info_get answered>",
   "recipient": { "label": "공급받는자", "lines": ["<buyer company name>", "<contact name> 님"] },
   "meta": [
     { "label": "거래일자", "value": "<YYYY-MM-DD>" },

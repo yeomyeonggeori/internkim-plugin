@@ -3,7 +3,7 @@ name: office
 description: Create, read, edit, validate, and attach office files — Word .docx, PDF, Excel .xlsx/.csv/.tsv, slide decks (HTML, PDF, PPTX), and standardized company forms and contracts on letterhead. Use for reports, memos, letters, workbooks, formulas, decks, pitch decks, PowerPoint, Keynote, 워드, 문서, 보고서, PDF, 엑셀, 스프레드시트, 표, 발표자료, 파워포인트, 피피티, 견적서, 거래명세서, 청구서, 발주서, 품의서, 지출결의서, 회의록, 주간업무보고, 출장보고서, 재직증명서, 경력증명서, 휴가신청서, 위임장, 오퍼레터, 근로계약서, 비밀유지계약서, NDA, 업무협약서, MOU, 용역계약서, quotation, invoice, purchase order, certificate, and contract requests.
 compatibility: Requires python3, uv, and bun or node 18; no browser or office suite. `scripts/office setup` prepares the Python packages, the renderer and the OCR engine once, and InternKim's host install runs it; no other command installs anything. Company forms and reading attached files need InternKim's tool server.
 metadata:
-  kim.intern.tool-references: "read company_info_get company_info_set company_document_register company_document_update company_document_list company_document_search"
+  kim.intern.tool-references: "read company_info_get company_info_set company_image_upload company_document_register company_document_update company_document_list company_document_search"
 ---
 
 # Office Files
@@ -44,6 +44,6 @@ A document the catalog has belongs to `merge <jurisdiction>/<form>` in either la
 
 **Dependencies.** `<skill>/scripts/office setup` prepares everything the commands read, and no other command installs anything. A command that reports `DEPENDENCIES_UNAVAILABLE` or `RENDERER_UNAVAILABLE` names the setup to run; when that setup cannot write into the skill directory, tell the user the skill was not prepared. Never run pip or uv yourself, and keep dependency caches apart from source documents.
 
-**Tool server.** Only company forms (`company_info_*`, `company_document_*`) and reading an attached file (`read`) call InternKim's tool server. Every other command runs locally.
+**Tool server.** Only company forms (`company_info_*`, `company_image_upload`, `company_document_*`) and reading an attached file (`read`) call InternKim's tool server. Every other command runs locally.
 
 **Contracts.** A contract is a draft for review; say so when delivering it, without adding disclaimer text to the document.

@@ -10,7 +10,7 @@ An external document proposing prices for goods or services to a customer. It ne
 ## Required fields
 
 - recipient: the recipient's company name is required, with the contact's name when given. When the recipient's business registration number (사업자등록번호) was given, add it on the line after the company name.
-- The supplier's details (사업자등록번호 business registration number, 업태 business type, 종목 business item, 대표자 representative) get no table of their own: profile.legalAttributes already prints them on the letterhead.
+- The supplier's details (사업자등록번호 business registration number, 업태 business type, 종목 business item, 대표자 representative) get no table of their own: the company profile's legalAttributes already print them on the letterhead.
 - meta: 합계금액 (total in Korean words and figures; leave its value empty and merge writes it from the grand total), 견적일자 (quotation date), 유효기간 (validity), 납기 (delivery), 납품장소 (delivery place), 결제조건 (payment terms), 입금계좌 (bank account, profile.bankAccount); all required
 - items: use only the 품명 (item), 규격 (spec), 수량 (quantity), 단위 (unit) and 단가 (unit price) the requester gave, at least one row
 - items.totals: 공급가액 합계 (supply total) → 부가세(10%) (VAT) → 총 합계 (grand total), in that order
@@ -24,7 +24,7 @@ An external document proposing prices for goods or services to a customer. It ne
   "form": "kr/quote",
   "title": "견 적 서",
   "documentNumber": "<the number company_document_register returned>",
-  "profile": { ...company profile... },
+  "company": "<the company-profile.json path company_info_get answered>",
   "recipient": { "label": "수신", "lines": ["<recipient company name>", "<contact name> 님"] },
   "meta": [
     { "label": "합계금액", "value": "" },
