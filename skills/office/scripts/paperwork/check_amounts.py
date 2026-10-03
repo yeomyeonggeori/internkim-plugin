@@ -200,6 +200,34 @@ def read_words(document: dict, grand: Decimal | None, rules: Rules) -> Reading:
     return Reading((Fact(AMOUNT_IN_WORDS_MISMATCH, f"meta[{index}].value", squeeze(words.written(int(rules.rounded(grand)))), found),))
 
 
+def with_amount_in_words(document: dict) -> dict:
+    rules = document_rules(document)
+    words = rules.jurisdiction.amount_in_words
+    grand = stated_grand_total(document)
+    meta = document.get("meta")
+    if words is None or grand is None or not isinstance(meta, list):
+        return document
+    line = words.line(int(rules.rounded(grand)))
+    return document | {"meta": [entry | {"value": line} if is_unwritten_words_entry(entry, words.label) else entry for entry in meta]}
+
+
+def is_unwritten_words_entry(entry: object, label: str) -> bool:
+    return isinstance(entry, dict) and str(entry.get("label", "")).strip() == label and not str(entry.get("value") or "").strip()
+
+
+def stated_grand_total(document: dict) -> Decimal | None:
+    items = document.get("items")
+    totals = items.get("totals", []) if isinstance(items, dict) else []
+    if not totals or not isinstance(totals[-1], dict):
+        return None
+    return parse_amount(totals[-1].get("value", ""))
+
+
+def amount_issues(document: dict) -> tuple[Issue, ...]:
+    reading = read_document(document, document_rules(document))
+    return reading.unreadable + tuple(fact.to_issue() for fact in reading.facts if not fact.holds)
+
+
 def read_contract_amount(document: dict, rules: Rules) -> Reading:
     words = rules.jurisdiction.amount_in_words
     amount = parse_amount(document["totalAmount"])

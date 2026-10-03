@@ -152,11 +152,15 @@ def jurisdiction_summary(jurisdiction: Jurisdiction) -> list[str]:
     tax = f"{rate} of each row's amount when rows have a {columns.tax} column, else of the supply total; a row in items.untaxedRows carries none"
     if jurisdiction.tax_rate_percent is None:
         tax += "; without a stated rate the tax line is only added to the total"
-    words = f"; meta \"{jurisdiction.amount_in_words.label}\" holds the amount in words: {jurisdiction.amount_in_words.example}" if jurisdiction.amount_in_words else ""
+    words = amount_in_words_summary(jurisdiction.amount_in_words) if jurisdiction.amount_in_words else ""
     return [
         f"  {jurisdiction.code} ({jurisdiction.name}): labels in {jurisdiction.language}; dates {jurisdiction.date_format}; currency {jurisdiction.money.currency or 'as the form names it'}",
         f"    item columns {columns.quantity}, {columns.unit_price}, {columns.amount}, {columns.tax}; tax {tax}; rounding: {jurisdiction.money.rounding_rule}{words}",
     ]
+
+
+def amount_in_words_summary(words) -> str:
+    return f"; merge writes an empty meta \"{words.label}\" value from the grand total, such as \"{words.line(1_000_000)}\" for 1,000,000, and checks one written by hand ({words.example})"
 
 
 def template_guide_lines() -> list[str]:

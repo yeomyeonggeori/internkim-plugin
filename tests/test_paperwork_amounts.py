@@ -68,6 +68,52 @@ class KoreanWordsTest(unittest.TestCase):
         self.assertEqual(korean_number_words(10_010), "일만일십")
 
 
+DIGIT_VALUES = {digit: value for value, digit in enumerate("영일이삼사오육칠팔구")}
+SMALL_UNIT_VALUES = {"십": 10, "백": 100, "천": 1000}
+LARGE_UNIT_VALUES = {"만": 10**4, "억": 10**8, "조": 10**12, "경": 10**16}
+
+
+def spoken_value(words):
+    total, group, digit = 0, 0, 0
+    for character in words:
+        if character in DIGIT_VALUES:
+            digit = DIGIT_VALUES[character]
+        elif character in SMALL_UNIT_VALUES:
+            group, digit = group + digit * SMALL_UNIT_VALUES[character], 0
+        else:
+            total, group, digit = total + (group + digit) * LARGE_UNIT_VALUES[character], 0, 0
+    return total + group + digit
+
+
+def sample_amounts():
+    rounds = [10**power for power in range(17)]
+    edges = [base * multiple + offset for base in rounds for multiple in (1, 2, 9) for offset in (-1, 0, 1) if base * multiple + offset > 0]
+    inner_zeros = [27_750_800, 10_000_800, 100_000_080, 1_002_003_004, 5_000_000_001, 30_000_000_000_700, 12_340_000_5678, 90_090_090_090]
+    generator = __import__("random").Random(20261003)
+    randoms = [generator.randrange(1, 10**digits) for digits in range(1, 18) for _ in range(40)]
+    return sorted(set(edges + inner_zeros + randoms))
+
+
+class KoreanWordsPropertyTest(unittest.TestCase):
+    def test_spoken_words_read_back_to_the_same_number(self):
+        for amount in sample_amounts():
+            with self.subTest(amount=amount):
+                self.assertEqual(spoken_value(korean_number_words(amount)), amount)
+
+    def test_zero_is_never_spoken_inside_a_number(self):
+        for amount in sample_amounts():
+            with self.subTest(amount=amount):
+                self.assertNotIn("영", korean_number_words(amount))
+
+    def test_every_digit_is_followed_by_its_place(self):
+        for amount in sample_amounts():
+            words = korean_number_words(amount)
+            with self.subTest(amount=amount):
+                for position, character in enumerate(words[:-1]):
+                    if character in DIGIT_VALUES:
+                        self.assertNotIn(words[position + 1], DIGIT_VALUES)
+
+
 class CheckCommandTest(unittest.TestCase):
     def setUp(self):
         self.temporary_directory = tempfile.TemporaryDirectory()

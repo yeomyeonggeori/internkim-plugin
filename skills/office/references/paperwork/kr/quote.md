@@ -11,7 +11,7 @@ An external document proposing prices for goods or services to a customer. It ne
 
 - recipient: the recipient's company name is required, with the contact's name when given. When the recipient's business registration number (사업자등록번호) was given, add it on the line after the company name.
 - The supplier's details (사업자등록번호 business registration number, 업태 business type, 종목 business item, 대표자 representative) get no table of their own: profile.legalAttributes already prints them on the letterhead.
-- meta: 합계금액 (total, also in Korean words), 견적일자 (quotation date), 유효기간 (validity), 납기 (delivery), 납품장소 (delivery place), 결제조건 (payment terms), 입금계좌 (bank account, profile.bankAccount); all required, ask the requester when a value is missing
+- meta: 합계금액 (total in Korean words and figures; leave its value empty and merge writes it from the grand total), 견적일자 (quotation date), 유효기간 (validity), 납기 (delivery), 납품장소 (delivery place), 결제조건 (payment terms), 입금계좌 (bank account, profile.bankAccount); all required, ask the requester when a value is missing
 - items: use only the 품명 (item), 규격 (spec), 수량 (quantity), 단위 (unit) and 단가 (unit price) the requester gave, at least one row
 - items.totals: 공급가액 합계 (supply total) → 부가세(10%) (VAT) → 총 합계 (grand total), in that order
 - notes: "아래와 같이 견적합니다."
@@ -27,7 +27,7 @@ An external document proposing prices for goods or services to a customer. It ne
   "profile": { ...company profile... },
   "recipient": { "label": "수신", "lines": ["<recipient company name>", "<contact name> 님"] },
   "meta": [
-    { "label": "합계금액", "value": "일금 <amount in Korean words>원整 (₩<amount with thousands separators>) (부가세 포함)" },
+    { "label": "합계금액", "value": "" },
     { "label": "견적일자", "value": "<YYYY-MM-DD>" },
     { "label": "유효기간", "value": "발행일로부터 <N>일" },
     { "label": "납기", "value": "<delivery terms>" },

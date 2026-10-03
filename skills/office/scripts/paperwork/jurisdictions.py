@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal
 from typing import Callable
 
-from paperwork.amounts import korean_amount_in_words, korean_number_words
+from paperwork.amounts import korean_amount_in_words, korean_amount_line, korean_number_words
 
 
 @dataclass(frozen=True)
@@ -40,6 +40,7 @@ class AmountInWords:
     label: str
     written: Callable[[int], str]
     spoken: Callable[[int], str]
+    line: Callable[[int], str]
     example: str
     equivalents: tuple[tuple[str, str], ...] = ()
 
@@ -77,7 +78,7 @@ JURISDICTIONS = (
         columns=ItemColumns(quantity="수량", unit_price="단가", amount="공급가액", tax="세액"),
         money=Money(currency="KRW", minor_unit_digits=0, rounding=ROUND_DOWN, rounding_rule="every computed amount drops its fraction below one won (truncates toward zero)"),
         tax_rate_percent=Decimal(10),
-        amount_in_words=AmountInWords(label="합계금액", written=korean_amount_in_words, spoken=korean_number_words, example="\"일금 일백만원정\" for 1,000,000; a trailing 整 counts as 정", equivalents=(("整", "정"),)),
+        amount_in_words=AmountInWords(label="합계금액", written=korean_amount_in_words, spoken=korean_number_words, line=korean_amount_line, example="\"일금 일백만원정\" for 1,000,000; a trailing 整 counts as 정", equivalents=(("整", "정"),)),
         date_format="y년 M월 d일",
     ),
 )
