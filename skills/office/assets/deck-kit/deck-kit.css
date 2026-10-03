@@ -416,6 +416,12 @@ section[data-layout="image"] > :where(:not(img, aside, .eyebrow, h2, .lead, .tak
 .kit-scatter { --tick-gap: 16px; }
 .kit-scatter :is(.kit-scatter-area, .kit-categories) { margin-left: calc(var(--tick-gutter, 0px) + var(--tick-gap)); }
 .kit-tick { position: absolute; right: calc(100% + var(--tick-gap)); transform: translateY(-50%); white-space: nowrap; text-align: right; font-size: calc(var(--size-small) * var(--fit)); color: var(--muted); }
+.kit-right-axis { --tick-gap: 16px; }
+.kit-axis-row { display: flex; flex: 1; min-height: 0; margin-top: 48px; }
+.kit-axis-row > .kit-plot-area { margin-top: 0; }
+.kit-tick-rail { position: relative; flex: none; width: calc(var(--tick-gutter, 0px) + var(--tick-gap)); }
+.kit-right-axis .kit-categories { margin-right: calc(var(--tick-gutter, 0px) + var(--tick-gap)); }
+.kit-tick.kit-right { right: auto; left: var(--tick-gap); width: max-content; text-align: left; }
 .kit-tick.kit-from-start { transform: none; }
 .kit-tick.kit-from-end { transform: translateY(-100%); }
 .kit-data-label.kit-point-name { font-weight: 600; }

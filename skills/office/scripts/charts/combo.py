@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import copy
+from dataclasses import dataclass
+import math
 
 from pptx.chart.data import CategoryChartData
 from pptx.oxml import parse_xml as parse_chart_xml
@@ -11,6 +13,8 @@ from charts.kinds import office_chart_type
 CHART_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/chart"
 SECONDARY_AXIS_RATIO = 0.1
 SECONDARY_AXIS_IDENTIFIERS = ("50010", "50020")
+AXIS_INTERVALS = 4
+ROUND_STEP_MULTIPLES = (1, 2, 5, 10)
 
 ComboSeries = tuple[str, tuple[float, ...], bool]
 
@@ -32,6 +36,34 @@ def lines_need_own_axis(series: list[ComboSeries]) -> bool:
     return ratio < SECONDARY_AXIS_RATIO or ratio > 1 / SECONDARY_AXIS_RATIO
 
 
+@dataclass(frozen=True)
+class AxisRange:
+    minimum: float
+    maximum: float
+    step: float
+
+
+def zero_aligned_ranges(groups: list[list[float]]) -> list[AxisRange]:
+    steps = [round_step(max(0.0, *values) - min(0.0, *values)) for values in groups]
+    below = max(steps_beyond(-min(0.0, *values), step) for values, step in zip(groups, steps))
+    above = max(steps_beyond(max(0.0, *values), step) for values, step in zip(groups, steps)) or (0 if below else 1)
+    return [AxisRange(tidy(-below * step), tidy(above * step), step) for step in steps]
+
+
+def round_step(span: float) -> float:
+    interval = span / AXIS_INTERVALS if span > 0 else 1.0
+    magnitude = 10 ** math.floor(math.log10(interval))
+    return next(multiple * magnitude for multiple in ROUND_STEP_MULTIPLES if interval / magnitude <= multiple)
+
+
+def steps_beyond(extent: float, step: float) -> int:
+    return math.floor(extent / step) + 1 if extent > 0 else 0
+
+
+def tidy(value: float) -> float:
+    return round(value, 10) + 0.0
+
+
 def combo_chart_space(categories: tuple[str, ...], series: list[ComboSeries], secondary_axis: bool):
     root = parse_chart_xml(category_chart_data(categories, series).xml_bytes(office_chart_type("column")))
     bar_chart = root.find(f".//{{{CHART_NAMESPACE}}}barChart")
@@ -46,6 +78,7 @@ def combo_chart_space(categories: tuple[str, ...], series: list[ComboSeries], se
     bar_chart.addnext(line_chart)
     if secondary_axis:
         add_secondary_axes(root, line_chart)
+        align_axis_zeros(root, series)
     return root
 
 
@@ -69,6 +102,28 @@ def add_secondary_axes(root, line_chart) -> None:
         right_values.remove(gridlines)
     value_axis.addnext(right_values)
     value_axis.addnext(hidden_category)
+
+
+def align_axis_zeros(root, series: list[ComboSeries]) -> None:
+    columns = [value for _, values, is_line in series if not is_line for value in values]
+    lines = [value for _, values, is_line in series if is_line for value in values]
+    for axis, limits in zip(root.findall(f".//{{{CHART_NAMESPACE}}}valAx"), zero_aligned_ranges([columns, lines])):
+        set_limits(axis, limits)
+
+
+def set_limits(axis, limits: AxisRange) -> None:
+    scaling = axis.find(f"{{{CHART_NAMESPACE}}}scaling")
+    for tag in ("max", "min", "majorUnit"):
+        for existing in (scaling if tag != "majorUnit" else axis).findall(f"{{{CHART_NAMESPACE}}}{tag}"):
+            existing.getparent().remove(existing)
+    for tag, value in (("max", limits.maximum), ("min", limits.minimum)):
+        scaling.append(chart_element(scaling, tag, value))
+    last_crossing = next(child for tag in ("crossBetween", "crosses", "crossesAt", "crossAx") for child in axis.findall(f"{{{CHART_NAMESPACE}}}{tag}"))
+    last_crossing.addnext(chart_element(axis, "majorUnit", limits.step))
+
+
+def chart_element(parent, tag: str, value: float):
+    return parent.makeelement(f"{{{CHART_NAMESPACE}}}{tag}", {"val": repr(value)})
 
 
 def set_child(element, tag: str, value: str) -> None:

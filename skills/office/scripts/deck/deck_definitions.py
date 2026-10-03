@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from fonts.registry import DECK, default_family
-from deck.deck_kit import DEFAULT_THEME, chart_types, icon_names, kit_names, slide_size, theme_palettes
+from deck.deck_kit import DEFAULT_THEME, chart_types, icon_names, kit_names, kit_number, slide_size, theme_palettes
 from deck.layout_thresholds import EMPTY_REGION_SHARE_MAXIMUM, LABEL_LINE_MAXIMUM, MARK_BREADTH_MINIMUM, REPEATED_FIGURE_MINIMUM, ROUND_SLOT_MINIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
 from core.office_commands import EVERY_KIND
 from core.office_result import ERROR, WARNING, IssueKind
@@ -184,7 +184,7 @@ CHART_ATTRIBUTES = (
     "data-values: one number per label, for a single series",
     "numbers are separated by a comma and a space, so \"1,200, 1,350\" is two numbers, and the unit goes in data-unit, never in the numbers",
     "data-series: \"name: 1, 2, 3; other: 4, 5, 6\" for several series, each with one number per label",
-    "combo: the last series is a line on its own axis, the ones before it are columns",
+    f"combo: the last series is a line over the columns before it, on their axis; it gets its own axis on the right, zero level with theirs, when data-unit gives it another unit or the two differ more than {kit_number('separateAxisRatio')}-fold",
     "scatter: two series, the horizontal axis first and the vertical second; each label names one point",
     "stacked100: each column shows its series as shares of the column's total",
     "area: the series stacked as bands over the labels, a total over time and what it is made of",

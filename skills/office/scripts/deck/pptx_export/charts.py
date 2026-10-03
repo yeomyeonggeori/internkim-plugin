@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 import zipfile
 
 from charts.kinds import is_round_kind
@@ -124,7 +125,8 @@ def plot_xml(layout: dict, context: TextContext) -> str:
     if kind == "line":
         return line_plot_xml(layout, indexes, primary_axes, context)
     if kind == "combo":
-        return bar_plot_xml(layout, "column", indexes[:-1], primary_axes, context) + line_plot_xml(layout, indexes[-1:], (SECONDARY_CATEGORY_AXIS_ID, SECONDARY_VALUE_AXIS_ID), context)
+        line_axes = (SECONDARY_CATEGORY_AXIS_ID, SECONDARY_VALUE_AXIS_ID) if layout.get("secondaryRange") else primary_axes
+        return bar_plot_xml(layout, "column", indexes[:-1], primary_axes, context) + line_plot_xml(layout, indexes[-1:], line_axes, context)
     if kind == "area":
         series = "".join(series_xml(layout, index, "area", context) for index in indexes)
         return f'<c:areaChart><c:grouping val="stacked"/><c:varyColors val="0"/>{series}{axis_ids_xml(primary_axes)}</c:areaChart>'
@@ -333,7 +335,7 @@ def axes_xml(layout: dict, context: TextContext) -> str:
     if kind == "scatter":
         return scatter_axis_xml(layout, 0, "b", context) + scatter_axis_xml(layout, 1, "l", context)
     primary = category_axis_xml(layout, context) + value_axis_xml(layout, context)
-    return primary + secondary_axes_xml(layout) if kind == "combo" else primary
+    return primary + secondary_axes_xml(layout, context) if kind == "combo" and layout.get("secondaryRange") else primary
 
 
 def category_axis_xml(layout: dict, context: TextContext) -> str:
@@ -344,7 +346,7 @@ def category_axis_xml(layout: dict, context: TextContext) -> str:
     return (
         f'<c:catAx><c:axId val="{CATEGORY_AXIS_ID}"/><c:scaling><c:orientation val="{orientation}"/></c:scaling><c:delete val="0"/>'
         f'<c:axPos val="{"l" if horizontal else "b"}"/><c:numFmt formatCode="General" sourceLinked="1"/>'
-        '<c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>'
+        '<c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="low"/>'
         f"<c:spPr>{line_xml(axis_line, AXIS_LINE_PIXELS, context.scale)}</c:spPr>{text_properties_xml(text_style(layout, 'category'), context)}"
         f'<c:crossAx val="{VALUE_AXIS_ID}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>'
     )
@@ -362,16 +364,18 @@ def value_axis_xml(layout: dict, context: TextContext) -> str:
     )
 
 
-def secondary_axes_xml(layout: dict) -> str:
+def secondary_axes_xml(layout: dict, context: TextContext) -> str:
     line_index = len(layout["series"]) - 1
+    value_range = layout["secondaryRange"]
     return (
         f'<c:catAx><c:axId val="{SECONDARY_CATEGORY_AXIS_ID}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="1"/>'
         '<c:axPos val="b"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>'
         f'<c:crossAx val="{SECONDARY_VALUE_AXIS_ID}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>'
-        f'<c:valAx><c:axId val="{SECONDARY_VALUE_AXIS_ID}"/><c:scaling><c:orientation val="minMax"/>{limits_xml(layout.get("secondaryRange"))}</c:scaling><c:delete val="1"/>'
-        f'<c:axPos val="r"/><c:numFmt formatCode="{attribute(number_format(layout, line_index))}" sourceLinked="0"/>'
+        f'<c:valAx><c:axId val="{SECONDARY_VALUE_AXIS_ID}"/><c:scaling><c:orientation val="minMax"/>{limits_xml(value_range)}</c:scaling><c:delete val="0"/>'
+        f'<c:axPos val="r"/><c:numFmt formatCode="{attribute(tick_format(layout, line_index, value_range))}" sourceLinked="0"/>'
         '<c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>'
-        f'<c:crossAx val="{SECONDARY_CATEGORY_AXIS_ID}"/><c:crosses val="max"/><c:crossBetween val="between"/></c:valAx>'
+        f'<c:spPr><a:ln><a:noFill/></a:ln></c:spPr>{text_properties_xml(text_style(layout, "tick"), context)}'
+        f'<c:crossAx val="{SECONDARY_CATEGORY_AXIS_ID}"/><c:crosses val="max"/><c:crossBetween val="between"/>{major_unit_xml(value_range)}</c:valAx>'
     )
 
 
@@ -403,7 +407,16 @@ def limits_xml(value_range: dict | None) -> str:
 def major_unit_xml(value_range: dict | None) -> str:
     if not value_range:
         return ""
-    return f'<c:majorUnit val="{number_text((value_range["maximum"] - value_range["minimum"]) / GRID_INTERVALS)}"/>'
+    step = value_range.get("step") or (value_range["maximum"] - value_range["minimum"]) / GRID_INTERVALS
+    return f'<c:majorUnit val="{number_text(step)}"/>'
+
+
+def tick_format(layout: dict, index: int, value_range: dict) -> str:
+    return number_format({"decimals": {index: step_decimals(value_range["step"])}, "units": layout["units"]}, index)
+
+
+def step_decimals(step: float) -> int:
+    return max(0, -math.floor(math.log10(step) + 1e-9))
 
 
 def gridlines_xml(layout: dict, scale: SlideScale) -> str:
