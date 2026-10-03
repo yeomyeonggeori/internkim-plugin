@@ -14,6 +14,7 @@ from core.office_theme import ACCENT_SLOTS, THEME_SLOTS
 
 
 ACCENT_POSITIONS = tuple(THEME_SLOTS.index(slot) for slot in ACCENT_SLOTS)
+VISIBLE_PIXELS = 0.5
 DRAWN_PLOT_KINDS = ("column", "bar", "line", "area", "pie", "doughnut", "scatter")
 
 
@@ -53,11 +54,21 @@ def axis_position(target: int, first_on_page: int, frame_items: list[int], sizes
 
 
 def overlaps(box: Box, page_width: float, page_height: float) -> bool:
-    return box.left < page_width and box.left + box.width > 0 and box.top < page_height and box.top + box.height > 0
+    return (
+        box.left < page_width - VISIBLE_PIXELS
+        and box.left + box.width > VISIBLE_PIXELS
+        and box.top < page_height - VISIBLE_PIXELS
+        and box.top + box.height > VISIBLE_PIXELS
+    )
 
 
 def is_whole(box: Box, page_width: float, page_height: float) -> bool:
-    return box.left >= -0.5 and box.top >= -0.5 and box.left + box.width <= page_width + 0.5 and box.top + box.height <= page_height + 0.5
+    return (
+        box.left >= -VISIBLE_PIXELS
+        and box.top >= -VISIBLE_PIXELS
+        and box.left + box.width <= page_width + VISIBLE_PIXELS
+        and box.top + box.height <= page_height + VISIBLE_PIXELS
+    )
 
 
 def image_html(image, box: Box) -> str:

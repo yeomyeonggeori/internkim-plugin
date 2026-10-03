@@ -20,7 +20,7 @@ from sheet.operations.objects import EXCEL_DEFAULT_FIT_PAGES, is_fitted_to_pages
 from sheet.operations.charts import DEFAULT_ANCHOR_GAP, anchor_cell
 from sheet.preview.colors import css_color, theme_palette
 from sheet.preview.conditional import ConditionalStyles
-from sheet.preview.charts import chart_html, chart_kind, chart_title, drawing_box, image_html, is_whole
+from sheet.preview.charts import VISIBLE_PIXELS, chart_html, chart_kind, chart_title, drawing_box, image_html, is_whole
 from core.page_sizes import DEFAULT_PAPER, PAPER_BY_SPREADSHEET_CODE
 
 
@@ -416,7 +416,7 @@ def drawing_span(worksheet, drawing) -> tuple[int, int, int, int] | None:
     end = getattr(drawing.anchor, "to", None)
     extent = getattr(drawing.anchor, "ext", None)
     if start is not None and end is not None:
-        return start.row + 1, start.col + 1, end.row + 1, end.col + 1
+        return start.row + 1, start.col + 1, max(start.row + 1, last_cell_reached(end.row, end.rowOff)), max(start.col + 1, last_cell_reached(end.col, end.colOff))
     if start is not None and extent is not None:
         columns = cells_spanned(start.col + 1, emu_to_pixels(extent.width + (start.colOff or 0)), sheet_column_pixels(worksheet))
         rows = cells_spanned(start.row + 1, emu_to_pixels(extent.height + (start.rowOff or 0)), lambda row: sheet_row_pixels(worksheet, row))
@@ -424,9 +424,13 @@ def drawing_span(worksheet, drawing) -> tuple[int, int, int, int] | None:
     return None
 
 
+def last_cell_reached(marker_index: int, offset_emu: int | None) -> int:
+    return marker_index + 1 if emu_to_pixels(offset_emu or 0) >= VISIBLE_PIXELS else marker_index
+
+
 def cells_spanned(first: int, length: float, pixels_of) -> int:
     count, covered = 0, 0.0
-    while covered < length:
+    while covered < length - VISIBLE_PIXELS:
         covered += max(pixels_of(first + count), 1)
         count += 1
     return max(count, 1)
