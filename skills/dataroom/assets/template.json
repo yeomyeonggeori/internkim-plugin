@@ -434,9 +434,9 @@
       "choiceGroup": null
     }
   ],
-  "roles": [
+  "circles": [
     {
-      "code": "member",
+      "id": "member",
       "name": "Member",
       "nameKO": "구성원",
       "readableCategories": [
@@ -449,7 +449,7 @@
       ]
     },
     {
-      "code": "leadership",
+      "id": "leadership",
       "name": "Leadership",
       "nameKO": "경영진",
       "readableCategories": [
@@ -467,7 +467,7 @@
       ]
     },
     {
-      "code": "finance",
+      "id": "finance",
       "name": "Finance",
       "nameKO": "재무",
       "readableCategories": [
@@ -483,7 +483,7 @@
       ]
     },
     {
-      "code": "human-resources",
+      "id": "human-resources",
       "name": "HR",
       "nameKO": "인사",
       "readableCategories": [
@@ -496,7 +496,7 @@
       ]
     },
     {
-      "code": "investor",
+      "id": "investor",
       "name": "Investor",
       "nameKO": "투자자",
       "readableCategories": [
@@ -511,7 +511,7 @@
       ]
     },
     {
-      "code": "accountant",
+      "id": "accountant",
       "name": "Accountant",
       "nameKO": "회계·세무 자문",
       "readableCategories": [
@@ -526,7 +526,7 @@
       ]
     },
     {
-      "code": "legal",
+      "id": "legal",
       "name": "Legal adviser",
       "nameKO": "법률 자문",
       "readableCategories": [
@@ -543,7 +543,7 @@
       ]
     },
     {
-      "code": "lender",
+      "id": "lender",
       "name": "Lender",
       "nameKO": "금융기관",
       "readableCategories": [

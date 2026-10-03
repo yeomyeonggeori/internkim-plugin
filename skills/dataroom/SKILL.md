@@ -3,17 +3,17 @@ name: dataroom
 description: File, find and share the company's document archive. Use for 데이터룸, 자료실, 문서 보관, 실사 자료, 증빙, 계약서 찾기, data room, due diligence, archive, evidence and filing received documents. Office creates documents; company-data records metrics.
 compatibility: Requires python3 and a terminal. In InternKim, use the internkim MCP server declared by this plugin.
 metadata:
-  kim.intern.tool-references: "dataroom_get dataroom_category_update dataroom_role_update dataroom_member_update dataroom_links_get dataroom_link_add dataroom_link_delete dataroom_share_add dataroom_share_delete company_document_classify company_document_register company_document_update company_document_list company_document_search company_document_upload company_document_download bash"
+  kim.intern.tool-references: "dataroom_get dataroom_category_update circle_list circle_update circle_member_update dataroom_links_get dataroom_link_add dataroom_link_delete dataroom_share_add dataroom_share_delete company_document_classify company_document_register company_document_update company_document_list company_document_search company_document_upload company_document_download bash"
 ---
 
 # Data room
 
 The archive belongs to the company. InternKim's central record owns its
-categories, reader roles, document metadata and stored files. Blueclaw accesses
+categories, circles, document metadata and stored files. Blueclaw accesses
 it as the requester. A standalone export is a local tree with `company.json`
 and `INDEX.md`; its folders do not enforce access control.
 
-Read `dataroom_get` when live categories or roles are needed. Codes
+Read `dataroom_get` for live categories and `circle_list` for who reads them. Codes
 are stable mnemonic letters: a parent has one, an intermediate category has
 two. Documents go in categories without children, including a parent with no
 children, or `X`, the unclassified inbox. Parents with children are not filing
@@ -45,7 +45,7 @@ and intended audience do not determine where it belongs.
    and each derived part beside it as `<name>.<documentID>.<fileName>`.
 5. An administrator can reclassify existing documents with
    `company_document_update`; their files move with them. Read the
-   destination's reader roles first: moving a document changes who can read it.
+   destination's circles first: moving a document changes who can read it.
 
 ## Find
 
@@ -63,31 +63,29 @@ permissions by matching old folder names.
 
 ## Share
 
-For a code-protected link, read `dataroom_links_get` for roles the requester can
-share. Use `dataroom_link_add` with the chosen role, label, lifetime and download
-permission. The default lifetime is three days and the maximum is seven days.
-Return `/share/links/<linkID>` on the company's web origin and the six digit code
-displayed once. The recipient enters the code and accepts the confidentiality
-notice without an account. `dataroom_link_delete` revokes an exact linkID.
-Administrators use `dataroom_member_update` to replace an employee's direct
-reader roles; circle grants still apply.
+A company member reads through the circles they belong to. A circle names the
+categories it reads in `readableCategories`; a parent covers its current and
+future children. Read circles and their members with `circle_list`.
+Administrators place a member in circles with `circle_member_update`, which
+replaces that member's circles at once, and create or edit a circle with
+`circle_update`. Read the affected members before editing a circle, because
+access changes immediately. A circle grants no editing or administrative
+rights.
 
-Read roles and grants with `dataroom_get`. Assign an existing reader
-role with `dataroom_share_add` to the specified member, internal
-circle, external email or explicitly public audience. The recipient reads
-current and future documents in that role's categories. A parent grant also
-covers future children. An external email accepts the invitation using that
-verified email and remains a guest, outside company membership and circles.
-Return `/share/invitations/<shareID>` for an email invitation, or
-`/share/<companyID>` for a published room, using the company's web origin.
+For a code-protected link, read `dataroom_links_get` for the circles the
+requester can share. Use `dataroom_link_add` with the chosen circle, label,
+lifetime and download permission. The default lifetime is three days and the
+maximum is seven days. Return `/share/links/<linkID>` on the company's web
+origin and the six digit code displayed once. The recipient enters the code and
+accepts the confidentiality notice without an account. `dataroom_link_delete`
+revokes an exact linkID.
 
-Use `dataroom_role_update` for a custom role's `readableCategories`.
-Read affected recipients before editing an existing role because access
-changes immediately. Reader roles do not grant editing or administrative
-rights. Public publication requires an explicit request and never includes
-`X`. Original downloads are separately enabled with `canDownload`.
-Revoke by exact `shareID`; other grants still apply and issued signed URLs
-expire within ten minutes.
-
-`assets/template.json` is the generated default template for exports. Live
-company configuration takes precedence. Load it only when creating a tree.
+To share with someone outside the company, lend them what one circle reads with
+`dataroom_share_add`: an external email, or an explicitly public audience. An
+external email accepts the invitation using that verified email and remains a
+guest, outside company membership and circles. Return
+`/share/invitations/<shareID>` for an email invitation, or `/share/<companyID>`
+for a published room, using the company's web origin. Public publication
+requires an explicit request and never includes `X`. Original downloads are
+separately enabled with `canDownload`. Revoke by exact `shareID`; issued signed
+URLs expire within ten minutes.
