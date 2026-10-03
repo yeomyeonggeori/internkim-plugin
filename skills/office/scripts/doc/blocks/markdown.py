@@ -17,6 +17,7 @@ INLINE_MATH = r"\$(?=[^\s$])(?:\\.|[^$\\\n])+?(?<=[^\s\\])\$(?!\d)"
 INLINE_PATTERN = re.compile(rf"({INLINE_MATH}|\[[^\]]+\]\([^)\s]+\)|\*\*.+?\*\*|\*.+?\*|`.+?`)")
 INLINE_MATH_PATTERN = re.compile(INLINE_MATH)
 DISPLAY_MATH_FENCE = "$$"
+CELL_LINE_BREAK_PATTERN = re.compile(r"[ \t]*<br\s*/?>[ \t]*", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -207,7 +208,7 @@ def is_divider_row(line: str) -> bool:
 
 
 def split_table_row(line: str) -> list[str]:
-    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+    return [CELL_LINE_BREAK_PATTERN.sub("\n", cell.strip()) for cell in line.strip().strip("|").split("|")]
 
 
 def inline_segments(text: str) -> list[str]:
