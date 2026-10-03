@@ -7,6 +7,7 @@ from decimal import Decimal
 from core.office_arguments import route_arguments
 from core.office_result import WRONG_TYPE, Issue, IssueKind, OfficeFailure, Result, read_json_file, run_command
 from paperwork.amounts import parse_amount
+from paperwork.contract_plan import plan_contract
 from paperwork.forms import form_of
 from paperwork.jurisdictions import Jurisdiction
 from paperwork.paperwork_definitions import (
@@ -72,11 +73,22 @@ def main() -> Result:
     document = read_json_file(arguments.file)
     if not isinstance(document, dict):
         raise OfficeFailure(WRONG_TYPE.issue("values: expected an object", "values"))
+    template = form_of(document, "values").contract_template
     rules = document_rules(document)
     reading = read_document(with_amount_in_words(document), rules)
+    if template is not None:
+        return contract_result(template, document, reading, rules)
     if not reading.facts and not reading.unreadable:
         return Result(summary="no amounts to check", issues=(NO_AMOUNTS_FOUND.issue("the input holds no amounts to check"),))
     return amount_result(reading, rules)
+
+
+def contract_result(template, document: dict, reading: Reading, rules: Rules) -> Result:
+    plan, contract_issues = plan_contract(template, document)
+    amounts = amount_result(reading, rules)
+    issues = (*contract_issues, *amounts.issues)
+    details = {**(amounts.details or {}), **(plan.details if plan is not None else {})}
+    return Result(summary=f"checked the contract's terms and clauses and {len(reading.facts)} amounts, {len(issues)} to fix", issues=issues, details=details)
 
 
 def document_rules(document: dict) -> Rules:
@@ -231,14 +243,9 @@ def amount_issues(document: dict) -> tuple[Issue, ...]:
 
 
 def read_contract_amount(document: dict, rules: Rules) -> Reading:
-    words = rules.jurisdiction.amount_in_words
-    amount = parse_amount(document["totalAmount"])
-    if amount is None:
+    if parse_amount(document["totalAmount"]) is None:
         return Reading(unreadable=(unreadable_issue("totalAmount"),))
-    found = squeeze(str(document.get("totalAmountKorean", "")))
-    if words is None or not found:
-        return Reading()
-    return Reading((Fact(AMOUNT_IN_WORDS_MISMATCH, "totalAmountKorean", squeeze(words.spoken(int(rules.rounded(amount)))), found),))
+    return Reading()
 
 
 def equivalent(text: str, equivalents: tuple[tuple[str, str], ...]) -> str:

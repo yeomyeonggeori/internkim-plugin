@@ -62,6 +62,16 @@ class PaperworkRenderTest(unittest.TestCase):
         self.assertGreaterEqual(len(re.findall(rb"/Subtype\s*/Image", drawn)), 2)
         self.assertIn(b"/SMask", drawn)
 
+    def test_an_approval_box_carries_the_approver_the_request_names_under_the_role(self):
+        values = quote(self.directory, [])
+        values["approvalLine"] = [{"role": "담당", "name": "최견본"}, {"role": "팀장", "name": "박예시"}, "대표이사"]
+        write_json(self.directory / "quote.json", values)
+        self.assertEqual(run_office(["merge", "kr/quote", "quote.json", "quote.pdf"], self.directory)["status"], "ok")
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", PAGE_TEXTS, "quote.pdf"], cwd=self.directory, capture_output=True, text=True, check=True)
+        text = "".join(json.loads(completed.stdout))
+        for expected in ("담당", "최견본", "팀장", "박예시", "대표이사"):
+            self.assertIn(expected, text)
+
     def test_an_international_form_prints_its_fixed_labels_in_english(self):
         values = quote(self.directory, [{"title": "Notes", "bullets": ["Installation included"]}])
         values.update({

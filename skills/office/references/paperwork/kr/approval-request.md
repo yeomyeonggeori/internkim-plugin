@@ -9,7 +9,7 @@ An internal approval document that asks for a decision inside the company. It se
 
 ## Required fields
 
-- approvalLine: always ["담당", "검토", "대표"]
+- approvalLine: the approvers the request names, in its order, each `{"role", "name"}`; when it names none, the roles "담당", "검토", "대표" without names
 - meta: 기안자 (drafter, with team, e.g. "경영지원팀 홍길동"), 기안일자 (draft date), 제목 (subject)
 - sections: three parts, 목적 (purpose) / 내역 (details) / 기대 효과 (expected benefit)
 - items: a request that involves money writes its details as a table (omit when there is no amount)
@@ -23,7 +23,7 @@ An internal approval document that asks for a decision inside the company. It se
   "title": "품 의 서",
   "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
-  "approvalLine": ["담당", "검토", "대표"],
+  "approvalLine": [{ "role": "<role>", "name": "<name>" }],
   "meta": [
     { "label": "기안자", "value": "<team> <name>" },
     { "label": "기안일자", "value": "<YYYY-MM-DD>" },
@@ -48,7 +48,6 @@ An internal approval document that asks for a decision inside the company. It se
 ## Fixed wording
 
 - notes: "위와 같이 품의하오니 재가 바랍니다."
-- approvalLine is always ["담당", "검토", "대표"], in that order.
 
 ## Rules
 

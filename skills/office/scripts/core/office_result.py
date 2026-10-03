@@ -213,13 +213,19 @@ def command_result(command: Callable[[], Result]) -> Result:
     return replace(result, issues=result.issues + library_warnings.issues())
 
 
+def resolved_from(path: object) -> str:
+    if not isinstance(path, str) or os.path.isabs(os.path.expanduser(path)):
+        return ""
+    return f" (looked for {os.path.abspath(os.path.expanduser(path))}, relative to the working directory {os.getcwd()})"
+
+
 def attempted_result(command: Callable[[], Result]) -> Result:
     try:
         return command()
     except OfficeFailure as failure:
         return failure_result(failure.issues)
     except FileNotFoundError as error:
-        return failure_result((INPUT_NOT_FOUND.issue(f"{error.filename or error}: no such file or directory", location=error.filename),))
+        return failure_result((INPUT_NOT_FOUND.issue(f"{error.filename or error}: no such file or directory{resolved_from(error.filename)}", location=error.filename),))
     except PermissionError as error:
         return failure_result((PERMISSION_DENIED.issue(f"{error.filename or error}: permission denied", location=error.filename),))
     except OSError as error:

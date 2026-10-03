@@ -99,7 +99,8 @@ class InputBoundaryTest(unittest.TestCase):
         for kind, commands in READERS.items():
             for command in commands:
                 with self.subTest(command=command, kind=kind):
-                    self.assert_refused(command, f"missing.{kind}", "INPUT_NOT_FOUND")
+                    issue = self.assert_refused(command, f"missing.{kind}", "INPUT_NOT_FOUND")
+                    self.assertIn(f"missing.{kind}, relative to the working directory", issue["message"])
 
     def test_text_and_legacy_files_are_refused_with_what_they_are(self):
         self.assertEqual(self.assert_refused("read", "notes.txt", "WRONG_INPUT_FORMAT")["message"], "office read has nothing to do with notes.txt: its content is not in any Office or PDF format")

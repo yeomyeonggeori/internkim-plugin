@@ -185,7 +185,7 @@ ROUTES = (
     Route("check", "pdf", "pdf.check_pdf", "pages, extractable text, embedded fonts and required text", TEXT_FLAGS + ("--minimum-pages", "--maximum-pages", "--minimum-text-length", "--required-font", "--password")),
     Route("check", "pptx", "powerpoint.check_pptx", "text overflowing, shapes off the slide and overlaps, slide count and required text, with slide images", ("--slide-count",) + TEXT_FLAGS + ("--pages", "--output-directory", "--no-preview")),
     Route("check", "slides", "deck.check_deck", "layout, chart, image, placeholder, slide-count, palette and required-text defects, without drawing", ("--slide-count",) + TEXT_FLAGS),
-    Route("check", "form", "paperwork.check_amounts", "a form's row amounts, totals, tax and amount in words, never rewriting it", label="form values", needs_packages=False),
+    Route("check", "form", "paperwork.check_form", "a form's row amounts, totals, tax and amount in words, and a contract's terms and clauses, never rewriting it", label="form values", needs_packages=False),
     Route("render", "docx", "doc.render_docx", "pages as Word lays them out, with a PDF", ("--output-directory",)),
     Route("render", "xlsx", "sheet.render_xlsx", "each sheet as printed pages, with a PDF", ("--sheet", "--output-directory")),
     Route("render", "pdf", "pdf.render_pdf", "the pages as they are", ("--pages", "--scale", "--output-directory", "--password")),

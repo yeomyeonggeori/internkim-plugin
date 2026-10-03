@@ -212,11 +212,12 @@ class CheckCommandTest(unittest.TestCase):
         document["items"]["rows"][0][2] = "열 개"
         self.assertIn("AMOUNT_UNREADABLE", [issue["code"] for issue in self.check(document)["issues"]])
 
-    def test_a_contract_amount_in_words_is_checked(self):
-        envelope = self.check({"totalAmount": "50,000,000", "totalAmountKorean": "일금 오천만원整"})
-        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["AMOUNT_IN_WORDS_MISMATCH"])
-        self.assertEqual(mismatches(envelope)["AMOUNT_IN_WORDS_MISMATCH"][0], "오천만")
-        self.assertEqual(self.check({"totalAmount": "50,000,000", "totalAmountKorean": "오천만"})["issues"], [])
+    def test_rows_split_by_account_check_their_supply_tax_and_total_lines(self):
+        rows = {"headers": ["계정과목", "적요", "거래처", "공급가액", "세액"], "rows": [["비품", "장비", "견본상사", "2,000,000", "200,000"], ["소모품비", "부품", "견본상사", "500,000", "50,000"]]}
+        totals = [{"label": "공급가액 합계", "value": "2,500,000원"}, {"label": "세액", "value": "250,000원"}, {"label": "합계", "value": "2,750,000원"}]
+        self.assertEqual(self.check({"items": rows | {"totals": totals}}, form="kr/expense-approval")["issues"], [])
+        totals[1]["value"] = "200,000원"
+        self.assertEqual(mismatches(self.check({"items": rows | {"totals": totals}}, form="kr/expense-approval")), {"VAT_MISMATCH": (250000, 200000), "GRAND_TOTAL_MISMATCH": (2700000, 2750000)})
 
     def test_an_input_without_amounts_warns(self):
         self.assertEqual([issue["code"] for issue in self.check({"title": "회의록"})["issues"]], ["NO_AMOUNTS_FOUND"])

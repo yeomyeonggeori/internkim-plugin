@@ -10,7 +10,7 @@ from xml.etree import ElementTree
 import zipfile
 import zlib
 
-from core.office_result import FILE_DAMAGED, INPUT_NOT_FOUND, PDF_PASSWORD_REQUIRED, WRONG_INPUT_FORMAT, OfficeFailure
+from core.office_result import FILE_DAMAGED, INPUT_NOT_FOUND, PDF_PASSWORD_REQUIRED, WRONG_INPUT_FORMAT, OfficeFailure, resolved_from
 
 
 
@@ -79,7 +79,7 @@ def office_file(kind_name: str) -> Callable[[str], str]:
 def require_kind(path: str, expected: InputKind) -> None:
     expanded_path = os.path.expanduser(path)
     if not os.path.isfile(expanded_path):
-        raise OfficeFailure(INPUT_NOT_FOUND.issue(f"{path}: no such file", location=path))
+        raise OfficeFailure(INPUT_NOT_FOUND.issue(f"{path}: no such file{resolved_from(path)}", location=path))
     if os.path.getsize(expanded_path) == 0:
         raise OfficeFailure(FILE_DAMAGED.issue(f"{path} is empty (0 bytes)", location=path))
     actual = detected_kind(expanded_path)

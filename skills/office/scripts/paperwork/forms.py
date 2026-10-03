@@ -6,6 +6,7 @@ from pathlib import Path
 from core.office_result import INVALID_VALUE, MISSING_FIELD, OfficeFailure
 from core.office_routing import FORM_NAME
 from core.office_schema import closest_name
+from paperwork.contract_template import ContractTemplate, load_template
 from paperwork.jurisdictions import Jurisdiction, find_jurisdiction, jurisdiction_codes
 from core.skill_paths import ASSETS_PATH, REFERENCES_PATH
 
@@ -28,9 +29,9 @@ class Form:
         return SPECIFICATIONS_PATH / self.jurisdiction.code / f"{self.slug}.md"
 
     @property
-    def template_path(self) -> Path | None:
-        path = TEMPLATES_ROOT / self.jurisdiction.code / f"{self.slug}.docx"
-        return path if path.is_file() else None
+    def contract_template(self) -> ContractTemplate | None:
+        path = TEMPLATES_ROOT / self.jurisdiction.code / f"{self.slug}.json"
+        return load_template(path) if path.is_file() else None
 
 
 def form_slugs(code: str) -> list[str]:

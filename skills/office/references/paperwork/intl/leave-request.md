@@ -9,7 +9,7 @@ An internal document by which an employee requests leave and routes it to the re
 
 ## Required fields
 
-- approvalLine: ["Reviewed", "Approved"]
+- approvalLine: the approvers the request names, in its order, each `{"role", "name"}`; when it names none, the roles "Reviewed", "Approved" without names
 - meta: requester, department/title, leave type, leave period, reason, emergency contact
 - Leave type uses whatever the requester states (annual, half-day, sick, family event, etc.) as-is
 - signature: request date + requester's full name, stamp false
@@ -22,7 +22,7 @@ An internal document by which an employee requests leave and routes it to the re
   "title": "Leave Request",
   "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
-  "approvalLine": ["Reviewed", "Approved"],
+  "approvalLine": [{ "role": "<role>", "name": "<name>" }],
   "meta": [
     { "label": "Requester", "value": "<full name>" },
     { "label": "Department / Title", "value": "<department> / <title>" },
@@ -40,7 +40,6 @@ An internal document by which an employee requests leave and routes it to the re
 ## Fixed wording
 
 - notes: "I hereby request the leave described above."
-- approvalLine is always fixed to two boxes: ["Reviewed", "Approved"].
 
 ## Rules
 

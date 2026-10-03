@@ -5,8 +5,9 @@ from pathlib import Path
 
 from core.office_arguments import route_arguments
 from core.office_result import DOCUMENTS_FOLDER, INVALID_VALUE, PERMISSION_DENIED, WRONG_TYPE, Issue, OfficeFailure, Result, read_json_file, run_command
-from paperwork.check_amounts import amount_issues, with_amount_in_words
-from paperwork.fill_template import fill_template
+from paperwork.check_form import amount_issues, with_amount_in_words
+from paperwork.contract_docx import write_contract
+from paperwork.contract_plan import plan_contract
 from paperwork.forms import Form, require_form
 from paperwork.paperwork_pdf import render_paperwork_pdf
 from paperwork.render_paperwork import generate_docx, load_contract_document, load_document
@@ -18,14 +19,14 @@ def main() -> Result:
     values = form_values(form, arguments.values)
     output_path = Path(arguments.output).expanduser()
     try:
-        issues = write_form(form, values, output_path)
+        issues, details = write_form(form, values, output_path)
     except PermissionError as error:
         raise OfficeFailure(PERMISSION_DENIED.issue(
             f"cannot write to {output_path} (permission denied)",
             location=error.filename,
             suggestion=f"rerun the SAME command with the output changed to {DOCUMENTS_FOLDER}/{output_path.parent.name}/{output_path.name}",
         )) from error
-    return Result(summary=f"filled {form.name} into {output_path}", output_path=str(output_path), issues=tuple(issues))
+    return Result(summary=f"filled {form.name} into {output_path}", output_path=str(output_path), issues=tuple(issues), details=details)
 
 
 def form_values(form: Form, values_path: str) -> dict:
@@ -38,16 +39,23 @@ def form_values(form: Form, values_path: str) -> dict:
     return values | {"form": form.name}
 
 
-def write_form(form: Form, values: dict, output_path: Path) -> list[Issue]:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+def write_form(form: Form, values: dict, output_path: Path) -> tuple[list[Issue], dict | None]:
     if output_path.suffix.lower() == ".pdf":
         document = with_amount_in_words(load_document(values))
-        return [*amount_issues(document), *render_paperwork_pdf(document, form.jurisdiction, output_path)]
-    if form.template_path is not None:
-        fill_template(form.slug, values, output_path)
-        return list(amount_issues(values))
-    generate_docx(load_contract_document(values), output_path)
-    return []
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        return [*amount_issues(document), *render_paperwork_pdf(document, form.jurisdiction, output_path)], None
+    template = form.contract_template
+    if template is None:
+        document = load_contract_document(values)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        generate_docx(document, output_path)
+        return [], None
+    plan, issues = plan_contract(template, values)
+    if plan is None:
+        raise OfficeFailure(*issues)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    write_contract(plan, output_path)
+    return [*issues, *amount_issues(values)], plan.details
 
 
 if __name__ == "__main__":
