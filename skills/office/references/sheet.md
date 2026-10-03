@@ -5,13 +5,13 @@ Create or modify local workbooks (.xlsx, .xlsm, .csv, .tsv). SKILL.md's rules fo
 | Job | Command |
 | --- | --- |
 | CSV or TSV to a workbook | `<skill>/scripts/office create ~/documents/<title>.xlsx <data.csv>` types the cells and freezes and filters the header; then `office apply` |
-| New workbook | `office create ~/documents/<title>.xlsx spec.json`: sheets with `rows` or `csvPath`, then `operations` for formats, rules, charts and pivots |
+| New workbook | `office create ~/documents/<title>.xlsx <title>.workbook.json`, a declaration: `references/schemas.md` |
 | See an existing workbook | `office read <file>`, then `--sheet`, `--range`, `--stats` for column totals, `--where error` or `--where formula` |
 | Change it, or append rows | `office apply <file> ops.json`; `append_rows` writes under the last filled row |
 | Verify | `office check`, then `office render`, whose `details.pageContents` names each page's sheet, cells and charts, whole or cut, for a check without looking at images |
 | Work no operation covers | a task-local script run through `office python` |
 
-`<skill>/scripts/office guide xlsx` is a short index of the commands, the operation names, how the commands treat formulas, dates, CSV values and edits, and the issue codes. Then read only what the job needs: `office guide apply xlsx <op>` for each operation you write, and `office guide create xlsx` when you write a spec. Do not copy the guide into a reply.
+`<skill>/scripts/office guide xlsx` is a short index of the commands, the operation names, how the commands treat formulas, dates, CSV values and edits, and the issue codes. Then read only what the job needs: `office guide apply xlsx <op>` for each operation you write, and `office guide create xlsx` when you write a declaration. Do not copy the guide into a reply.
 
 ## Workflow
 
