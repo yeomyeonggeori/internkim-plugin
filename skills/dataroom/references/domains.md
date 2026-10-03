@@ -51,11 +51,11 @@ File by business function in a category without children or X. A parent without 
 | `GE` | Company events | G | Company events and culture records, including event photos and recordings. |
 | `X` | Inbox | — | Unclassified or ambiguous documents. Choose X when context does not identify a destination. Do not invent missing facts. |
 
-## Default roles
+## Default circles
 
-Each reader role names an array of category codes. Multiple grants combine. Add custom roles or edit these defaults.
+Each circle names an array of category codes. Belonging to several circles combines them. Add circles or edit these defaults.
 
-| Role | Name | readableCategories |
+| Circle | Name | readableCategories |
 |---|---|---|
 | `member` | Member | [HO, HP, PO, GP, GC, GE] |
 | `leadership` | Leadership | [C, H, F, S, P, O, I, L, R, G, X] |
