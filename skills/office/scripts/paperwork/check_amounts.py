@@ -123,6 +123,8 @@ def untaxed_rows(items: dict) -> frozenset[int]:
 
 
 def row_amounts(rows_reading: Reading) -> list[tuple[int, Decimal]]:
+    if rows_reading.unreadable:
+        return []
     return list(enumerate(Decimal(str(fact.found)) for fact in rows_reading.facts if fact.kind is ROW_AMOUNT_MISMATCH))
 
 
@@ -183,7 +185,7 @@ def expected_vat(rows_reading: Reading, taxed_supply: Decimal, rules: Rules) -> 
 
 def row_sum_facts(rows_reading: Reading, location: str, supply: Decimal) -> list[Fact]:
     amounts = [amount for _, amount in row_amounts(rows_reading)]
-    if not amounts or rows_reading.unreadable:
+    if not amounts:
         return []
     return [Fact(SUPPLY_TOTAL_MISMATCH, location, json_number(sum(amounts, Decimal(0))), json_number(supply))]
 
