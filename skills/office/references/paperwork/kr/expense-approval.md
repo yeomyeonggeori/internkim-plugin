@@ -21,7 +21,7 @@ An internal approval document that settles spending already made or committed. T
 {
   "form": "kr/expense-approval",
   "title": "지 출 결 의 서",
-  "documentNumber": "EA-<YYYYMMDD>-<sequence>",
+  "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
   "approvalLine": ["담당", "검토", "대표"],
   "meta": [

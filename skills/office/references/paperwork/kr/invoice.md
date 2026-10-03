@@ -22,7 +22,7 @@ An external document asking a customer to pay for goods or services already supp
 {
   "form": "kr/invoice",
   "title": "청 구 서",
-  "documentNumber": "I-<YYYYMMDD>-<sequence>",
+  "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
   "recipient": { "label": "수신", "lines": ["<recipient company name>", "<contact name> 님"] },
   "meta": [

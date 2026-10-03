@@ -12,6 +12,8 @@ from doc.doc_definitions import GLYPH_NOT_COVERED
 from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE
 
 
+REGISTERED_DOCUMENT_NUMBER = "<the number company_document_register returned>"
+
 LABELED_VALUE = Record("labeled value", "one label and its value", (
     Field("label", CellValue(), "the label"),
     Field("value", CellValue(), "the value"),
@@ -62,7 +64,7 @@ FORM_FIELD = Field("form", Text(non_empty=True), "the form these values fill, <j
 PAPERWORK_DOCUMENT = Record("document", "the values office merge draws on letterhead as a .pdf; each spec under references/paperwork has its skeleton", (
     FORM_FIELD,
     Field("title", Text(non_empty=True), "centered document title", required=True),
-    Field("documentNumber", CellValue(), "printed under the title after the jurisdiction's document-number label"),
+    Field("documentNumber", CellValue(), "the number company_document_register returned for this document, as it is; printed under the title after the jurisdiction's document-number label"),
     Field("profile", PROFILE, "company profile for the letterhead", required=True),
     Field("approvalLine", ListOf(Text()), "approval box captions, left to right"),
     Field("recipient", RECIPIENT, "addressee"),

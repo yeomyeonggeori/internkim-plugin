@@ -372,6 +372,18 @@ class PaperworkSkeletonTest(unittest.TestCase):
         self.assertEqual(problems, [])
 
 
+    def test_every_spec_takes_its_document_number_from_the_registry(self):
+        definitions = importlib.import_module("paperwork.paperwork_definitions")
+        numbers = {}
+        for spec_path in sorted((OFFICE_PATH / "references" / "paperwork").rglob("*.md")):
+            for block in re.findall(r"```json\n(.*?)```", spec_path.read_text(encoding="utf-8"), re.S):
+                document = json.loads(re.sub(r"\{\s*\.\.\.[^}]*\.\.\.\s*\}", '{"name": "sample"}', block))
+                if "documentNumber" in document:
+                    numbers[f"{spec_path.parent.name}/{spec_path.name}"] = document["documentNumber"]
+        self.assertGreater(len(numbers), 20)
+        self.assertEqual({spec for spec, number in numbers.items() if number != definitions.REGISTERED_DOCUMENT_NUMBER}, set())
+
+
 def skeleton_shape(document, definitions):
     if "blocks" in document:
         return definitions.CONTRACT_DOCUMENT

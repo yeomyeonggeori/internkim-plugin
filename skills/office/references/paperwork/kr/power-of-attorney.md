@@ -20,7 +20,7 @@ An external document proving that the principal (위임인) entrusts the agent (
 {
   "form": "kr/power-of-attorney",
   "title": "위 임 장",
-  "documentNumber": "POA-<YYYYMMDD>-<sequence>",
+  "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
   "meta": [
     { "label": "위임인 성명", "value": "<principal name>" },

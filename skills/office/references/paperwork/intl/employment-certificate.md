@@ -19,7 +19,7 @@ A document confirming that a named individual is currently employed by the compa
 {
   "form": "intl/employment-certificate",
   "title": "Certificate of Employment",
-  "documentNumber": "EC-<YYYYMMDD>-<sequence>",
+  "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
   "meta": [
     { "label": "Full name", "value": "<full name>" },

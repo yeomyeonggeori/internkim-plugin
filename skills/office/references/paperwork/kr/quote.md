@@ -23,7 +23,7 @@ An external document proposing prices for goods or services to a customer. It ne
 {
   "form": "kr/quote",
   "title": "견 적 서",
-  "documentNumber": "Q-<YYYYMMDD>-<sequence>",
+  "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
   "recipient": { "label": "수신", "lines": ["<recipient company name>", "<contact name> 님"] },
   "meta": [

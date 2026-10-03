@@ -22,7 +22,7 @@ An external document confirming goods or services already supplied to a customer
 {
   "form": "intl/transaction-statement",
   "title": "Statement of Delivered Goods and Services",
-  "documentNumber": "TS-<YYYYMMDD>-<sequence>",
+  "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
   "recipient": { "label": "To", "lines": ["<customer company name>", "Attn: <contact name>"] },
   "meta": [

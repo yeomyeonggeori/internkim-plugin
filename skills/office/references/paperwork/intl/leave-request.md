@@ -20,7 +20,7 @@ An internal document by which an employee requests leave and routes it to the re
 {
   "form": "intl/leave-request",
   "title": "Leave Request",
-  "documentNumber": "LR-<YYYYMMDD>-<sequence>",
+  "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
   "approvalLine": ["Reviewed", "Approved"],
   "meta": [

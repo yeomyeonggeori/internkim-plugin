@@ -9,7 +9,7 @@ A certificate of past employment for someone who has left or who once worked at 
 
 ## Required fields
 
-- documentNumber: the number company_document_register returns, written as "제 <YYYY>-<NNN>호" (e.g. 제 2026-013호)
+- documentNumber: the number company_document_register returns, printed as it is
 - meta, personal details (4): 성명 (name), 생년월일 (date of birth), 주소 (address), 소속 (department)
 - meta, employment details (4): 직위 (position or grade), 담당업무 (duties), 재직기간 (employment period), 제출용도 (purpose of submission)
 - 재직기간 is a closed period, "<start date> ~ <end date>" (never "현재" (present), which only the certificate of employment uses)
@@ -22,7 +22,7 @@ A certificate of past employment for someone who has left or who once worked at 
 {
   "form": "kr/career-certificate",
   "title": "경 력 증 명 서",
-  "documentNumber": "제 <YYYY>-<NNN>호",
+  "documentNumber": "<the number company_document_register returned>",
   "profile": { ...company profile... },
   "meta": [
     { "label": "성명", "value": "<name>" },
