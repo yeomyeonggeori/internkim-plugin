@@ -87,6 +87,24 @@ class PaperworkLayoutTest(unittest.TestCase):
             values = english_invoice(row_count)
             self.assert_closing_stays_with_what_it_closes(self.page_texts(values), values, f"intl rows={row_count}")
 
+    def test_a_figure_never_breaks_inside_itself(self):
+        figures = ["29,370,000원", "1,234,567,890원", "USD 98,765.43", "₩4,400,000"]
+        long_description = "예산코드와 관련 품의 번호, 납품 장소, 검수 일정까지 한 칸에 적은 아주 긴 적요 문장으로 열 너비를 다 차지하려는 행입니다 " * 2
+        values = {
+            "form": "kr/expense-approval",
+            "title": "지 출 결 의 서",
+            "profile": {"name": "주식회사 견본상회"},
+            "items": {
+                "headers": ["적요", "거래처", "금액"],
+                "aligns": ["L", "L", "R"],
+                "rows": [[long_description, "예시시스템 주식회사", figure] for figure in figures],
+            },
+        }
+        text = "".join(self.page_texts(values))
+        for figure in figures:
+            self.assertIn(figure, text)
+        self.assertIn("예시시스템", text)
+
 
 if __name__ == "__main__":
     unittest.main()
