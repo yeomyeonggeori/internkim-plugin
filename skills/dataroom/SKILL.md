@@ -34,17 +34,17 @@ and intended audience do not determine where it belongs.
    its skipped derivations. Its packages come from
    `python3 SKILL_DIR/scripts/skill_runtime.py setup`, which InternKim's host
    install runs; the helper names that command when they are missing.
-3. Call `company_document_upload` with the same `categoryCode` and `sha256`.
-   PUT the original to the returned signed URL. Upload `content.txt` separately
-   with that `fileName`; upload additional derived parts as needed.
-   The original path is `<company>/dataroom/<categoryCode>/<sha256>`.
-4. Register with `company_document_register`, keeping that category, title,
-   factual summary, date, hash and storage path. Register after uploads finish.
-   Use `supersedesHint` for a replacement. Keep earlier versions.
+3. Register with `company_document_register`, keeping that category, title,
+   factual summary, date and hash. Use `supersedesHint` for a replacement.
+   Keep earlier versions.
+4. Call `company_document_upload` with the registered `documentHint` and the
+   original's `originalFileName`, then PUT the original to the returned signed
+   URL. Upload `content.txt` and other derived parts with `fileName`. The
+   original sits at `<company>/dataroom/<parent>/<category>/<name>.<documentID>.<extension>`
+   and each derived part beside it as `<name>.<documentID>.<fileName>`.
 5. An administrator can reclassify existing documents with
-   `company_document_update`. Read the destination's reader roles first:
-   moving a document changes who can read it. Legacy numeric clearance
-   documents retain their previous access until individually reclassified.
+   `company_document_update`; their files move with them. Read the
+   destination's reader roles first: moving a document changes who can read it.
 
 ## Find
 
