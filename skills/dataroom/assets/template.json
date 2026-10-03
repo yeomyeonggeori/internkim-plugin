@@ -436,9 +436,9 @@
   ],
   "roles": [
     {
-      "code": "employee",
-      "name": "Employee",
-      "nameKO": "일반 구성원",
+      "code": "member",
+      "name": "Member",
+      "nameKO": "구성원",
       "readableCategories": [
         "HO",
         "HP",
@@ -469,7 +469,7 @@
     {
       "code": "finance",
       "name": "Finance",
-      "nameKO": "재무 담당",
+      "nameKO": "재무",
       "readableCategories": [
         "CR",
         "F",
@@ -483,9 +483,9 @@
       ]
     },
     {
-      "code": "people",
-      "name": "People",
-      "nameKO": "인사 담당",
+      "code": "human-resources",
+      "name": "HR",
+      "nameKO": "인사",
       "readableCategories": [
         "CR",
         "H",
@@ -513,7 +513,7 @@
     {
       "code": "accountant",
       "name": "Accountant",
-      "nameKO": "회계사·세무사",
+      "nameKO": "회계·세무 자문",
       "readableCategories": [
         "CR",
         "F",
