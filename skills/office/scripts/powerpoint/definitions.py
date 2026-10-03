@@ -8,6 +8,7 @@ from charts.look import LABEL_FLAGS
 from core.office_operations import OPERATION_ISSUE_KINDS
 from core.office_result import ERROR, SETUP_COMMAND, WARNING, Issue, IssueKind
 from core.template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
+from core.table_labels import CELL_ADDRESS_FIELDS
 from core.text_checks import TEXT_CHECK_ISSUE_KINDS
 from core.office_theme import THEME_SLOTS
 from core.office_schema import Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, wrong_type
@@ -244,7 +245,7 @@ INSERT_OPERATIONS = (
     ),
 )
 TABLE_AND_CHART_OPERATIONS = (
-    operation("set_table_cell", "replace one table cell's text, keeping its formatting; format_table_cells styles it", SLIDE_FIELD, SHAPE_FIELD, TABLE_ROW, TABLE_COLUMN, TEXT_FIELD),
+    operation("set_table_cell", "replace one table cell's text, keeping its formatting; format_table_cells styles it; name its row by index or label, and its column by index or label", SLIDE_FIELD, SHAPE_FIELD, *CELL_ADDRESS_FIELDS, TEXT_FIELD),
     operation("insert_table_row", "insert a row formatted like its neighbor; the table grows by its height", SLIDE_FIELD, SHAPE_FIELD,
         Field("at", Number(minimum=0, integer=True), "index the new row takes; default after the last row"),
         Field("values", ListOf(CellValue()), "cell values, left to right"),

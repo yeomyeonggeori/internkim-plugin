@@ -9,6 +9,7 @@ from core.office_result import ERROR, WARNING, IssueKind
 from core.page_sizes import PAPER_NAMES
 from core.office_schema import Boolean, CellValue, Choice, Field, HexColor, ListOf, Number, Record, Text, Variant
 from core.template_merge import LIST_NEEDS_A_ROW, MERGE_VALUES, TEMPLATE_SYNTAX_ERROR, UNRESOLVED_PLACEHOLDER, UNUSED_VALUE
+from core.table_labels import CELL_ADDRESS_FIELDS
 from core.text_checks import FORBIDDEN_TEXT_PRESENT, PLACEHOLDER_LEFT, REQUIRED_TEXT_MISSING
 from core.image_formats import PICTURE_FORMATS_TEXT
 
@@ -211,10 +212,9 @@ OPERATIONS = Variant(
             TARGET_BLOCK,
             Field("style", Text(non_empty=True), "a style name from office read's paragraphStyles or tableStyles", required=True),
         )),
-        Record("set_cell", "replace one table cell's text", (
+        Record("set_cell", "replace one table cell's text; name its row by index or label, and its column by index or label", (
             TABLE_BLOCK,
-            Field("row", ROW_INDEX, "row index", required=True),
-            Field("column", ROW_INDEX, "column index", required=True),
+            *CELL_ADDRESS_FIELDS,
             Field("text", Text(), "new text", required=True),
         )),
         Record("insert_table_row", "insert a row copying the formatting of the row it follows", (

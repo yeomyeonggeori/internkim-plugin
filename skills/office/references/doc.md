@@ -18,7 +18,7 @@ For business reports, make a source checklist of names, dates, totals, percentag
 
 ## Editing
 
-`office apply` edits the file in place, and `office guide apply docx` lists every operation. Parts no operation touches keep their XML. When the reader should see what changed, as in a contract under negotiation, pass `--track`: edits are written as tracked changes under `--author`. `office read` shows comment threads and `--revisions` lists tracked changes; settle those with `accept_revisions` or `reject_revisions`. Work no operation covers goes in a task-local script run through `office python`.
+`office apply` edits the file in place, and `office guide apply docx` lists every operation. Parts no operation touches keep their XML. Where a row or column has a label, such as a form's total row or a column header, name it with `rowLabel` or `columnLabel` as `office read` shows it instead of counting to its index: how many rows come before a total row differs from form to form. When the reader should see what changed, as in a contract under negotiation, pass `--track`: edits are written as tracked changes under `--author`. `office read` shows comment threads and `--revisions` lists tracked changes; settle those with `accept_revisions` or `reject_revisions`. Work no operation covers goes in a task-local script run through `office python`.
 
 ## Templates
 

@@ -23,7 +23,8 @@ from doc.operations.inline import plan_insert_equation, plan_insert_field
 from doc.operations.notes import plan_delete_note, plan_edit_note
 from doc.operations.structure import plan_clear_list, plan_insert_markdown, plan_move_blocks, plan_replace_blocks, plan_set_list
 from doc.model.comments import plan_add_comment, plan_delete_comment, plan_reply_comment, plan_resolve_comment
-from doc.model.body import PARAGRAPH_TAG, TABLE_TAG, paragraph_runs
+from doc.model.body import PARAGRAPH_TAG, TABLE_TAG, paragraph_runs, table_cell_texts
+from core.table_labels import resolve_cell_address
 from doc.model.settings import request_field_update
 from doc.operations.editing import DocxEditing, placement, require_style, resolve_block, resolve_paragraph, resolve_table
 from doc.operations.revisions import plan_accept_revisions, plan_reject_revisions
@@ -223,11 +224,12 @@ def plan_set_style(editing: DocxEditing, operation: dict, location: str) -> Chan
 
 def plan_set_cell(editing: DocxEditing, operation: dict, location: str) -> Change:
     table = resolve_table(editing, operation["block"], f"{location}.block")
-    cell = table_cell(table, operation["row"], operation["column"], location)
+    row, column = resolve_cell_address(table_cell_texts(table), operation, location)
+    cell = table_cell(table, row, column, location)
 
     def change() -> str:
         replace_cell_text(cell, operation["text"], editing.tracking)
-        return f"set cell ({operation['row']}, {operation['column']}) of block {operation['block']}"
+        return f"set cell ({row}, {column}) of block {operation['block']}"
     return change
 
 

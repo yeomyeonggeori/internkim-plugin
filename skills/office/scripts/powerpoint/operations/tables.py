@@ -8,6 +8,8 @@ from pptx.table import _Cell
 
 from core.office_operations import OPERATION_NOT_APPLICABLE, TARGET_NOT_FOUND, Change
 from core.office_result import INVALID_VALUE, OfficeFailure
+from core.table_labels import resolve_cell_address
+from powerpoint.model.content import frame_text
 from powerpoint.operations.insert import cell_text, chart_data, set_chart_title
 from powerpoint.operations.targets import PptxEditing, ShapeTarget, require_kind, resolve_shape
 from powerpoint.operations.text import replace_text
@@ -68,17 +70,22 @@ def grow_frame(target: ShapeTarget, dimension: str, amount: int) -> None:
 
 def plan_set_table_cell(editing: PptxEditing, operation: dict, location: str) -> Change:
     target = resolve_table(editing, operation, location)
-    require_index(operation["row"], len(table_rows(target)), "row", target, f"{location}.row")
-    require_index(operation["column"], len(grid_columns(target)), "column", target, f"{location}.column")
-    cell = target.shape.table.cell(operation["row"], operation["column"])
+    row, column = resolve_cell_address(table_texts(target), operation, location)
+    require_index(row, len(table_rows(target)), "row", target, f"{location}.row")
+    require_index(column, len(grid_columns(target)), "column", target, f"{location}.column")
+    cell = target.shape.table.cell(row, column)
     if cell.is_spanned:
-        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}: cell {operation['row']},{operation['column']} of {target.label} is covered by a merged cell", location, "write the text into the merged block's top-left cell"))
+        raise OfficeFailure(OPERATION_NOT_APPLICABLE.issue(f"{location}: cell {row},{column} of {target.label} is covered by a merged cell", location, "write the text into the merged block's top-left cell"))
 
     def change() -> str:
         replace_text(cell.text_frame, None, operation["text"])
         editing.mark_edited(target.slide)
-        return f"set cell {operation['row']},{operation['column']} of {target.label}"
+        return f"set cell {row},{column} of {target.label}"
     return change
+
+
+def table_texts(target: ShapeTarget) -> list[list[str]]:
+    return [[frame_text(cell.text_frame) for cell in row.cells] for row in target.shape.table.rows]
 
 
 def plan_insert_table_row(editing: PptxEditing, operation: dict, location: str) -> Change:
