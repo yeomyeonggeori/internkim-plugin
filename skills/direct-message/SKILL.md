@@ -1,6 +1,6 @@
 ---
 name: direct-message
-description: Send or schedule direct messages to approved workspace people through message.send.
+description: Send or schedule a message to an approved workspace person other than the one the agent is answering.
 compatibility: Requires InternKim's tool server.
 metadata:
   kim.intern.tool-references: "message_send schedule_create"
