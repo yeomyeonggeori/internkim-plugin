@@ -29,8 +29,9 @@ and intended audience do not determine where it belongs.
    context is insufficient. Never invent missing facts.
 2. For an export, run `python3 SKILL_DIR/scripts/dataroom.py ingest <dir> <file>
    --category <code> --title <title> --summary <fact> --date <YYYY-MM-DD>`.
-   The helper preserves the original, hashes it, writes its metadata sidecar,
-   derives `.derived/<sha256>/content.txt` and regenerates catalogs. Inspect
+   The helper files the original as `<parent>/<category>/<name>.<id>.<extension>`,
+   the same path the record uses, hashes it, writes its `<file>.md` sidecar,
+   derives `<name>.<id>.content.txt` beside it and regenerates catalogs. Inspect
    its skipped derivations. Its packages come from
    `python3 SKILL_DIR/scripts/skill_runtime.py setup`, which InternKim's host
    install runs; the helper names that command when they are missing.
@@ -57,8 +58,8 @@ For an export, start with `company.json` and `INDEX.md`, then run
 `python3 SKILL_DIR/scripts/dataroom.py search <dir> <query> [--path <category-path>]`.
 Run `check <dir>` after filing and `index <dir>` to rebuild stale catalogs.
 `init <dir> --slug <slug> --name en=<name>` creates an empty template.
-Legacy exports require semantic reclassification; do not convert permissions
-by matching old folder names.
+A tree from an earlier schema is filed again into a new one; do not convert
+permissions by matching old folder names.
 
 ## Share
 

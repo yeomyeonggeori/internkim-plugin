@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import unicodedata
+import uuid
 import zipfile
 from pathlib import Path
 
@@ -18,12 +19,10 @@ from skill_runtime import ensure_requirements, setup_command
 TEMPLATE = json.loads((Path(__file__).resolve().parent.parent / "assets/template.json").read_text())
 
 
-def category_path(category, categories):
-    folder = category["code"] + "-" + category["slug"]
+def category_path(category):
     if category["parent"] is None:
-        return folder
-    parent = next(item for item in categories if item["code"] == category["parent"])
-    return parent["code"] + "-" + parent["slug"] + "/" + folder
+        return category["code"]
+    return category["parent"] + "/" + category["code"]
 
 
 README_LINES = [
@@ -60,6 +59,10 @@ KIND_BY_SUFFIX = {
     **{suffix: "image" for suffix in IMAGE_SUFFIXES},
     **{suffix: "video" for suffix in VIDEO_SUFFIXES + AUDIO_SUFFIXES},
 }
+SCHEMA_VERSION = 3
+DOCUMENT_ID_PATTERN = re.compile(r"[A-Za-z0-9-]+")
+EXTENSION_PATTERN = re.compile(r"[a-z0-9]{1,10}")
+STEM_LENGTH = 60
 FRONTMATTER_PATTERN = re.compile(r"\A---\n(.*?)\n---\n?(.*)\Z", re.DOTALL)
 INDEX_HASH_PATTERN = re.compile(r"<!-- frontmatter-hash: ([0-9a-f]{64}) -->")
 XML_TEXT_PATTERN = re.compile(r"<(?:a|w):t(?:\s[^>]*)?>([^<]*)</(?:a|w):t>")
@@ -166,7 +169,7 @@ def run_init(arguments):
 def build_company(arguments):
     names = dict(parse_name(entry, arguments.locale) for entry in arguments.name)
     return {
-        "schemaVersion": 2,
+        "schemaVersion": SCHEMA_VERSION,
         "slug": arguments.slug,
         "country": arguments.country,
         "locale": arguments.locale,
@@ -199,16 +202,16 @@ def load_company(root):
 def category_folders(root, categories=None):
     if categories is None:
         company = load_company(root)
-        if company.get("schemaVersion") != 2:
-            raise Failure("legacy data rooms need semantic reclassification; their permissions cannot be converted by folder name")
+        if company.get("schemaVersion") != SCHEMA_VERSION:
+            raise Failure(f"this tree is schema {company.get('schemaVersion')}; file its documents again into a tree made by init, whose folders follow schema {SCHEMA_VERSION}")
         categories = company["dataroom"]["categories"]
     parent_codes = {category["parent"] for category in categories}
-    return [(category_path(category, categories), category["code"])
+    return [(category_path(category), category["code"])
             for category in categories if category["code"] not in parent_codes]
 
 
 def category_code(folder):
-    return folder.rsplit("/", 1)[-1].split("-", 1)[0]
+    return folder.rsplit("/", 1)[-1]
 
 
 def resolve_category(root, requested):
@@ -227,10 +230,8 @@ def run_ingest(arguments):
     document_date = arguments.date or file_date(source)
     kind = arguments.kind or KIND_BY_SUFFIX.get(source.suffix.lower(), "report")
     destination_directory = destination_directory_for(root, folder)
-    destination = destination_directory / f"{document_date}-{document_slug(arguments.title, source)}{source.suffix.lower()}"
-    if destination.exists():
-        raise Failure(f"{destination} exists; nothing is overwritten, pass another --title or --date")
     fields = build_fields(root, arguments, source, folder, kind, document_date)
+    destination = destination_directory / f"{document_stem(source, arguments.title)}.{fields['id']}.{document_extension(source)}"
     destination_directory.mkdir(parents=True, exist_ok=True)
     notes = file_document(source, destination, fields, arguments.summary)
     if arguments.supersedes:
@@ -247,8 +248,13 @@ def destination_directory_for(root, folder):
     return root / folder
 
 
-def document_slug(title, source):
-    return slugify(title or "") or slugify(source.stem) or "document"
+def document_stem(source, title):
+    return slugify(source.stem)[:STEM_LENGTH].rstrip("-") or slugify(title or "")[:STEM_LENGTH].rstrip("-") or "document"
+
+
+def document_extension(source):
+    extension = source.suffix.lower().lstrip(".")
+    return extension if EXTENSION_PATTERN.fullmatch(extension) else "bin"
 
 
 def slugify(value):
@@ -258,7 +264,7 @@ def slugify(value):
 
 def build_fields(root, arguments, source, folder, kind, document_date):
     fields = {
-        "id": arguments.id or unique_id(root, folder, document_date, document_slug(arguments.title, source), source),
+        "id": document_id(root, arguments.id),
         "title": arguments.title or source.stem,
         "kind": kind,
         "categoryCode": category_code(folder),
@@ -278,13 +284,14 @@ def build_fields(root, arguments, source, folder, kind, document_date):
     return fields
 
 
-def unique_id(root, folder, document_date, slug, source):
-    taken = {document.fields.get("id") for document in all_documents(root) if document.fields}
-    base = f"{category_code(folder)}-{document_date[:4]}-{slug}"
-    for candidate in (base, f"{base}-{source.suffix.lower().lstrip('.')}"):
-        if candidate not in taken:
-            return candidate
-    return f"{base}-{sha256_of(source)[:8]}"
+def document_id(root, requested):
+    if requested is None:
+        return str(uuid.uuid4())
+    if not DOCUMENT_ID_PATTERN.fullmatch(requested):
+        raise Failure(f"--id {requested} names a path segment, so it holds only letters, digits and hyphens")
+    if any(document.fields and document.fields.get("id") == requested for document in all_documents(root)):
+        raise Failure(f"--id {requested} is already filed; nothing is overwritten")
+    return requested
 
 
 def file_document(source, destination, fields, summary):
@@ -294,14 +301,13 @@ def file_document(source, destination, fields, summary):
 def file_binary_document(source, destination, fields, summary):
     shutil.copy2(source, destination)
     fields["sha256"] = sha256_of(destination)
-    derived_directory = destination.parent / ".derived" / fields["sha256"]
+    derived_directory = DerivedFiles(destination)
     try:
         derivation = derive(destination, fields["kind"], derived_directory)
     except Failure:
         destination.unlink()
-        shutil.rmtree(derived_directory, ignore_errors=True)
+        derived_directory.remove()
         raise
-    derived_directory.mkdir(parents=True, exist_ok=True)
     (derived_directory / "content.txt").write_text(derivation["text"], encoding="utf-8")
     fields["summary"] = summary or opening_line(derivation["text"]) or fields["title"]
     sidecar_path(destination).write_text(dump_frontmatter(fields) + sidecar_body(fields, derivation, derived_directory), encoding="utf-8")
@@ -315,6 +321,24 @@ def sidecar_path(document_path):
     return document_path.with_name(document_path.name + ".md")
 
 
+class DerivedFiles:
+    def __init__(self, original):
+        self.original = original
+        self.folder = original.parent
+
+    def __truediv__(self, name):
+        return self.folder / f"{self.original.stem}.{name}"
+
+    def files(self):
+        prefix = f"{self.original.stem}."
+        kept = (self.original, sidecar_path(self.original))
+        return sorted(path for path in self.folder.iterdir() if path.is_file() and path.name.startswith(prefix) and path not in kept)
+
+    def remove(self):
+        for path in self.files():
+            path.unlink()
+
+
 def opening_line(text):
     collapsed = " ".join(text.split())
     if len(collapsed) <= SUMMARY_LIMIT:
@@ -326,7 +350,7 @@ def sidecar_body(fields, derivation, derived_directory):
     lines = [f"# {fields['title']}", "", fields["summary"], ""]
     if derivation["text"].strip():
         lines += ["## Text", "", derivation["text"].strip()[:OPENING_LIMIT], ""]
-    parts = sorted(path.relative_to(derived_directory.parent.parent) for path in derived_directory.rglob("*") if path.is_file())
+    parts = [path.name for path in derived_directory.files()]
     if parts:
         lines += ["## Derived", ""] + [f"- {part}" for part in parts] + [""]
     if derivation["notes"]:
@@ -360,11 +384,9 @@ def derivation(text, notes):
 
 
 def write_parts(derived_directory, sections):
-    text_directory = derived_directory / "text"
     filled = [section for section in sections if section[1].strip()]
     for number, (label, content) in enumerate(filled, start=1):
-        part = text_directory / f"{number:02d}-{slugify(label) or 'part'}.md"
-        part.parent.mkdir(parents=True, exist_ok=True)
+        part = derived_directory / f"text-{number:02d}-{slugify(label) or 'part'}.md"
         part.write_text(f"# {label}\n\n{content.strip()}\n", encoding="utf-8")
 
 
@@ -438,14 +460,13 @@ def derive_xlsx(path, derived_directory):
     workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
     lines = []
     for sheet in workbook.worksheets:
-        csv_path = derived_directory / "sheets" / f"{slugify(sheet.title) or 'sheet'}.csv"
+        csv_path = derived_directory / f"sheet-{slugify(sheet.title) or 'sheet'}.csv"
         row_count = write_sheet_csv(sheet, csv_path)
         lines.append(f"{sheet.title}: {row_count} rows, {sheet.max_column} columns")
     return derivation("\n".join(lines), [])
 
 
 def write_sheet_csv(sheet, csv_path):
-    csv_path.parent.mkdir(parents=True, exist_ok=True)
     row_count = 0
     with csv_path.open("w", encoding="utf-8", newline="") as csv_file:
         writer = csv.writer(csv_file)
@@ -505,7 +526,6 @@ def derive_image(path, derived_directory):
 
 
 def write_thumbnail(path, thumbnail_path):
-    thumbnail_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         from PIL import Image
     except ImportError:
@@ -537,7 +557,6 @@ def derive_media(path, derived_directory, kind):
 
 
 def write_contact_sheet(path, sheet_path):
-    sheet_path.parent.mkdir(parents=True, exist_ok=True)
     run_command(["ffmpeg", "-y", "-loglevel", "error", "-i", str(path), "-vf", "fps=1/30,scale=320:-1,tile=4x4", "-frames:v", "1", str(sheet_path)])
     return []
 
@@ -546,9 +565,8 @@ def transcribe(path, derived_directory):
     if shutil.which("whisper") is None:
         return "", ["whisper is not installed, so no transcript was derived"]
     audio_path = derived_directory / "audio.wav"
-    audio_path.parent.mkdir(parents=True, exist_ok=True)
     run_command(["ffmpeg", "-y", "-loglevel", "error", "-i", str(path), "-ac", "1", "-ar", "16000", str(audio_path)])
-    run_command(["whisper", str(audio_path), "--output_format", "txt", "--output_dir", str(derived_directory)])
+    run_command(["whisper", str(audio_path), "--output_format", "txt", "--output_dir", str(derived_directory.folder)])
     audio_path.unlink()
     transcript_path = derived_directory / "audio.txt"
     transcript = transcript_path.read_text(encoding="utf-8") if transcript_path.exists() else ""
@@ -602,8 +620,10 @@ def all_documents(root):
 def folder_documents(root, folder_path):
     if not folder_path.is_dir():
         return []
-    candidates = sorted(path for path in folder_path.rglob("*") if is_document_candidate(path, folder_path))
-    return [document_for(root, path) for path in candidates if not is_sidecar(path)]
+    candidates = sorted(path for path in folder_path.rglob("*") if is_document_candidate(path, folder_path) and not is_sidecar(path))
+    originals = [path for path in candidates if sidecar_path(path).exists()]
+    derived_prefixes = tuple(f"{path.stem}." for path in originals)
+    return [document_for(root, path) for path in candidates if path in originals or not path.name.startswith(derived_prefixes)]
 
 
 def is_document_candidate(path, folder_path):
@@ -690,13 +710,14 @@ def write_generated_files(root):
     written = []
     category_hashes = []
     index_rows = []
+    names = {category["code"]: category["name"] for category in load_company(root)["dataroom"]["categories"]}
     for folder, code in category_folders(root):
         documents = folder_documents(root, root / folder)
         catalog_hash = frontmatter_hash(documents)
         write_catalog(root / folder / "catalog.jsonl", folder, catalog_hash, documents)
         written.append(root / folder / "catalog.jsonl")
         category_hashes.append(catalog_hash)
-        index_rows.append(index_row(folder, code, documents))
+        index_rows.append(index_row(names.get(code, code), folder, documents))
     index_hash = hashlib.sha256("".join(category_hashes).encode("ascii")).hexdigest()
     (root / "INDEX.md").write_text(index_text(index_rows, index_hash), encoding="utf-8")
     return written + [root / "INDEX.md"]
@@ -711,14 +732,14 @@ def write_catalog(catalog_path, folder, catalog_hash, documents):
     catalog_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def index_row(label, code, documents):
+def index_row(name, folder, documents):
     dates = [document.fields.get("date", "") for document in documents if document.fields]
     last_change = max((date for date in dates if date), default="")
-    return f"| {label} | {code} | {len(documents)} | {last_change} |"
+    return f"| {name} | {folder} | {len(documents)} | {last_change} |"
 
 
 def index_text(rows, index_hash):
-    lines = ["# Index", "", "| Category | Code | Documents | Last change |", "|---|---|---|---|"]
+    lines = ["# Index", "", "| Category | Folder | Documents | Last change |", "|---|---|---|---|"]
     lines += rows
     lines += ["", f"<!-- frontmatter-hash: {index_hash} -->", ""]
     return "\n".join(lines)
@@ -822,10 +843,10 @@ def directory_failures(root):
 def inbox_failures(root):
     oldest_allowed = datetime.date.today() - datetime.timedelta(days=INBOX_LIMIT_DAYS)
     failures = []
-    for document in folder_documents(root, root / "X-inbox"):
+    for document in folder_documents(root, root / "X"):
         arrived = datetime.date.fromtimestamp((root / document.path).stat().st_mtime)
         if arrived < oldest_allowed:
-            failures.append(f"{document.path}: unclassified for over {INBOX_LIMIT_DAYS} days in X-inbox/")
+            failures.append(f"{document.path}: unclassified for over {INBOX_LIMIT_DAYS} days in X/")
     return failures
 
 
@@ -862,7 +883,7 @@ def index_hash(index_path):
 
 def run_search(arguments):
     root = Path(arguments.directory).resolve()
-    catalogs = sorted(root.glob("*/catalog.jsonl"))
+    catalogs = sorted(root.rglob("catalog.jsonl"))
     lines = search_lines(arguments.query, catalogs)
     hits = [entry for entry in map(catalog_entry, lines) if entry and entry["path"].startswith(arguments.path or "")]
     for entry in hits:
