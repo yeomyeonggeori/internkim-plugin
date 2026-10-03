@@ -53,6 +53,5 @@ A certificate that a current employee works at the company, submitted inside or 
 
 ## Rules
 
-- When the name, date of birth, address, department, position, duties, start date or purpose is missing, never invent it; ask the requester.
 - Under Article 39 of the Labor Standards Act (근로기준법 제39조), state only what the employee asked for; never include salary, evaluations, contract terms or anything else not asked for.
 - Space the title's characters apart: "재 직 증 명 서".

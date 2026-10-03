@@ -54,5 +54,4 @@ An external document requesting payment from a customer for goods or services al
 
 - Use thousands separators for all amounts and state the currency the requester provides. Always state whether tax is included, excluded, or not applicable.
 - If tax applies, put its rate in `taxRatePercent`, calculate it from the subtotal, and verify the totals match the sum of the item rows.
-- Never omit the due date or bank account from meta; if either is missing, ask the requester instead of guessing.
-- Never invent the counterpart's name, prices, quantities, or dates — ask the requester when any of these are missing.
+- Never omit the due date or bank account from meta.

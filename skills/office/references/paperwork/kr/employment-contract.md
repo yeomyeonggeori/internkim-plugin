@@ -71,5 +71,4 @@ An employment contract that follows the Ministry of Employment and Labor's stand
 ## Rules
 
 - This is a draft based on the Ministry's reference form, and the company is responsible for the final review; say so in one line of the reply that delivers it.
-- Never invent the employee's personal details; leave address and phone as empty strings when missing.
 - A part-time worker's per-day working hours or overtime premium rate goes in an added clause.

@@ -56,6 +56,5 @@ A certificate of past employment for someone who has left or who once worked at 
 
 ## Rules
 
-- When the name, date of birth, address, department, position, duties, start date, end date or purpose is missing, never invent it; ask the requester.
 - Under Article 39 of the Labor Standards Act (근로기준법 제39조), state only what the employee asked for; never include salary, evaluations, a reason for leaving or anything else not asked for.
 - Space the title's characters apart: "경 력 증 명 서".

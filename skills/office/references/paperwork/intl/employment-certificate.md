@@ -42,5 +42,4 @@ A document confirming that a named individual is currently employed by the compa
 
 ## Rules
 
-- Never invent names, amounts, durations, or governing law — use requester-provided facts and ask when full name, date of birth, department, title, start date, or purpose is missing.
 - Do not include salary, contract terms, or performance information; this document certifies employment status only.

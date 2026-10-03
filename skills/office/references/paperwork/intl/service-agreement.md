@@ -69,7 +69,6 @@ An editable draft agreement under which a Client engages a Provider to perform d
 
 ## Rules
 
-- Never invent names, amounts, durations, or governing law — use only requester-provided facts and ask when a required field is missing.
 - Amounts are written with thousands separators, and tax-inclusive vs. tax-exclusive status is always stated.
 - If the requester specifies different intellectual-property ownership (e.g. retained by the Provider), adjust Article 5 accordingly rather than defaulting to Client ownership.
 - This document is a draft for legal review; say so when delivering it.

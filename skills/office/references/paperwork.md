@@ -9,11 +9,14 @@ The jurisdiction is where the document has legal effect: `kr` for a Korean compa
 ## Workflow
 
 1. Identify the form and jurisdiction, then read the matching spec even when a similar document exists in conversation.
-2. Call `company_info_get` for the language. If required `missingFields` or legal attributes are absent, ask once for all the missing values, save them through `company_info_set`, and copy optional logo or stamp images in a single terminal command.
-3. Compare the spec's required fields with the request. Ask only for missing critical names, counterpart, dates, amounts, or terms; never invent them. Write "Not provided" in the document's language (미기재 in Korean) only for optional fields.
+2. Call `company_info_get` for the language. Company details or a seal or logo image the request itself gives are saved through `company_info_set` first; copy an image in a single terminal command. A company field still missing is not asked for: the letterhead leaves its place blank.
+3. Fill what the request states. A value the form needs that the request does not give is `null`, in a form's values and a contract's terms alike: never invented, never asked for before delivering, and never a placeholder word such as "Not provided" or 미기재. An optional field the request does not give is left out.
 4. Register with `company_document_register` before filling, using the form name and a concise summary. Put the returned document number in the values JSON.
-5. Write the spec-shaped values JSON; its `form` names the form. Run `<skill>/scripts/office check <values.json>` first and fix every issue it reports: it checks amounts, and a contract's terms and clauses. Then run `office merge <jurisdiction>/<form> <values.json> <storageDirectory>/<filename>.pdf`, or `.docx` where the spec says so, and deliver the file. Do not reproduce the values schema in a reply.
+5. Write the spec-shaped values JSON; its `form` names the form. Run `<skill>/scripts/office check <values.json>` first and fix every issue it reports: it checks amounts, and a contract's terms and clauses. Then run `office merge <jurisdiction>/<form> <values.json> <storageDirectory>/<filename>.pdf`, or `.docx` where the spec says so, and deliver the file. Merge draws each `null` as an empty line or cell to fill by hand and lists every blank, with what it stands for, in `details.blanks`. Do not reproduce the values schema in a reply.
 6. Run `office check` on the output, then `office render` it and look at the pages, then call `company_document_update` with the delivered path. If the registered storage directory is not writable, use the requester documents area and record that path.
+7. The reply that delivers the file names each blank in `details.blanks` and says the person can fill it in by hand, or send the value and the same document will be completed and sent again.
+
+When the person sends values for blanks, write each into the same values file in place of its `null`, merge again to the same output path, check and render it, and call `company_document_update`. The document keeps its number and is not registered again.
 
 A `.pdf` output draws the form on letterhead. A `.docx` output prints the form's bundled contract template where it has one, and otherwise writes the contract from the blocks in the values.
 

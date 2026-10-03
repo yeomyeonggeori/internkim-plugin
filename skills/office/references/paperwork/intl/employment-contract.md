@@ -81,5 +81,4 @@ An editable draft agreement between the company ("Company") and an employee ("Em
 ## Rules
 
 - Term, position and duties, work hours, compensation, holidays and leave, and governing law are required articles; never omit them.
-- Never invent names, salary figures, dates, or terms — use only requester-provided facts and ask when a required field is missing.
 - This is a draft for legal review; final review by a qualified professional before execution is the company's responsibility.

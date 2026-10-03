@@ -51,5 +51,4 @@ An internal record of what was discussed and decided in a meeting, kept so atten
 
 - Do not set `approvalLine` for this document; meeting minutes are a record, not an approval request.
 - Attendees must list only people actually confirmed present; do not add people who were invited but did not attend.
-- Never invent names, amounts, dates, attendees, or decisions — use only requester-provided facts and ask when a required field is missing.
 - Keep decisions and action items separated: decisions are outcomes agreed upon, action items are follow-up work with an owner and due date.

@@ -43,6 +43,5 @@ An internal document by which an employee requests leave and routes it to the re
 
 ## Rules
 
-- Never invent names, amounts, durations, or governing law — use requester-provided facts and ask when requester name, leave type, leave period, or reason is missing.
 - Calculate the number of days precisely from the start and end dates; if the company's rule for counting weekends or holidays is unclear, confirm with the requester rather than assuming.
 - Leave requests never use a stamp — this is the requester's own signature, so signature.stamp is always false.

@@ -55,5 +55,4 @@ An internal approval document that settles spending already made or committed. T
 - Always record in meta whether there is proof (receipt or tax invoice); when the requester did not say, confirm before writing it.
 - Write amounts with thousands separators and "원", and state whether VAT is included or excluded.
 - Check that 공급가액 합계 and 세액 are the sums of the rows and 합계 is their sum; `office check` reports any that are not.
-- Use only the department, vendors, amounts and payment method the requester gave; never invent missing information, ask the requester.
 - Space the title's characters apart: "지 출 결 의 서".

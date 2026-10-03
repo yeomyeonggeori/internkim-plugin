@@ -54,5 +54,4 @@ An external document proposing prices for goods or services to a customer. The r
 
 - Use thousands separators for all amounts and state the currency the requester provides. Always state whether VAT is included or excluded.
 - Put the tax rate in `taxRatePercent`, calculate tax from the subtotal, and verify the totals match the sum of the item rows.
-- Never invent the counterpart's name, prices, quantities, or dates — ask the requester when any of these are missing.
 - Keep line item descriptions in the language the requester provides; do not translate proper nouns or SKU names.

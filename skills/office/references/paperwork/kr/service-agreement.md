@@ -74,5 +74,4 @@ A service agreement in standard practice, made from the bundled `service-agreeme
 ## Rules
 
 - Never decide the 갑/을 sides (whether we provide or receive the service) on your own; confirm when the request's context does not settle it.
-- Party details not received stay empty strings; never invent a registration number, address or representative.
 - Say in one line of the reply that delivers it that this is a draft for legal review.

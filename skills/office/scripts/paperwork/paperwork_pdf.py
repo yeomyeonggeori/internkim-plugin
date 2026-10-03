@@ -13,6 +13,7 @@ from core.units import millimetres_to_pixels
 from doc.blocks.writers import file_data_uri
 from doc.blocks.pdf import DocumentFonts, covering_fonts, draw
 from paperwork.paperwork_design import COLOR_BORDER, COLOR_HEADER_FILL, COLOR_INK, COLOR_MUTED, COLOR_RULE, PDF_PAGE_MARGIN_MILLIMETERS, SIZE_BODY, SIZE_FOOTER, SIZE_LETTERHEAD_DETAIL, SIZE_LETTERHEAD_NAME, SIZE_TITLE
+from paperwork.blanks import is_left_blank
 from paperwork.jurisdictions import Jurisdiction, Labels
 from render.renderer import DocumentPdfRequest, FontFile, render_document_pdf as render_pdf
 from core.skill_paths import ASSETS_PATH
@@ -21,6 +22,7 @@ from core.skill_paths import ASSETS_PATH
 CSS_TEMPLATE_PATH = ASSETS_PATH / "paperwork" / "paperwork.css"
 BOTTOM_MARGIN_MILLIMETERS = 20.0
 ALIGNMENTS = {"L": "align-left", "C": "align-center", "R": "align-right"}
+BLANK = '<span class="blank"></span>'
 
 
 def render_paperwork_pdf(document: dict, jurisdiction: Jurisdiction, output_path: Path) -> list[Issue]:
@@ -118,6 +120,12 @@ def escaped(value: object) -> str:
     return html.escape(text_of(value))
 
 
+def filled_or_blank(container: object, key: str | int) -> str:
+    if is_left_blank(container, key):
+        return BLANK
+    return multiline(container[key] if isinstance(container, list) else container.get(key))
+
+
 def image_html(path_value: object, css_class: str) -> str:
     path = Path(text_of(path_value))
     if not text_of(path_value) or not path.is_file():
@@ -131,7 +139,8 @@ def company_display_name(profile: dict) -> str:
 
 def letterhead_html(profile: dict, labels: Labels) -> str:
     details = "".join(f'<p class="detail">{html.escape(line)}</p>' for line in letterhead_detail_lines(profile, labels))
-    company = f'<div class="company"><p class="name">{html.escape(company_display_name(profile))}</p>{details}</div>'
+    name = company_display_name(profile)
+    company = f'<div class="company"><p class="name">{html.escape(name) if name else BLANK}</p>{details}</div>'
     return f'<header class="letterhead">{image_html(profile.get("logoPath"), "logo")}{company}</header>'
 
 
@@ -178,14 +187,14 @@ def title_html(document: dict, labels: Labels) -> str:
 def recipient_html(recipient: object, labels: Labels) -> str:
     if not isinstance(recipient, dict) or not recipient.get("lines"):
         return ""
-    lines = "".join(f'<p class="line">{escaped(line)}</p>' for line in recipient["lines"])
+    lines = "".join(f'<p class="line">{filled_or_blank(recipient["lines"], index)}</p>' for index in range(len(recipient["lines"])))
     return f'<div class="recipient"><p class="label">{escaped(recipient.get("label")) or html.escape(labels.recipient)}</p>{lines}</div>'
 
 
 def meta_html(rows: list) -> str:
     if not rows:
         return ""
-    cells = "".join(f'<div class="meta-row"><div class="meta-label">{escaped(row.get("label"))}</div><div class="meta-value">{multiline(row.get("value"))}</div></div>' for row in rows)
+    cells = "".join(f'<div class="meta-row"><div class="meta-label">{escaped(row.get("label"))}</div><div class="meta-value">{filled_or_blank(row, "value")}</div></div>' for row in rows)
     return f'<div class="meta">{cells}</div>'
 
 
@@ -217,15 +226,17 @@ def item_row_html(row: object, alignments: list[str]) -> str:
 def totals_html(totals: list) -> str:
     if not totals:
         return ""
-    lines = "".join(f'<p class="{"final" if index == len(totals) - 1 else ""}">{escaped(total.get("label"))}<span class="value">{escaped(total.get("value"))}</span></p>' for index, total in enumerate(totals))
+    lines = "".join(f'<p class="{"final" if index == len(totals) - 1 else ""}">{escaped(total.get("label"))}<span class="value">{filled_or_blank(total, "value")}</span></p>' for index, total in enumerate(totals))
     return f'<div class="totals">{lines}</div>'
 
 
 def section_html(section: dict) -> str:
     title = text_of(section.get("title"))
     heading = f"<h2>{html.escape(title)}</h2>" if title else ""
-    paragraphs = "".join(f"<p>{multiline(paragraph)}</p>" for paragraph in section.get("paragraphs") or [])
-    bullets = "".join(f'<p class="bullet">• {escaped(bullet)}</p>' for bullet in section.get("bullets") or [])
+    paragraph_lines = section.get("paragraphs") or []
+    bullet_lines = section.get("bullets") or []
+    paragraphs = "".join(f"<p>{filled_or_blank(paragraph_lines, index)}</p>" for index in range(len(paragraph_lines)))
+    bullets = "".join(f'<p class="bullet">• {filled_or_blank(bullet_lines, index)}</p>' for index in range(len(bullet_lines)))
     return f'<div class="section">{heading}{paragraphs}{bullets}</div>'
 
 
@@ -236,10 +247,9 @@ def notes_html(notes: list) -> str:
 def signature_html(signature: object, profile: dict, labels: Labels) -> str:
     if not isinstance(signature, dict):
         return ""
-    date = text_of(signature.get("date"))
-    date_line = f'<p class="date">{html.escape(date)}</p>' if date else ""
-    line = text_of(signature.get("line"))
+    date_line = f'<p class="date">{filled_or_blank(signature, "date")}</p>' if text_of(signature.get("date")) or is_left_blank(signature, "date") else ""
     stamp = image_html(profile.get("stampPath"), "stamp") if signature.get("stamp") and isinstance(profile, dict) else ""
     seal = f'<span class="seal">{html.escape(labels.seal_mark)}{stamp}</span>' if labels.seal_mark or stamp else ""
-    signer = f'<div class="signer"><span>{html.escape(line)}</span>{seal}</div>' if line else ""
+    has_signer = text_of(signature.get("line")) or is_left_blank(signature, "line")
+    signer = f'<div class="signer"><span>{filled_or_blank(signature, "line")}</span>{seal}</div>' if has_signer else ""
     return f'<div class="signature">{date_line}{signer}</div>'

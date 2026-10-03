@@ -51,5 +51,4 @@ An internal document reporting the outcomes of a completed business trip, submit
 
 - Use thousands separators for all expense amounts and state the currency the requester provides. Always state whether tax/VAT is included.
 - The period must reflect the actual travel dates as stated by the requester, not inferred from the report submission date.
-- Never invent names, amounts, dates, attendees, or decisions — use only requester-provided facts and ask when a required field is missing.
 - Do not set `approvalLine`; use this document alongside a separate expense-approval document if reimbursement approval is also needed.

@@ -55,4 +55,3 @@ An external document ordering goods or services from a supplier. Delivery date a
 
 - Use thousands separators for all amounts and state the currency the requester provides. Always state whether VAT is included or excluded.
 - Put the tax rate in `taxRatePercent`, calculate tax from the subtotal, and verify the totals match the sum of the item rows.
-- Never invent the supplier's name, prices, quantities, delivery terms, or dates — ask the requester when any of these are missing.

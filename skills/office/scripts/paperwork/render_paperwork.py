@@ -5,7 +5,6 @@ from fonts.docx_embedding import save_document
 from core.office_result import MISSING_FIELD, OfficeFailure
 from core.office_schema import require_valid
 from paperwork.paperwork_definitions import CONTRACT_DOCUMENT, PAPERWORK_CONTENT_FIELDS, PAPERWORK_DOCUMENT
-from paperwork.paperwork_pdf import company_display_name
 from paperwork.paperwork_design import COLOR_INK, FONT_KOREAN_DOCX, LINE_SPACING, SIZE_BODY, SIZE_CLAUSE_HEADING, SIZE_TITLE
 
 
@@ -14,16 +13,9 @@ SPEC_HINT = "read the form's spec at this skill's references/paperwork/<jurisdic
 
 def load_document(document: dict) -> dict:
     require_valid(PAPERWORK_DOCUMENT, document, "values")
-    require_company_name(document["profile"])
     require_content(document)
     normalize_document(document)
     return document
-
-
-def require_company_name(profile):
-    if company_display_name(profile):
-        return
-    raise OfficeFailure(MISSING_FIELD.issue("values.profile.name: required; insert the company_info_get result into profile", "values.profile.name", suggestion=SPEC_HINT))
 
 
 def require_content(document):

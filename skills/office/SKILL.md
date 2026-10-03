@@ -28,7 +28,7 @@ A document the catalog has belongs to `merge <jurisdiction>/<form>` in either la
 
 ## Rules for every format
 
-**Source truth.** Supplied files and pasted data are the source of truth. Preserve names, products, people, dates, amounts, IDs, and units exactly, and put the source title, organization, and period in visible content as well as the filename. A missing value is written as the user's-language equivalent of "Not provided"; never invent contacts, totals, vendors, prices, or background.
+**Source truth.** Supplied files and pasted data are the source of truth. Preserve names, products, people, dates, amounts, IDs, and units exactly, and put the source title, organization, and period in visible content as well as the filename. A missing value is written as the user's-language equivalent of "Not provided", and a company form leaves it blank instead; never invent contacts, totals, vendors, prices, or background.
 
 **Totals.** Compute totals from the source numbers in code and check that they equal any total the source states before writing the file.
 

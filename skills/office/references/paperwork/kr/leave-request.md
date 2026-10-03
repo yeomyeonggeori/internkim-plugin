@@ -43,7 +43,6 @@ An internal document in which an employee applies for leave and gets it approved
 
 ## Rules
 
-- When the applicant, type of leave, leave period or reason is missing, never invent it; ask the requester.
 - Count the days of the leave period exactly from its start and end dates, and when the way working days and holidays are counted differs from company rules, confirm with the requester.
 - A leave request never uses a stamp (the applicant signs it, so signature.stamp is always false).
 - Space the title's characters apart: "휴 가 신 청 서".

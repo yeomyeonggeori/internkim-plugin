@@ -53,5 +53,4 @@ A record of the agenda, decisions and action items of a meeting. It is for recor
 
 - Never add an approvalLine.
 - When there are action items, write them as the items table (item, owner, due date) under section 4; with none, omit the items block.
-- Use only the attendees, decisions, owners and due dates the requester gave; never invent missing information, ask the requester.
 - Space the title's characters apart: "회 의 록".

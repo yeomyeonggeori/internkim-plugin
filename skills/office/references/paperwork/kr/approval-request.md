@@ -53,5 +53,4 @@ An internal approval document that asks for a decision inside the company. It se
 
 - A request that involves money writes "2. 내역" as the items table instead of paragraphs; with no amount, omit the items block entirely.
 - Write amounts with thousands separators and "원", and state whether VAT is included or excluded.
-- Use only the drafter, amounts, dates and decisions the requester gave; never invent missing information, ask the requester.
 - Space the title's characters apart: "품 의 서".

@@ -71,6 +71,5 @@ An editable outbound document proposing a role and compensation package to a con
 
 ## Rules
 
-- Never invent salary figures, equity numbers, dates, or terms — use only requester-provided facts and ask when a required field is missing.
 - If location, title, or start date is not yet finalized, mark it explicitly as "to be confirmed" rather than guessing.
 - This is a draft for review; final legal and compliance review before sending is the company's responsibility.

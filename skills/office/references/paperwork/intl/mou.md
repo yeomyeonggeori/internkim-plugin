@@ -59,5 +59,4 @@ Documents the intent of two organizations or companies to cooperate in a given a
 ## Rules
 
 - List cooperation areas specifically; do not invent areas the requester did not mention.
-- Never invent party names, addresses, amounts, durations, or governing law — use only requester-provided facts, and ask when any are missing.
 - This document is a draft for legal review; say so when delivering it.
