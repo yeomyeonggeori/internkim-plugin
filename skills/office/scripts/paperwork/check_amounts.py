@@ -73,7 +73,7 @@ def main() -> Result:
     if not isinstance(document, dict):
         raise OfficeFailure(WRONG_TYPE.issue("values: expected an object", "values"))
     rules = document_rules(document)
-    reading = read_document(document, rules)
+    reading = read_document(with_amount_in_words(document), rules)
     if not reading.facts and not reading.unreadable:
         return Result(summary="no amounts to check", issues=(NO_AMOUNTS_FOUND.issue("the input holds no amounts to check"),))
     return amount_result(reading, rules)

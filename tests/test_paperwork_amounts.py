@@ -200,6 +200,9 @@ class CheckCommandTest(unittest.TestCase):
         }
         self.assertEqual(self.check({"items": items, "taxRatePercent": 20}, form="intl/invoice")["issues"], [])
 
+    def test_an_amount_left_for_merge_to_spell_is_not_a_mismatch(self):
+        self.assertEqual(self.check(quote(words=""))["issues"], [])
+
     def test_a_spelled_total_with_the_old_hanja_suffix_matches(self):
         envelope = self.check(quote(words="일금 일백일십만원整 (₩1,100,000) (부가세 포함)"))
         self.assertEqual(envelope["issues"], [])
