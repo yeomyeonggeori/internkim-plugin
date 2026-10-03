@@ -36,6 +36,7 @@ ITEMS = Record("items", "the item table with its totals", (
     Field("headers", ListOf(CellValue(), non_empty=True), "column headers", required=True),
     Field("rows", ListOf(ListOf(CellValue())), "item rows"),
     Field("aligns", ListOf(CellValue()), "L, C or R per column; anything else aligns left"),
+    Field("untaxedRows", ListOf(Number(minimum=0, integer=True)), "indexes, from 0, of the rows that carry no tax, such as exempt or zero-rated supplies; their tax cell holds 0 and the tax total leaves their amounts out"),
     Field("totals", ListOf(LABELED_VALUE), "right-aligned total lines, the last one emphasized"),
 ))
 
@@ -145,7 +146,10 @@ def jurisdiction_lines() -> list[str]:
 
 def jurisdiction_summary(jurisdiction: Jurisdiction) -> list[str]:
     columns = jurisdiction.columns
-    tax = f"{jurisdiction.tax_rate_percent}% of each row's amount when rows have a {columns.tax} column, else of the supply total" if jurisdiction.tax_rate_percent is not None else "taxRatePercent when the values state it, else the tax line is only added to the total"
+    rate = f"{jurisdiction.tax_rate_percent}%" if jurisdiction.tax_rate_percent is not None else "taxRatePercent, when the values state it,"
+    tax = f"{rate} of each row's amount when rows have a {columns.tax} column, else of the supply total; a row in items.untaxedRows carries none"
+    if jurisdiction.tax_rate_percent is None:
+        tax += "; without a stated rate the tax line is only added to the total"
     words = f"; meta \"{jurisdiction.amount_in_words.label}\" holds the amount in words: {jurisdiction.amount_in_words.example}" if jurisdiction.amount_in_words else ""
     return [
         f"  {jurisdiction.code} ({jurisdiction.name}): labels in {jurisdiction.language}; dates {jurisdiction.date_format}; currency {jurisdiction.money.currency or 'as the form names it'}",

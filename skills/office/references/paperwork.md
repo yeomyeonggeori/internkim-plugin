@@ -20,5 +20,6 @@ A `.pdf` output draws the form on letterhead. A `.docx` output fills the form's 
 ## Rules
 
 - `office check <values.json>` reports amount facts and never rewrites; `office guide form` states each jurisdiction's arithmetic and rounding. The figures you fix are the source's, not the check's.
+- Each row's tax follows that row's own tax status: list a row that carries no tax (exempt or zero-rated) in `items.untaxedRows` and write 0 in its tax cell.
 - Include every clause and checklist item required by a spec's Standard clauses or Density gate. Do not abridge contracts.
 - Past documents are found with `company_document_list` or `company_document_search`; answer from the stored summary before opening a file.
