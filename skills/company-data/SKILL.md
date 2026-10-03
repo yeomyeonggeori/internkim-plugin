@@ -3,7 +3,7 @@ name: company-data
 description: Record and look up company master data — metrics time series (연매출, 영업이익, MAU, 직원 수), history and assets (연혁, 투자 유치, 제품 출시, 특허, 인증, 수상, 레퍼런스), and the company document ledger. Use for 매출 기록, 지표 기록, 연혁 추가, 투자 이력, 회사 정보 수정, 우리가 보낸 계약서/견적서 조회, revenue record, funding history, company timeline requests. Do not use for creating documents — the office skill owns document generation.
 compatibility: Requires InternKim's tool server.
 metadata:
-  kim.intern.tool-references: "company_info_get company_info_set company_metric_list company_metric_record company_record_list company_record_add company_record_update company_record_delete company_document_list company_document_search company_document_register"
+  kim.intern.tool-references: "company_info_get company_info_set company_image_upload company_metric_list company_metric_record company_record_list company_record_add company_record_update company_record_delete company_document_list company_document_search company_document_register"
 ---
 
 # Company Data
@@ -20,7 +20,7 @@ For history, funding, products, certifications, IP, awards, references, or grant
 
 ## Profile
 
-Use `company_info_get` before answering or changing profile data. Call `company_info_set` with the requested language and only changed fields. Store country-specific identifiers in `legalAttributes`; never put company facts in files or memory instead of this table.
+Use `company_info_get` before answering or changing profile data. Call `company_info_set` with the requested language and only changed fields. Store country-specific identifiers in `legalAttributes`; never put company facts in files or memory instead of this table. A seal or logo image the person gives is kept in the profile the same way, never only copied into a folder: call `company_image_upload` with the image and its file name, PUT the attached file's bytes to the `uploadURL` it answers (`curl -sf -X PUT -H 'content-type: <image type>' --data-binary @<file> '<uploadURL>'`), then `company_info_set` with that `storagePath` as `sealImage` or `logoImage`.
 
 ## Document ledger
 
