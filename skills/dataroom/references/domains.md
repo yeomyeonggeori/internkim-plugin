@@ -57,10 +57,10 @@ Each reader role names an array of category codes. Multiple grants combine. Add 
 
 | Role | Name | readableCategories |
 |---|---|---|
-| `employee` | Employee | [HO, HP, PO, GP, GC, GE] |
+| `member` | Member | [HO, HP, PO, GP, GC, GE] |
 | `leadership` | Leadership | [C, H, F, S, P, O, I, L, R, G, X] |
 | `finance` | Finance | [CR, F, SC, SP, OA, OS, LI, RA, RR] |
-| `people` | People | [CR, H, FP, GP, GC, GE] |
+| `human-resources` | HR | [CR, H, FP, GP, GC, GE] |
 | `investor` | Investor | [CR, CO, FS, FB, PO, RP, RR, GP] |
 | `accountant` | Accountant | [CR, F, SC, SP, OA, OS, LI, RA] |
 | `legal` | Legal adviser | [C, HP, HE, SC, SP, OA, OS, I, L, RA] |
