@@ -43,8 +43,11 @@ def holds_only_pivots(worksheet) -> bool:
 def summarize_sheet(worksheet) -> dict:
     header_row = header_row_index(worksheet)
     is_table_sheet = worksheet.max_row >= header_row and not holds_only_pivots(worksheet)
-    header_values = [cell.value for cell in worksheet[header_row]] if is_table_sheet else []
-    data_rows = sum(1 for row in worksheet.iter_rows(min_row=header_row + 1) if non_blank_count(cell.value for cell in row) > 0)
+    hidden = hidden_columns(worksheet)
+    header_values = filled_span([cell.value for cell in worksheet[header_row] if cell.column not in hidden]) if is_table_sheet else []
+    row_counts = [non_blank_count(cell.value for cell in row) for row in worksheet.iter_rows(min_row=header_row + 1)]
+    data_rows = sum(1 for count in row_counts if count > 0)
+    is_one_block = not any(count == 0 for count in trimmed(row_counts))
     return {
         "title": worksheet.title,
         "rows": worksheet.max_row,
@@ -52,9 +55,23 @@ def summarize_sheet(worksheet) -> dict:
         "freezePanes": str(worksheet.freeze_panes) if worksheet.freeze_panes else None,
         "autoFilter": bool(worksheet.auto_filter.ref),
         "dataRows": data_rows,
-        "isDataTable": non_blank_count(header_values) >= MINIMUM_TABLE_COLUMNS and data_rows >= MINIMUM_DATA_ROWS,
+        "isDataTable": is_one_block and non_blank_count(header_values) >= MINIMUM_TABLE_COLUMNS and data_rows >= MINIMUM_DATA_ROWS,
         "blankHeaderCount": sum(1 for value in header_values if value is None or str(value).strip() == ""),
     }
+
+
+def hidden_columns(worksheet) -> set[int]:
+    return {column for dimension in worksheet.column_dimensions.values() if dimension.hidden for column in range(dimension.min or 1, (dimension.max or dimension.min or 1) + 1)}
+
+
+def filled_span(values: list) -> list:
+    filled = [index for index, value in enumerate(values) if is_filled(value)]
+    return values[filled[0]:filled[-1] + 1] if filled else []
+
+
+def trimmed(counts: list[int]) -> list[int]:
+    filled = [index for index, count in enumerate(counts) if count > 0]
+    return counts[filled[0]:filled[-1] + 1] if filled else []
 
 
 def is_formula(value: object) -> bool:

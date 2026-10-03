@@ -1,0 +1,303 @@
+{
+  "name": "report",
+  "kind": "document",
+  "language": "ko",
+  "summary": "a report, status update, memo or minutes-like note; the runtime writes its author and date",
+  "guidance": "Choose the sections and block kinds the request's content needs. Every item, row and field comes from the request or its attachments; a section, item or paragraph the request gives no content for is left out, never filled in.",
+  "fields": [
+    {
+      "name": "language",
+      "type": "text",
+      "choices": [
+        "ko",
+        "en"
+      ]
+    },
+    {
+      "name": "title",
+      "type": "text"
+    },
+    {
+      "name": "period",
+      "label": "기간",
+      "type": "date",
+      "optional": true,
+      "description": "the period the report covers, as start/end such as 2026-09-28/2026-10-02"
+    },
+    {
+      "name": "recipient",
+      "label": "수신",
+      "type": "text",
+      "optional": true
+    },
+    {
+      "name": "sections",
+      "label": "sections",
+      "type": "list",
+      "fields": [
+        {
+          "name": "heading",
+          "type": "text"
+        },
+        {
+          "name": "blocks",
+          "label": "blocks",
+          "type": "list",
+          "fields": [
+            {
+              "name": "type",
+              "label": "block kind",
+              "type": "text",
+              "choices": [
+                "paragraph",
+                "items",
+                "table",
+                "fields",
+                "chart"
+              ],
+              "description": "paragraph: text; items: items; table: columns and rows; fields: label and value pairs; chart: chart, labels, series"
+            },
+            {
+              "name": "text",
+              "type": "text",
+              "optional": true,
+              "description": "paragraph: prose that restates or connects what the request says; no fact the request does not state"
+            },
+            {
+              "name": "items",
+              "type": "list",
+              "optional": true,
+              "description": "items: one entry per item the request names, no others",
+              "fields": [
+                {
+                  "name": "text",
+                  "type": "text",
+                  "description": "the item in the request's words, without the date, owner, due date, amount or status, which have their own fields"
+                },
+                {
+                  "name": "date",
+                  "type": "date",
+                  "optional": true,
+                  "description": "when it happened or happens"
+                },
+                {
+                  "name": "owner",
+                  "type": "person",
+                  "optional": true,
+                  "description": "who is responsible; null when the request says it is not decided yet or does not name one an item needs; leave it out when no owner applies"
+                },
+                {
+                  "name": "due",
+                  "type": "date",
+                  "optional": true,
+                  "description": "due date; null when the item needs one the request does not give; leave it out when none applies"
+                },
+                {
+                  "name": "quantity",
+                  "type": "quantity",
+                  "optional": true
+                },
+                {
+                  "name": "unit",
+                  "type": "text",
+                  "optional": true
+                },
+                {
+                  "name": "amount",
+                  "type": "amount",
+                  "optional": true
+                },
+                {
+                  "name": "currency",
+                  "type": "text",
+                  "optional": true,
+                  "description": "KRW, USD and so on"
+                },
+                {
+                  "name": "percent",
+                  "type": "percent",
+                  "optional": true
+                },
+                {
+                  "name": "status",
+                  "type": "text",
+                  "optional": true
+                }
+              ]
+            },
+            {
+              "name": "numbered",
+              "type": "boolean",
+              "optional": true
+            },
+            {
+              "name": "columns",
+              "type": "list",
+              "optional": true,
+              "fields": [
+                {
+                  "name": "name",
+                  "type": "text"
+                },
+                {
+                  "name": "type",
+                  "type": "text",
+                  "choices": [
+                    "text",
+                    "person",
+                    "organization",
+                    "date",
+                    "amount",
+                    "quantity",
+                    "percent"
+                  ]
+                },
+                {
+                  "name": "unit",
+                  "type": "text",
+                  "optional": true,
+                  "description": "currency code for amount, counted unit for quantity"
+                }
+              ]
+            },
+            {
+              "name": "rows",
+              "type": "list",
+              "item": "row",
+              "optional": true,
+              "description": "table: one list of cells per row, numbers as numbers, dates as YYYY-MM-DD, null for a value not given"
+            },
+            {
+              "name": "totals",
+              "type": "boolean",
+              "optional": true,
+              "description": "table: add a total row that sums the amount and quantity columns"
+            },
+            {
+              "name": "fields",
+              "type": "list",
+              "optional": true,
+              "fields": [
+                {
+                  "name": "label",
+                  "type": "text"
+                },
+                {
+                  "name": "type",
+                  "type": "text",
+                  "choices": [
+                    "text",
+                    "person",
+                    "organization",
+                    "date",
+                    "amount",
+                    "quantity",
+                    "percent"
+                  ]
+                },
+                {
+                  "name": "value",
+                  "type": "cell",
+                  "description": "null when the request does not give it"
+                },
+                {
+                  "name": "unit",
+                  "type": "text",
+                  "optional": true
+                }
+              ]
+            },
+            {
+              "name": "chart",
+              "type": "text",
+              "optional": true,
+              "choices": [
+                "column",
+                "bar",
+                "line",
+                "pie"
+              ]
+            },
+            {
+              "name": "labels",
+              "type": "list",
+              "item": "text",
+              "optional": true
+            },
+            {
+              "name": "series",
+              "type": "list",
+              "optional": true,
+              "fields": [
+                {
+                  "name": "name",
+                  "type": "text"
+                },
+                {
+                  "name": "values",
+                  "type": "list",
+                  "item": "amount"
+                }
+              ]
+            },
+            {
+              "name": "caption",
+              "type": "text",
+              "optional": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "known": {
+    "author": "requester",
+    "date": "today"
+  },
+  "layout": {
+    "parts": [
+      {
+        "type": "heading",
+        "text": "{title}",
+        "level": 1
+      },
+      {
+        "type": "labeled",
+        "rows": [
+          {
+            "label": {
+              "ko": "기간",
+              "en": "Period"
+            },
+            "value": "{period}"
+          },
+          {
+            "label": {
+              "ko": "수신",
+              "en": "To"
+            },
+            "value": "{recipient}"
+          },
+          {
+            "label": {
+              "ko": "작성자",
+              "en": "Prepared by"
+            },
+            "value": "{author}"
+          },
+          {
+            "label": {
+              "ko": "작성일",
+              "en": "Date"
+            },
+            "value": "{date}"
+          }
+        ]
+      },
+      {
+        "type": "sections",
+        "field": "sections"
+      }
+    ]
+  }
+}

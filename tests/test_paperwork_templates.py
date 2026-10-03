@@ -142,7 +142,7 @@ class ContractTemplateShapeTest(unittest.TestCase):
 class SpecificationTest(unittest.TestCase):
     def test_the_skill_routes_every_catalog_form_to_merge(self):
         skill = (SCRIPTS_PATH.parent / "SKILL.md").read_text(encoding="utf-8")
-        route = next(line for line in skill.splitlines() if "`merge <jurisdiction>/<form>`" in line and line.startswith("|")).lower()
+        route = " ".join(line for line in skill.splitlines() if "`merge " in line and line.startswith("|")).lower()
         for slug in sorted({slug for jurisdiction in JURISDICTIONS for slug in form_slugs(jurisdiction.code)}):
             self.assertIn(slug.replace("-", " "), route, slug)
 

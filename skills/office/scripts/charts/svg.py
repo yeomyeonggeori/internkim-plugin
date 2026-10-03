@@ -104,7 +104,13 @@ def chart_svg(model: ChartModel, width: float, height: float, look: ChartLook, f
     )
 
 
+def zero_filled(model: ChartModel) -> ChartModel:
+    return replace(model, series=tuple(replace(series, values=tuple(0.0 if value is None else value for value in series.values)) for series in model.series))
+
+
 def body_svg(model: ChartModel, plot: Plot, look: ChartLook) -> str:
+    if model.is_round or model.is_scatter or model.stacked or model.percent_stacked:
+        model = zero_filled(model)
     if model.is_round:
         return round_svg(model, plot, look)
     if model.is_scatter:
@@ -215,7 +221,7 @@ def value_scale(values: list[float], limits: tuple[float | None, float | None], 
 
 def plotted_values(model: ChartModel, series_list: list[ChartSeries]) -> list[float]:
     if not model.stacked:
-        return [value for series in series_list for value in series.values]
+        return [value for series in series_list for value in series.values if value is not None]
     totals = []
     for kind in dict.fromkeys(series.kind for series in series_list):
         group = [series for series in series_list if series.kind == kind]
@@ -391,6 +397,8 @@ def bars_svg(model: ChartModel, drawn: ChartModel, bars: list[tuple[int, ChartSe
     for lane, (index, series) in enumerate(bars):
         for slot, position in enumerate(order):
             value = series.values[position] if position < len(series.values) else 0.0
+            if value is None:
+                continue
             base = offsets[position] if drawn.stacked else 0.0
             start, end = scaled(base, scale, length_axis), scaled(base + value, scale, length_axis)
             across = band * slot + band * (1 - share) / 2 + (0 if drawn.stacked else thickness * lane)
@@ -426,7 +434,7 @@ def lines_svg(model: ChartModel, drawn: ChartModel, lines: list[tuple[int, Chart
     for index, series in lines:
         values = [series.values[position] if position < len(series.values) else 0.0 for position in order]
         bases = [floors[series.kind][position] for position in order] if drawn.stacked else [0.0] * len(order)
-        tops = [base + value for base, value in zip(bases, values)]
+        tops = [base + (value or 0.0) for base, value in zip(bases, values)]
         if drawn.stacked:
             for position, top in zip(order, tops):
                 floors[series.kind][position] = top
@@ -437,10 +445,21 @@ def lines_svg(model: ChartModel, drawn: ChartModel, lines: list[tuple[int, Chart
             opacity = "" if drawn.stacked else f' fill-opacity="{AREA_OPACITY}"'
             shapes.append(f'<polygon points="{point_list(points + floor[::-1])}" fill="{color}"{opacity}/>')
         else:
-            shapes.append(f'<polyline points="{point_list(points)}" fill="none" stroke="{color}" stroke-width="{LINE_WIDTH}"/>')
-            shapes.extend(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{MARKER_RADIUS}" fill="{look.color_of(index, position)}"/>' for (x, y), position in zip(points, order))
-        labels.extend(line_label_svg(model, index, position, point, look) for point, position in zip(points, order))
+            shapes.extend(f'<polyline points="{point_list(segment)}" fill="none" stroke="{color}" stroke-width="{LINE_WIDTH}"/>' for segment in drawn_segments(points, values))
+            shapes.extend(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{MARKER_RADIUS}" fill="{look.color_of(index, position)}"/>' for (x, y), position, value in zip(points, order, values) if value is not None)
+        labels.extend(line_label_svg(model, index, position, point, look) for point, position, value in zip(points, order, values) if value is not None)
     return "".join(shapes + labels)
+
+
+def drawn_segments(points: list[tuple[float, float]], values: list) -> list[list[tuple[float, float]]]:
+    segments, current = [], []
+    for point, value in zip(points, values):
+        if value is None:
+            segments.append(current)
+            current = []
+            continue
+        current.append(point)
+    return [segment for segment in segments + [current] if segment]
 
 
 def point_list(points: list[tuple[float, float]]) -> str:

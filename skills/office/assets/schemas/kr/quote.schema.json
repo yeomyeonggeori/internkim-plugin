@@ -1,0 +1,62 @@
+{
+  "name": "kr/quote",
+  "kind": "form",
+  "jurisdiction": "kr",
+  "language": "ko",
+  "title": "견 적 서",
+  "fields": [
+    {"name": "recipient", "label": "수신처", "type": "organization"},
+    {"name": "recipientRegistrationNumber", "label": "수신처 사업자등록번호", "type": "text", "optional": true},
+    {"name": "contact", "label": "수신 담당자", "type": "person", "optional": true, "description": "name with title as the request writes it, such as 한시범 과장"},
+    {"name": "validDays", "label": "유효기간(일)", "type": "quantity", "description": "days from the issue date"},
+    {"name": "delivery", "label": "납기", "type": "text"},
+    {"name": "deliveryPlace", "label": "납품장소", "type": "text"},
+    {"name": "paymentTerms", "label": "결제조건", "type": "text"},
+    {"name": "items", "label": "품목", "type": "list", "fields": [
+      {"name": "name", "label": "품명", "type": "text"},
+      {"name": "spec", "label": "규격", "type": "text", "optional": true},
+      {"name": "quantity", "label": "수량", "type": "quantity"},
+      {"name": "unit", "label": "단위", "type": "text"},
+      {"name": "unitPrice", "label": "단가", "type": "amount", "unit": "KRW"},
+      {"name": "taxExempt", "label": "면세", "type": "boolean", "optional": true, "description": "true only for a row the request says carries no VAT"}
+    ]}
+  ],
+  "known": {"issueDate": "today", "number": "document.number", "company": "company"},
+  "derived": [
+    {"name": "items.amount", "type": "amount", "unit": "KRW", "expression": "money(items.quantity * items.unitPrice)"},
+    {"name": "items.tax", "type": "amount", "unit": "KRW", "expression": "if(items.taxExempt, 0, money(items.amount * 0.1))"},
+    {"name": "supplyTotal", "type": "amount", "unit": "KRW", "expression": "sum(items.amount)"},
+    {"name": "taxTotal", "type": "amount", "unit": "KRW", "expression": "sum(items.tax)"},
+    {"name": "grandTotal", "type": "amount", "unit": "KRW", "expression": "supplyTotal + taxTotal"},
+    {"name": "amountLine", "type": "text", "expression": "words(grandTotal)"}
+  ],
+  "layout": {
+    "documentNumber": "{number}",
+    "recipient": {"label": "수신", "lines": ["{recipient}", "사업자등록번호 {recipientRegistrationNumber}", "{contact}님"]},
+    "meta": [
+      {"label": "합계금액", "value": "{amountLine}"},
+      {"label": "견적일자", "value": "{issueDate}"},
+      {"label": "유효기간", "value": "발행일로부터 {validDays:number}일"},
+      {"label": "납기", "value": "{delivery}"},
+      {"label": "납품장소", "value": "{deliveryPlace}"},
+      {"label": "결제조건", "value": "{paymentTerms}"},
+      {"label": "입금계좌", "value": "{company.bankAccount}"}
+    ],
+    "items": {"list": "items", "untaxed": "taxExempt", "columns": [
+      {"header": "품명", "value": "{name}", "align": "L"},
+      {"header": "규격", "value": "{spec}", "align": "L"},
+      {"header": "수량", "value": "{quantity:number}", "align": "R"},
+      {"header": "단위", "value": "{unit}", "align": "C"},
+      {"header": "단가", "value": "{unitPrice:number}", "align": "R"},
+      {"header": "공급가액", "value": "{amount:number}", "align": "R"},
+      {"header": "세액", "value": "{tax:number}", "align": "R"}
+    ], "totals": [
+      {"label": "공급가액 합계", "value": "{supplyTotal}"},
+      {"label": "부가세(10%)", "value": "{taxTotal}"},
+      {"label": "총 합계 (부가세 포함)", "value": "{grandTotal}"}
+    ]},
+    "notes": ["아래와 같이 견적합니다."],
+    "signature": {"date": "{issueDate}", "line": "{company.name} {company.representativeTitle} {company.representative}", "stamp": true},
+    "footer": "본 견적은 견적일로부터 {validDays:number}일간 유효합니다."
+  }
+}

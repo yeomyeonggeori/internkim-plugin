@@ -9,6 +9,7 @@ from fonts.registry import OFFICE_KOREAN_FAMILY
 from render.office_preview import PREVIEW_ISSUE_KINDS
 from core.office_operations import OPERATION_ISSUE_KINDS
 from core.template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
+from sheet.workbook_declaration import WORKBOOK_DECLARATION
 from core.office_result import ERROR, INVALID_VALUE, WARNING, WRONG_TYPE, Issue, IssueKind
 from core.excel_limits import CHART_TITLE_LIMIT, FORBIDDEN_SHEET_NAME_TEXT, HEADER_FOOTER_LIMIT, MAXIMUM_SHEET_NAME_LENGTH
 from core.page_sizes import PAPER_NAMES
@@ -497,7 +498,7 @@ CHECK_ISSUE_KINDS = (
 )
 
 GUIDE_INPUTS = (
-    ("create", "xlsx", "the JSON spec", WORKBOOK_SPECIFICATION),
+    ("create", "xlsx", "a new workbook's declaration, kind workbook", WORKBOOK_DECLARATION),
     ("apply", "xlsx", "the operations", OPERATION_BATCH),
     ("merge", "xlsx", "the values", MERGE_VALUES),
 )

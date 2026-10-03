@@ -149,8 +149,28 @@ def meant_column(key, headers):
 
 
 
+def create_declared(arguments, declaration):
+    from sheet.declared_workbook import declared_workbook, show_hidden_chart_data, shown_views
+
+    workbook, chart_operations, compiler = declared_workbook(declaration)
+    blanks = compiler.blanks
+    output_path = Path(os.path.expanduser(arguments.output))
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    editing = SheetEditing(workbook, None)
+    apply_batch(SHEET_OPERATIONS, editing, chart_operations)
+    show_hidden_chart_data(workbook)
+    issues = save_atomically(lambda temporary_path: save_editing(editing, temporary_path), str(output_path))
+    summary = f"created {output_path}" + (f"; {len(blanks)} blank input cells for the person to fill or send: {', '.join(blank['label'] for blank in blanks)}" if blanks else "; no blank cells")
+    titles = [view["title"] for view in declaration.get("views") or []]
+    views = shown_views(str(output_path), compiler, titles)
+    return Result(summary=summary, output_path=str(output_path), issues=tuple(issues), details={"blanks": blanks, "views": views})
+
+
 def main():
     arguments = route_arguments("create", "xlsx")
+    source = read_json_file(arguments.source)
+    if isinstance(source, dict) and source.get("kind") == "workbook":
+        return create_declared(arguments, source)
     specification = read_specification(arguments.source)
     workbook = create_workbook(specification)
     output_path = Path(os.path.expanduser(arguments.output))
