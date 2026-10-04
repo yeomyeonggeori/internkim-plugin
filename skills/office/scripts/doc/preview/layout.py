@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from doc.preview.model import (
     BoxItem, CellBlock, ChartItem, FieldItem, ImageItem, LineBreakItem, NoteReferenceItem, PageBreakBlock, ParagraphBlock, TabItem, TableBlock, TextItem, TextStyle,
@@ -203,6 +203,7 @@ class Layout:
         return exact if block.line_rule == "exact" else max(exact, natural)
 
     def table(self, block: TableBlock, available: float) -> TableLayout:
+        block = fitted_to(block, available)
         cell_layouts = [self.blocks(cell.blocks, cell_content_width(block, cell)) for cell in block.cells]
         heights = [row.height for row in block.rows]
         for cell, layouts in zip(block.cells, cell_layouts):
@@ -215,6 +216,14 @@ class Layout:
                 if shortfall > 0:
                     heights[spanned[-1]] += shortfall
         return TableLayout(block, heights, cell_layouts)
+
+
+def fitted_to(table: TableBlock, available: float) -> TableBlock:
+    room = available - max(table.indent, 0)
+    width = sum(table.columns)
+    if width <= room or room <= 0:
+        return table
+    return replace(table, columns=[column * room / width for column in table.columns])
 
 
 def cell_content_width(table: TableBlock, cell: CellBlock) -> float:

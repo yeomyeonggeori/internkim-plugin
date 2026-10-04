@@ -9,6 +9,7 @@ from openpyxl.utils import get_column_letter
 from core.office_result import ERROR, IssueKind, OfficeFailure
 from schemas.expression import Binary, Call, Number, Path as ExpressionPath
 from schemas.resolution import Instance, formatted
+from schemas.text_blanks import fill_paragraph, filled_text
 
 
 FORM_ROWS_FULL = IssueKind("FORM_ROWS_FULL", ERROR, "the form has fewer item rows than the values hold", "split the items over two copies of the form, or ask the person which items belong on this one")
@@ -50,8 +51,11 @@ def fill_docx_form(instance: Instance, output_path: Path) -> list:
     for name in scalar_names(instance):
         at = placements(instance)[name]["at"]
         text = formatted(instance, name, None, None)
-        if text is not None:
+        if text is not None and "blank" not in at:
             write_docx_cell(tables[at["table"]].cell(at["row"], at["column"]), text)
+    for (table, row, column, paragraph), filled in blanks_by_paragraph(instance).items():
+        container = document if table is None else tables[table].cell(row, column)
+        fill_paragraph(container.paragraphs[paragraph], filled)
     for field in instance.schema.fields:
         if not field.is_record_list or field.name not in placements(instance):
             continue
@@ -64,6 +68,22 @@ def fill_docx_form(instance: Instance, output_path: Path) -> list:
                     write_docx_cell(table.cell(placement["at"]["firstRow"] + index, child_at["column"]), text)
     document.save(output_path)
     return []
+
+
+def blank_value(instance: Instance, name: str) -> object:
+    value = instance.value(name, None)
+    return value if isinstance(value, date) else formatted(instance, name, None, None)
+
+
+def blanks_by_paragraph(instance: Instance) -> dict[tuple, dict[int, object]]:
+    grouped: dict[tuple, dict[int, object]] = {}
+    for name in scalar_names(instance):
+        at = placements(instance)[name]["at"]
+        if "blank" not in at:
+            continue
+        key = (at.get("table", at.get("sheet")), at.get("row"), at.get("column"), at.get("paragraph", 0))
+        grouped.setdefault(key, {})[at["blank"]] = blank_value(instance, name)
+    return grouped
 
 
 def cell_value(instance: Instance, name: str, row: dict | None):
@@ -97,8 +117,13 @@ def fill_xlsx_form(instance: Instance, output_path: Path) -> list:
     for field in instance.schema.fields:
         if field.is_record_list and field.name in placements(instance):
             fill_xlsx_rows(instance, workbook, field.name, references)
+    for (sheet, row, column, _paragraph), filled in blanks_by_paragraph(instance).items():
+        cell = workbook[sheet].cell(row + 1, column + 1)
+        cell.value = filled_text(str(cell.value or ""), filled)
     for name in scalar_names(instance):
         at = placements(instance)[name]["at"]
+        if "blank" in at:
+            continue
         worksheet = workbook[at["sheet"]]
         derived = instance.schema.derived_named(name)
         formula = live_formula(derived.expression, references) if derived is not None else None

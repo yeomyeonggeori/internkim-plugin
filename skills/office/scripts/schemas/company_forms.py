@@ -4,6 +4,9 @@ import re
 
 from openpyxl.utils import get_column_letter
 
+from schemas.expression import identifier_for
+from schemas.text_blanks import text_blanks
+
 
 MINIMUM_HEADER_CELLS = 3
 MINIMUM_ITEM_ROWS = 2
@@ -11,7 +14,7 @@ NUMBERING = re.compile(r"\d{1,3}\.?")
 
 
 def field_name(label: str, taken: set[str]) -> str:
-    base = re.sub(r"\s+", "", label).strip(":：") or "field"
+    base = identifier_for(label)
     name, counter = base, 2
     while name in taken:
         name, counter = f"{base}_{counter}", counter + 1
@@ -29,11 +32,23 @@ def list_field(label: str, headers: list[tuple[int, str]], taken: set[str], at: 
     return {"name": field_name(label, taken), "label": label, "type": "list", "at": at, "fields": children}
 
 
+def blank_fields(paragraphs: list[str], taken: set[str], at: dict) -> list[dict]:
+    fields = []
+    for paragraph_index, text in enumerate(paragraphs):
+        for blank_index, blank in enumerate(text_blanks(text)):
+            fields.append({"name": field_name(blank.label, taken), "label": blank.label, "type": blank.kind, "at": {**at, "paragraph": paragraph_index, "blank": blank_index}})
+    return fields
+
+
 class GridTable:
-    def __init__(self, texts: list[list[str]], identities: list[list[object]], formulas: set | None = None):
+    def __init__(self, texts: list[list[str]], identities: list[list[object]], formulas: set | None = None, paragraphs: list[list[list[str]]] | None = None):
         self.texts = texts
         self.identities = identities
         self.formulas = formulas or set()
+        self.paragraphs = paragraphs or [[[text] for text in row] for row in texts]
+
+    def has_blanks(self, row: int, column: int) -> bool:
+        return any(text_blanks(text) for text in self.paragraphs[row][column])
 
     def unique_columns(self, row: int) -> list[int]:
         identities = self.identities[row]
@@ -80,8 +95,17 @@ def table_fields(table: GridTable, at_table: dict, list_label: str, taken: set[s
             fields.append(field)
             row += rows + 1
             continue
+        fields.extend(cell_blank_fields(table, row, at_table, taken))
         fields.extend(row_fields(table, row, at_table, taken))
         row += 1
+    return fields
+
+
+def cell_blank_fields(table: GridTable, row: int, at_table: dict, taken: set[str]) -> list[dict]:
+    fields = []
+    for column in table.unique_columns(row):
+        if not table.continues_above(row, column):
+            fields.extend(blank_fields(table.paragraphs[row][column], taken, {**at_table, "row": row, "column": column}))
     return fields
 
 
@@ -90,7 +114,7 @@ def row_fields(table: GridTable, row: int, at_table: dict, taken: set[str]) -> l
     columns = table.unique_columns(row)
     for index, column in enumerate(columns):
         label = table.texts[row][column].strip()
-        if not label or table.continues_above(row, column):
+        if not label or table.continues_above(row, column) or table.has_blanks(row, column):
             continue
         right = columns[index + 1] if index + 1 < len(columns) else None
         if right is not None and table.is_empty(row, right):
@@ -101,8 +125,11 @@ def row_fields(table: GridTable, row: int, at_table: dict, taken: set[str]) -> l
 
 
 def docx_grid(table) -> GridTable:
+    from schemas.text_blanks import paragraph_text
+
     rows = [list(row.cells) for row in table.rows]
-    return GridTable([[cell.text for cell in row] for row in rows], [[cell._tc for cell in row] for row in rows])
+    paragraphs = [[[paragraph_text(paragraph) for paragraph in cell.paragraphs] for cell in row] for row in rows]
+    return GridTable([[cell.text for cell in row] for row in rows], [[cell._tc for cell in row] for row in rows], paragraphs=paragraphs)
 
 
 def preceding_text(document, table) -> str:
@@ -118,11 +145,14 @@ def preceding_text(document, table) -> str:
 def docx_form_fields(path: str) -> list[dict]:
     from docx import Document
 
+    from schemas.text_blanks import paragraph_text
+
     document = Document(path)
     taken: set[str] = set()
     fields = []
     for index, table in enumerate(document.tables):
         fields.extend(table_fields(docx_grid(table), {"table": index}, preceding_text(document, table), taken))
+    fields.extend(blank_fields([paragraph_text(paragraph) for paragraph in document.paragraphs], taken, {}))
     return fields
 
 

@@ -170,6 +170,44 @@ class PreviewDefectTest(unittest.TestCase):
         self.assertEqual([issue["location"] for issue in blank], ["page 2"])
 
 
+
+OVER_WIDE_TABLE = """
+from docx import Document
+from docx.oxml.ns import qn
+from docx.shared import Twips
+
+document = Document()
+section = document.sections[0]
+table = document.add_table(rows=2, cols=6)
+table.style = "Table Grid"
+widths = [4535, 1644, 1644, 1644, 1644, 1644]
+for column, width in zip(table._tbl.find(qn("w:tblGrid")).findall(qn("w:gridCol")), widths):
+    column.set(qn("w:w"), str(width))
+for row in table.rows:
+    for cell, width in zip(row.cells, widths):
+        cell.width = Twips(width)
+for cell, text in zip(table.rows[0].cells, ["출장비 정산서", "결재", "담당", "팀장", "본부장", "대표이사"]):
+    cell.text = text
+document.save("넓은표.docx")
+print((section.page_width - section.left_margin - section.right_margin) / 635)
+"""
+
+
+class OverWideTableTest(unittest.TestCase):
+    def test_a_table_wider_than_the_text_area_is_scaled_to_it_keeping_its_proportions(self):
+        with tempfile.TemporaryDirectory() as name:
+            directory = Path(name)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", OVER_WIDE_TABLE], capture_output=True, text=True, cwd=directory, check=True)
+            text_width_twips = float(completed.stdout.strip())
+            run_office(["render", "넓은표.docx"], directory)
+            html = (directory / "넓은표-preview" / "preview.html").read_text(encoding="utf-8")
+        columns = [float(width.removesuffix("px")) for width in re.search(r"grid-template-columns:([^;]*);", html).group(1).split()]
+        text_width = text_width_twips / 15
+        self.assertLessEqual(sum(columns), text_width + 0.5)
+        self.assertGreater(sum(columns), text_width - 0.5)
+        self.assertAlmostEqual(columns[0] / columns[1], 4535 / 1644, places=2)
+
+
 TWO_SECTIONS_AND_A_LOGO = """
 from docx import Document
 from PIL import Image

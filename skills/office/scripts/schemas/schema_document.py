@@ -8,7 +8,7 @@ import re
 from core.office_result import INVALID_VALUE, OfficeFailure
 from core.office_schema import closest_name
 from core.skill_paths import ASSETS_PATH
-from schemas.expression import parse_expression
+from schemas.expression import identifier_for, is_identifier, parse_expression
 
 
 SCHEMAS_PATH = ASSETS_PATH / "schemas"
@@ -75,6 +75,7 @@ def schema_field(document: dict, location: str) -> SchemaField:
     field_type = document.get("type", "text")
     if field_type not in FIELD_TYPES:
         raise OfficeFailure(INVALID_VALUE.issue(f"{location}.type: {field_type!r} is not one of {', '.join(FIELD_TYPES)}", f"{location}.type"))
+    require_identifier(document, location)
     children = tuple(schema_field(child, f"{location}.fields[{index}]") for index, child in enumerate(document.get("fields") or ()))
     return SchemaField(
         name=document["name"],
@@ -89,6 +90,18 @@ def schema_field(document: dict, location: str) -> SchemaField:
     )
 
 
+def require_identifier(document: dict, location: str) -> None:
+    name = str(document.get("name", ""))
+    if is_identifier(name):
+        return
+    label = document.get("label", name)
+    raise OfficeFailure(INVALID_VALUE.issue(
+        f"{location}.name: {name!r} cannot be named in an expression; a name is letters, digits and underscores, starting with a letter",
+        f"{location}.name",
+        f"name it {identifier_for(str(label))!r} and keep {label!r} as its label",
+    ))
+
+
 def derived_entry(document: dict, location: str) -> Derived:
     return Derived(document["name"], document.get("type", "amount"), parse_expression(document["expression"], f"{location}.expression"), document["expression"], document.get("unit", ""))
 
@@ -98,7 +111,10 @@ FORM_KINDS = ("docx-form", "xlsx-form")
 
 def typed_form_document(document: dict) -> dict:
     fields, known, derived, placements = [], dict(document.get("known") or {}), list(document.get("derived") or []), {}
-    for entry in document.get("fields") or []:
+    for index, entry in enumerate(document.get("fields") or []):
+        require_identifier(entry, f"fields[{index}]")
+        for child_index, child in enumerate(entry.get("fields") or []):
+            require_identifier(child, f"fields[{index}].fields[{child_index}]")
         placements[entry["name"]] = {"at": entry.get("at", {}), "fields": {child["name"]: child.get("at", {}) for child in entry.get("fields") or []}}
         if entry.get("type") in ("handwritten", "ignore"):
             continue
