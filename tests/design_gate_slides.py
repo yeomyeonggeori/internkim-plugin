@@ -1,3 +1,6 @@
+import re
+
+
 BASE_STYLE = """
 body { margin: 0; }
 section { padding: var(--margin); box-sizing: border-box; font-family: var(--font-body); font-size: var(--size-body); background: var(--ground); color: var(--text); display: flex; flex-direction: column; gap: var(--gap); }
@@ -11,13 +14,28 @@ p { margin: 0; }
 """
 
 
-def section_markup(content: str | tuple[str, str]) -> str:
+BALLAST = '<svg aria-hidden="true" width="1400" height="560" style="flex: 0 1 560px; min-height: 0; width: 100%"></svg>'
+
+
+def fill_sections(html: str) -> str:
+    def filled(match):
+        block = match.group(0)
+        has_text = bool(re.sub(r"<[^>]*>|\s+", "", re.sub(r"<(style|script)\b.*?</\1>", "", block, flags=re.S)))
+        if "data-chart" in block or BALLAST in block or not has_text:
+            return block
+        marker = '<aside class="notes"' if '<aside class="notes"' in block else "</section>"
+        return block.replace(marker, BALLAST + marker, 1)
+
+    return re.sub(r"<section\b.*?</section>", filled, html, flags=re.S)
+
+
+def section_markup(content: str | tuple[str, str], ballast: str = "") -> str:
     attributes, markup = ("", content) if isinstance(content, str) else content
-    return f'<section{attributes}>{markup}<aside class="notes">notes</aside></section>'
+    return f'<section{attributes}>{markup}{ballast}<aside class="notes">notes</aside></section>'
 
 
-def deck(sections: list, style: str = "") -> str:
-    body = "\n".join(section_markup(content) for content in sections)
+def deck(sections: list, style: str = "", filled: bool = False) -> str:
+    body = "\n".join(section_markup(content, BALLAST if filled and "data-chart" not in str(content) else "") for content in sections)
     return f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Gate fixture</title><style>{BASE_STYLE}{style}</style></head><body>\n{body}\n</body></html>\n'
 
 

@@ -12,6 +12,7 @@ from xml.etree import ElementTree
 import zipfile
 
 from design_gate_fixture import design_markdown
+from design_gate_slides import fill_sections
 from render_fixture import can_render
 
 
@@ -293,7 +294,7 @@ class RenderedEditablePptxTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             deck_path = Path(directory)
             (deck_path / "DESIGN.md").write_text(design_markdown({"fonts": {"display": "Paperlogy", "body": "Paperlogy"}}), encoding="utf-8")
-            (deck_path / "slides.html").write_text(DECK_SOURCE, encoding="utf-8")
+            (deck_path / "slides.html").write_text(fill_sections(DECK_SOURCE), encoding="utf-8")
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path)
             envelope = json.loads(completed.stdout)
             layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))

@@ -7,6 +7,7 @@ import tempfile
 import unittest
 
 from design_gate_fixture import design_markdown
+from design_gate_slides import fill_sections
 from render_fixture import can_render
 
 
@@ -18,6 +19,7 @@ from core.host_contract import RUNTIME_CONTEXT_VARIABLE  # noqa: E402
 
 
 STYLE = """
+figure[data-chart] { width: 1400px; height: 560px; margin: 0; }
 section { padding: var(--margin); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--gap); font-family: var(--font-body); }
 h1, h2 { font-family: var(--font-display); font-size: var(--size-title); margin: 0; font-weight: 700; }
 h3 { font-size: 30px; margin: 0; }
@@ -30,7 +32,7 @@ DARK_TOKENS = {"colors": {"ground": "#0F1720", "text": "#F2F5F9", "accent": "#6F
 
 
 def deck(*slides: str) -> str:
-    return f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>시험 덱</title><style>{STYLE}</style></head><body>' + "".join(slides) + "</body></html>"
+    return f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>시험 덱</title><style>{STYLE}</style></head><body>' + fill_sections("".join(slides)) + "</body></html>"
 
 
 COVER = '<section><h1>물류 자동화로 출고 시간을 줄입니다</h1><p>주식회사 예시랩 · 2026년 3분기</p><aside class="notes">표지</aside></section>'

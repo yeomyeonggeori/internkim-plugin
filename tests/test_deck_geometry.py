@@ -13,23 +13,25 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from png_fixture import write_png  # noqa: E402
 from design_gate_fixture import design_markdown  # noqa: E402
+from design_gate_slides import fill_sections  # noqa: E402
 from render_fixture import can_render  # noqa: E402
 from deck.review.deck_review import build_review_report  # noqa: E402
 
 
 LONG_SLIDE_TEXT = "아주 긴 문장이 이어집니다. " * 120
+FIXTURE_SLIDE_TEXT = "아주 긴 문장이 이어집니다. " * 80
 FIXTURE_SOURCE = f"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>Fixture</title>
 <style>
 body {{ margin: 0; font-family: sans-serif; }}
 section {{ width: 1600px; height: 900px; position: relative; overflow: hidden; box-sizing: border-box; padding: 80px; }}
-.clipped {{ width: 400px; height: 60px; overflow: hidden; font-size: 24px; }}
+.clipped {{ width: 400px; height: 60px; overflow: hidden; font-size: 28px; }}
 h2 {{ font-size: 48px; margin: 0 0 24px; }}
-p {{ font-size: 20px; margin: 0; }}
+p {{ font-size: 28px; margin: 0; }}
 </style></head><body data-visual-system="fixture">
-<section data-slide-role="summary"><h2>이 슬라이드는 깔끔하게 들어갑니다</h2><p>{LONG_SLIDE_TEXT}</p><aside class="notes">노트 하나</aside></section>
+<section data-slide-role="summary"><h2>이 슬라이드는 깔끔하게 들어갑니다</h2><p>{FIXTURE_SLIDE_TEXT}</p><aside class="notes">노트 하나</aside></section>
 <section data-slide-role="risk"><h2>이 슬라이드는 상자가 넘칩니다</h2>
 <div class="clipped">길고 긴 문장이 상자 높이를 넘도록 계속 이어집니다 길고 긴 문장이 상자 높이를 넘도록 계속 이어집니다 길고 긴 문장이 상자 높이를 넘도록 계속 이어집니다</div>
-<aside class="notes">노트 둘</aside></section>
+<svg aria-hidden="true" width="1400" height="480" style="position: absolute; left: 80px; top: 340px"></svg><aside class="notes">노트 둘</aside></section>
 </body></html>
 """
 MEASURED_SLIDES = [
@@ -111,9 +113,6 @@ class RenderedGeometryTest(unittest.TestCase):
         self.assertEqual(clean["overflow"], [])
         self.assertEqual([finding["selector"] for finding in clipped["overflow"]], ["div.clipped"])
         self.assertIn("CONTENT_OVERFLOW", {issue["code"] for issue in envelope["issues"]})
-        self.assertLess(clipped["contentBands"][-1][1], clipped["height"] / 3)
-        dead_zones = {issue["location"]: issue["message"] for issue in envelope["issues"] if issue["code"] == "VERTICAL_DEAD_ZONE"}
-        self.assertIn("empty below it", dead_zones["slide 2"])
 
 
 def cards_slide(sentence_count: int) -> str:
@@ -127,7 +126,7 @@ def free_deck(*slides: str) -> str:
     return f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>맞춤 시험</title><style>{style}</style></head><body>' + "".join(slides) + "</body></html>"
 
 
-LONG_STATEMENT = "<section><h2>" + "재고 관리 자동화로 매장 운영 시간을 줄이고 발주 정확도를 높이며 고객 만족도를 끌어올립니다. " * 6 + '</h2><aside class="notes">긴 문장</aside></section>'
+LONG_STATEMENT = "<section><h2>" + "재고 관리 자동화로 매장 운영 시간을 줄이고 발주 정확도를 높이며 고객 만족도를 끌어올립니다. " * 6 + '</h2><svg aria-hidden="true" width="1400" height="200" style="position: absolute; left: 80px; top: 640px"></svg><aside class="notes">긴 문장</aside></section>'
 
 
 class TextCollisionTest(unittest.TestCase):

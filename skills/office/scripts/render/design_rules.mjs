@@ -60,6 +60,8 @@ const sides = ["Top", "Right", "Bottom", "Left"];
 
 const coveringShare = 0.6;
 
+const backdropShare = 0.85;
+
 const tableParts = new Set(["TABLE", "THEAD", "TBODY", "TFOOT", "TR", "TD", "TH", "CAPTION", "COLGROUP", "COL"]);
 
 export function measureDesignRules(page, rules, tools) {
@@ -376,10 +378,10 @@ export function measureDesignRules(page, rules, tools) {
     contentDistribution: ({ bandShare, centeredEdgeShare }) => {
       const pageRect = rectOf(page);
       const pageArea = pageRect.width * pageRect.height;
-      const isMedia = (element) => ["IMG", "SVG", "CANVAS", "VIDEO", "TABLE"].includes(element.tagName.toUpperCase()) && !element.parentElement.closest("svg") && rectOf(element).width > 0;
+      const isMedia = (element) => ["IMG", "SVG", "CANVAS", "VIDEO", "TABLE", "FIGURE"].includes(element.tagName.toUpperCase()) && !element.parentElement.closest("svg") && rectOf(element).width > 0;
       const contentRects = [
         ...textElements().flatMap((element) => ownTextRects(element)),
-        ...elementsOf(page).slice(1).filter((element) => isMedia(element) || isCard(element)).map(rectOf).filter((rect) => rect.width * rect.height < pageArea * coveringShare),
+        ...elementsOf(page).slice(1).filter((element) => isMedia(element) || isCard(element)).map(rectOf).filter((rect) => rect.width * rect.height < pageArea * backdropShare),
       ];
       const spans = contentRects.map((rect) => ({ top: Math.max(rect.top, pageRect.top), bottom: Math.min(rect.bottom, pageRect.bottom) })).filter((span) => span.bottom > span.top).sort((first, second) => first.top - second.top);
       if (!spans.length) return [];

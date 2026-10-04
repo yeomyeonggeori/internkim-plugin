@@ -15,12 +15,13 @@ from deck.check_deck import CheckRequest, check_deck  # noqa: E402
 
 
 from design_gate_fixture import design_markdown  # noqa: E402
+from design_gate_slides import fill_sections  # noqa: E402
 
 
 def free_deck(*slides: str, head: str = "") -> str:
     return (
         f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>샘플전자 보고</title><style>section {{ padding: var(--margin); }}</style>{head}</head>'
-        "<body>" + "".join(slides) + "</body></html>"
+        "<body>" + fill_sections("".join(slides)) + "</body></html>"
     )
 
 
@@ -32,7 +33,7 @@ KPI = (
 )
 CHART = (
     "<section><h2>매출이 네 분기 연속 늘었습니다</h2>"
-    '<figure style="width: 800px; height: 400px" data-chart="column" data-labels="1Q, 2Q, 3Q" data-values="96, 104, 128" data-unit="억"></figure></section>'
+    '<figure style="width: 1200px; height: 600px" data-chart="column" data-labels="1Q, 2Q, 3Q" data-values="96, 104, 128" data-unit="억"></figure></section>'
 )
 TABLE = "<section><h2>수도권이 성장을 이끌었습니다</h2><table><tr><th>지역</th><th>매출</th></tr><tr><td>수도권</td><td>58억</td></tr></table></section>"
 CLOSING = "<section><h2>예산을 승인해 주십시오</h2><ol><li>예산 6억 원</li><li>11월 3일 출시</li></ol></section>"
@@ -110,7 +111,7 @@ class DeckCheckTest(unittest.TestCase):
         self.assertNotIn("slide 5", messages)
 
     def test_grouped_thousands_are_one_number_when_values_are_comma_space_separated(self):
-        grouped = '<section><h2>매출이 늘었습니다</h2><figure style="width: 800px; height: 400px" data-chart="column" data-labels="1월, 2월" data-values="1,200, 1,350" data-unit="만원"></figure></section>'
+        grouped = '<section><h2>매출이 늘었습니다</h2><figure style="width: 1200px; height: 600px" data-chart="column" data-labels="1월, 2월" data-values="1,200, 1,350" data-unit="만원"></figure></section>'
         self.assertNotIn("CHART_DATA_INVALID", [code for code, _ in self.codes(free_deck(COVER, grouped))])
         packed = grouped.replace("1,200, 1,350", "1,200,1,350")
         messages = [issue.message for issue in self.check(free_deck(COVER, packed)).issues if issue.kind.code == "CHART_DATA_INVALID"]

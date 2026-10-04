@@ -18,6 +18,7 @@ OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from design_gate_fixture import design_markdown  # noqa: E402
+from design_gate_slides import fill_sections  # noqa: E402
 from fonts.registry import FAMILIES, resolved_face  # noqa: E402
 
 KOREAN_TEXT = "일금 일백만원整 다람쥐 헌 쳇바퀴에 타고파"
@@ -78,7 +79,7 @@ class HostWithoutFontsTest(unittest.TestCase):
 
     def test_a_deck_draws_korean_with_bundled_fonts(self):
         (self.directory / "DESIGN.md").write_text(design_markdown(), encoding="utf-8")
-        (self.directory / "slides.html").write_text(DECK_SOURCE, encoding="utf-8")
+        (self.directory / "slides.html").write_text(fill_sections(DECK_SOURCE), encoding="utf-8")
         envelope = self.run_office("create", "build/deck.pdf", "slides.html")
         self.assert_bundled_pdf(self.directory / envelope["outputPath"], KOREAN_TEXT)
 

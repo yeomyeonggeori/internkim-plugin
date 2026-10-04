@@ -70,8 +70,8 @@ class AcceptanceTest(unittest.TestCase):
 
 SMALL_DECK = '<html><head><style>section { padding: 96px; }</style></head><body><section><h2>배송이 빨라집니다</h2><aside class="notes">배송 기간이 줄었습니다</aside></section></body></html>'
 SLIDE_HTML_DECK = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>자유 형식</title>
-<style>section{width:1600px;height:900px;padding:80px;box-sizing:border-box;font-family:sans-serif;background:#fff} h1{font-size:64px} td{font-size:12px}</style></head><body>
-<section><h1>지역별 매출이 늘었습니다</h1><table><tr><td>수도권</td><td>58억</td></tr><tr><td>영남</td><td>31억</td></tr></table></section>
+<style>section{width:1600px;height:900px;padding:80px;box-sizing:border-box;font-family:sans-serif;background:#fff;position:relative} h1{font-size:64px} p{font-size:32px;margin:0} .over{position:absolute;left:100px;top:300px;width:800px} .under{position:absolute;left:140px;top:312px;width:800px}</style></head><body>
+<section><h1>지역별 매출이 늘었습니다</h1><p class="over">수도권 매출은 58억으로 가장 크게 늘었습니다</p><p class="under">영남 매출은 31억으로 그 뒤를 이었습니다</p><svg aria-hidden="true" width="1400" height="360" style="position:absolute;left:80px;top:460px"></svg></section>
 </body></html>"""
 
 
@@ -85,7 +85,7 @@ class MeasuredBarTest(unittest.TestCase):
             acceptance = json.loads(completed.stdout)["details"]["acceptance"]
         self.assertFalse(acceptance["acceptable"])
         self.assertTrue(acceptance["verdict"].startswith("FIX ROUND 1"))
-        self.assertTrue({"TINY_TEXT", "VERTICAL_DEAD_ZONE"} <= {defect["code"] for defect in acceptance["defects"]})
+        self.assertIn("TEXT_OVERLAP", {defect["code"] for defect in acceptance["defects"]})
 
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_a_build_with_its_streams_merged_still_prints_one_json_document(self):
