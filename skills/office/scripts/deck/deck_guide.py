@@ -1,55 +1,66 @@
 from __future__ import annotations
 
-from deck.deck_design import AXES, DECIDED, DESIGN, QUESTIONS, Choice, Design, attribute_name
-from deck.deck_preparation import DeckPreparation, deck_palette, prepare_deck, request_preparation
-from deck.deck_source import parse_source
+from deck.deck_design import AXES, DECIDED, DESIGN, Design, Choice, palette_candidates, type_pairing, type_scale
+from deck.deck_preparation import DeckPreparation, prepare_deck, request_preparation
 
 
 DESIGN_TOPIC = "design"
-COVER_WORK = {
-    "photo": "make the listed photo that best shows the subject the cover's <img>",
-    "key_figure": "give the cover one to three .kpi, each a .value and a .label, holding the request's headline figures",
-    "icon": "put data-icon on the cover <section>, naming the icon that stands for the subject",
-    "type_only": "let the cover's title stand alone",
-}
 IMAGERY_WORK = {
-    "photo": "put each listed photo that shows the subject where it belongs: the cover, a section divider, an image slide beside what it shows",
-    "icon": "give cards, metrics, steps and agenda or closing lists a data-icon",
-    "data": "lead with chart, kpi, number and table slides; icons only where a list needs them",
+    "photo": "photos lead: use each listed photo that shows the subject on the cover, a divider or the slide it shows",
+    "icon": "line icons mark items; type and layout carry the rest",
+    "data": "charts, key numbers and tables lead; icons only where a list needs them",
 }
-SHOWN_TOKENS = ("accent", "accent-2", "bg", "ink")
+AVOID_LIST = (
+    "cream or beige grounds, purple-and-blue palettes, cyan on dark",
+    "gradients of any kind: fills, text, halos, grid or stripe backgrounds",
+    "glass blur, glows, a wide shadow under a hairline border, radius past 24px",
+    "eyebrows, badges or icon tiles above headings",
+    "one-sided accent bars, nested cards, grids of identical cards",
+    "oversized or italic serif headlines, tight letter-spacing, a flat type scale",
+    "a big metric used as a cover template, rough illustrations, one spacing everywhere, numbering with no real sequence",
+    "em dash strings",
+)
 
 
 def guide_preamble() -> list[str]:
-    preparation = prepare_deck(parse_source("<body></body>"))
+    preparation = prepare_deck()
     if request_preparation(preparation):
-        return ["", "Next, run office guide design: InternKim gathers the photos and logo the deck can use before that command runs."]
-    return ["", "Next, run office guide design: it says this deck's design and lists the photos and logo it can use."]
+        return ["", "Next, run office guide design as a command of its own: InternKim gathers the photos and logo the deck can use before the next command runs."]
+    return ["", "Next, run office guide design: it says this deck's design intent and lists the photos and logo it can use."]
 
 
 def design_text() -> str:
-    preparation = prepare_deck(parse_source("<body></body>"))
-    return "\n".join(["Design the deck yourself: write DESIGN.md first, as references/deck.md shows.", "", *logo_lines(preparation), "", *image_lines(preparation)])
+    preparation = prepare_deck()
+    if request_preparation(preparation):
+        return "InternKim is gathering this deck's photos, logo and design intent now. Run office guide design again as a command of its own; this answer is read only by the next command."
+    return "\n".join([*intent_lines(preparation.design), "", *logo_lines(preparation), "", *image_lines(preparation), "", *avoid_lines()])
 
 
 def is_decided(design: Design) -> bool:
     return any(choice.source == DECIDED for choice in design.choices.values())
 
 
-def decided_lines(preparation: DeckPreparation) -> list[str]:
-    design = preparation.design
-    palette = deck_palette(preparation)
-    colors = ", ".join(f"{token} #{palette[token]}" for token in SHOWN_TOKENS)
-    faces = DESIGN["types"][design.option("type")]
+def intent_lines(design: Design) -> list[str]:
+    if not is_decided(design):
+        return ["Design intent: none was decided for this request. Choose it yourself from the request's subject, audience and purpose, and write it in DESIGN.md."]
+    pairing, scale = type_pairing(design), type_scale(design)
     return [
-        "This deck's design, chosen by InternKim from the request; the build applies it, so write none of it on <body>:",
-        f"  palette: {choice_label(design.choices['palette'])}; {colors}",
-        f"  tone: {choice_label(design.choices['tone'])}; temperature: {choice_label(design.choices['temperature'])}",
-        f"  type: {choice_label(design.choices['type'])}; {faces['display']} titles, {faces['body']} text",
-        f"  density: {choice_label(design.choices['density'])}",
-        f"  cover: {choice_label(design.choices['cover'])}; {COVER_WORK[design.option('cover')]}",
+        "Design intent, chosen by InternKim from the request; write your own DESIGN.md within it. A color the request names, or the logo's own color, takes precedence over the accent.",
+        f"  accent: {choice_label(design.choices['accent'])}{'; leaning toward ' + design.secondary_accent if design.secondary_accent else ''}",
+        f"  mood: {choice_label(design.choices['mood'])}; temperature: {choice_label(design.choices['temperature'])}",
+        f"  type: {choice_label(design.choices['type'])}; {pairing['display']} titles, {pairing['body']} text",
+        f"  density: {choice_label(design.choices['density'])}; scale display {scale['display']}, title {scale['title']}, body {scale['body']}, small {scale['small']}, margin {scale['margin']}, gap {scale['gap']}",
         f"  imagery: {choice_label(design.choices['imagery'])}; {IMAGERY_WORK[design.option('imagery')]}",
-        "  a request that names a color still sets data-accent=\"#RRGGBB\" on <body>",
+        *(["  brand color from the logo: #" + design.brand_color] if design.brand_color else []),
+        "Palette candidates derived from that hue family, each checked for contrast and against the design gate; pick one, adjust it or keep your own within the gate:",
+        *candidate_lines(design),
+    ]
+
+
+def candidate_lines(design: Design) -> list[str]:
+    return [
+        f"  {candidate['name']}: " + ", ".join(f"{role} {value}" for role, value in candidate["colors"].items()) + f" (text {candidate['textContrast']}:1, accent {candidate['accentContrast']}:1)"
+        for candidate in palette_candidates(design)
     ]
 
 
@@ -59,27 +70,27 @@ def choice_label(choice: Choice) -> str:
     return f"{choice.option} ({odds})" if odds else choice.option
 
 
-def choice_lines() -> list[str]:
-    lines = ["Choose this deck's design from the request's subject, audience and purpose, and write each choice on <body>, such as data-palette=\"trust\":"]
-    for axis in AXES:
-        options = "; ".join(f"{name}: {meaning}" for name, meaning in QUESTIONS[axis]["options"].items())
-        lines.append(f"  {attribute_name(axis)} (default {QUESTIONS[axis]['fallback']}): {options}")
-    lines.append(f"  the cover and imagery choices ask of you: {'; '.join(f'{name}: {work}' for name, work in COVER_WORK.items())}")
-    return lines
+def avoid_lines() -> list[str]:
+    return ["Never produce (office check refuses these): " + "; ".join(AVOID_LIST)]
 
 
 def logo_lines(preparation: DeckPreparation) -> list[str]:
     logo = preparation.logo
     if logo is None:
         return ["Logo: none is known for this company; the deck goes without one."]
-    return [f"Logo: {logo.path} ({logo.width}x{logo.height}{', on a transparent background' if logo.has_transparency else ', on its own opaque background'}); place it yourself at one size and place on every slide, and never stretch or recolor it."]
+    kind = "transparent background" if logo.has_transparency else "its own opaque background"
+    return [f"Logo: {logo.width}x{logo.height}, {kind}. Always show it: <img data-logo> on the cover, and on the other slides where it fits, at a height you choose; never stretch or recolor it."]
 
 
 def image_lines(preparation: DeckPreparation) -> list[str]:
+    dropped = [f"  not readable from here, so not listed: {path}" for path in preparation.unreadable_images]
     if not preparation.images:
-        return ["Images: none. Give the deck its rhythm with figures, icons and charts, and never leave an empty photo frame or a placeholder box."]
-    lines = ["Images the requester can use: use each one that shows the deck's subject where it fits, and skip one that does not. A caption or a fact about a photo comes only from its title, its summary or the request.", *(image_line(image) for image in preparation.images)]
-    return lines
+        return ["Images: none.", *dropped, "  Give the deck its rhythm with type, figures and charts, and never leave an empty photo frame or a placeholder box."]
+    return [
+        "Images the requester can use: use them readily, where they show the deck's subject; skip one that does not. A caption or a fact about a photo comes only from its title, its summary or the request.",
+        *(image_line(image) for image in preparation.images),
+        *dropped,
+    ]
 
 
 def image_line(image: dict) -> str:

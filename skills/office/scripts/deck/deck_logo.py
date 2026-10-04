@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import pathlib
 
-from core.css_color import contrast_ratio, hex_of, hex_oklch
+from core.css_color import hex_of, hex_oklch
 
 
 SAMPLE_SIDE = 96
@@ -12,7 +12,6 @@ TRANSPARENT_SHARE = 0.02
 BRAND_CHROMA_MINIMUM = 0.06
 BRAND_LIGHTNESS_RANGE = (0.2, 0.92)
 BRAND_PIXEL_SHARE = 0.03
-LEGIBLE_CONTRAST = 3.0
 HUE_BIN_DEGREES = 15
 RASTER_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp")
 
@@ -25,10 +24,6 @@ class Logo:
     has_transparency: bool
     ink: str
     brand_color: str | None
-
-    def needs_plate(self, backdrop: str) -> bool:
-        return not self.has_transparency or contrast_ratio(self.ink, backdrop) < LEGIBLE_CONTRAST
-
 
 def read_logo(path: pathlib.Path) -> Logo | None:
     if not path.is_file() or path.suffix.casefold() not in RASTER_SUFFIXES:
