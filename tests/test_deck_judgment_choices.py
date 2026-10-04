@@ -15,6 +15,17 @@ class JudgmentChoiceTest(unittest.TestCase):
             with self.subTest(pattern=pattern):
                 self.assertTrue(options[pattern].strip())
 
+    def test_a_pattern_threshold_names_a_defect_option_and_sits_between_zero_and_one(self):
+        options = REVIEW_DEFINITION["question"]["options"]
+        for pattern, threshold in REVIEW_DEFINITION["patternThresholds"].items():
+            with self.subTest(pattern=pattern):
+                self.assertIn(pattern, options)
+                self.assertNotEqual(pattern, REVIEW_DEFINITION["question"]["cleanOption"])
+                self.assertTrue(0 < threshold < REVIEW_DEFINITION["threshold"])
+
+    def test_the_stat_hero_template_is_flagged_below_the_score_the_one_slide_that_showed_it_earned(self):
+        self.assertLessEqual(REVIEW_DEFINITION["patternThresholds"]["hero_metric_template"], 0.27)
+
     def test_the_clean_option_is_none(self):
         self.assertEqual(REVIEW_DEFINITION["question"]["cleanOption"], "none")
 
