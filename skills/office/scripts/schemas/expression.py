@@ -9,12 +9,22 @@ from typing import Callable
 from core.office_result import INVALID_VALUE, OfficeFailure
 
 
-TOKEN = re.compile(r"\s*(?:(?P<number>\d+(?:\.\d+)?)|(?P<quoted>`[^`]+`)|(?P<name>[^\W\d]\w*(?:\.[^\W\d]\w*)*)|(?P<symbol>[-+*/(),]))")
+IDENTIFIER = r"[^\W\d]\w*"
+TOKEN = re.compile(rf"\s*(?:(?P<number>\d+(?:\.\d+)?)|(?P<quoted>`[^`]+`)|(?P<name>{IDENTIFIER}(?:\.{IDENTIFIER})*)|(?P<symbol>[-+*/(),]))")
 ROW_FUNCTIONS = ("floor", "round", "if", "words", "money", "addDays")
 LIST_FUNCTIONS = ("sum", "count")
 VIEW_FUNCTIONS = ("change", "percentChange", "share")
 FUNCTIONS = ROW_FUNCTIONS + LIST_FUNCTIONS + VIEW_FUNCTIONS
 ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def is_identifier(name: str) -> bool:
+    return re.fullmatch(IDENTIFIER, name) is not None
+
+
+def identifier_for(label: str) -> str:
+    joined = re.sub(r"\W+", "_", re.sub(r"\s+", "", label)).strip("_")
+    return re.sub(r"^[\d_]+", "", joined) or "field"
 
 
 @dataclass(frozen=True)
