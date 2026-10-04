@@ -9,7 +9,6 @@ from xml.etree import ElementTree
 from sheet_fixture import build_existing_workbook, run_office_python
 
 OFFICE_SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
-SCRIPTS_PATH = OFFICE_SCRIPTS_PATH / "sheet"
 SPREADSHEET_NAMESPACE = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 
 PROBE_ROWS = [
@@ -95,8 +94,8 @@ class SpreadsheetFormulaTest(unittest.TestCase):
 
 class CellValueGrammarTest(unittest.TestCase):
     def setUp(self):
-        sys.path.insert(0, str(SCRIPTS_PATH))
-        self.addCleanup(sys.path.remove, str(SCRIPTS_PATH))
+        sys.path.insert(0, str(OFFICE_SCRIPTS_PATH))
+        self.addCleanup(sys.path.remove, str(OFFICE_SCRIPTS_PATH))
         from sheet.workbook.cell_values import typed_cell_value
 
         self.typed_cell_value = typed_cell_value
