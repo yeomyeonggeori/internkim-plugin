@@ -28,6 +28,7 @@ An external document proposing prices for goods or services to a customer. The r
     { "label": "Valid until", "value": "30 days from issue" },
     { "label": "Bank account", "value": "<profile.bankAccount>" }
   ],
+  "lead": ["We are pleased to submit the quotation below."],
   "items": {
     "headers": ["Description", "Spec", "Qty", "Unit price", "Amount", "Tax"],
     "aligns": ["L", "L", "R", "R", "R", "R"],
@@ -38,7 +39,6 @@ An external document proposing prices for goods or services to a customer. The r
       { "label": "Total (VAT included)", "value": "<amount> <currency>" }
     ]
   },
-  "notes": ["We are pleased to submit the quotation above."],
   "signature": { "date": "<Month D, YYYY>", "line": "<companyName> CEO <representative name>", "stamp": true },
   "footer": "This quotation is valid for 30 days from the date of issue."
 }
@@ -46,7 +46,7 @@ An external document proposing prices for goods or services to a customer. The r
 
 ## Fixed wording
 
-- notes: "We are pleased to submit the quotation above."
+- lead: "We are pleased to submit the quotation below."
 - footer: validity period notice. If the requester specifies a different validity period, update meta and footer together.
 
 ## Rules

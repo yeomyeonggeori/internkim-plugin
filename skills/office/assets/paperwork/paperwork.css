@@ -35,6 +35,7 @@ h1 { font-size: $title; font-weight: 700; text-align: center; margin: 0; line-he
 .section h2 { font-size: 11pt; font-weight: 700; margin: 0 0 1mm; }
 .section p { margin-bottom: 1mm; }
 .section p.bullet { margin-bottom: 0; }
+.lead { margin: 0 0 4mm; text-align: center; font-size: $body; line-height: 1.9; }
 .notes { margin-top: 3mm; text-align: center; font-size: $body; line-height: 1.9; }
 .signature { margin-top: 8mm; text-align: center; }
 .signature .date { font-size: 10pt; margin-bottom: 3mm; }
@@ -43,5 +44,5 @@ h1 { font-size: $title; font-weight: 700; text-align: center; margin: 0; line-he
 .signature .stamp { position: absolute; width: 16mm; height: 16mm; left: 50%; top: 50%; transform: translate(-50%, -50%); }
 .closing, .sign-off { break-inside: avoid; }
 .items td, .meta-value, .totals p { word-break: keep-all; }
-.items td.align-right, .totals .value { white-space: nowrap; }
+.items td.align-right, .totals .value, .unbreakable { white-space: nowrap; }
 .blank { display: inline-block; min-width: 28mm; height: 1.15em; border-bottom: 0.6pt solid $ink; vertical-align: bottom; }

@@ -42,6 +42,7 @@
       {"label": "결제조건", "value": "{paymentTerms}"},
       {"label": "입금계좌", "value": "{company.bankAccount}"}
     ],
+    "lead": ["아래와 같이 견적합니다."],
     "items": {"list": "items", "untaxed": "taxExempt", "columns": [
       {"header": "품명", "value": "{name}", "align": "L"},
       {"header": "규격", "value": "{spec}", "align": "L"},
@@ -55,7 +56,6 @@
       {"label": "부가세(10%)", "value": "{taxTotal}"},
       {"label": "총 합계 (부가세 포함)", "value": "{grandTotal}"}
     ]},
-    "notes": ["아래와 같이 견적합니다."],
     "signature": {"date": "{issueDate}", "line": "{company.name} {company.representativeTitle} {company.representative}", "stamp": true},
     "footer": "본 견적은 견적일로부터 {validDays:number}일간 유효합니다."
   }

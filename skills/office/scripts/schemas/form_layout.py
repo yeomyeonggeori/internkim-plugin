@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from schemas.resolution import Instance, render_template
+import re
+
+from schemas.resolution import TEMPLATE_REFERENCE, Instance, render_template
 from schemas.typed_values import BLANK
 
 
@@ -15,6 +17,8 @@ def paperwork_document(instance: Instance) -> dict:
         document["recipient"] = recipient_block(instance, layout["recipient"])
     if "meta" in layout:
         document["meta"] = meta_rows(instance, layout["meta"])
+    if "lead" in layout:
+        document["lead"] = [line for template in layout["lead"] if (line := render_template(instance, template)) is not None]
     if "items" in layout:
         items = item_table(instance, layout["items"])
         if items is not None:
@@ -37,8 +41,15 @@ def recipient_block(instance: Instance, layout: dict) -> dict:
 
 
 def meta_rows(instance: Instance, rows: list) -> list[dict]:
-    rendered = [(row["label"], render_template(instance, row["value"], whole_blank=BLANK)) for row in rows]
-    return [{"label": label, "value": value} for label, value in rendered if value is not None]
+    rendered = [(row["label"], render_template(instance, row["value"], whole_blank=BLANK), value_kind(instance, row["value"], None)) for row in rows]
+    return [{"label": label, "value": value, "kind": kind} for label, value, kind in rendered if value is not None]
+
+
+def value_kind(instance: Instance, template, row: dict | None) -> str:
+    if not isinstance(template, str) or re.search(r"\w", TEMPLATE_REFERENCE.sub("", template)):
+        return "text"
+    kinds = {instance.type_of(name, row)[0] for name, _ in TEMPLATE_REFERENCE.findall(template)}
+    return kinds.pop() if len(kinds) == 1 else "text"
 
 
 def item_table(instance: Instance, layout: dict) -> dict | None:
@@ -49,6 +60,7 @@ def item_table(instance: Instance, layout: dict) -> dict | None:
     table = {
         "headers": [column["header"] for column in columns],
         "aligns": [column.get("align", "L") for column in columns],
+        "kinds": [value_kind(instance, column["value"], rows[0] if rows else {}) for column in columns],
         "rows": [[render_template(instance, column["value"], row) or "" for column in columns] for row in rows],
     }
     untaxed_field = layout.get("untaxed")

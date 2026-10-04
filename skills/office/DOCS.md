@@ -124,6 +124,8 @@ A new workbook is declared, never hand-written. The model writes `<title>.workbo
 - divides `share` by the view's own total, and marks the share `*` when either side is partial;
 - adds total rows and, for members that add up, a total column;
 - takes number formats from each column's type and unit, and from each computed column's type;
+- puts one merged group header over a computed column added for several members, with the members as its sub-headers, and wraps a header at its spaces instead of widening the column the views above share;
+- starts every chart on a page of its own, so no printed page cuts one;
 - draws charts over the member cells, with missing and partial values as gaps, and labels a view with two row dimensions by both members;
 - returns `details.blanks` (each `null` input cell, named by its dimensions) and `details.views` (each view as it displays), so the model checks the result without reading the file back.
 

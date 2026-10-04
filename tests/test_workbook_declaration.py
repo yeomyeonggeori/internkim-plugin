@@ -78,9 +78,9 @@ class ViewValueTest(DeclaredWorkbookFixture):
 
     def test_a_share_divides_by_its_column_total(self):
         self.create(sales_declaration([BY_REGION]))
-        rows = self.values()
-        self.assertAlmostEqual(rows[2][3], (820 + 870 + 905 + 990) / 5320)
-        self.assertEqual(rows[4][3], 1)
+        rows = {row[0]: row for row in self.values() if row}
+        self.assertAlmostEqual(rows["North"][3], (820 + 870 + 905 + 990) / 5320)
+        self.assertEqual(rows["Total"][3], 1)
 
     def test_views_on_one_sheet_stack_without_overlapping(self):
         self.create(sales_declaration([BY_QUARTER, BY_REGION]))

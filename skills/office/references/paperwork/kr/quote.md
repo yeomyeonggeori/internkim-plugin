@@ -14,7 +14,7 @@ An external document proposing prices for goods or services to a customer. It ne
 - meta: 합계금액 (total in Korean words and figures; leave its value empty and merge writes it from the grand total), 견적일자 (quotation date), 유효기간 (validity), 납기 (delivery), 납품장소 (delivery place), 결제조건 (payment terms), 입금계좌 (bank account, profile.bankAccount); all required
 - items: use only the 품명 (item), 규격 (spec), 수량 (quantity), 단위 (unit) and 단가 (unit price) the requester gave, at least one row
 - items.totals: 공급가액 합계 (supply total) → 부가세(10%) (VAT) → 총 합계 (grand total), in that order
-- notes: "아래와 같이 견적합니다."
+- lead: "아래와 같이 견적합니다." (it introduces the item table, so it sits between meta and items)
 - signature: issue date + "<company name> 대표이사 <representative name>", stamp true
 
 ## Document JSON skeleton
@@ -34,6 +34,7 @@ An external document proposing prices for goods or services to a customer. It ne
     { "label": "결제조건", "value": "<e.g. 계약금 30% / 잔금 납품 후 30일 이내>" },
     { "label": "입금계좌", "value": "<profile.bankAccount>" }
   ],
+  "lead": ["아래와 같이 견적합니다."],
   "items": {
     "headers": ["품명", "규격", "수량", "단위", "단가", "공급가액", "세액"],
     "aligns": ["L", "L", "R", "C", "R", "R", "R"],
@@ -44,7 +45,6 @@ An external document proposing prices for goods or services to a customer. It ne
       { "label": "총 합계 (부가세 포함)", "value": "<amount>원" }
     ]
   },
-  "notes": ["아래와 같이 견적합니다."],
   "signature": { "date": "<YYYY년 M월 D일>", "line": "<company name> 대표이사 <representative name>", "stamp": true },
   "footer": "본 견적은 견적일로부터 <N>일간 유효합니다."
 }
@@ -52,7 +52,7 @@ An external document proposing prices for goods or services to a customer. It ne
 
 ## Fixed wording
 
-- notes: "아래와 같이 견적합니다."
+- lead: "아래와 같이 견적합니다."
 - footer: "본 견적은 견적일로부터 <N>일간 유효합니다."; its N always matches 유효기간 in meta.
 
 ## Density gate (self-check before delivery)
@@ -60,7 +60,7 @@ An external document proposing prices for goods or services to a customer. It ne
 - Does the 합계금액 meta row hold both the Korean words ("일금 ○○○원整") and the figures (₩)?
 - Does the item table have 7 columns (품명, 규격, 수량, 단위, 단가, 공급가액, 세액)?
 - Are 견적일자, 유효기간, 결제조건 and 입금계좌 all in meta?
-- Do the notes hold "아래와 같이 견적합니다."?
+- Does lead hold "아래와 같이 견적합니다." above the item table?
 - Does the signature have stamp: true?
 
 ## Rules

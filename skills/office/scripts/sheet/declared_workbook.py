@@ -3,16 +3,15 @@ from __future__ import annotations
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.pagebreak import Break
 
+from sheet.column_fit import fit_columns, fit_row_height
 from sheet.compile_workbook import INPUT_FILL, Compiler, Placed, compile_declaration, header_text, invalid, number_format
 from sheet.operations.charts import DEFAULT_WIDTH as DEFAULT_CHART_WIDTH
 from sheet.operations.styling import BORDER_COLOR, HEADER_FILL_COLOR
-from sheet.workbook.display_width import display_width
 
 
 CHART_OPERATIONS = {"line": {"type": "line"}, "column": {"type": "bar"}, "bar": {"type": "bar", "horizontal": True}, "pie": {"type": "pie"}}
-MINIMUM_WIDTH = 10
-MAXIMUM_WIDTH = 40
 CHART_COLUMNS_GAP = 20
 CENTIMETERS_PER_WIDTH_UNIT = 0.19
 DEFAULT_COLUMN_WIDTH = 8.43
@@ -63,7 +62,7 @@ def write_view(workbook: Workbook, placed: Placed, title: str) -> None:
         if (row, column) == (placed.title_row, 1):
             continue
         cell = sheet.cell(row, column, value)
-        if row == placed.header_row:
+        if row in (placed.header_row, placed.group_row):
             style_header(cell)
             continue
         if row in placed.note_rows:
@@ -74,17 +73,14 @@ def write_view(workbook: Workbook, placed: Placed, title: str) -> None:
             cell.number_format = placed.formats[(row, column)]
         if row == placed.total_row or column == placed.total_column:
             cell.font = Font(bold=True)
+    for group in placed.groups:
+        merge_group_header(sheet, placed, group)
 
 
-def fit_columns(sheet, overflowing_rows: set) -> None:
-    widths: dict[int, float] = {}
-    for row in sheet.iter_rows():
-        for cell in row:
-            if cell.value is None or isinstance(cell.value, str) and cell.value.startswith("=") or cell.row in overflowing_rows:
-                continue
-            widths[cell.column] = max(widths.get(cell.column, 0), display_width(str(cell.value)) + 2)
-    for column, width in widths.items():
-        sheet.column_dimensions[get_column_letter(column)].width = min(max(width, MINIMUM_WIDTH), MAXIMUM_WIDTH)
+def merge_group_header(sheet, placed: Placed, group: dict) -> None:
+    for column in range(group["first"], group["last"] + 1):
+        style_header(sheet.cell(placed.group_row, column))
+    sheet.merge_cells(start_row=placed.group_row, start_column=group["first"], end_row=placed.group_row, end_column=group["last"])
 
 
 def compiled_ranges(compiler: Compiler) -> list[dict]:
@@ -112,6 +108,7 @@ def chart_operations(workbook: Workbook, compiler: Compiler, titles: list[str]) 
         data_range = chart_data_block(workbook[placed.sheet], placed, first_column)
         compiler.chart_blocks.append((placed.sheet, data_range))
         anchor_row = compiler.next_row.get(placed.sheet, 1)
+        start_chart_on_new_page(workbook[placed.sheet], anchor_row)
         compiler.next_row[placed.sheet] = anchor_row + CHART_HEIGHT_ROWS + 1
         operation = {"op": "add_chart", "sheet": placed.sheet, "range": data_range, "anchor": f"A{anchor_row}", **CHART_OPERATIONS[chart["type"]]}
         if chart.get("title"):
@@ -120,6 +117,10 @@ def chart_operations(workbook: Workbook, compiler: Compiler, titles: list[str]) 
         chart_end = max(sheet_widths[placed.sheet], columns_spanned(workbook[placed.sheet], DEFAULT_CHART_WIDTH))
         fit_print_width(workbook[placed.sheet], chart_end, compiler.next_row[placed.sheet])
     return operations
+
+
+def start_chart_on_new_page(sheet, anchor_row: int) -> None:
+    sheet.row_breaks.append(Break(id=anchor_row - 1))
 
 
 def fit_print_width(sheet, last_column: int, last_row: int) -> None:
@@ -181,12 +182,18 @@ def shown_views(path: str, compiler: Compiler, titles: list[str]) -> list[dict]:
 
 def shown_view(sheet, placed: Placed, title: str, displayed) -> dict:
     columns = sorted({column for row, column in placed.cells if row == placed.header_row})
-    rows = [placed.header_row, *placed.body_rows, *([placed.total_row] if placed.total_row else [])]
+    rows = [*([placed.group_row] if placed.group_row else []), placed.header_row, *placed.body_rows, *([placed.total_row] if placed.total_row else [])]
     shown = [[displayed(sheet.cell(row, column).value, sheet.cell(row, column).number_format).text for column in columns] for row in rows]
     view = {"title": title, "sheet": placed.sheet, "rows": shown}
     if placed.note_rows:
         view["notes"] = [placed.cells[(row, 1)] for row in placed.note_rows]
     return view
+
+
+def fit_header_heights(sheet, placed: Placed) -> None:
+    fit_row_height(sheet, placed.header_row, {})
+    if placed.group_row:
+        fit_row_height(sheet, placed.group_row, {group["first"]: group["last"] - group["first"] + 1 for group in placed.groups})
 
 
 def declared_workbook(declaration: dict, attachments: tuple = ()) -> tuple[Workbook, list[dict], Compiler]:
@@ -200,6 +207,10 @@ def declared_workbook(declaration: dict, attachments: tuple = ()) -> tuple[Workb
     for placed, title in zip(compiler.views, titles):
         write_view(workbook, placed, title)
     for sheet_name in dict.fromkeys(placed.sheet for placed in compiler.views):
-        overflowing_rows = {row for placed in compiler.views if placed.sheet == sheet_name for row in (placed.title_row, *placed.note_rows)}
-        fit_columns(workbook[sheet_name], overflowing_rows)
+        placed_here = [placed for placed in compiler.views if placed.sheet == sheet_name]
+        overflowing_rows = {row for placed in placed_here for row in (placed.title_row, placed.group_row, *placed.note_rows) if row}
+        header_rows = frozenset(placed.header_row for placed in placed_here)
+        fit_columns(workbook[sheet_name], overflowing_rows, header_rows)
+        for placed in placed_here:
+            fit_header_heights(workbook[sheet_name], placed)
     return workbook, chart_operations(workbook, compiler, titles), compiler

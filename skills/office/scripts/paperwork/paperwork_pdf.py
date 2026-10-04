@@ -22,6 +22,7 @@ from core.skill_paths import ASSETS_PATH
 CSS_TEMPLATE_PATH = ASSETS_PATH / "paperwork" / "paperwork.css"
 BOTTOM_MARGIN_MILLIMETERS = 20.0
 ALIGNMENTS = {"L": "align-left", "C": "align-center", "R": "align-right"}
+UNBREAKABLE_KINDS = ("date", "amount", "quantity", "percent")
 BLANK = '<span class="blank"></span>'
 
 
@@ -98,6 +99,7 @@ def paperwork_html(document: dict, jurisdiction: Jurisdiction) -> str:
         title_html(document, labels),
         recipient_html(document.get("recipient"), labels),
         meta_html(document.get("meta") or []),
+        lead_html(document.get("lead") or []),
     ]
     body = [part for part in (*items_html(document.get("items")), *(section_html(section) for section in document.get("sections") or [])) if part]
     sign_off = [notes_html(document.get("notes") or []), signature_html(document.get("signature"), profile, labels)]
@@ -195,8 +197,17 @@ def recipient_html(recipient: object, labels: Labels) -> str:
 def meta_html(rows: list) -> str:
     if not rows:
         return ""
-    cells = "".join(f'<div class="meta-row"><div class="meta-label">{escaped(row.get("label"))}</div><div class="meta-value">{filled_or_blank(row, "value")}</div></div>' for row in rows)
+    cells = "".join(f'<div class="meta-row"><div class="meta-label">{escaped(row.get("label"))}</div><div class="{unbreakable_class("meta-value", row.get("kind"))}">{filled_or_blank(row, "value")}</div></div>' for row in rows)
     return f'<div class="meta">{cells}</div>'
+
+
+def unbreakable_class(base: str, kind: object) -> str:
+    return f"{base} unbreakable" if text_of(kind) in UNBREAKABLE_KINDS else base
+
+
+def column_kinds(kinds: object, column_count: int) -> list[str]:
+    given = kinds if isinstance(kinds, list) else []
+    return [text_of(given[index]) if index < len(given) else "" for index in range(column_count)]
 
 
 def multiline(value: object) -> str:
@@ -209,7 +220,8 @@ def items_html(items: dict | None) -> tuple[str, str]:
     headers = items["headers"]
     alignments = column_alignments(items.get("aligns"), len(headers))
     head = "".join(f"<th>{escaped(header)}</th>" for header in headers)
-    body = "".join(item_row_html(row, alignments) for row in items.get("rows") or [])
+    kinds = column_kinds(items.get("kinds"), len(headers))
+    body = "".join(item_row_html(row, alignments, kinds) for row in items.get("rows") or [])
     return (f'<table class="items"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>', totals_html(items.get("totals") or []))
 
 
@@ -218,9 +230,9 @@ def column_alignments(aligns: object, column_count: int) -> list[str]:
     return [ALIGNMENTS.get(text_of(given[index]).upper() if index < len(given) else "L", ALIGNMENTS["L"]) for index in range(column_count)]
 
 
-def item_row_html(row: object, alignments: list[str]) -> str:
+def item_row_html(row: object, alignments: list[str], kinds: list[str]) -> str:
     values = row if isinstance(row, list) else []
-    cells = "".join(f'<td class="{alignment}">{multiline(values[index] if index < len(values) else "")}</td>' for index, alignment in enumerate(alignments))
+    cells = "".join(f'<td class="{unbreakable_class(alignment, kinds[index])}">{multiline(values[index] if index < len(values) else "")}</td>' for index, alignment in enumerate(alignments))
     return f"<tr>{cells}</tr>"
 
 
@@ -239,6 +251,10 @@ def section_html(section: dict) -> str:
     paragraphs = "".join(f"<p>{filled_or_blank(paragraph_lines, index)}</p>" for index in range(len(paragraph_lines)))
     bullets = "".join(f'<p class="bullet">• {filled_or_blank(bullet_lines, index)}</p>' for index in range(len(bullet_lines)))
     return f'<div class="section">{heading}{paragraphs}{bullets}</div>'
+
+
+def lead_html(lead: list) -> str:
+    return f'<div class="lead">{"".join(f"<p>{escaped(line)}</p>" for line in lead)}</div>' if lead else ""
 
 
 def notes_html(notes: list) -> str:
