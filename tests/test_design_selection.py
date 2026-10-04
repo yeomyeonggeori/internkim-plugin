@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills" / "office"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from core.host_contract import RUNTIME_CONTEXT_VARIABLE  # noqa: E402
+from fonts.registry import reset_runtime_families  # noqa: E402
 from deck.deck_design import DESIGN, QUESTIONS, Choice, Design, palette_candidates, resolve_design, type_scale  # noqa: E402
 from deck.design_system import design_tokens, read_design_system, token_issues  # noqa: E402
 from design_gate_fixture import run_office  # noqa: E402
@@ -146,6 +147,9 @@ class ModelCssCannotSetAFontTest(unittest.TestCase):
 
 @unittest.skipUnless(can_render(), "the renderer is not available")
 class RenderedFamiliesInvariantTest(unittest.TestCase):
+    def setUp(self):
+        self.addCleanup(reset_runtime_families)
+
     def families_of(self, selection: str, sections: list, style: str = "") -> set[str]:
         import deck.deck_html as deck_html
         import deck.layout_thresholds as thresholds

@@ -15,7 +15,7 @@ palette: primary
 ---
 ```
 
-`palette` names one of the candidates. Optional lines choose from closed lists: `type` (paperlogy, freesentation or a2z; the intent sets it, paperlogy by default), `density` (airy, balanced or dense), `shape` (sharp, soft or round) and `weight` (the title weight the type ships). Colors, fonts, sizes, radius and shadow come from these choices, so DESIGN.md holds no hex, font name or size. A color the request names, or the logo's own color, is already in the candidates.
+`palette` names one of the candidates. Optional lines choose from closed lists: `type` (paperlogy, freesentation or a2z; the intent sets it, paperlogy by default), `density` (airy, balanced or dense), `shape` (sharp, soft or round) and `weight` (the title weight the type ships). Colors, fonts, sizes, radius and shadow come from these choices, so DESIGN.md holds no hex, font name or size. A color the request names, or the logo's own color, is already in the candidates. Only when the person asks for a font by name, add `requested-font: "Exact Family Name"`: the build looks for it among the attachments, the data room, its cache and Google Fonts, embeds it, and when it finds none sets the deck in Paperlogy and reports `REQUESTED_FONT_UNAVAILABLE`, which your reply says, offering to rebuild when the person attaches the file.
 
 A color the request names, or the logo's own color, becomes the accent. Run `<skill>/scripts/office check DESIGN.md`: it names a choice that is not on its list before any slide exists.
 

@@ -25,6 +25,7 @@ class RuntimeContext:
     prepares_decks: bool = False
     deck_design: dict | None = None
     images: tuple = ()
+    fonts: tuple = ()
 
     def company(self, language: str) -> dict:
         if not self.companies:
@@ -35,6 +36,15 @@ class RuntimeContext:
             ))
         found = self.companies.get(language) or next(iter(self.companies.values()), "")
         return company_profile(found) if isinstance(found, str) and found else {}
+
+    def font_paths(self) -> list[Path]:
+        listed = [Path(font["path"]) for font in self.fonts if isinstance(font, dict) and font.get("path")]
+        attached = [Path(attachment["path"]) for attachment in self.attachments if isinstance(attachment, dict) and attachment.get("path")]
+        return [path for path in (*listed, *attached) if path.suffix.casefold() in FONT_SUFFIXES]
+
+    def brand_font(self) -> str:
+        profiles = [company_profile(path) for path in self.companies.values() if isinstance(path, str) and path]
+        return next((str(profile["brandFont"]).strip() for profile in profiles if str(profile.get("brandFont") or "").strip()), "")
 
     def logo_path(self) -> Path | None:
         profiles = [company_profile(path) for path in self.companies.values() if isinstance(path, str) and path]
@@ -59,6 +69,7 @@ class RuntimeContext:
         return None
 
 
+FONT_SUFFIXES = (".ttf", ".otf", ".woff2")
 COMPANY_IMAGES = (("sealImage", "stampPath"), ("logoImage", "logoPath"))
 
 
@@ -98,4 +109,5 @@ def load_runtime_context() -> RuntimeContext | None:
         prepares_decks=document.get("preparesDecks") is True,
         deck_design=document.get("deckDesign") if isinstance(document.get("deckDesign"), dict) else None,
         images=tuple(image for image in document.get("images") or () if isinstance(image, dict) and image.get("path")),
+        fonts=tuple(font for font in document.get("fonts") or () if isinstance(font, dict) and font.get("path")),
     )

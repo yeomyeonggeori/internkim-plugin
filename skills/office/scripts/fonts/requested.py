@@ -11,7 +11,7 @@ import urllib.error
 import urllib.request
 from typing import Callable
 
-from fonts.registry import BundledFace, BundledFamily, DECK, bundled_family
+from fonts.registry import BundledFace, BundledFamily, DECK, shipped_family
 from fonts.truetype import FAMILY_NAME_ID, TYPOGRAPHIC_FAMILY_NAME_ID, license_allows_embedding
 
 
@@ -117,7 +117,7 @@ def named_faces(name: str, files: list[FontFile]) -> list[FontFile]:
 
 def resolve_requested_font(name: str, local_paths: list[pathlib.Path], cache: pathlib.Path | None = None, fetch: Fetcher = fetch_url) -> FontResolution:
     requested = name.strip()
-    bundled = bundled_family(requested)
+    bundled = shipped_family(requested)
     if bundled is not None:
         return FontResolution(RequestedFont(bundled, FontSource(BUNDLED_SOURCE)), None, ())
     directory = (cache or cache_directory()) / slug_of(requested)

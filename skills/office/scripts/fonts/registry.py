@@ -124,6 +124,27 @@ FAMILIES = (
     ), other_names=("에이투지체", "에이투지")),
 )
 
+BUNDLED_FAMILIES = FAMILIES
+
+
+def register_runtime_family(family: BundledFamily) -> None:
+    global FAMILIES
+    FAMILIES = (*(known for known in BUNDLED_FAMILIES if known.name != family.name), family)
+    family_names.cache_clear()
+    face_names.cache_clear()
+
+
+def reset_runtime_families() -> None:
+    global FAMILIES
+    FAMILIES = BUNDLED_FAMILIES
+    family_names.cache_clear()
+    face_names.cache_clear()
+
+
+def shipped_family(name: str) -> BundledFamily | None:
+    return next((family for family in BUNDLED_FAMILIES if name.strip().casefold() in {known.casefold() for known in family.names}), None)
+
+
 STAND_IN_ROLES = {
     "serif": SERIF_BODY,
     "ui-serif": SERIF_BODY,

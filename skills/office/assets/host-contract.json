@@ -168,6 +168,27 @@
           ],
           "additionalProperties": false
         }
+      },
+      "fonts": {
+        "type": "array",
+        "description": "font files the requester can read in the data room, as the requester; a deck set in a font the person asked for finds it here, among the attachments, in the font cache or on Google Fonts",
+        "items": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "absolute path of the kept copy"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "name"
+          ],
+          "additionalProperties": false
+        }
       }
     },
     "required": [
@@ -179,7 +200,8 @@
       "reviewsDeckRenders",
       "preparesDecks",
       "deckDesign",
-      "images"
+      "images",
+      "fonts"
     ],
     "additionalProperties": false
   },

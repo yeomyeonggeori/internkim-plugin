@@ -6,7 +6,7 @@ import re
 
 from core.css_color import contrast_ratio, hex_oklch, oklch_hex, parse_css_color
 from core.design_rules import DESIGN_RULE_KINDS, TOKEN_STAGE, rules_for, threshold_of
-from core.office_result import ERROR, Issue, IssueKind
+from core.office_result import ERROR, WARNING, Issue, IssueKind
 from deck.design_tokens import parse_front_matter
 from fonts.registry import FAMILIES, MONOSPACE, SERIF_BODY
 
@@ -27,6 +27,7 @@ DESIGN_MISSING = IssueKind("DESIGN_MISSING", ERROR, "DESIGN.md is missing beside
 DESIGN_INCOMPLETE = IssueKind("DESIGN_INCOMPLETE", ERROR, "DESIGN.md lacks a token the build needs", "add the token the message names to the front matter")
 DESIGN_VALUE_INVALID = IssueKind("DESIGN_VALUE_INVALID", ERROR, "a DESIGN.md token has a value the build cannot read", "write colors as #RRGGBB and sizes as px")
 DESIGN_LOW_CONTRAST = IssueKind("DESIGN_LOW_CONTRAST", ERROR, "two DESIGN.md colors that must be read against each other are too close", "darken the text or accent, or lighten the ground, until the contrast reaches the ratio the message names")
+REQUESTED_FONT_UNAVAILABLE = IssueKind("REQUESTED_FONT_UNAVAILABLE", WARNING, "the font the person asked for could not be used, so the deck is set in Paperlogy", "tell the person which font was not available and what was tried, and offer to rebuild the same deck when they attach the font file")
 DESIGN_ISSUE_KINDS = (DESIGN_MISSING, DESIGN_INCOMPLETE, DESIGN_VALUE_INVALID, DESIGN_LOW_CONTRAST)
 
 
@@ -61,7 +62,8 @@ def read_token_document(path: pathlib.Path) -> tuple[DesignSystem | None, list[I
 
 
 TYPOGRAPHY_RULES = "section, section * { font-family: var(--font-body); } section h1, section h2, section h3, section h4, section h5, section h6 { font-family: var(--font-display); font-weight: var(--weight-display); }"
-SELECTION_KEYS = ("intent", "palette", "type", "density", "shape", "weight")
+SELECTION_KEYS = ("intent", "palette", "type", "density", "shape", "weight", "requested-font")
+REQUESTED_FONT_KEY = "requested-font"
 WEIGHT_KEY = "weight"
 
 
@@ -74,13 +76,31 @@ def read_design_system(path: pathlib.Path) -> tuple[DesignSystem | None, list[Is
     selection = parse_front_matter(path.read_text(encoding="utf-8"))
     design = prepare_deck().design
     candidates = {candidate["name"]: candidate for candidate in palette_candidates(design)}
-    problems = selection_problems(selection, design, candidates)
+    requested, font_issues = requested_font_of(selection)
+    problems = selection_problems(selection, design, candidates, requested)
     if problems:
         return None, problems
-    return build_design_system(selected_document(selection, design, candidates)), []
+    return build_design_system(selected_document(selection, design, candidates, requested)), font_issues
 
 
-def selection_problems(selection: dict, design, candidates: dict) -> list[Issue]:
+def requested_font_of(selection: dict):
+    from fonts.registry import register_runtime_family
+    from fonts.requested import BUNDLED_SOURCE, resolve_requested_font
+    from schemas.known_values import load_runtime_context
+
+    context = load_runtime_context()
+    name = str(selection.get(REQUESTED_FONT_KEY) or (context.brand_font() if context else "")).strip()
+    if not name:
+        return None, []
+    resolution = resolve_requested_font(name, context.font_paths() if context else [])
+    if resolution.font is None:
+        return None, [REQUESTED_FONT_UNAVAILABLE.issue(resolution.note, DESIGN_FILE_NAME)]
+    if resolution.font.source.kind != BUNDLED_SOURCE:
+        register_runtime_family(resolution.font.family)
+    return resolution.font, []
+
+
+def selection_problems(selection: dict, design, candidates: dict, requested) -> list[Issue]:
     from deck.deck_design import DESIGN, options
 
     unknown = [key for key in selection if key not in SELECTION_KEYS]
@@ -94,20 +114,39 @@ def selection_problems(selection: dict, design, candidates: dict) -> list[Issue]
         "type": options("type"),
         "density": options("density"),
         "shape": tuple(DESIGN["shapes"]),
-        WEIGHT_KEY: tuple(str(weight) for weight in DESIGN["types"].get(type_option, {}).get("weights", ())),
+        WEIGHT_KEY: allowed_weights(type_option, requested),
     }
     return [DESIGN_VALUE_INVALID.issue(f"{DESIGN_FILE_NAME} {key} is \"{selection[key]}\"; choose one of {', '.join(choices)}", DESIGN_FILE_NAME) for key, choices in allowed.items() if key in selection and str(selection[key]) not in choices]
 
 
-def selected_document(selection: dict, design, candidates: dict) -> dict:
+def default_display_weight(requested) -> int:
+    from deck.deck_design import DESIGN
+
+    if requested is None:
+        return DESIGN["weights"]["display"]
+    available = sorted(face.weight for face in requested.family.faces)
+    return DESIGN["weights"]["display"] if DESIGN["weights"]["display"] in available else available[-1]
+
+
+def allowed_weights(type_option: str, requested) -> tuple[str, ...]:
+    from deck.deck_design import DESIGN
+
+    if requested is not None:
+        return tuple(str(face.weight) for face in requested.family.faces)
+    return tuple(str(weight) for weight in DESIGN["types"].get(type_option, {}).get("weights", ()))
+
+
+def selected_document(selection: dict, design, candidates: dict, requested) -> dict:
     from deck.deck_design import DESIGN, type_scale
     from deck.deck_design import Choice, Design
 
     chosen = {axis: Choice(str(selection[axis]), "decided") for axis in ("type", "density") if axis in selection}
     effective = Design({**design.choices, **chosen}, design.secondary_accent, design.brand_color)
     pairing, scale = DESIGN["types"][effective.option("type")], type_scale(effective)
+    if requested is not None:
+        pairing = {"display": requested.family.name, "body": requested.family.name}
     shape = DESIGN["shapes"][str(selection.get("shape") or DESIGN["defaultShape"])]
-    weight = int(selection.get(WEIGHT_KEY) or DESIGN["weights"]["display"])
+    weight = int(selection.get(WEIGHT_KEY) or default_display_weight(requested))
     colors = {role: value for role, value in candidates[str(selection["palette"])]["colors"].items()}
     return {
         "colors": colors,
