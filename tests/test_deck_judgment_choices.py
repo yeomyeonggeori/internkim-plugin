@@ -47,6 +47,9 @@ class JudgmentChoiceTest(unittest.TestCase):
         shared = set(DECK_QUESTION["options"]) & set(REVIEW_DEFINITION["question"]["options"])
         self.assertEqual(shared, {"none"})
 
+    def test_the_fixer_is_told_what_a_refusal_of_its_last_rewrite_means(self):
+        self.assertIn("refusedLastTime", REVIEW_DEFINITION["fixer"]["instructions"])
+
     def test_the_fixer_is_told_what_to_do_with_a_deck_finding(self):
         instructions = REVIEW_DEFINITION["fixer"]["instructions"]
         for defect in DECK_DEFECTS:
