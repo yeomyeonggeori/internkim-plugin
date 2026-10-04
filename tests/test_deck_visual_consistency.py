@@ -152,6 +152,7 @@ class VisualConsistencyTest(unittest.TestCase):
             snapshot = json.loads((Path(directory) / "build" / "deck.pptx.source.json").read_text(encoding="utf-8"))
             images_exist = [Path(slide["image"]).is_file() for slide in review["slides"]]
         self.assertEqual(snapshot["visualReview"], envelope["details"]["visualReview"])
+        self.assertEqual([slide["slide"] for slide in snapshot["slides"]], [1, 2, 3])
         self.assertEqual(images_exist, [True, True, True])
         self.assertIn(review["question"]["cleanOption"], review["question"]["options"])
         self.assertTrue(0 < review["threshold"] < 1)
