@@ -9,11 +9,12 @@ from schemas.claims import sentences
 
 UNIT_TAGS = ("h1", "h2", "h3", "h4", "p", "li", "td", "th", "figcaption", "blockquote")
 VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
-FRAMED_ROLES = ("title", "stat", "cell")
+FRAMED_ROLES = ("title", "stat", "cell", "deck")
+DECK_TITLE_PATH = "deck.title"
 UNIT_PATH = re.compile(r"^slides\[(\d+)\]\.units\[(\d+)\](?:#(\d+))?$")
 ROLE_NAMES = {
-    "ko": {"slide": "슬라이드", "title": "제목", "stat": "수치", "cell": "표", "chart": "차트", "caption": "차트 설명", "item": "항목", "text": "본문"},
-    "en": {"slide": "slide", "title": "title", "stat": "figure", "cell": "table", "chart": "chart", "caption": "chart caption", "item": "item", "text": "text"},
+    "ko": {"deck": "발표 자료 제목", "slide": "슬라이드", "title": "제목", "stat": "수치", "cell": "표", "chart": "차트", "caption": "차트 설명", "item": "항목", "text": "본문"},
+    "en": {"deck": "deck title", "slide": "slide", "title": "title", "stat": "figure", "cell": "table", "chart": "chart", "caption": "chart caption", "item": "item", "text": "text"},
 }
 
 
@@ -105,7 +106,7 @@ def parsed(text: str) -> Node:
 def deck_units(text: str) -> list[Unit]:
     root = parsed(text)
     sections = [node for node in root.elements() if node.tag == "section"]
-    units = []
+    units = [Unit(DECK_TITLE_PATH, "deck", unit_text(node), node) for node in root.elements() if node.tag == "title" and unit_text(node)][:1]
     for slide_index, section in enumerate(sections):
         unit_index = 0
         for node in section.elements():
@@ -172,6 +173,8 @@ def deck_claims(text: str) -> list[dict]:
 
 def place(unit: Unit, language: str) -> str:
     names = ROLE_NAMES[language]
+    if unit.path == DECK_TITLE_PATH:
+        return names["deck"]
     slide_number = int(UNIT_PATH.match(unit.path).group(1)) + 1
     return f"{names['slide']} {slide_number} {names[unit.role]}"
 
@@ -187,22 +190,26 @@ def blanked_deck(text: str, paths: list[str]) -> str:
             continue
         match = UNIT_PATH.match(path)
         edits.setdefault(unit.node.start, (unit, set()))[1].add(int(match.group(3)) if match and match.group(3) else -1)
+    deck_title = units.get(DECK_TITLE_PATH)
+    cover_fallback = deck_title.text if deck_title and DECK_TITLE_PATH not in paths else ""
     result = text
     spans = [(slide.start, slide.end, "") for slide in removed_slides.values()]
-    spans += [blank_span(unit, removed) for unit, removed in edits.values()]
+    spans += [blank_span(unit, removed, cover_fallback) for unit, removed in edits.values()]
     for start, end, replacement in sorted(spans, reverse=True):
         result = result[:start] + replacement + result[end:]
     return result
 
 
 def slide_of(node: Node) -> Node:
-    return next(ancestor for ancestor in node.ancestors() if ancestor.tag == "section")
+    return next((ancestor for ancestor in node.ancestors() if ancestor.tag == "section"), node)
 
 
-def blank_span(unit: Unit, removed: set[int]) -> tuple[int, int, str]:
+def blank_span(unit: Unit, removed: set[int], cover_fallback: str) -> tuple[int, int, str]:
     node = unit.node
     pieces = split_unit(unit.role, unit_text(node))
     kept = [] if -1 in removed else [piece for index, piece in enumerate(pieces) if index not in removed]
+    if not kept and unit.role == "title" and unit.path.startswith("slides[0].") and cover_fallback:
+        kept = [cover_fallback]
     if not kept and unit.role not in FRAMED_ROLES:
         return node.start, node.end, ""
     return node.inner_start, node.inner_end, html.escape(" ".join(kept), quote=False)

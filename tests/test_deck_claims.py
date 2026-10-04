@@ -67,6 +67,16 @@ class DeckClaimTest(unittest.TestCase):
         self.assertEqual(result.count("<section"), 2)
         self.assertIn("국내 시장 점유율 1위", result)
 
+    def test_the_deck_title_shown_in_every_footer_is_a_claim(self):
+        self.assertEqual(claim_at("견본테크 투자 제안"), {"path": "deck.title", "at": "발표 자료 제목", "text": "견본테크 투자 제안"})
+
+    def test_a_blank_cover_title_takes_the_deck_title_when_that_is_supported(self):
+        cover = claim_at("견본테크, 3년 만에 매출 4.5배")["path"]
+        self.assertIn("<h1>견본테크 투자 제안</h1>", blanked_deck(DECK, [cover]))
+        both = blanked_deck(DECK, [cover, "deck.title"])
+        self.assertIn("<h1></h1>", both)
+        self.assertIn("<title></title>", both)
+
     def test_each_blank_is_listed_with_its_place(self):
         path = claim_at("92%")["path"]
         self.assertEqual(blank_labels(DECK, [path]), [{"field": path, "label": "슬라이드 2 수치"}])
