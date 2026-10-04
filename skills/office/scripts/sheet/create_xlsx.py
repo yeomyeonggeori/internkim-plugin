@@ -28,11 +28,18 @@ def create_declared(arguments, written, declaration_path):
     apply_batch(SHEET_OPERATIONS, editing, chart_operations)
     show_hidden_chart_data(workbook)
     issues = save_atomically(lambda temporary_path: save_editing(editing, temporary_path), str(output_path))
-    write_source(output_path, {"declaration": declaration_path, "compiled": compiled_ranges(compiler), "blanks": blanks,
-                               "claims": declaration_claims(declaration)})
-    summary = f"created {output_path}" + (f"; {len(blanks)} blank input cells for the person to fill or send: {', '.join(blank['label'] for blank in blanks)}" if blanks else "; no blank cells")
     titles = [view["title"] for view in declaration.get("views") or []]
     views = shown_views(str(output_path), compiler, titles)
+    write_source(output_path, {
+        "declaration": declaration_path,
+        "compiled": compiled_ranges(compiler),
+        "blanks": blanks,
+        "claims": declaration_claims(declaration),
+        "tables": [{"name": table.name, "columns": [column.name for column in table.columns], "rowCount": len(table.rows)} for table in compiler.tables],
+        "views": views,
+        "charts": declaration.get("charts") or [],
+    })
+    summary = f"created {output_path}" + (f"; {len(blanks)} blank input cells for the person to fill or send: {', '.join(blank['label'] for blank in blanks)}" if blanks else "; no blank cells")
     return Result(summary=summary, output_path=str(output_path), issues=tuple(issues), details={"blanks": blanks, "views": views})
 
 
