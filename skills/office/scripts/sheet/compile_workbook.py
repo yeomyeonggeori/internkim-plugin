@@ -82,6 +82,8 @@ class Placed:
     partial: set = field(default_factory=set)
     note_rows: list = field(default_factory=list)
     width: int = 0
+    group_row: int | None = None
+    groups: list = field(default_factory=list)
 
 
 def invalid(message: str, location: str, suggestion: str | None = None) -> OfficeFailure:
@@ -206,6 +208,10 @@ class Compiler:
         return column
 
     def compile_view(self, entry: dict, location: str) -> Placed:
+        placed = self.place_view(entry, location, has_group_row=False)
+        return placed if not placed.groups else self.place_view(entry, location, has_group_row=True)
+
+    def place_view(self, entry: dict, location: str, has_group_row: bool) -> Placed:
         table = self.table(entry.get("table"), f"{location}.table")
         row_dimensions = [self.dimension(table, name, f"{location}.rows") for name in entry["rows"]]
         column_dimension = self.dimension(table, entry["columns"], f"{location}.columns") if entry.get("columns") else None
@@ -226,17 +232,19 @@ class Compiler:
         needs_total_column = bool(entry.get("totalColumn")) or column_name is not None and column_name in shares
         sheet = entry["sheet"]
         title_row = self.next_row.get(sheet, 1)
-        header_row = title_row + 1
+        header_row = title_row + 1 + int(has_group_row)
         combinations = table.combinations([dimension.name for dimension in row_dimensions])
         body_rows = [header_row + 1 + index for index in range(len(combinations))]
         total_row = body_rows[-1] + 1 if needs_totals and body_rows else None
         label_count = len(row_dimensions)
         total_column = label_count + len(base) + 1 if needs_total_column and column_dimension is not None else None
-        placed = Placed(sheet, title_row, header_row, body_rows, total_row, label_count, base, total_column)
+        placed = Placed(sheet, title_row, header_row, body_rows, total_row, label_count, base, total_column, group_row=title_row + 1 if has_group_row else None)
         context = ViewContext(self, table, placed, row_dimensions, column_dimension, measures, combinations)
         context.write()
         for index, added in enumerate(added_entries):
             context.add_column(added, f"{location}.add[{index}]")
+        if placed.groups and not has_group_row:
+            return placed
         placed.width = max(placed.cells, key=lambda key: key[1])[1] if placed.cells else 1
         last_row = total_row or (body_rows[-1] if body_rows else header_row)
         laid_out = [dimension.name for dimension in row_dimensions] + ([column_dimension.name] if column_dimension is not None else [])
@@ -392,14 +400,25 @@ class ViewContext:
     def member_columns(self) -> list[int]:
         return [self.base_column_index(position) for position, (kind, _) in enumerate(self.placed.base_columns) if kind == "member"]
 
-    def header_for(self, entry: dict, member, several: bool) -> str:
-        return f"{entry['name']} {member}" if several else entry["name"]
+    def put_added_header(self, entry: dict, column: int, member, several: bool) -> None:
+        placed = self.placed
+        if not several:
+            self.put(placed.header_row, column, entry["name"])
+            return
+        self.put(placed.header_row, column, member)
+        group = next((group for group in placed.groups if group["name"] == entry["name"] and group["last"] + 1 == column), None)
+        if group is None:
+            group = {"name": entry["name"], "first": column, "last": column}
+            placed.groups.append(group)
+        group["last"] = column
+        if placed.group_row is not None:
+            self.put(placed.group_row, group["first"], entry["name"])
 
     def add_change_across_columns(self, entry: dict, function: str, targets: list, result_type: str, result_unit: str) -> None:
         pairs = list(zip(targets, targets[1:]))
         for previous, current in pairs:
             column = self.next_free_column()
-            self.put(self.placed.header_row, column, self.header_for(entry, self.placed.cells[(self.placed.header_row, current)], len(pairs) > 1))
+            self.put_added_header(entry, column, self.placed.cells[(self.placed.header_row, current)], len(pairs) > 1)
             for row in self.rows_with_total():
                 row_part = self.row_criteria(row) if row != self.placed.total_row else []
                 measure = self.measures[0]
@@ -409,7 +428,7 @@ class ViewContext:
     def add_share_of_row_total(self, entry: dict, targets: list) -> None:
         for target in targets:
             column = self.next_free_column()
-            self.put(self.placed.header_row, column, self.header_for(entry, self.placed.cells[(self.placed.header_row, target)], len(targets) > 1))
+            self.put_added_header(entry, column, self.placed.cells[(self.placed.header_row, target)], len(targets) > 1)
             for row in self.rows_with_total():
                 partial = (row, target) in self.placed.partial or (row, self.placed.total_column) in self.placed.partial
                 self.put_marked(row, column, share_formula(self.cell(row, target), self.cell(row, self.placed.total_column)), "0.0%", partial)
@@ -417,8 +436,7 @@ class ViewContext:
     def add_share_of_column_total(self, entry: dict, targets: list) -> None:
         for target in targets:
             column = self.next_free_column()
-            member = self.placed.cells[(self.placed.header_row, target)]
-            self.put(self.placed.header_row, column, self.header_for(entry, member, len(targets) > 1))
+            self.put_added_header(entry, column, self.placed.cells[(self.placed.header_row, target)], len(targets) > 1)
             for row in self.rows_with_total():
                 partial = (row, target) in self.placed.partial or (self.placed.total_row, target) in self.placed.partial
                 self.put_marked(row, column, share_formula(self.cell(row, target), self.cell(self.placed.total_row, target)), "0.0%", partial)
@@ -428,7 +446,7 @@ class ViewContext:
         members = self.table.members(dimension)
         for target in targets:
             column = self.next_free_column()
-            self.put(self.placed.header_row, column, entry["name"])
+            self.put_added_header(entry, column, self.placed.cells[(self.placed.header_row, target)], len(targets) > 1 and self.base_kind(target) == "member")
             for row, combination in zip(self.placed.body_rows, self.combinations):
                 previous_row = self.previous_row(combination, dimension_index, members)
                 if previous_row is None:

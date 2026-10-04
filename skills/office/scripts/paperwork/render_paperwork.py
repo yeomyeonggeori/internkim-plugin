@@ -32,9 +32,10 @@ def normalize_document(document):
             document["signature"] = {"date": lines[0], "line": " ".join(lines[1:])}
         else:
             document["signature"] = {"line": lines[0]}
-    notes = document.get("notes")
-    if isinstance(notes, str) and notes.strip():
-        document["notes"] = [notes.strip()]
+    for name in ("lead", "notes"):
+        lines = document.get(name)
+        if isinstance(lines, str) and lines.strip():
+            document[name] = [lines.strip()]
 
 
 def load_contract_document(document: dict) -> dict:

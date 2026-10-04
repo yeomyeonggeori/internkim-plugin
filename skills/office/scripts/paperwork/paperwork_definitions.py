@@ -14,15 +14,19 @@ from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE
 
 REGISTERED_DOCUMENT_NUMBER = "<the number company_document_register returned>"
 
+VALUE_KIND_MEANING = "the type of the value, date, amount, quantity or percent; a value of one of those types never breaks across lines, and its column takes the width it needs"
+
 LABELED_VALUE = Record("labeled value", "one label and its value", (
     Field("label", CellValue(), "the label"),
     Field("value", CellValue(), "the value"),
+    Field("kind", CellValue(), VALUE_KIND_MEANING),
 ))
 
 ITEMS = Record("items", "the item table with its totals", (
     Field("headers", ListOf(CellValue(), non_empty=True), "column headers", required=True),
     Field("rows", ListOf(ListOf(CellValue())), "item rows"),
     Field("aligns", ListOf(CellValue()), "L, C or R per column; anything else aligns left"),
+    Field("kinds", ListOf(CellValue()), "per column, " + VALUE_KIND_MEANING),
     Field("untaxedRows", ListOf(Number(minimum=0, integer=True)), "indexes, from 0, of the rows that carry no tax, such as exempt or zero-rated supplies; their tax cell holds 0 and the tax total leaves their amounts out"),
     Field("totals", ListOf(LABELED_VALUE), "right-aligned total lines, the last one emphasized"),
 ))
@@ -58,6 +62,7 @@ PAPERWORK_DOCUMENT = Record("document", "the values office merge draws on letter
     Field("approvalLine", ListOf(AnyOf((Text(), APPROVER))), "approval boxes left to right, each a role or {role, name}; the approvers the request names, in its order"),
     Field("recipient", RECIPIENT, "addressee"),
     Field("meta", ListOf(LABELED_VALUE), "label-value table under the title"),
+    Field("lead", AnyOf((Text(), ListOf(CellValue()))), "centered lines between the label-value table and the item table, such as the \"as below\" sentence that introduces what follows"),
     Field("items", ITEMS, "item table"),
     Field("sections", ListOf(PAPERWORK_SECTION), "body sections"),
     Field("notes", AnyOf((Text(), ListOf(CellValue()))), "centered closing lines"),
@@ -67,7 +72,7 @@ PAPERWORK_DOCUMENT = Record("document", "the values office merge draws on letter
     Field("fontPath", Text(), FONT_PATH_MEANING),
 ))
 
-PAPERWORK_CONTENT_FIELDS = ("recipient", "meta", "items", "sections", "notes", "signature")
+PAPERWORK_CONTENT_FIELDS = ("recipient", "meta", "lead", "items", "sections", "notes", "signature")
 
 CONTRACT_BLOCK = Variant(
     "contract block",
