@@ -23,14 +23,13 @@ SHOWN_TOKENS = ("accent", "accent-2", "bg", "ink")
 def guide_preamble() -> list[str]:
     preparation = prepare_deck(parse_source("<body></body>"))
     if request_preparation(preparation):
-        return ["", "Next, run office guide design: InternKim picks this deck's design and gathers the photos and logo it can use before that command runs."]
+        return ["", "Next, run office guide design: InternKim gathers the photos and logo the deck can use before that command runs."]
     return ["", "Next, run office guide design: it says this deck's design and lists the photos and logo it can use."]
 
 
 def design_text() -> str:
     preparation = prepare_deck(parse_source("<body></body>"))
-    lines = decided_lines(preparation) if is_decided(preparation.design) else choice_lines()
-    return "\n".join([*lines, "", *logo_lines(preparation), "", *image_lines(preparation)])
+    return "\n".join(["Design the deck yourself: write DESIGN.md first, as references/deck.md shows.", "", *logo_lines(preparation), "", *image_lines(preparation)])
 
 
 def is_decided(design: Design) -> bool:
@@ -73,8 +72,7 @@ def logo_lines(preparation: DeckPreparation) -> list[str]:
     logo = preparation.logo
     if logo is None:
         return ["Logo: none is known for this company; the deck goes without one."]
-    brand = f"; its color #{preparation.design.brand_color} leads the palette" if preparation.design.brand_color else ""
-    return [f"Logo: the kit places the company logo on the cover, in every footer and on the closing{brand}; never add it yourself."]
+    return [f"Logo: {logo.path} ({logo.width}x{logo.height}{', on a transparent background' if logo.has_transparency else ', on its own opaque background'}); place it yourself at one size and place on every slide, and never stretch or recolor it."]
 
 
 def image_lines(preparation: DeckPreparation) -> list[str]:

@@ -1,43 +1,35 @@
 # Decks
 
-A deck is one file, `slides.html`, written with the built-in kit and built into `build/<deck-slug>.pdf`. The kit supplies type, spacing, colors, footer, page numbers and charts, so you write short HTML and no CSS. SKILL.md's rules for source truth apply: a deck never invents dates, people, values or claims.
+A deck is one file, `slides.html`, that you design and style yourself, built into `build/<deck-slug>.pdf`. The skill supplies the fonts, line icons, the company logo and photos, and the checks: contrast, overflow and overlap, the palette, the smallest type and a visual review of every slide. SKILL.md's rules for source truth apply: a deck never invents dates, people, values or claims.
 
 ## Write slides.html
 
-Work in `artifacts/<deck-slug>/`. First run `<skill>/scripts/office guide slides`: it gives the slide order rules, every layout with its purpose and parts, and the chart attributes. Then run `<skill>/scripts/office guide design`: it says the deck's design, which InternKim chooses from the request, and lists the photos and the logo the deck can use. Then write the whole file in one step with your file tool, never through a heredoc. To change an existing deck, edit its `slides.html` in place; `office convert build/<deck-slug>.html slides.html` recovers it from a delivered `.html`.
+Work in `artifacts/<deck-slug>/`. There are no templates: you design the deck yourself. First run `<skill>/scripts/office guide slides`; it gives the canvas, the fonts, the icons and the checks. Then run `<skill>/scripts/office guide design`, which lists the photos and the logo the deck can use. Then write two files with your file tool, never through a heredoc.
 
-```html
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><title>Sample Electronics Q3 2026 Business Review</title></head>
-<body>
-<section data-layout="cover">
-  <p class="eyebrow">Q3 2026 business review</p>
-  <h1>Q3 revenue reached $128M, 6% above target</h1>
-  <p class="lead">The premium line and B2B contracts drove the growth.</p>
-  <p class="meta">Strategy team, Alex Sample · October 6, 2026</p>
-  <aside class="notes">Q3 revenue was $128M, 6% above target.</aside>
-</section>
-<section data-layout="chart">
-  <h2>Revenue grew for four quarters in a row</h2>
-  <figure data-chart="column" data-labels="4Q25, 1Q26, 2Q26, 3Q26" data-values="96, 104, 113, 128" data-unit="M" data-highlight="3Q26"><figcaption>Quarterly revenue in $M. Source: Finance</figcaption></figure>
-  <div class="insight"><p class="value">+33%</p><p>growth in one year</p></div>
-  <aside class="notes">Revenue rose 33% in a year, from $96M to $128M.</aside>
-</section>
-<section data-layout="closing">
-  <h2>Three approvals today let us launch in November</h2>
-  <ol><li>A $6M budget</li><li>Contracts with two partners</li><li>Launch on November 3</li></ol>
-  <aside class="notes">With these three decisions today, we launch in November.</aside>
-</section>
-</body>
-</html>
+1. `DESIGN.md`, the deck's design system, decided from the request's subject, audience and purpose before any slide:
+
+```markdown
+---
+intent: "one line: the style and why it fits this subject and audience"
+colors:
+  bg: "#FBFAF7"
+  ink: "#1A1C20"
+  muted: "#6B6F76"
+  accent: "#1F6F5C"
+  accent-2: "#C98A2B"
+  surface: "#EFEDE6"
+fonts:
+  display: Pretendard
+  body: Pretendard
+spacing:
+  margin: 96px
+  gap: 32px
+---
 ```
 
-- Every part is a direct child of its `<section>`.
-- A title states the slide's conclusion as a sentence in the request's language. `<em>` colors key words.
-- Choose each slide's layout from the shape of its content, by the content shapes `office guide slides` lists; write the other slides from it rather than from this example.
-- Follow the cover and imagery `office guide design` names. Without photos, a `data-icon` on cards, metrics, steps and agenda or closing items gives the deck a visual rhythm.
-- The design is applied by the build: write no `data-theme`, colors or fonts unless the request names them.
+At most six colors, picked so text reads at 4.5:1 on its background. Fonts are the shipped ones `office guide slides` lists.
+
+2. `slides.html`: one `<style>` in `<head>` that sets the design system's tokens on `:root` and styles everything, and one `<section>` per slide of exactly 1600x900 px. Lay each slide out from the shape of its content: a key number large, a sequence as steps, a comparison side by side, a trend as a chart you draw in HTML or SVG from the request's numbers. Give two slides in a row different compositions. Slide 1 is the cover; the last is the decision or next steps. Every title states the slide's conclusion in the request's language. Speaker notes go in `<aside class="notes">`.
 
 ## Build and deliver
 
@@ -58,17 +50,13 @@ The output's extension picks the format: `build/<deck-slug>.pptx` writes the Pow
 
 ## Images
 
-The photos a deck can use are the ones `office guide design` lists: the request's attachments and the data room images the requester can read. Use each one that shows the deck's subject, on the cover, a section divider or an `image` slide beside what it shows, and skip one that does not fit. Point `src` at the listed path; the kit crops each photo to its frame, and `data-focus="top"`, `bottom`, `left` or `right` keeps that side in view. A caption or a fact about a photo comes only from its title, its summary or the request. Never put a grey box or a placeholder where a photo would go; without a fitting photo, use another layout. No emoji.
+The photos a deck can use are the ones `office guide design` lists: the request's attachments and the data room images the requester can read. Use each one that shows the deck's subject, on the cover, a section divider or an `image` slide beside what it shows, and skip one that does not fit. Point `src` at the listed path and crop it with `object-fit: cover` in a frame of your own. A caption or a fact about a photo comes only from its title, its summary or the request. Never put a grey box or a placeholder where a photo would go; without a fitting photo, design the slide without one. Place the company logo yourself, at one size and place on every slide, from the path `office guide design` gives. No emoji.
 
 Only when the person asks for photos to be found, `<skill>/scripts/office image "warehouse shelves" images/warehouse.jpg` saves up to three public-domain candidates for an English query, with each one's ratio and source page; keep the one that shows the subject, delete the rest, and name its source in `.source`.
 
-## Custom design
-
-A brand that needs more than `data-accent` adds a `<style>` that sets the theme tokens (`--accent`, `--accent-2`, `--ink`, `--bg`, `--surface`) on `:root`. A `DESIGN.md` beside `slides.html` is optional; the colors in its front matter join the palette. The check reports any other color as `OFF_PALETTE_COLOR`.
-
 ## PPTX
 
-The PPTX is built from the rendered slides: every word is an editable text box, boxes are native shapes, diagram arrows are connectors attached to their boxes, each kit chart is a native chart with its data, each table is a native table, and the shipped fonts the slides use are embedded.
+The PPTX is built from the rendered slides: every word is an editable text box, boxes are native shapes, diagram arrows are connectors attached to their boxes, each table is a native table, and the shipped fonts the slides use are embedded.
 
 ## Editing a delivered .pptx
 
