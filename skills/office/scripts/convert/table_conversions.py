@@ -10,7 +10,7 @@ import tempfile
 from openpyxl import load_workbook
 
 from convert.convert_definitions import FORMULA_VALUE_MISSING
-from sheet.create_xlsx import create_workbook
+from sheet.tabular_workbook import create_workbook
 from sheet.formulas.cache import cache_formula_values
 from core.office_result import INVALID_VALUE, Issue, OfficeFailure
 from core.excel_limits import fitting_sheet_name

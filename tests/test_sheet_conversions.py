@@ -1,4 +1,5 @@
 import datetime
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -22,31 +23,22 @@ class ConversionFixture(unittest.TestCase):
 
 
 class DelimitedRouteTest(ConversionFixture):
-    def test_the_sheet_reference_sends_a_csv_through_create_before_any_guide(self):
+    def test_the_sheet_reference_sends_a_new_workbook_from_a_csv_to_the_declaration(self):
         reference = (SCRIPTS_PATH.parent / "references" / "sheet.md").read_text(encoding="utf-8")
-        self.assertLess(reference.index("office create ~/documents/<title>.xlsx <data.csv>"), reference.index("office guide"))
+        self.assertLess(reference.index("references/schemas.md"), reference.index("office guide"))
+        self.assertNotIn("<data.csv>", reference)
         self.assertNotIn("Python's `csv`", reference)
-        self.assertNotIn("newest", reference)
 
-    def test_excel_unicode_text_in_utf16_converts_whatever_its_extension(self):
+    def test_excel_unicode_text_in_utf16_is_read_through_csv_path_whatever_its_extension(self):
         exported = "\ufeff지역\t실적\n서울\t6200\n".encode("utf-16-le")
         for name in ("유니코드.tsv", "유니코드.csv"):
             with self.subTest(name=name):
                 (self.directory / name).write_bytes(exported)
-                self.assertEqual(run_office(["create", "유니코드.xlsx", name], self.directory)["status"], "ok")
+                declaration = {"kind": "workbook", "tables": [{"name": "Data", "columns": [{"name": "지역"}, {"name": "실적", "type": "quantity"}], "csvPath": name}]}
+                (self.directory / "book.workbook.json").write_text(json.dumps(declaration, ensure_ascii=False), encoding="utf-8")
+                self.assertEqual(run_office(["create", "유니코드.xlsx", "book.workbook.json"], self.directory)["status"], "ok")
                 values = run_office(["read", "유니코드.xlsx"], self.directory)["details"]["range"]["values"]
                 self.assertEqual(values, [["지역", "실적"], ["서울", 6200]])
-
-    def test_a_converted_csv_takes_a_summary_sheet_from_one_apply(self):
-        (self.directory / "판매.csv").write_text("월,지역,실적\n2026-04,서울,6200\n2026-04,경기,4140\n2026-05,서울,6280\n", encoding="utf-8")
-        self.assertEqual(run_office(["create", "판매.xlsx", "판매.csv"], self.directory)["status"], "ok")
-        (self.directory / "ops.json").write_text("""[
-            {"op": "add_sheet", "name": "요약"},
-            {"op": "set_range", "sheet": "요약", "cell": "A1", "values": [["지역", "실적"], ["서울", "=SUMIFS(판매!C:C,판매!B:B,A2)"]]}
-        ]""", encoding="utf-8")
-        self.assertEqual(run_office(["apply", "판매.xlsx", "ops.json"], self.directory)["status"], "ok")
-        values = run_office(["read", "판매.xlsx", "--sheet", "요약"], self.directory)["details"]["range"]["values"]
-        self.assertEqual(values, [["지역", "실적"], ["서울", 12480]])
 
 
 class BinaryWorkbookTest(ConversionFixture):

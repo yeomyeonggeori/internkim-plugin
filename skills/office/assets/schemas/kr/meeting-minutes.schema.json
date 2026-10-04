@@ -1,0 +1,141 @@
+{
+  "name": "kr/meeting-minutes",
+  "kind": "form",
+  "jurisdiction": "kr",
+  "language": "ko",
+  "title": "회 의 록",
+  "fields": [
+    {
+      "name": "meetingName",
+      "label": "회의명",
+      "type": "text"
+    },
+    {
+      "name": "startsAt",
+      "label": "일시",
+      "type": "date",
+      "description": "YYYY-MM-DD HH:MM; a relative day such as 오늘 is resolved from today's date"
+    },
+    {
+      "name": "endsAt",
+      "label": "종료 시각",
+      "type": "date",
+      "optional": true,
+      "description": "HH:MM"
+    },
+    {
+      "name": "place",
+      "label": "장소",
+      "type": "text"
+    },
+    {
+      "name": "attendees",
+      "label": "참석자",
+      "type": "list",
+      "item": "person",
+      "description": "each attendee as the request names them; the requester by name"
+    },
+    {
+      "name": "agenda",
+      "label": "안건",
+      "type": "list",
+      "item": "text"
+    },
+    {
+      "name": "discussion",
+      "label": "논의 내용",
+      "type": "list",
+      "item": "text",
+      "optional": true,
+      "description": "only what the request says was discussed"
+    },
+    {
+      "name": "decisions",
+      "label": "결정사항",
+      "type": "list",
+      "item": "text"
+    },
+    {
+      "name": "actions",
+      "label": "실행 항목",
+      "type": "list",
+      "optional": true,
+      "fields": [
+        {
+          "name": "task",
+          "label": "항목",
+          "type": "text"
+        },
+        {
+          "name": "owner",
+          "label": "담당",
+          "type": "person"
+        },
+        {
+          "name": "due",
+          "label": "기한",
+          "type": "date"
+        }
+      ]
+    }
+  ],
+  "known": {
+    "author": "requester",
+    "writtenOn": "today",
+    "number": "document.number",
+    "company": "company"
+  },
+  "layout": {
+    "documentNumber": "{number}",
+    "meta": [
+      {
+        "label": "회의명",
+        "value": "{meetingName}"
+      },
+      {
+        "label": "일시",
+        "value": [
+          "{startsAt} ~ {endsAt}",
+          "{startsAt}"
+        ]
+      },
+      {
+        "label": "장소",
+        "value": "{place}"
+      },
+      {
+        "label": "참석자",
+        "value": "{attendees}"
+      },
+      {
+        "label": "작성자",
+        "value": "{author}"
+      }
+    ],
+    "sections": [
+      {
+        "title": "안건",
+        "bullets": "agenda"
+      },
+      {
+        "title": "논의 내용",
+        "paragraphs": "discussion"
+      },
+      {
+        "title": "결정사항",
+        "bullets": "decisions"
+      },
+      {
+        "title": "실행 항목",
+        "each": "actions",
+        "bullet": "{task} — 담당 {owner}, 기한 {due}"
+      }
+    ],
+    "signature": {
+      "date": "{writtenOn}",
+      "line": "작성자 {author}",
+      "stamp": false
+    },
+    "numberedSections": true
+  }
+}

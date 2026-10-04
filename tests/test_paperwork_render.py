@@ -47,7 +47,7 @@ class PaperworkRenderTest(unittest.TestCase):
 
     def render(self, sections: list[dict]) -> list[str]:
         write_json(self.directory / "quote.json", quote(self.directory, sections))
-        envelope = run_office(["merge", "kr/quote", "quote.json", "quote.pdf"], self.directory)
+        envelope = run_office(["merge", "kr/purchase-order", "quote.json", "quote.pdf"], self.directory)
         self.assertEqual(envelope["status"], "ok", envelope["issues"])
         completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", PAGE_TEXTS, "quote.pdf"], cwd=self.directory, capture_output=True, text=True, check=True)
         return json.loads(completed.stdout)
@@ -66,7 +66,7 @@ class PaperworkRenderTest(unittest.TestCase):
         values = quote(self.directory, [])
         values["approvalLine"] = [{"role": "담당", "name": "최견본"}, {"role": "팀장", "name": "박예시"}, "대표이사"]
         write_json(self.directory / "quote.json", values)
-        self.assertEqual(run_office(["merge", "kr/quote", "quote.json", "quote.pdf"], self.directory)["status"], "ok")
+        self.assertEqual(run_office(["merge", "kr/purchase-order", "quote.json", "quote.pdf"], self.directory)["status"], "ok")
         completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", PAGE_TEXTS, "quote.pdf"], cwd=self.directory, capture_output=True, text=True, check=True)
         text = "".join(json.loads(completed.stdout))
         for expected in ("담당", "최견본", "팀장", "박예시", "대표이사"):
@@ -121,7 +121,7 @@ class PaperworkRenderTest(unittest.TestCase):
 
     def test_an_amount_left_unspelled_is_written_in_words_from_the_grand_total(self):
         cases = [
-            ("kr/quote", 9_091_637, 909_163, "일금 일천만팔백원整 (₩10,000,800) (부가세 포함)"),
+            ("kr/purchase-order", 9_091_637, 909_163, "일금 일천만팔백원整 (₩10,000,800) (부가세 포함)"),
             ("kr/invoice", 910_911_822, 91_091_182, "일금 일십억이백만삼천사원整 (₩1,002,003,004) (부가세 포함)"),
             ("kr/purchase-order", 50_000, 5_000, "일금 오만오천원整 (₩55,000) (부가세 포함)"),
         ]
@@ -132,7 +132,7 @@ class PaperworkRenderTest(unittest.TestCase):
                 self.assertIn(expected, text)
 
     def test_the_words_follow_the_last_total_line_when_a_form_has_more_than_three(self):
-        values = self.priced("kr/quote", 1_000_000, 90_000, "")
+        values = self.priced("kr/purchase-order", 1_000_000, 90_000, "")
         values["items"]["totals"] = [{"label": "공급가액 합계", "value": "1,000,000원"}, {"label": "특별할인", "value": "100,000원"}, {"label": "부가세", "value": "90,000원"}, {"label": "총 합계", "value": "990,000원"}]
         envelope, text = self.merged_text(values)
         self.assertIn("일금 구십구만원整 (₩990,000) (부가세 포함)", text)

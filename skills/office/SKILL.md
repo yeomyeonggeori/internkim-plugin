@@ -14,21 +14,24 @@ One command, `<skill>/scripts/office <verb> <file> [options]`, makes and checks 
 
 | Work | Command | Reference |
 | --- | --- | --- |
-| Report, memo, letter or other document, as .docx or .pdf | `create <title>.docx <title>.md` | `references/doc.md` |
+| Report, weekly report, status update, memo, postmortem, letter or notice, as .docx or .pdf | `merge report` or `merge letter` with the given values | `references/schemas.md` |
+| Quotation, invoice or meeting minutes, as a file: PDF unless another format is named | `merge kr/quote`, `merge intl/invoice`, `merge kr/meeting-minutes` with the given values | `references/schemas.md` |
+| Other long-form document, as .docx or .pdf | `create <title>.docx <title>.md` | `references/doc.md` |
 | Change an existing .docx, .xlsx, .pptx or .pdf | `read`, then `apply` | the format's reference |
 | Read, look at or take apart an existing PDF | `read`, `render` | `references/pdf.md` |
-| Workbook, CSV or TSV cleanup, formulas, charts | `create <title>.xlsx <data>.csv`, then `apply` | `references/sheet.md` |
+| New workbook, from the request or an attached CSV or TSV: data, summaries, comparisons, charts | `create <title>.xlsx <title>.workbook.json` | `references/schemas.md` |
+| Change a workbook the person already has | `read`, then `apply` | `references/sheet.md` |
 | Deck, presentation, PPTX | `create build/<deck>.pdf slides.html` | `references/deck.md` |
 | Fill a user's .docx, .xlsx or .pptx template | `merge` | `references/doc.md` |
-| A document the form catalog has: quote, transaction statement, invoice, purchase order, approval request, expense approval, business trip report, meeting minutes, weekly report, leave request, employment certificate, career certificate, power of attorney, offer letter, employment contract, NDA, MOU, service agreement | `merge <jurisdiction>/<form>` | `references/paperwork.md` |
+| Every other document the form catalog has: transaction statement, purchase order, approval request, expense approval, business trip report, leave request, employment certificate, career certificate, power of attorney, offer letter, employment contract, NDA, MOU, service agreement | `merge <jurisdiction>/<form>` | `references/paperwork.md` |
 | Another format of a file | `convert` | `office guide convert` |
 | Verify before attaching | `check`, `render` | the format's reference |
 
-A document the catalog has belongs to `merge <jurisdiction>/<form>` in either language and whatever format or wording the request uses: its letterhead, approval boxes, seal, and fixed clauses live there, and `create` is only for documents the catalog lacks. Work no verb covers, such as merging PDFs, goes in a task-local Python file run with `<skill>/scripts/office python <script.py> [arguments]`, which provides every office package.
+A document the catalog has belongs to `merge <jurisdiction>/<form>` in either language and whatever format or wording the request uses: its letterhead, approval boxes, seal, and fixed clauses live there, and `create` is only for documents the catalog lacks. Work no verb covers, such as merging PDFs, goes in a task-local Python file run with `<skill>/scripts/office python <script.py> [arguments]`. That script never writes a new document, form, or workbook: those come only from `merge` or `create` in the table above, which compute every total, formula, and format from the values you give.
 
 ## Rules for every format
 
-**Source truth.** Supplied files and pasted data are the source of truth. Preserve names, products, people, dates, amounts, IDs, and units exactly, and put the source title, organization, and period in visible content as well as the filename. A missing value is written as the user's-language equivalent of "Not provided", and a company form leaves it blank instead; never invent contacts, totals, vendors, prices, or background.
+**Source truth.** Supplied files and pasted data are the source of truth. Preserve names, products, people, dates, amounts, IDs, and units exactly. A value the document needs that no source states is left blank, never invented: in a schema it is `null`. Deliver the document anyway; the reply names each blank field from the result's `details.blanks` and offers to complete the same file when the person sends the values.
 
 **Totals.** Compute totals from the source numbers in code and check that they equal any total the source states before writing the file.
 
@@ -38,7 +41,7 @@ A document the catalog has belongs to `merge <jurisdiction>/<form>` in either la
 
 **Results.** Every command prints one JSON result: `status` is ok, warning, or error, and each issue carries a stable `code`, a `location`, a `suggestion` sentence, and `fix`: operations to pass as they are to `apply` on the same file once any `<value>` is filled in. `<skill>/scripts/office guide <kind>` indexes a kind of file's commands and codes, `guide <verb> <kind>` one command's fields, and `guide <verb> <kind> <operation>` one operation's.
 
-**Verify before attaching.** Run `check` on the final file and look at the pages `render` draws. Pass each source name, date, total, and key label as its own `--required-text`; a value is matched whole, commas included. Read every warning, revise real problems, then attach only the accepted final output. Say what visual uncertainty remains.
+**Verify before attaching.** Run `check` on the final file and look at the pages `render` draws. Pass each source name, date, total, and key label as its own `--required-text`; a value is matched whole, commas included. A file made by `merge <schema>` or from a workbook declaration wrote your values itself: render it and read its result's `blanks` and `views` instead of passing `--required-text`. Read every warning, revise real problems, then attach only the accepted final output. Say what visual uncertainty remains.
 
 **Fonts.** The skill ships its fonts and draws every page with them, so a page looks the same on any host; `<skill>/scripts/office guide` lists each family and its kind. A font a file names that the skill does not ship is drawn with the shipped family of its kind. A .docx or .pptx carries the shipped fonts it uses, so the recipient needs nothing installed; a workbook cannot carry fonts and keeps Office's own. Pass a font path only when the user supplies a font file.
 

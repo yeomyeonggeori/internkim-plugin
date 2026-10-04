@@ -13,6 +13,7 @@ from core.office_schema import closest_name
 from office_setup import setup_result
 from core.retired_commands import RETIRED_FORMATS, find_retired, replacement_command
 from office_guide import guide_for
+from schemas.schema_document import is_schema_reference
 from skill_runtime import ensure_requirements, environment_path
 
 
@@ -34,10 +35,16 @@ def main(arguments: list[str]) -> int:
     verb = find_verb(arguments[0])
     if verb is None:
         return run_command(lambda: reject_unknown_command(arguments))
-    if HELP_WORDS & set(arguments[1:]) and not positional_arguments(arguments[1:]):
-        print(verb_help_text(verb))
-        return 0
+    if HELP_WORDS & set(arguments[1:]):
+        return print_help(verb, positional_arguments(arguments[1:]))
     return run_routed(verb, arguments[1:])
+
+
+def print_help(verb, positionals: list[str]) -> int:
+    if positionals and is_schema_reference(positionals[0]):
+        return run_text_command(lambda: guide_for([verb.name, positionals[0]]))
+    print(verb_help_text(verb))
+    return 0
 
 
 def run_routed(verb, arguments: list[str]) -> int:

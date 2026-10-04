@@ -97,6 +97,7 @@ KINDS = (
     Kind("csv", ".csv .tsv", (".csv", ".tsv"), "delimited rows", "sheet.sheet_definitions"),
     Kind("slides", "slides.html", (".html", ".htm"), "a deck written with the kit, or the folder holding it", "deck.deck_definitions"),
     Kind("form", "a form", (".json",), "company forms and contracts, named <jurisdiction>/<form> such as kr/quote", "paperwork.paperwork_definitions"),
+    Kind("schema", "a schema", (".schema.json",), "a document schema: the given fields a request fills, the values the runtime knows, the values merge derives, and the layout; bundled ones are named like kr/quote or report", "schemas.schema_definitions"),
 )
 
 FLAGS = (
@@ -165,9 +166,9 @@ ROUTES = (
     Route("create", "md", "doc.export_document", "a document written in Markdown, the usual way to make one", ("--font", "--font-size", "--font-path"), (".docx", ".pdf", ".html")),
     Route("create", "slides", "deck.build_deck", "a deck: checked first, then drawn, with a verdict and review images", ("--slide-count",) + TEXT_FLAGS, (".pdf", ".pptx", ".html")),
     Route("create", "docx", "doc.create_docx", "exact page setup, styles and blocks", outputs=(".docx",), label="JSON spec"),
-    Route("create", "xlsx", "sheet.create_xlsx", "sheets of rows with formulas, formats, charts and pivots", outputs=(".xlsx",), label="JSON spec"),
+    Route("create", "xlsx", "sheet.create_xlsx", "a new workbook compiled from its declaration: typed source tables, views and charts; formulas, formats and chart ranges are written for you", outputs=(".xlsx",), label="workbook declaration"),
     Route("create", "pdf", "pdf.create_pdf", "sections and tables placed on the page", outputs=(".pdf",), label="JSON spec"),
-    Route("create", "csv", "convert.import_table", "typed cells under a frozen, filtered header", outputs=(".xlsx", ".pdf")),
+    Route("create", "csv", "convert.import_table", "the table printed with typed cells under its header; a new .xlsx is refused, because a workbook is compiled from a declaration whose table reads the file through csvPath", outputs=(".xlsx", ".pdf")),
     Route("read", "docx", "doc.read_docx", "blocks, headers, footers, comments, charts and tracked changes by index", ("--start", "--limit", "--revisions", "--styles")),
     Route("read", "xlsx", "sheet.read_xlsx", "sheets, charts and features; a range's values, formulas, stats or formats", ("--sheet", "--range", "--columns", "--limit", "--where", "--stats", "--formats")),
     Route("read", "pptx", "powerpoint.read_pptx", "each slide's shapes with index, box, text and style, tables, charts and notes", ("--pages", "--detail")),
@@ -179,6 +180,7 @@ ROUTES = (
     Route("merge", "docx", "doc.merge_docx", "a filled .docx; a paragraph or row naming a list repeats per item"),
     Route("merge", "xlsx", "sheet.merge_xlsx", "a filled .xlsx; a cell that is one placeholder takes the value's type"),
     Route("merge", "pptx", "powerpoint.merge_pptx", "a filled .pptx"),
+    Route("merge", "schema", "schemas.merge_schema", "a document drawn from a schema and its given values, with the runtime's known values and the derived ones", outputs=(".pdf", ".docx", ".html", ".xlsx"), label="<schema>"),
     Route("merge", "form", "paperwork.merge_form", "a form on letterhead to .pdf, or a contract to .docx", outputs=(".pdf", ".docx"), label="<jurisdiction>/<form>"),
     Route("check", "docx", "doc.check_docx", "placeholders, references, contents list, fonts, pictures, comments, layout, required text", TEXT_FLAGS),
     Route("check", "xlsx", "sheet.check_xlsx", "formula errors, broken names, numbers stored as text, wide numbers, frozen headers, filters and required text", TEXT_FLAGS),
@@ -210,6 +212,8 @@ CONVERSIONS = (
     Conversion("html", "md", "the same content as html to docx"),
     Conversion("html", "pdf", "the same content as html to docx, laid out as a document; the page's own CSS and scripts are not applied"),
     Conversion("html", "html", "a delivered deck .html back to the small slides.html it was built from: the kit, viewer and vendored fonts removed, inlined images and fonts pointing at their files again", "deck.restore_source", needs_packages=False),
+    Conversion("docx", "json", "a company form's schema: each empty cell beside or under a label becomes a field, and a table of empty numbered rows a list; name the output <form>.schema.json and set each field's type once", "schemas.derive_form"),
+    Conversion("xlsx", "json", "the same as docx to json, for a form kept as a workbook", "schemas.derive_form"),
     Conversion("xls", "xlsx", "values, dates and merged cells; formulas kept as their values; fonts, colors, borders and widths dropped"),
     Conversion("ods", "xlsx", "the same as xls to xlsx"),
     Conversion("xlsb", "xlsx", "the same as xls to xlsx; formulas kept as their saved values"),

@@ -19,6 +19,7 @@ from core.office_commands import (
 from core.office_inputs import DAMAGED_PACKAGE, DOCX, LEGACY_OFFICE, OTHER, PDF, PPTX, XLSB, XLSX, detected_kind, redirect_suggestion
 from core.office_result import FILE_DAMAGED, INVALID_ARGUMENTS, WRONG_INPUT_FORMAT, OfficeFailure
 from core.office_schema import closest_name, guess_text
+from schemas.schema_document import is_schema_reference
 
 
 FORM_NAME = re.compile(r"[a-z]+/[a-z0-9]+(?:-[a-z0-9]+)*")
@@ -90,6 +91,8 @@ def subject_route(verb_name: str, subject: str, output: str | None) -> Route | N
 
 def named_kind(verb_name: str, subject: str, output: str | None) -> str | None:
     path = Path(subject).expanduser()
+    if verb_name == "merge" and is_schema_reference(subject):
+        return "schema"
     if verb_name == "merge" and FORM_NAME.fullmatch(subject) and not path.exists():
         return "form"
     if path.is_dir():

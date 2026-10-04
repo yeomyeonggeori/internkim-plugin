@@ -1,0 +1,59 @@
+{
+  "name": "intl/invoice",
+  "kind": "form",
+  "jurisdiction": "intl",
+  "language": "en",
+  "title": "Invoice",
+  "fields": [
+    {"name": "billTo", "label": "Bill to", "type": "organization"},
+    {"name": "attention", "label": "Attention", "type": "person", "optional": true, "description": "contact and department as the request writes them"},
+    {"name": "currency", "label": "Currency", "type": "text", "description": "ISO code such as USD"},
+    {"name": "paymentDays", "label": "Payment days", "type": "quantity", "optional": true, "description": "days after the invoice date the payment is due, when the request states days"},
+    {"name": "dueDate", "label": "Due date", "type": "date", "optional": true, "description": "only when the request states a calendar date"},
+    {"name": "paymentMethod", "label": "Payment method", "type": "text", "optional": true},
+    {"name": "poNumber", "label": "PO number", "type": "text"},
+    {"name": "taxRatePercent", "label": "Tax rate", "type": "percent", "description": "the rate the request states; 0 only when the request says no tax applies; null when it does not say"},
+    {"name": "items", "label": "Line items", "type": "list", "fields": [
+      {"name": "description", "label": "Description", "type": "text"},
+      {"name": "spec", "label": "Spec", "type": "text", "optional": true},
+      {"name": "quantity", "label": "Qty", "type": "quantity"},
+      {"name": "unitPrice", "label": "Unit price", "type": "amount"}
+    ]}
+  ],
+  "known": {"issueDate": "today", "number": "document.number", "company": "company"},
+  "derived": [
+    {"name": "items.amount", "type": "amount", "expression": "money(items.quantity * items.unitPrice)"},
+    {"name": "items.tax", "type": "amount", "expression": "money(items.amount * taxRatePercent / 100)"},
+    {"name": "subtotal", "type": "amount", "expression": "sum(items.amount)"},
+    {"name": "taxTotal", "type": "amount", "expression": "sum(items.tax)"},
+    {"name": "total", "type": "amount", "expression": "subtotal + taxTotal"},
+    {"name": "shownDueDate", "type": "date", "expression": "if(dueDate, dueDate, addDays(issueDate, paymentDays))"}
+  ],
+  "layout": {
+    "documentNumber": "{number}",
+    "recipient": {"label": "Bill to", "lines": ["{billTo}", "Attn: {attention}"]},
+    "meta": [
+      {"label": "Invoice date", "value": "{issueDate}"},
+      {"label": "Due date", "value": "{shownDueDate}"},
+      {"label": "PO number", "value": "{poNumber}"},
+      {"label": "Tax rate", "value": "{taxRatePercent}"},
+      {"label": "Payment method", "value": "{paymentMethod}"},
+      {"label": "Bank account", "value": "{company.bankAccount}"}
+    ],
+    "items": {"list": "items", "columns": [
+      {"header": "Description", "value": "{description}", "align": "L"},
+      {"header": "Spec", "value": "{spec}", "align": "L"},
+      {"header": "Qty", "value": "{quantity:number}", "align": "R"},
+      {"header": "Unit price", "value": "{unitPrice:number}", "align": "R"},
+      {"header": "Amount", "value": "{amount:number}", "align": "R"},
+      {"header": "Tax", "value": "{tax:number}", "align": "R"}
+    ], "totals": [
+      {"label": "Subtotal", "value": "{subtotal:number} {currency}"},
+      {"label": "Tax", "value": "{taxTotal:number} {currency}"},
+      {"label": "Total due", "value": "{total:number} {currency}"}
+    ]},
+    "notes": ["Please remit payment as invoiced above."],
+    "signature": {"date": "{issueDate}", "line": "{company.name}, {company.representativeTitle} {company.representative}", "stamp": true},
+    "footer": "Please transfer the total due to the account above by the due date."
+  }
+}

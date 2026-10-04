@@ -1,13 +1,12 @@
 import csv
-import json
-import os
-import subprocess
 import sys
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
 from xml.etree import ElementTree
+
+from sheet_fixture import build_existing_workbook, run_office_python
 
 OFFICE_SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 SCRIPTS_PATH = OFFICE_SCRIPTS_PATH / "sheet"
@@ -21,19 +20,6 @@ PROBE_ROWS = [
     ["Daegu", 5, 1, "=B5*C5", '=SUMIF($A$2:$A$5,"Seoul",$D$2:$D$5)', ""],
     ["Total", "", "", "=SUM(D2:D5)", "", ""],
 ]
-
-
-def run_script(script_name, *arguments):
-    result = subprocess.run(
-        [sys.executable, str(SCRIPTS_PATH / script_name), *arguments],
-        capture_output=True,
-        text=True,
-        env={**os.environ, "PYTHONPATH": str(OFFICE_SCRIPTS_PATH)},
-    )
-    if result.returncode != 0 and "dependencies are unavailable" in result.stderr:
-        raise unittest.SkipTest(f"openpyxl is not importable and the skill runtime could not install it: {result.stderr.strip()}")
-    if result.returncode != 0:
-        raise AssertionError(f"{script_name} failed: {result.stderr}")
 
 
 def read_cells(workbook_path):
@@ -73,11 +59,9 @@ class SpreadsheetFormulaTest(unittest.TestCase):
         self.addCleanup(lambda: __import__("shutil").rmtree(self.directory, ignore_errors=True))
 
     def build_probe_workbook(self):
-        specification_path = self.directory / "spec.json"
-        specification_path.write_text(json.dumps({"title": "Probe", "sheets": [{"title": "Data", "rows": PROBE_ROWS}]}))
-        workbook_path = self.directory / "probe.xlsx"
-        run_script("create_xlsx.py", str(workbook_path), str(specification_path))
-        return read_cells(workbook_path)
+        envelope = build_existing_workbook(self.directory, [{"title": "Data", "rows": PROBE_ROWS}], "probe.xlsx")
+        self.assertNotEqual(envelope["status"], "error", envelope)
+        return read_cells(self.directory / "probe.xlsx")
 
     def test_every_formula_is_stored_exactly_as_written(self):
         cells = self.build_probe_workbook()
@@ -94,15 +78,15 @@ class SpreadsheetFormulaTest(unittest.TestCase):
         self.assertEqual(cells["A6"], ("text", "Total"))
         self.assertNotIn("A7", cells)
 
-    def test_csv_numbers_are_numeric_and_leading_zeros_stay_text(self):
+    def test_csv_numbers_a_conversion_reads_are_numeric_and_leading_zeros_stay_text(self):
         csv_path = self.directory / "data.csv"
         with open(csv_path, "w", newline="") as csv_file:
             csv.writer(csv_file).writerows([["code", "amount", "ratio", "note"], ["007", "1500", "2.5", "1,500"]])
-        specification_path = self.directory / "spec.json"
-        specification_path.write_text(json.dumps({"title": "Csv", "sheets": [{"title": "Data", "csvPath": str(csv_path)}]}))
-        workbook_path = self.directory / "csv.xlsx"
-        run_script("create_xlsx.py", str(workbook_path), str(specification_path))
-        cells = read_cells(workbook_path)
+        run_office_python(f"""
+            from sheet.tabular_workbook import create_workbook
+            create_workbook({{"sheets": [{{"title": "Data", "csvPath": {str(csv_path)!r}}}]}}).save("csv.xlsx")
+        """, self.directory)
+        cells = read_cells(self.directory / "csv.xlsx")
         self.assertEqual(cells["A2"], ("text", "007"))
         self.assertEqual(cells["B2"], ("number", "1500"))
         self.assertEqual(cells["C2"], ("number", "2.5"))

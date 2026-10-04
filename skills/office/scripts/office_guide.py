@@ -8,9 +8,13 @@ from core.office_commands import EVERY_KIND, KINDS, VERBS, Kind, Route, Verb, fi
 from core.office_help import route_accepts, verb_help_text
 from core.office_result import COMMAND_ISSUE_KINDS, UNKNOWN_COMMAND, VALUE_FILL_IN, IssueKind, OfficeFailure
 from core.office_schema import Field, Record, Shape, Variant, closest_name, guess_text
+from core.office_routing import subject_route
+from schemas.schema_definitions import schema_guide_text
+from schemas.schema_document import is_schema_reference
 
 
 USAGE = "usage: office guide [verb] [kind] [operation]"
+KIND_ALIASES = {"workbook": "xlsx", "workbook.json": "xlsx"}
 ENVELOPE_LINE = (
     "Every command prints one JSON result: {status: ok|warning|error, summary, outputPath, "
     "issues: [{code, severity, message, location, suggestion, fix}], details}. It exits 1 when status is error. "
@@ -24,10 +28,14 @@ def guide_for(arguments: list[str]) -> str:
     if not arguments or arguments[0] in {"-h", "--help", "help"}:
         return index_text()
     verb = find_verb(arguments[0])
+    if verb is None and is_schema_reference(arguments[0]):
+        return schema_guide_text(arguments[0])
     if verb is None:
         return kind_text(require_kind(arguments[0]))
     if len(arguments) == 1:
         return verb_text(verb)
+    if is_schema_reference(arguments[1]):
+        return schema_guide_text(arguments[1])
     route = require_route(verb, arguments[1])
     if len(arguments) == 2:
         return route_text(route)
@@ -42,7 +50,7 @@ def require_kind(topic: str) -> Kind:
 
 
 def require_route(verb: Verb, kind_name: str) -> Route:
-    route = find_route(verb.name, kind_name)
+    route = find_route(verb.name, KIND_ALIASES.get(kind_name, kind_name)) or subject_route(verb.name, kind_name, None)
     if route is None or route.kind == EVERY_KIND:
         names = [route.kind for route in verb_routes(verb.name) if route.kind != EVERY_KIND]
         reject_unknown_topic(kind_name, names, f"office guide {verb.name}")

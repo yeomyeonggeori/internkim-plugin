@@ -342,16 +342,5 @@ class PivotTest(OperationFixture):
         self.assertEqual(issue["suggestion"], "use 'region'")
 
 
-class SpecOperationsTest(WorkbookFixture):
-    def test_sheet_create_runs_operations_after_building_the_sheets(self):
-        envelope = self.create_workbook([{"title": "Sales", "rows": SALES}])
-        self.assertEqual(envelope["status"], "ok")
-        from sheet_fixture import write_json, run_office
-        write_json(self.directory / "spec.json", {"sheets": [{"title": "Sales", "rows": SALES}], "operations": [{"op": "add_chart", "type": "bar", "range": "A1:C4"}, {"op": "add_conditional_format", "range": "C2:C7", "rule": "data_bar"}]})
-        envelope = run_office(["create", "spec.xlsx", "spec.json"], self.directory)
-        self.assertEqual([change["op"] for change in envelope["details"]["changes"]], ["add_chart", "add_conditional_format"])
-        self.assertEqual(len(load_workbook(self.directory / "spec.xlsx")["Sales"]._charts), 1)
-
-
 if __name__ == "__main__":
     unittest.main()

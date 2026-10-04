@@ -44,7 +44,7 @@ def content_issues(workbook, workbook_path: str, evaluation) -> list[Issue]:
     return (
         stale_cached_value_issues(workbook_path, evaluation)
         + named
-        + formula_error_issues(evaluation, {issue.location for issue in named})
+        + formula_error_issues(evaluation, {issue.location for issue in named} | chart_gap_cells(workbook, evaluation))
         + defined_name_issues(workbook)
         + number_width_issues(workbook, evaluation)
         + text_value_issues(workbook)
@@ -77,6 +77,16 @@ def cell_label(sheet: str, coordinate: str) -> str:
 def listed(labels: list[str]) -> str:
     hidden = len(labels) - LISTED_CELL_LIMIT
     return ", ".join(labels[:LISTED_CELL_LIMIT]) + (f" and {hidden} more" if hidden > 0 else "")
+
+
+def chart_gap_cells(workbook, evaluation) -> set:
+    gaps = set()
+    for (sheet, coordinate), value in evaluation.values.items():
+        if value.is_error and value.text == "#N/A" and sheet in workbook.sheetnames:
+            worksheet = workbook[sheet]
+            if is_hidden_column(worksheet, worksheet[coordinate].column):
+                gaps.add(cell_label(sheet, coordinate))
+    return gaps
 
 
 def formula_error_issues(evaluation, already_reported: set) -> list[Issue]:

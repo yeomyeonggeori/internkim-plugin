@@ -129,7 +129,7 @@ def chart_model(chart, values_workbook, preview) -> ChartModel:
         kind = series_kind(plot, preview)
         for item in plot.series:
             values = numbers(getattr(item, "val", None) or getattr(item, "yVal", None), values_workbook)
-            across = numbers(getattr(item, "xVal", None), values_workbook)
+            across = tuple(0.0 if value is None else value for value in numbers(getattr(item, "xVal", None), values_workbook))
             series.append(ChartSeries(series_name(item, values_workbook, len(series)), values, kind, across))
     return ChartModel(
         categories=tuple(chart_categories(chart, values_workbook)),
@@ -148,7 +148,7 @@ def axis_title(chart, axis_name: str) -> str:
 
 def numbers(source, values_workbook) -> tuple[float, ...]:
     reference = source.numRef.f if source is not None and source.numRef is not None else None
-    return tuple(float(value) if isinstance(value, (int, float)) else 0.0 for value in reference_values(reference, values_workbook))
+    return tuple(float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None for value in reference_values(reference, values_workbook))
 
 
 def label_mode(plots: list) -> str:

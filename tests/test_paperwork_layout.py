@@ -40,7 +40,7 @@ def korean_statement(row_count: int, with_remarks: bool) -> dict:
 
 def english_invoice(row_count: int) -> dict:
     return {
-        "form": "intl/invoice",
+        "form": "intl/purchase-order",
         "title": "Invoice",
         "profile": {"name": "Sample Works Ltd."},
         "recipient": {"lines": ["Example Imports LLC"]},

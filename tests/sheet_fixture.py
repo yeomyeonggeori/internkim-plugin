@@ -44,8 +44,7 @@ class WorkbookFixture(unittest.TestCase):
         self.directory = Path(self.temporary_directory.name)
 
     def create_workbook(self, sheets, name="book.xlsx"):
-        write_json(self.directory / "spec.json", {"sheets": sheets})
-        envelope = run_office(["create", name, "spec.json"], self.directory)
+        envelope = build_existing_workbook(self.directory, sheets, name)
         self.assertNotEqual(envelope["status"], "error", envelope)
         return envelope
 
@@ -59,3 +58,39 @@ class WorkbookFixture(unittest.TestCase):
 
 def run_office_python(code, working_directory):
     subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", textwrap.dedent(code)], check=True, cwd=working_directory)
+
+
+def build_existing_workbook(directory, sheets, name="book.xlsx"):
+    titles = [sheet["title"] for sheet in sheets]
+    run_office_python(f"""
+        from openpyxl import Workbook
+        workbook = Workbook()
+        workbook.remove(workbook.active)
+        for title in {titles!r}:
+            workbook.create_sheet(title)
+        workbook.save({name!r})
+    """, directory)
+    write_json(Path(directory) / "fill.json", [operation for sheet in sheets for operation in filling_operations(sheet)])
+    return run_office(["apply", name, "fill.json"], directory)
+
+
+def filling_operations(sheet):
+    rows = ([[sheet["heading"]]] if sheet.get("heading") else []) + list(sheet.get("rows") or [])
+    header_row = 2 if sheet.get("heading") else 1
+    width = max((len(row) for row in rows), default=0)
+    operations = [{"op": "set_range", "sheet": sheet["title"], "cell": "A1", "values": rows}] if rows else []
+    freeze = sheet.get("freezePanes", f"A{header_row + 1}")
+    if freeze and len(rows) >= header_row:
+        operations.append({"op": "freeze_panes", "sheet": sheet["title"], "cell": freeze})
+    operations += [{"op": "set_column_width", "sheet": sheet["title"], "column": letter, "width": width_value} for letter, width_value in (sheet.get("columnWidths") or {}).items()]
+    if sheet.get("autoFilter", True) and width and len(rows) >= header_row:
+        operations.append({"op": "set_auto_filter", "sheet": sheet["title"], "range": f"A{header_row}:{column_letter(width)}{len(rows)}"})
+    return operations
+
+
+def column_letter(index):
+    letters = ""
+    while index:
+        index, remainder = divmod(index - 1, 26)
+        letters = chr(65 + remainder) + letters
+    return letters

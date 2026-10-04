@@ -1,9 +1,10 @@
 import datetime
+import json
 import unittest
 
 from openpyxl import load_workbook
 
-from sheet_fixture import WorkbookFixture, run_office, run_office_python, stored_cells, write_json
+from sheet_fixture import WorkbookFixture, build_existing_workbook, run_office, run_office_python, stored_cells, write_json
 
 FIXTURE_WORKBOOK = """
 from openpyxl import Workbook
@@ -76,8 +77,9 @@ class SheetCheckTest(WorkbookFixture):
         run_office(["apply", "fixture.xlsx", "ops.json"], self.directory)
         self.assertNotIn(("NUMBER_TOO_WIDE", "Sales!C1"), self.findings())
 
-    def test_a_created_workbook_sizes_its_columns_for_its_numbers(self):
-        self.create_workbook([{"title": "표", "rows": [["이름", "금액"], ["박예시", 1500000]]}])
+    def test_a_compiled_workbook_sizes_its_columns_for_its_numbers(self):
+        write_json(self.directory / "book.workbook.json", {"kind": "workbook", "tables": [{"name": "표", "columns": [{"name": "이름"}, {"name": "금액", "type": "amount", "unit": "KRW"}], "rows": [["박예시", 1500000]]}]})
+        run_office(["create", "book.xlsx", "book.workbook.json"], self.directory)
         envelope = run_office(["check", "book.xlsx"], self.directory)
         self.assertEqual(envelope["issues"], [])
 
@@ -255,18 +257,6 @@ class FormulaVisibilityTest(WorkbookFixture):
         cells = run_office(["read", "book.xlsx", "--sheet", "T", "--where", "formula"], self.directory)["details"]["range"]["cells"]
         self.assertEqual([(cell["formula"], cell["value"]) for cell in cells[:3]], [('=INDIRECT("Data!B2")', 1), ("=ROWS(UNIQUE(Data!A2:A4))", 2), ("=SUM(OFFSET(Data!B2,0,0,3,1))", 6)])
 
-    def test_a_spec_whose_formula_reads_its_own_cell_creates_nothing(self):
-        write_json(self.directory / "spec.json", {"sheets": [{"title": "S", "rows": [["total", "=SUM(B1:B2)"], ["x", 5]], "autoFilter": False}]})
-        envelope = run_office(["create", "book.xlsx", "spec.json"], self.directory)
-        self.assertEqual((envelope["status"], envelope["outputPath"], [issue["location"] for issue in envelope["issues"]]), ("error", None, ["S!B1"]))
-        self.assertFalse((self.directory / "book.xlsx").exists())
-
-    def test_a_spec_formula_that_does_not_parse_creates_nothing(self):
-        write_json(self.directory / "spec.json", {"sheets": [{"title": "S", "rows": [["a", "b"], [1, 2], ["total", "=SUM(B2:B2))"]]}]})
-        envelope = run_office(["create", "book.xlsx", "spec.json"], self.directory)
-        self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("FORMULA_SYNTAX", "spec.sheets[0].rows[2][1]")])
-        self.assertFalse((self.directory / "book.xlsx").exists())
-
     def test_a_formula_reading_its_own_cell_is_reported_as_circular(self):
         run_office_python("""
             from openpyxl import Workbook
@@ -295,12 +285,12 @@ class FormulaNameTest(WorkbookFixture):
         self.assertEqual(envelope["issues"][1]["suggestion"], "write SUM in place of SUMM")
         self.assertNotIn("C2", self.cells())
 
-    def test_a_spec_formula_reading_a_later_sheet_and_a_let_function_are_written(self):
+    def test_a_formula_reading_a_later_sheet_and_a_let_function_are_written(self):
         write_json(self.directory / "spec.json", {"sheets": [
             {"title": "요약", "rows": [["합계", "=SUM(실적!B2:B3)"], ["두배", "=LET(double,LAMBDA(x,x*2),double(B1))"]]},
             {"title": "실적", "rows": [["담당", "매출"], ["이샘플", 1200], ["박예시", 980]]},
         ]})
-        envelope = run_office(["create", "later.xlsx", "spec.json"], self.directory)
+        envelope = build_existing_workbook(self.directory, json.loads((self.directory / "spec.json").read_text(encoding="utf-8"))["sheets"], "later.xlsx")
         self.assertNotIn("UNKNOWN_FUNCTION", [issue["code"] for issue in envelope["issues"]])
         self.assertNotEqual(envelope["status"], "error", envelope["issues"])
 
@@ -345,7 +335,7 @@ class TextValueTest(WorkbookFixture):
         self.create_workbook([{"title": "S", "rows": [["코드", "이름", "수량"], ["007", "이샘플", 3], ["2026", "박예시", "4"]]}])
         self.assertEqual([issue["location"] for issue in self.text_issues()], ["S!C3"])
 
-    def test_a_spec_date_is_a_date_like_a_csv_date_unless_the_type_says_text(self):
+    def test_a_written_date_is_a_date_unless_the_type_says_text(self):
         self.create_workbook([{"title": "S", "rows": [["일자", "금액"], ["2026-09-01", 5]]}])
         cell = load_workbook(self.directory / "book.xlsx")["S"]["A2"]
         self.assertEqual((cell.value, cell.number_format), (datetime.datetime(2026, 9, 1), "yyyy-mm-dd"))
@@ -354,26 +344,20 @@ class TextValueTest(WorkbookFixture):
         issues = self.text_issues()
         self.assertEqual([(issue["location"], issue["fix"][0]["value"]) for issue in issues], [("S!A4", "2026-09-03")])
 
-    def test_a_quoted_thousands_number_stays_one_text_cell_from_a_csv_or_an_append(self):
-        (self.directory / "S.csv").write_text('품목,금액\n사과,"1,500"\n', encoding="utf-8")
-        created = run_office(["create", "book.xlsx", "S.csv"], self.directory)
-        self.assertEqual(created["status"], "ok", created)
+    def test_a_quoted_thousands_number_stays_one_text_cell_from_an_append(self):
+        self.create_workbook([{"title": "S", "rows": [["품목", "금액"], ["사과", "1,500"]]}])
         self.assertEqual(self.apply([{"op": "append_rows", "sheet": "S", "rows": [["배", "2,000"]]}])["status"], "ok")
         sheet = load_workbook(self.directory / "book.xlsx")["S"]
         self.assertEqual([[cell.value for cell in row] for row in sheet.iter_rows()], [["품목", "금액"], ["사과", "1,500"], ["배", "2,000"]])
 
-    def test_a_date_written_by_a_spec_csv_or_append_is_the_same_date(self):
-        (self.directory / "data.csv").write_text("일자,금액\n2026-01-06,200\n", encoding="utf-8")
+    def test_a_date_written_by_a_range_or_an_append_is_the_same_date(self):
         self.create_workbook([{"title": "S", "rows": [["일자", "금액"], ["2026-01-05", 100]]}])
         self.assertEqual(self.apply([{"op": "append_rows", "sheet": "S", "rows": [["2026-01-07", 300]]}])["status"], "ok")
-        self.assertEqual(run_office(["create", "csv.xlsx", "data.csv"], self.directory)["status"], "ok")
         appended = load_workbook(self.directory / "book.xlsx")["S"]
-        converted = load_workbook(self.directory / "csv.xlsx").active
-        cells = [appended["A2"], appended["A3"], converted["A2"]]
+        cells = [appended["A2"], appended["A3"]]
         self.assertEqual([(cell.value, cell.number_format) for cell in cells], [
             (datetime.datetime(2026, 1, 5), "yyyy-mm-dd"),
             (datetime.datetime(2026, 1, 7), "yyyy-mm-dd"),
-            (datetime.datetime(2026, 1, 6), "yyyy-mm-dd"),
         ])
         self.assertEqual(appended["B2"].value, 100)
 

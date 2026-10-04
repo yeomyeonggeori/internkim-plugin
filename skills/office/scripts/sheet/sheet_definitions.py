@@ -9,8 +9,9 @@ from fonts.registry import OFFICE_KOREAN_FAMILY
 from render.office_preview import PREVIEW_ISSUE_KINDS
 from core.office_operations import OPERATION_ISSUE_KINDS
 from core.template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
+from sheet.workbook_declaration import COMPILED_CELLS, DECLARATION_INVALID, DECLARATION_REQUIRED, WORKBOOK_DECLARATION
 from core.office_result import ERROR, INVALID_VALUE, WARNING, WRONG_TYPE, Issue, IssueKind
-from core.excel_limits import CHART_TITLE_LIMIT, FORBIDDEN_SHEET_NAME_TEXT, HEADER_FOOTER_LIMIT, MAXIMUM_SHEET_NAME_LENGTH
+from core.excel_limits import CHART_TITLE_LIMIT, HEADER_FOOTER_LIMIT, MAXIMUM_SHEET_NAME_LENGTH
 from core.page_sizes import PAPER_NAMES
 from core.office_schema import HEX_COLOR_PATTERN, AnyOf, Boolean, CellValue, Choice, Field, HexColor, ListOf, MapOf, Number, Record, Shape, Text, Variant, closest_name, color_problem, guess_text, wrong_type
 from core.text_checks import PLACEHOLDER_LEFT, TEXT_CHECK_ISSUE_KINDS
@@ -60,19 +61,6 @@ class CellColor(Shape):
 
 ROWS = Rows(ListOf(CellValue()))
 READ_ROW_LIMIT = 500
-
-SHEET = Record("sheet", "one worksheet; the first row, or the row after the heading, is the header", (
-    Field("title", Text(non_empty=True), f"sheet name, at most {MAXIMUM_SHEET_NAME_LENGTH} characters, without {FORBIDDEN_SHEET_NAME_TEXT}", required=True),
-    Field("heading", Text(), "bold title row above the table"),
-    Field("rows", ROWS, "rows in order; text starting with = is a formula and YYYY-MM-DD is a date"),
-    Field("csvPath", Text(non_empty=True), "read the rows from this CSV or TSV file instead of rows"),
-    Field("delimiter", Text(non_empty=True), "csvPath delimiter, default comma; \\t for tab"),
-    Field("freezePanes", Text(), "top-left unfrozen cell, default the cell under the header; empty text freezes nothing"),
-    Field("autoFilter", Boolean(), "filter over the table, default true"),
-    Field("columnWidths", MapOf(Number(minimum=0), key="column letter"), "width per column, at least 4"),
-    Field("numberFormats", MapOf(Text(non_empty=True), key="column letter"), "Excel number format per column"),
-))
-
 
 SHEET_NAME = Field("sheet", Text(non_empty=True), "sheet name from office read, default the first sheet")
 CELL_ADDRESS = Text(non_empty=True)
@@ -129,7 +117,7 @@ OPERATIONS = Variant(
     "one edit of office apply; operations run in order and each sees the workbook the ones before it left, and the batch applies whole or not at all unless --mode says otherwise",
     "op",
     (
-        Record("set_cell", "write one cell; an unstyled cell in or touching a table of at least two rows and two columns takes the table's default style, the one office create gives every cell", (
+        Record("set_cell", "write one cell; an unstyled cell in or touching a table of at least two rows and two columns takes the table's default style", (
             SHEET_NAME,
             Field("cell", CELL_ADDRESS, "cell address such as B7", required=True),
             Field("value", CellValue(), "number, text or true/false; text starting with = is a formula; omit or null to clear the cell"),
@@ -445,22 +433,16 @@ OPERATIONS = Variant(
 )
 OPERATION_BATCH = ListOf(OPERATIONS, non_empty=True)
 
-WORKBOOK_SPECIFICATION = Record("workbook", "the JSON spec office create builds an .xlsx from", (
-    Field("title", Text(), "workbook title stored as document metadata; a visible title is a heading or row you write"),
-    Field("sheets", ListOf(SHEET, non_empty=True), "the worksheets", required=True),
-    Field("operations", ListOf(OPERATIONS), "operations, as office apply takes them, run on the new workbook, for charts, pivots, rules and print setup"),
-))
-
 FORMULA_NOT_EVALUATED = IssueKind("FORMULA_NOT_EVALUATED", WARNING, "a formula could not be computed here, so the file holds no value for it until Excel recalculates", "read the cells the formula uses; the formula itself was kept as written")
-CIRCULAR_REFERENCE = IssueKind("CIRCULAR_REFERENCE", ERROR, "a formula reads its own cell, directly or through other formulas, so Excel warns on open and shows 0; office create and office apply write nothing when their own cells make one", "point the formula at the cells beside it, such as =SUM(A2:A9) in A10")
+CIRCULAR_REFERENCE = IssueKind("CIRCULAR_REFERENCE", ERROR, "a formula reads its own cell, directly or through other formulas, so Excel warns on open and shows 0; office apply writes nothing when its own cells make one", "point the formula at the cells beside it, such as =SUM(A2:A9) in A10")
 FORMULA_SYNTAX = IssueKind("FORMULA_SYNTAX", ERROR, "a formula does not parse: a ( or { left open, a ) that closes nothing, an operator with nothing on one side, or an unclosed quote, so nothing was written", "fix the formula where the message says, or keep it as literal text with \"type\": \"text\"")
 HEADER_NOT_FROZEN = IssueKind("HEADER_NOT_FROZEN", WARNING, "a data table, a sheet with at least two header cells and at least 10 rows under them, has a header row that is not frozen", "freeze the pane under the header row")
 AUTO_FILTER_MISSING = IssueKind("AUTO_FILTER_MISSING", WARNING, "a data table, a sheet with at least two header cells and at least 10 rows under them, has no auto filter", "add a filter over the header and data rows")
 BLANK_HEADER_CELLS = IssueKind("BLANK_HEADER_CELLS", WARNING, "header cells are blank", "name every column")
 STALE_CACHED_VALUE = IssueKind("STALE_CACHED_VALUE", WARNING, "a formula stores no value or one that differs from what it computes, so a viewer that does not recalculate shows a blank or the wrong number", "apply recalculate")
 FORMULA_ERROR = IssueKind("FORMULA_ERROR", ERROR, "a formula computes #DIV/0!, #REF!, #NAME?, #VALUE! or #N/A", "fix the formula's references or the cells it reads, with set_cell")
-MISSING_SHEET_REFERENCE = IssueKind("MISSING_SHEET_REFERENCE", ERROR, "a formula reads a sheet the workbook does not have; office create and office apply write nothing when their own formulas do", "add the sheet first, or point the formula at an existing one")
-UNKNOWN_FUNCTION = IssueKind("UNKNOWN_FUNCTION", ERROR, "a formula calls a function Excel does not have, so it shows #NAME?; office create and office apply write nothing when their own formulas do", "write the Excel function the message names, such as SUM for SUMM")
+MISSING_SHEET_REFERENCE = IssueKind("MISSING_SHEET_REFERENCE", ERROR, "a formula reads a sheet the workbook does not have; office apply writes nothing when its own formulas do", "add the sheet first, or point the formula at an existing one")
+UNKNOWN_FUNCTION = IssueKind("UNKNOWN_FUNCTION", ERROR, "a formula calls a function Excel does not have, so it shows #NAME?; office apply writes nothing when its own formulas do", "write the Excel function the message names, such as SUM for SUMM")
 BROKEN_DEFINED_NAME = IssueKind("BROKEN_DEFINED_NAME", ERROR, "a defined name points at #REF! or a sheet the workbook does not have", "read the workbook's defined names and recreate the reference")
 CONTENT_WOULD_BE_LOST = IssueKind("CONTENT_WOULD_BE_LOST", ERROR, "the workbook holds content the editor cannot carry through a save, such as form controls, embedded objects or an unknown extension, so nothing was written", "pass --allow-loss to save without it, or leave this workbook to Excel")
 CONTENT_DROPPED = IssueKind("CONTENT_DROPPED", WARNING, "--allow-loss saved the workbook without content the editor cannot carry", "tell the user what was dropped")
@@ -497,7 +479,7 @@ CHECK_ISSUE_KINDS = (
 )
 
 GUIDE_INPUTS = (
-    ("create", "xlsx", "the JSON spec", WORKBOOK_SPECIFICATION),
+    ("create", "xlsx", "a new workbook's declaration, kind workbook", WORKBOOK_DECLARATION),
     ("apply", "xlsx", "the operations", OPERATION_BATCH),
     ("merge", "xlsx", "the values", MERGE_VALUES),
 )
@@ -507,7 +489,6 @@ def behavior_lines() -> list[str]:
     return [
         "  formulas are stored exactly as written: write each reference for the row it lands in, counting a heading row",
         "  each formula also stores the value it computes, so viewers that never recalculate show numbers; a formula that cannot be computed here keeps no value and is reported as FORMULA_NOT_EVALUATED",
-        "  the spec title is document metadata; nothing is added to the sheet unless you write it, such as a heading",
         "  CSV values become numbers when they are plain integers or decimals; 007, +82, 1,500 and anything over 15 digits stay text; text that is exactly YYYY-MM-DD becomes a date wherever it is written, unless set_cell or set_range says \"type\": \"text\"",
         "  office apply writes the whole batch or nothing; --dry-run lists the changes and --output leaves the source alone",
         "  inserting, deleting and renaming rewrite every formula, defined name, filter, merged range, table, chart series, sparkline and shape that points at the cells; a reference into a deleted row becomes #REF!",
@@ -520,9 +501,9 @@ GUIDE_SECTIONS = (("xlsx", "How the commands treat a workbook", behavior_lines),
 WRITE_ISSUE_KINDS = (FORMULA_SYNTAX, UNKNOWN_FUNCTION, MISSING_SHEET_REFERENCE, CIRCULAR_REFERENCE, FORMULA_NOT_EVALUATED, CHART_COLUMN_LEFT_OUT)
 EDIT_ISSUE_KINDS = (CONTENT_WOULD_BE_LOST, CONTENT_DROPPED)
 GUIDE_ISSUES = (
-    ("create", "xlsx", WRITE_ISSUE_KINDS),
+    ("create", "xlsx", (DECLARATION_REQUIRED, DECLARATION_INVALID) + WRITE_ISSUE_KINDS),
     ("create", "csv", WRITE_ISSUE_KINDS + PRINT_LAYOUT_ISSUE_KINDS),
-    ("apply", "xlsx", WRITE_ISSUE_KINDS + EDIT_ISSUE_KINDS + OPERATION_ISSUE_KINDS),
+    ("apply", "xlsx", (COMPILED_CELLS,) + WRITE_ISSUE_KINDS + EDIT_ISSUE_KINDS + OPERATION_ISSUE_KINDS),
     ("check", "xlsx", CHECK_ISSUE_KINDS + TABLE_CHECK_ISSUE_KINDS + TEXT_CHECK_ISSUE_KINDS),
     ("render", "xlsx", PREVIEW_ISSUE_KINDS + PRINT_LAYOUT_ISSUE_KINDS),
     ("merge", "xlsx", PACKAGE_MERGE_ISSUE_KINDS + WRITE_ISSUE_KINDS),

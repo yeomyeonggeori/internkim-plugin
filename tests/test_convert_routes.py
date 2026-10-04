@@ -153,7 +153,7 @@ def read_has_picture(directory, name):
 
 
 class TableRouteTest(unittest.TestCase):
-    def test_each_sheet_becomes_a_csv_with_computed_formulas_and_csv_becomes_a_styled_workbook(self):
+    def test_each_sheet_becomes_a_csv_with_computed_formulas_and_a_csv_reaches_a_workbook_only_through_a_declaration(self):
         with tempfile.TemporaryDirectory() as name:
             directory = Path(name)
             run_office_python(WORKBOOK, directory)
@@ -161,10 +161,9 @@ class TableRouteTest(unittest.TestCase):
             self.assertEqual(envelope["details"]["files"], ["실적-매출.csv", "실적-담당자.csv"])
             self.assertEqual((directory / "실적-매출.csv").read_text(encoding="utf-8-sig").splitlines(), ["월,매출", "1월,1200", "2월,1500", "합계,2700"])
             self.assertEqual(convert("실적.xlsx", "매출.tsv", directory, "--sheet", "매출")["details"]["files"], ["매출.tsv"])
-            self.assertEqual(create("다시.xlsx", "실적-매출.csv", directory)["status"], "ok")
-            sheet = run_office(["read", "다시.xlsx"], directory)["details"]
-            self.assertEqual(sheet["range"]["values"][3], ["합계", 2700])
-            self.assertEqual(sheet["sheets"][0]["frozenPanes"], "A2")
+            refused = create("다시.xlsx", "실적-매출.csv", directory)
+            self.assertEqual(refused["status"], "error")
+            self.assertIn("csvPath", json.dumps(refused["issues"], ensure_ascii=False))
 
     def test_an_ods_sheet_becomes_a_workbook_with_values_dates_and_merges(self):
         with tempfile.TemporaryDirectory() as name:
