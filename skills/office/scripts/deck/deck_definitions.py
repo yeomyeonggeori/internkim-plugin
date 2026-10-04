@@ -296,14 +296,33 @@ def icon_lines() -> list[str]:
     ]
 
 
+def canvas_lines() -> list[str]:
+    return [
+        "  each slide is a <section> of exactly 1600x900 px with overflow hidden; style everything yourself in one <style> in <head>",
+        "  DESIGN.md beside slides.html holds the design system: intent, at most six colors, a display and a body font, spacing; office check reports any other color as OFF_PALETTE_COLOR",
+        "  text is 18px or larger and reads at 4.5:1 on its background, or 3:1 from 24px; office create measures both",
+        "  give two slides in a row different compositions; draw charts in HTML or SVG from the request's numbers, with a labelled axis",
+        "  <aside class=\"notes\">: the speaker notes of a slide",
+    ]
+
+
+def free_font_lines() -> list[str]:
+    from fonts.registry import FAMILIES, face_facts
+
+    names = [family.name for family in FAMILIES if family.role != "monospace" and all(face_facts(family, face).can_embed_in_office for face in family.faces)]
+    return [f"  {', '.join(names)}; name them in font-family, and the PDF and PPTX carry them"]
+
+
+def free_icon_lines() -> list[str]:
+    from deck.deck_kit import ICONS_PATH
+
+    return [f"  line icons as SVG files: <img src=\"{ICONS_PATH}/<name>.svg\">, or copy one inline to color it with currentColor", f"  names: {', '.join(icon_names())}"]
+
+
 GUIDE_SECTIONS = (
-    ("slides", "Slide order", order_lines),
-    ("slides", "Design (office guide design says this deck's)", design_lines),
-    ("slides", "Content shapes (choose each slide's layout from the shape of its content)", shape_lines),
-    ("slides", "Layouts (<section data-layout=\"...\">; parts are direct children of the section)", layout_lines),
-    ("slides", "Diagrams (process, cycle, hierarchy, pyramid, matrix)", diagram_lines),
-    ("slides", "Charts (<figure data-chart=\"...\"> in a chart slide)", chart_lines),
-    ("slides", "Icons (optional)", icon_lines),
+    ("slides", "Canvas", canvas_lines),
+    ("slides", "Fonts", free_font_lines),
+    ("slides", "Icons", free_icon_lines),
 )
 
 GUIDE_ISSUES = (
