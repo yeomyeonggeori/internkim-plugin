@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: sans-serif; background: var(--ground); color: var(--text); }
+  section { width: 1600px; height: 900px; position: relative; overflow: hidden; padding: 72px 96px; display: flex; flex-direction: column; }
+  h1 { font-size: var(--size-display); font-weight: 700; line-height: 1.15; }
+  h2 { font-size: var(--size-title); font-weight: 700; line-height: 1.2; }
+  .logo { position: absolute; top: 40px; right: 96px; height: 64px; }
+  .logo-small { position: absolute; top: 40px; right: 96px; height: 44px; }
+  .cols { display: flex; gap: 64px; flex: 1; min-height: 0; align-items: stretch; }
+  .col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .lead { font-size: var(--size-body); color: var(--text-soft); line-height: 1.5; }
+  .card { background: var(--surface); border: var(--border); border-radius: var(--radius); padding: 28px 32px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+  .card h3 { font-size: var(--size-body); font-weight: 700; }
+  .card p { font-size: var(--size-body); color: var(--text-soft); }
+  .col-list ul.clean { flex: 1; justify-content: space-evenly; }
+  ul.clean { list-style: none; display: flex; flex-direction: column; gap: 24px; }
+  ul.clean li { display: flex; gap: 16px; align-items: flex-start; font-size: var(--size-body); }
+  ul.clean li i { font-size: 28px; color: var(--accent); flex-shrink: 0; }
+  figure[data-chart] { margin: 0; height: 100%; display: flex; flex-direction: column; justify-content: center; }
+  figcaption { font-size: 20px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<section id="s01">
+  <img class="logo" data-logo>
+  <div class="cols">
+    <div class="col" style="gap:28px;justify-content:center;">
+      <h1>Three bets turn Ledgerline's steady growth into new surface area in 2027</h1>
+      <div class="lead">Scaling the bookkeeping app for independent cafés from solid footing to three new growth bets. Leadership offsite, October 2026.</div>
+      <div class="lead">Owner: Gyeonbon Choi, Head of Product&nbsp;&nbsp;·&nbsp;&nbsp;Presenter: Yesi Park</div>
+    </div>
+    <div class="col" style="gap:24px;justify-content:space-evenly;">
+      <ul class="clean" style="gap:36px;">
+        <li><i data-icon="package"></i><span>Bet 1: inventory sync with POS systems, beta in Q1 2027</span></li>
+        <li><i data-icon="users"></i><span>Bet 2: payroll for part-time staff, pilot with 50 cafés in Q2 2027</span></li>
+        <li><i data-icon="building-2"></i><span>Bet 3: automatic bank feeds, general availability in Q3 2027</span></li>
+      </ul>
+    </div>
+  </div>
+  <aside class="notes">Frame the session: where Ledgerline stands after Q3 2026, then the three 2027 bets and the quarter-by-quarter roadmap that delivers them, ending in the Q4 pricing review.</aside>
+</section>
+
+<section id="s02">
+  <img class="logo-small" data-logo>
+  <h2>4,200 paying cafés and real momentum heading into 2027</h2>
+  <div class="cols">
+    <div class="col" style="gap:28px;justify-content:space-evenly;">
+      <p class="lead">Ledgerline closed Q3 2026 with 4,200 paying cafés, up from 3,100 at the end of Q1 and 3,500 at the end of Q2.</p>
+      <p class="lead">Monthly churn is 3.1% and NPS is 41: the core product holds its cafés while we add surface area in 2027.</p>
+    </div>
+    <div class="col">
+      <figure data-chart="column" data-labels="Q1 2026, Q2 2026, Q3 2026" data-values="3100, 3500, 4200" data-unit="cafés" data-highlight="Q3 2026">
+        <figcaption>Paying cafés by quarter, 2026. Source: internal quarterly reporting.</figcaption>
+      </figure>
+    </div>
+  </div>
+  <aside class="notes">Lead with the headline numbers: 4,200 paying cafés, 3.1% monthly churn, NPS 41. The chart shows steady quarter-over-quarter growth, roughly 13% then 20%.</aside>
+</section>
+
+<section id="s03">
+  <img class="logo-small" data-logo>
+  <h2>Solid footing today, three open opportunities in 2027</h2>
+  <div class="cols">
+    <div class="col" style="gap:24px;">
+      <div class="card"><h3>Strength</h3><p>4,200 paying cafés, churn of 3.1% per month, and NPS 41 give the core product a stable base.</p></div>
+      <div class="card"><h3>Opportunity</h3></div>
+    </div>
+    <div class="col" style="gap:24px;">
+      <div class="card"><h3>Open risk</h3><p>POS vendors may limit API access, and payroll rules differ by region; both shape what we build.</p></div>
+      <div class="card"><h3>Ask</h3><p>Alignment today on the three 2027 bets, the quarterly roadmap, and the Q4 pricing review.</p></div>
+    </div>
+  </div>
+  <aside class="notes">Bridge slide: the base is strong, but growth in 2027 needs new surface area. Name the two known risks early so the roadmap can be read against them.</aside>
+</section>
+
+<section id="s04" class="col-list">
+  <img class="logo-small" data-logo>
+  <h2>Bet 1: inventory sync turns Ledgerline into the café's operating record</h2>
+  <div class="cols">
+    <div class="col">
+      <ul class="clean">
+        <li><i data-icon="link"></i><span>Connect to café POS systems so sales, stock levels and supplier costs flow into the books automatically.</span></li>
+        
+        
+      </ul>
+    </div>
+    <div class="col" style="gap:24px;">
+      <div class="card"><h3>2027 milestone</h3><p>Inventory sync beta ships in Q1 2027.</p></div>
+      <div class="card"><h3>What success looks like</h3></div>
+    </div>
+  </div>
+  <aside class="notes">Bet 1: POS-linked inventory sync. Q1 2027 beta. Watch POS vendor API access, one of the two known risks.</aside>
+</section>
+
+<section id="s05" class="col-list">
+  <img class="logo-small" data-logo>
+  <h2></h2>
+  <div class="cols">
+    <div class="col">
+      <ul class="clean">
+        
+        <li><i data-icon="coins"></i><span>Payroll data feeds the books directly, so wages post without re-entry.</span></li>
+        
+      </ul>
+    </div>
+    <div class="col" style="gap:24px;">
+      <div class="card"><h3>2027 milestone</h3><p>Payroll pilot with 50 cafés in Q2 2027.</p></div>
+      <div class="card"><h3>What success looks like</h3><p>Pilot cafés run pay runs end to end inside Ledgerline.</p></div>
+    </div>
+  </div>
+  <aside class="notes">Bet 2: payroll for part-time staff. Q2 2027 pilot with 50 cafés. Region-specific payroll rules are the known risk.</aside>
+</section>
+
+<section id="s06" class="col-list">
+  <img class="logo-small" data-logo>
+  <h2>Bet 3: automatic bank feeds cut bookkeeping time and churn at once</h2>
+  <div class="cols">
+    <div class="col">
+      <ul class="clean">
+        <li><i data-icon="building-2"></i><span>Transactions arrive from café bank accounts without manual imports or CSVs.</span></li>
+        
+        
+      </ul>
+    </div>
+    <div class="col" style="gap:24px;">
+      <div class="card"><h3>2027 milestone</h3><p>Bank feeds reach general availability in Q3 2027.</p></div>
+      <div class="card"><h3>What success looks like</h3></div>
+    </div>
+  </div>
+  <aside class="notes">Bet 3: automatic bank feeds. GA in Q3 2027. Directly attacks churn: automated feeds make the product harder to leave.</aside>
+</section>
+
+<section id="s07">
+  <img class="logo-small" data-logo>
+  <h2>Four quarters, four moves: sync beta, payroll pilot, bank feeds GA, pricing review</h2>
+  <div class="cols">
+    <div class="col" style="gap:24px;">
+      <div class="card"><h3>Q1 2027 · Inventory sync beta</h3><p>POS-connected inventory sync ships to beta cafés.</p></div>
+      <div class="card"><h3>Q2 2027 · Payroll pilot</h3><p>Payroll pilot with 50 cafés begins.</p></div>
+    </div>
+    <div class="col" style="gap:24px;">
+      <div class="card"><h3>Q3 2027 · Bank feeds GA</h3><p>Automatic bank feeds reach general availability.</p></div>
+      <div class="card"><h3>Q4 2027 · Pricing review</h3></div>
+    </div>
+  </div>
+  <aside class="notes">Sequencing logic: inventory beta first because POS access work is long-lead, payroll pilot rides on the same café relationships, bank feeds GA lands before the Q4 pricing review so the pricing conversation covers the full 2027 portfolio.</aside>
+</section>
+
+<section id="s08">
+  <img class="logo-small" data-logo>
+  <h2>Current pricing: Basic $19/month, Plus $39/month</h2>
+  <div class="cols">
+    <div class="col" style="gap:24px;">
+      <div class="card"><h3>Basic · $19/month</h3></div>
+      <div class="card"><h3>Plus · $39/month</h3></div>
+    </div>
+    <div class="col" style="gap:28px;justify-content:space-evenly;">
+      <p class="lead">The Q4 2027 pricing review weighs what each bet adds to the tiers once inventory sync, payroll and bank feeds are in the market.</p>
+      <p class="lead">It follows bank feeds GA in Q3, so the review sees the full portfolio.</p>
+    </div>
+  </div>
+  <aside class="notes">Q4 2027 pricing review decides how the three bets map to Basic $19 and Plus $39. No pricing change before then.</aside>
+</section>
+
+<section id="s09">
+  <img class="logo-small" data-logo>
+  <h2></h2>
+  <div class="cols">
+    <div class="col" style="gap:24px;">
+      <div class="card"><h3>Risk · POS vendors may limit API access</h3></div>
+      <div class="card"><h3>Absorbed by the Q1 2027 beta</h3></div>
+    </div>
+    <div class="col" style="gap:24px;">
+      <div class="card"><h3>Risk · Payroll rules differ by region</h3></div>
+      <div class="card"><h3>Absorbed by the Q2 2027 pilot</h3></div>
+    </div>
+  </div>
+  <aside class="notes">Both risks are absorbed by sequencing: the Q1 beta and Q2 pilot bound the exposure of each risky bet before scale.</aside>
+</section>
+
+<section id="s10" class="col-list">
+  <img class="logo-small" data-logo>
+  <h2>Three decisions today lock the 2027 plan</h2>
+  <div class="cols">
+    <div class="col">
+      <ul class="clean">
+        <li><i data-icon="circle-check"></i><span>Confirm the three 2027 bets as scoped.</span></li>
+        <li><i data-icon="circle-check"></i><span>Approve the quarterly roadmap: Q1 sync beta, Q2 payroll pilot (50 cafés), Q3 bank feeds GA, Q4 pricing review.</span></li>
+        <li><i data-icon="circle-check"></i><span>Agree the risk posture: beta and pilot before scale, given POS API and payroll-rule uncertainty.</span></li>
+      </ul>
+    </div>
+    <div class="col" style="gap:24px;">
+      <div class="card"><h3>Owner</h3><p>Gyeonbon Choi, Head of Product, owns the 2027 plan.</p></div>
+      <div class="card"><h3>Presenter</h3><p>Yesi Park presents and returns offsite feedback into the plan.</p></div>
+    </div>
+  </div>
+  <aside class="notes">Close on the three asks, then open the floor.</aside>
+</section>
+
+</body>
+</html>

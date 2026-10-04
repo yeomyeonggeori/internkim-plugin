@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>중소 딸기농가용 AI 생육관리 서비스 고도화</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  section { width:1600px; height:900px; position:relative; overflow:hidden; background:var(--ground); color:var(--text); }
+  .pad { position:absolute; inset:0; padding:var(--margin); display:flex; flex-direction:column; gap:28px; }
+  h1 { font-size:60px; font-weight:700; line-height:1.2; }
+  h2 { font-size:50px; font-weight:700; line-height:1.25; }
+  h3 { font-size:34px; font-weight:700; line-height:1.3; }
+  p, li { font-size:30px; line-height:1.5; }
+  ul { list-style:none; }
+  .small { font-size:28px; color:var(--muted); }
+  .row { display:flex; gap:var(--gap); flex:1; min-height:0; align-items:stretch; }
+  .col { flex:1; min-width:0; min-height:0; }
+  .photo { border-radius:var(--radius); overflow:hidden; }
+  .photo img { width:100%; height:100%; object-fit:cover; display:block; }
+  figure { display:flex; flex-direction:column; height:100%; }
+  figure > div, figure svg { flex:1; min-height:0; }
+  figcaption { font-size:28px; color:var(--muted); margin-top:8px; }
+  .item { display:flex; align-items:center; gap:22px; font-size:32px; line-height:1.45; }
+  .item i { font-size:52px; flex:none; }
+  .notes { display:none; }
+  .full { justify-content:space-evenly; }
+</style>
+</head>
+<body>
+
+<!-- 1. 표지 -->
+<section>
+  <div class="photo" style="position:absolute; top:0; left:0; right:780px; bottom:0;">
+    <img src="photo.jpg" alt="온실에서 자라는 붉게 익은 딸기">
+  </div>
+  <div class="pad" style="left:880px; right:80px; justify-content:center; gap:28px;">
+    <h1>중소 딸기농가용<br>AI 생육관리 서비스 고도화</h1>
+    
+    <div style="border-top:2px solid var(--line); padding-top:24px; display:grid; grid-template-columns:auto 1fr; gap:10px 28px;">
+      <p><b>신청 기업</b></p><p>예시팜테크</p>
+      <p><b>발표자</b></p><p>대표 박예시</p>
+      <p><b>사업 기간</b></p><p>2027년 3월 ~ 2028년 2월 (12개월)</p>
+    </div>
+    <div style="margin-top:16px; display:flex; align-items:center; gap:24px;">
+      <img data-logo style="height:88px; width:auto;">
+      <p class="small">정부 지원사업 발표 평가용 제안자료</p>
+    </div>
+  </div>
+  <aside class="notes">사업명, 신청 기업 예시팜테크, 발표자 대표 박예시를 소개하며 사업 기간과 지원 목적을 한 문장으로 요약해 개회한다.</aside>
+</section>
+
+<!-- 2. 성과 -->
+<section>
+  <div class="pad">
+    <h2>시범 도입 64곳에서 수확량 17% 증가를 확인했습니다</h2>
+    <div class="row">
+      <div class="col full" style="display:flex; flex-direction:column; gap:32px;">
+        <div class="item"><i data-icon="users"></i><span><b>도입 농가 64곳</b><br>2025년 시범 농가 기준</span></div>
+        <div class="item"><i data-icon="trending-up"></i><span><b>평균 수확량 17% 증가</b><br>서비스 도입 농가 전년 대비</span></div>
+        <div class="item"><i data-icon="coins"></i><span><b>난방비 11% 절감</b><br>AI 환경 관리로 난방 운영 최적화</span></div>
+        <aside class="notes">2025년 시범 농가 64곳 기준 성과를 순서대로 읽고, 수확량 증가와 난방비 절감이 농가 체감 가치로 이어졌음을 강조한다.</aside>
+      </div>
+      <div class="col" style="flex:0 0 680px;">
+        <figure data-chart="column" data-labels="수확량 증가, 난방비 절감" data-values="17, 11" data-unit="%" style="height:640px;">
+          <figcaption>2025년 시범 농가 기준 개선율(%) · 출처: 예시팜테크 시범 운영 데이터</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. 문제 -->
+<section>
+  <div class="pad">
+    <h2>농가의 63%가 병해 조기 발견에 실패해 매출의 8~15%를 잃습니다</h2>
+    <div class="row">
+      <div class="col" style="flex:0 0 500px; display:flex; flex-direction:column;">
+        <div class="photo" style="flex:1; min-height:0;">
+          <img src="photo.jpg" alt="장갑 낀 손으로 딸기 잎을 살피는 모습">
+        </div>
+        
+      </div>
+      <div class="col full" style="display:flex; flex-direction:column; gap:28px;">
+        <div class="item"><i data-icon="triangle-alert"></i><span><b>농가의 63%</b>가 병해 조기 발견에 실패</span></div>
+        <div class="item"><i data-icon="trending-down"></i><span>조기 발견 실패 농가는 <b>연간 매출의 8~15% 손실</b></span></div>
+        
+        <aside class="notes">육안 점검의 한계로 병해 발견이 늦고, 그 결과 연간 매출의 8~15%가 손실된다는 문제를 수치로 제시한다.</aside>
+      </div>
+      <div class="col" style="flex:0 0 640px;">
+        <figure data-chart="donut" data-labels="조기 발견 실패, 조기 발견 성공" data-values="63, 37" data-unit="%" data-center="63%" data-center-label="조기 발견 실패" style="height:640px;">
+          <figcaption>병해 조기 발견 여부 비율(%) · 출처: 예시팜테크 농가 실태 조사</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. 개발 내용 개요 -->
+<section>
+  <div class="pad" style="height:100%; display:flex; flex-direction:column;">
+    <h2>세 가지 개발로 발견, 제어, 출하 전 과정을 관리합니다</h2>
+    <div class="row" style="flex:1; display:flex; gap:var(--gap); min-height:0; align-items:stretch;">
+      <div class="col full" style="flex:0 0 660px; display:flex; flex-direction:column; justify-content:space-between; padding:var(--margin); background:var(--surface); border-radius:var(--radius);">
+        <div class="item" style="display:flex; align-items:center; gap:20px; font-size:var(--size-title);"><i data-icon="search" style="font-size:56px; color:var(--accent);"></i><span><b>병해 판별 모델</b><br>잎 사진 기반 진단</span></div>
+        <div class="item" style="display:flex; align-items:center; gap:20px; font-size:var(--size-title);"><i data-icon="settings" style="font-size:56px; color:var(--accent);"></i><span><b>환경 자동 제어 연동</b><br>온실 설비와 직결</span></div>
+        <div class="item" style="display:flex; align-items:center; gap:20px; font-size:var(--size-title);"><i data-icon="calendar-check" style="font-size:56px; color:var(--accent);"></i><span><b>출하 시기 예측</b><br>판매 계획 지원</span></div>
+      </div>
+      <div class="col full" style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:36px; padding:0 var(--margin);">
+        <p style="font-size:var(--size-body); max-width:700px;">이번 사업은 진단(병해 판별), 대응(환경 제어), 판매(출하 예측)까지 자동으로 이어지는 관리 체계를 만듭니다.</p>
+        <p class="small" style="max-width:700px;">세 가지 개발 내용을 이어지는 슬라이드에서 하나씩 소개합니다.</p>
+        <aside class="notes">기존 서비스의 한계를 짚고, 진단·대응·판매를 잇는 세 가지 개발 방향을 한 장으로 요약해 개요를 잡아준다.</aside>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. 개발 1: 병해 판별 -->
+<section>
+  <div class="pad">
+    <h2>잎 사진 한 장으로 병해를 판별하는 모델을 개발합니다</h2>
+    <div class="row">
+      <div class="col" style="flex:0 0 560px; display:flex; flex-direction:column;">
+        <div class="photo" style="flex:1; min-height:0;">
+          <img src="photo.jpg" alt="딸기 잎을 살피는 손">
+        </div>
+        <p class="small" style="margin-top:12px;">농가 스마트폰 촬영 사진이 곧 진단 입력</p>
+      </div>
+      <div class="col full" style="display:flex; flex-direction:column; gap:36px;">
+        <p>농가가 잎 사진을 찍어 올리면 모델이 병해 여부와 병명을 판별해 즉시 알려줍니다.</p>
+        <p>시범 단계에서 수집한 생육 이미지 데이터를 확보·라벨링해 판별 정확도를 높입니다.</p>
+        
+        <aside class="notes">잎 사진 촬영만으로 병해 여부와 병명을 판별하는 모델 개발을 설명하고, 63% 조기 발견 실패 문제와 직결됨을 강조한다.</aside>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. 개발 2: 환경 자동 제어 -->
+<section>
+  <div class="pad">
+    <h2>온실 환경을 자동 제어해 난방비를 다시 줄입니다</h2>
+    <div class="row">
+      <div class="col full" style="display:flex; flex-direction:column; gap:36px;">
+        <p>판별 결과와 환경 데이터를 바탕으로 온실 온도·습도 설비 제어를 자동 연동합니다.</p>
+        
+        <div class="item"><i data-icon="leaf"></i><span>시범 성과 <b>난방비 11% 절감</b>을 자동 제어로 확대</span></div>
+        <aside class="notes">병해 판별 결과가 온실 설비 제어로 이어지는 연동 구조를 설명하고, 난방비 11% 절감 성과의 확장 근거로 연결한다.</aside>
+      </div>
+      <div class="col" style="flex:0 0 680px;">
+        <div class="photo" style="height:100%;">
+          <img src="photo.jpg" alt="높은 재배대에 딸기가 자라는 온실 내부">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. 개발 3: 출하 시기 예측 -->
+<section>
+  <div class="pad">
+    <h2>출하 시기 예측으로 판매 계획까지 지원합니다</h2>
+    <div class="row">
+      <div class="col full" style="display:flex; flex-direction:column; gap:36px;">
+        <p>생육 데이터와 환경 데이터에서 수확 적기를 예측해 출하 일정을 미리 알려줍니다.</p>
+        
+        <div class="item"><i data-icon="truck"></i><span>수확량 <b>17% 증가</b> 성과를 판매 계획까지 연결</span></div>
+        <aside class="notes">수확 적기 예측이 농가의 출하 계획과 유통 협의를 어떻게 개선하는지 설명하며 개발 내용 3가지를 완성한다.</aside>
+      </div>
+      <div class="col full" style="flex:0 0 640px; display:flex; flex-direction:column; gap:36px; padding:40px; background:var(--surface); border-radius:var(--radius);">
+        <h3>관리 흐름</h3>
+        <div class="item"><i data-icon="smartphone"></i><span>잎 사진 촬영·업로드</span></div>
+        <div class="item"><i data-icon="cpu"></i><span>병해 판별 및 환경 분석</span></div>
+        <div class="item"><i data-icon="settings"></i><span>온실 설비 자동 제어</span></div>
+        <div class="item"><i data-icon="calendar-check"></i><span>출하 시기 예측 통보</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 8. 사업 개요: 기간·사업비 -->
+<section>
+  <div class="pad">
+    <h2>12개월, 총 6억 규모로 200곳 확산을 준비합니다</h2>
+    <div class="row">
+      <div class="col full" style="display:flex; flex-direction:column; gap:36px;">
+        <div class="item"><i data-icon="calendar"></i><span><b>사업 기간</b><br>2027년 3월 ~ 2028년 2월 (12개월)</span></div>
+        <div class="item"><i data-icon="wallet"></i><span><b>총 사업비 6억 원</b><br>정부 지원금 4.5억 원 · 자부담 1.5억 원</span></div>
+        
+        <aside class="notes">12개월 사업 기간과 총 사업비 6억(지원 4.5억, 자부담 1.5억)의 투입 구조를 설명한다.</aside>
+      </div>
+      <div class="col" style="flex:0 0 640px;">
+        <figure data-chart="donut" data-labels="정부 지원금, 자부담" data-values="4.5, 1.5" data-unit="억" data-center="6억" data-center-label="총 사업비" style="height:640px;">
+          <figcaption>사업비 구성(억 원) · 출처: 본 제안 사업 계획</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 9. 추진 일정 -->
+<section>
+  <div class="pad">
+    <h2>1~3개월 데이터, 4~8개월 모델, 9~12개월 실증 순으로 추진합니다</h2>
+    <div class="row">
+      <div class="col full" style="display:flex; flex-direction:column; gap:36px;">
+        <div class="item"><i data-icon="database"></i><span><b>1~3개월 · 데이터 수집</b><br>딸기 생육 이미지와 온실 환경 데이터 확보 및 라벨링</span></div>
+        <div class="item"><i data-icon="cpu"></i><span><b>4~8개월 · 모델 개발</b><br>병해 판별, 환경 제어 연동, 출하 예측 모델 개발</span></div>
+        <div class="item"><i data-icon="clipboard-check"></i><span><b>9~12개월 · 현장 실증</b><br>농가 실증 운영, 정확도 검증 및 사업 평가</span></div>
+        <aside class="notes">데이터 수집, 모델 개발, 현장 실증의 3단계 일정과 각 단계 산출물을 순서대로 설명한다.</aside>
+      </div>
+      <div class="col" style="flex:0 0 680px;">
+        <figure data-chart="column" data-labels="데이터 수집, 모델 개발, 현장 실증" data-values="3, 5, 4" data-unit="개월" style="height:600px;">
+          <figcaption>단계별 추진 기간(개월) · 출처: 본 제안 추진 일정</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 10. 목표 및 마무리 -->
+<section>
+  <div class="pad">
+    <h2>도입 200곳, 정확도 92%, 고용 6명으로 마무리합니다</h2>
+    <div class="row">
+      <div class="col full" style="display:flex; flex-direction:column; gap:36px;">
+        <div class="item"><i data-icon="target"></i><span><b>도입 농가 200곳</b><br>시범 64곳 대비 3배 이상 확산</span></div>
+        <div class="item"><i data-icon="shield-check"></i><span><b>병해 판별 정확도 92% 이상</b><br>조기 발견 실패 해소의 검증 지표</span></div>
+        <div class="item"><i data-icon="user-plus"></i><span><b>신규 고용 6명</b><br>AI 개발 및 현장 실증 인력</span></div>
+        <aside class="notes">사업 목표 세 가지를 확인하고, 시범 성과 위에 이 사업이 확산 단계라는 점으로 평가 포인트를 마무리한다.</aside>
+      </div>
+      <div class="col" style="flex:0 0 620px; display:flex; flex-direction:column; gap:24px;">
+        <div class="photo" style="flex:1; min-height:0;">
+          <img src="photo.jpg" alt="온실에서 자라는 딸기">
+        </div>
+        <div style="display:flex; align-items:center; gap:20px;">
+          <img data-logo style="height:72px; width:auto;">
+          
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

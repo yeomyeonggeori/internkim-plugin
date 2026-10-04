@@ -356,6 +356,46 @@ export function measureDesignRules(page, rules, tools) {
 
     fontFamilies: () => Array.from(new Set(textElements().map((element) => styleOf(element).fontFamily))).map((family) => finding(page, family)),
 
+    narrowText: ({ minimumLines, maximumEms }) =>
+      textElements().flatMap((element) => {
+        const rects = ownTextRects(element);
+        const lines = new Set(rects.map((rect) => Math.round(rect.top / 4))).size;
+        const box = unionRect(rects);
+        const ems = (box.right - box.left) / Math.max(fontSize(element), 1);
+        return lines >= minimumLines && ems < maximumEms ? [finding(element, `${lines} lines in a column ${Math.round(box.right - box.left)}px wide, ${ems.toFixed(1)} times its font size`)] : [];
+      }),
+
+    textClipped: ({ tolerance }) => {
+      const clips = (style) => [style.overflowX, style.overflowY, style.overflow].some((value) => value && value !== "visible");
+      return textElements().flatMap((element) => {
+        const rects = ownTextRects(element);
+        for (let ancestor = element; ancestor; ancestor = ancestor.parentElement) {
+          if (ancestor !== page && ancestor === element && !clips(styleOf(ancestor))) continue;
+          if (ancestor !== page && !clips(styleOf(ancestor))) continue;
+          const box = rectOf(ancestor);
+          const spill = rects.find((rect) => rect.bottom > box.bottom + tolerance || rect.right > box.right + tolerance || rect.top < box.top - tolerance || rect.left < box.left - tolerance);
+          if (spill) return [finding(element, `text runs ${Math.round(Math.max(spill.bottom - box.bottom, spill.right - box.right, box.top - spill.top, box.left - spill.left))}px past ${describe(ancestor).selector}, which clips it`)];
+          if (ancestor === page) break;
+        }
+        return [];
+      });
+    },
+
+    chartCollapsed: ({ minimumHeight, minimumWidth }) =>
+      Array.from(page.querySelectorAll("figure[data-chart]")).flatMap((figure) => {
+        const box = rectOf(figure);
+        return box.height < minimumHeight || box.width < minimumWidth ? [finding(figure, `a chart drawn ${Math.round(box.width)}x${Math.round(box.height)}px, too small to show its marks`)] : [];
+      }),
+
+    layoutSignature: ({ gridUnit, minimumCards }) => {
+      const cards = elementsOf(page).filter((element) => isCard(element) && !elementsOf(page).some((other) => other !== element && other.contains(element) && isCard(other)));
+      if (cards.length < minimumCards) return [];
+      const rects = cards.map(rectOf);
+      const columns = new Set(rects.map((rect) => Math.round(rect.left / gridUnit))).size;
+      const rows = new Set(rects.map((rect) => Math.round(rect.top / gridUnit))).size;
+      return [finding(page, `${columns}x${rows}`)];
+    },
+
     textSize: ({ bodyMinimum, captionMinimum, bodyCharacters, bodyWords }) => {
       const isChartText = (element) => element.closest("svg, figure[data-chart], [data-native-chart]");
       const ownText = (element) => Array.from(element.childNodes).filter((node) => node.nodeType === Node.TEXT_NODE).map((node) => node.textContent.trim()).join(" ").trim();

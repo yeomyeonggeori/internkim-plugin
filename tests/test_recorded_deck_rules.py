@@ -16,10 +16,10 @@ SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scri
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from deck.deck_logo import logo_crop_box, read_logo  # noqa: E402
-from core.design_rules import render_rule_issues  # noqa: E402
+from core.design_rules import deck_rule_issues, render_rule_issues  # noqa: E402
 from core.host_contract import RUNTIME_CONTEXT_VARIABLE  # noqa: E402
 from deck.deck_html import measure_for_gate  # noqa: E402
-from deck.design_system import read_token_document, token_issues  # noqa: E402
+from deck.design_system import read_design_system, read_token_document, token_issues  # noqa: E402
 
 
 def measure_with_company_logo(path: Path, system) -> list[dict]:
@@ -46,9 +46,11 @@ def measured(name: str) -> list:
         for source in (RECORDED / name).iterdir():
             shutil.copy(source, path / source.name)
         Image.new("RGB", (1200, 800), (90, 140, 70)).save(path / "photo.jpg")
-        system, _ = read_token_document(path / "DESIGN.md")
+        is_selection = "palette:" in (path / "DESIGN.md").read_text(encoding="utf-8")
+        system, _ = (read_design_system if is_selection else read_token_document)(path / "DESIGN.md")
         slides = measure_with_company_logo(path, system)
-    return [issue for number, slide in enumerate(slides, start=1) for issue in render_rule_issues(slide.get("designFindings", []), f"slide {number}")]
+    per_slide = [issue for number, slide in enumerate(slides, start=1) for issue in render_rule_issues(slide.get("designFindings", []), f"slide {number}")]
+    return per_slide + deck_rule_issues([slide.get("designFindings", []) for slide in slides])
 
 
 def slides_with(issues: list, code: str) -> set[int]:
@@ -102,6 +104,32 @@ class RecordedKoreanDeckTest(unittest.TestCase):
 
     def test_clustered_content_with_an_empty_band_is_refused(self):
         self.assertTrue({6, 9} <= slides_with(self.issues, "CONTENT_CLUSTERED"), slides_with(self.issues, "CONTENT_CLUSTERED"))
+
+
+@unittest.skipUnless(can_render(), "the renderer is not available")
+class SecondRoundRecordedDeckTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.korean = measured("ko_smartfarm_v2")
+        cls.hiring = measured("en_hiring_v2")
+        cls.product = measured("en_product_v2")
+
+    def test_text_wrapped_a_word_or_two_per_line_in_a_narrow_column_is_refused(self):
+        self.assertEqual(slides_with(self.korean, "NARROW_TEXT"), {3})
+        self.assertEqual(slides_with(self.hiring, "NARROW_TEXT") | slides_with(self.product, "NARROW_TEXT"), set())
+
+    def test_text_clipped_by_its_box_or_the_slide_is_refused(self):
+        self.assertEqual(slides_with(self.korean, "TEXT_CLIPPED"), {4})
+        self.assertEqual(slides_with(self.hiring, "TEXT_CLIPPED") | slides_with(self.product, "TEXT_CLIPPED"), set())
+
+    def test_a_chart_that_collapsed_to_its_labels_is_refused_and_a_drawn_one_is_not(self):
+        self.assertEqual(slides_with(self.hiring, "CHART_COLLAPSED"), {2, 3, 4})
+        self.assertEqual(slides_with(self.korean, "CHART_COLLAPSED") | slides_with(self.product, "CHART_COLLAPSED"), set())
+
+    def test_the_same_card_arrangement_on_more_than_two_slides_in_a_row_is_refused(self):
+        self.assertEqual(slides_with(self.product, "REPEATED_LAYOUT"), {6})
+        self.assertEqual(slides_with(self.korean, "REPEATED_LAYOUT") | slides_with(self.hiring, "REPEATED_LAYOUT"), set())
+        self.assertIn("slides 4 to 6", messages_of(self.product, "REPEATED_LAYOUT", "slide 6")[0])
 
 
 class TypeScaleTokenTest(unittest.TestCase):
