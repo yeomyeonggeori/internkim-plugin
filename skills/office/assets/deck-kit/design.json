@@ -96,8 +96,8 @@
     "literary": {"display": "MaruBuri", "body": "Pretendard"}
   },
   "densities": {
-    "airy": {"display": "72px", "title": "56px", "body": "26px", "small": "20px", "margin": "104px", "gap": "40px"},
-    "balanced": {"display": "64px", "title": "48px", "body": "24px", "small": "19px", "margin": "96px", "gap": "32px"},
-    "dense": {"display": "56px", "title": "42px", "body": "21px", "small": "18px", "margin": "72px", "gap": "24px"}
+    "airy": {"display": "72px", "title": "56px", "body": "30px", "small": "22px", "margin": "104px", "gap": "40px"},
+    "balanced": {"display": "64px", "title": "48px", "body": "28px", "small": "21px", "margin": "96px", "gap": "32px"},
+    "dense": {"display": "56px", "title": "42px", "body": "28px", "small": "20px", "margin": "72px", "gap": "24px"}
   }
 }

@@ -147,7 +147,7 @@ def candidate_colors(design: Design, variant: dict) -> dict[str, str]:
 
 
 def candidate_system(colors: dict[str, str]) -> DesignSystem:
-    document = {"colors": colors, "fonts": {"display": "Pretendard", "body": "Pretendard"}, "type": {"title": "48px", "body": "24px"}}
+    document = {"colors": colors, "fonts": {"display": "Pretendard", "body": "Pretendard"}, "type": {"title": "48px", "body": "28px"}}
     return build_design_system(document)
 
 

@@ -31,11 +31,15 @@ h1 { position: absolute; left: 96px; top: 380px; margin: 0; font-size: 56px; }
 img[data-logo] { position: absolute; left: 96px; top: 60px; height: 64px; }
 .photo { position: absolute; right: 0; top: 0; width: 640px; height: 900px; object-fit: cover; }
 .dark { background: #14213D; }
+.filler { position: absolute; left: 96px; right: 560px; top: 160px; bottom: 96px; background: var(--surface); padding: 40px; font-size: 28px; }
 """
 
 
+FILLER = '<div class="filler"><p>Shelf checks, counted by sensors instead of people.</p></div>'
+
+
 def deck(first_slide: str, second_slide: str = '<h1>Stock checks take 47 minutes less a day</h1>') -> str:
-    return f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Logo</title><style>{STYLE}</style></head><body><section>{first_slide}</section><section>{second_slide}</section></body></html>'
+    return f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Logo</title><style>{STYLE}</style></head><body><section>{first_slide}{FILLER}</section><section>{second_slide}{FILLER}</section></body></html>'
 
 
 def company_context(directory: Path) -> Path:

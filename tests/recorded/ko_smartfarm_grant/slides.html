@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--ground); color: var(--text); font-family: var(--font-body); }
+  section {
+    width: 1600px; height: 900px; overflow: hidden; position: relative;
+    background: var(--ground); color: var(--text);
+    padding: var(--margin); display: flex; flex-direction: column;
+  }
+  h1 { font-family: var(--font-display); font-size: var(--size-display); font-weight: 800; line-height: 1.2; }
+  h2 { font-family: var(--font-display); font-size: 44px; font-weight: 700; line-height: 1.3; }
+  h3 { font-family: var(--font-display); font-size: 30px; font-weight: 700; }
+  p, li { font-size: var(--size-body); line-height: 1.5; }
+  .small { font-size: var(--size-small); color: var(--muted); }
+  .accent { color: var(--accent); }
+  .notes { display: none; }
+
+  /* cover */
+  .cover { flex-direction: row; padding: 0; }
+  .cover-left {
+    width: 60%; height: 100%; display: flex; flex-direction: column;
+    justify-content: center; padding: var(--margin); gap: 28px;
+  }
+  .cover-right { width: 44%; height: 100%; }
+  .cover-right img { width: 100%; height: 100%; object-fit: cover; }
+  .kicker { font-size: 24px; color: var(--secondary); font-weight: 600; }
+  .meta { display: flex; flex-direction: column; gap: 10px; }
+  .meta p { font-size: 26px; }
+  .cover-logo { height: 52px; margin-top: 8px; }
+
+  /* generic */
+  .head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 36px; }
+  .head .kicker { color: var(--secondary); }
+  .cols { display: flex; gap: var(--gap); flex: 1; min-height: 0; }
+  .col { flex: 1; display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+  .photo-frame { flex: 1; min-height: 0; border-radius: var(--radius); overflow: hidden; }
+  .photo-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* stats */
+  .stats { display: flex; gap: var(--gap); }
+  .stat { flex: 1; border: var(--border) solid var(--line); border-radius: var(--radius); padding: 30px 34px; background: var(--surface); }
+  .stat .num { font-family: var(--font-display); font-size: 54px; font-weight: 800; color: var(--accent); }
+  .stat .num.small-num { font-size: 44px; }
+  .stat .label { font-size: 22px; color: var(--text-soft); margin-top: 10px; }
+
+  /* icon rows */
+  .rows { display: flex; flex-direction: column; gap: 26px; }
+  .row { display: flex; align-items: flex-start; gap: 20px; }
+  .row i[data-icon] { color: var(--accent); font-size: 32px; margin-top: 4px; }
+  .row b { font-size: 26px; }
+  .row span { font-size: 24px; color: var(--text-soft); }
+
+  /* feature blocks (varied, not identical cards) */
+  .feature { display: flex; gap: 24px; align-items: flex-start; padding: 24px 28px; }
+  .feature .no { font-family: var(--font-display); font-size: 40px; font-weight: 800; color: var(--accent); }
+  .feature.wide { width: 100%; border: var(--border) solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  .feature.bare { border: none; background: none; padding-left: 0; }
+
+  /* timeline: a track with dots, not identical cards */
+  .timeline { display: flex; gap: var(--gap); flex: 1; min-height: 0; padding-top: 12px; }
+  .phase { flex: 1; display: flex; flex-direction: column; gap: 12px; padding-top: 28px; border-top: 3px solid var(--line); position: relative; }
+  .phase::before { content: ""; position: absolute; top: -9px; left: 0; width: 15px; height: 15px; border-radius: 50%; background: var(--accent); }
+  .phase.hot { flex: 1.3; border-top-color: var(--accent); }
+  .phase .k { font-size: 22px; color: var(--secondary); font-weight: 700; }
+  .phase h3 { font-size: 28px; }
+  .phase ul { padding-left: 26px; }
+  .phase li { font-size: 22px; color: var(--text-soft); }
+
+  /* charts */
+  .chart-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  figure[data-chart] { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+  /* closing */
+  .close-grid { display: flex; gap: var(--gap); flex: 1; min-height: 0; align-items: stretch; }
+  .closing { border-top: var(--border) solid var(--line); padding-top: 28px; font-size: 26px; margin-top: 24px; }
+  .closing b { color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 26px; }
+  th, td { padding: 24px 24px; border-bottom: var(--border) solid var(--line); text-align: left; }
+  th { color: var(--text-soft); font-weight: 600; font-size: 20px; }
+  td b { font-family: var(--font-display); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- 1. 표지 -->
+<section class="cover">
+  <div class="cover-left">
+    <h1>중소 딸기농가용<br>AI 생육관리 서비스<br>고도화</h1>
+    <p class="small">정부지원사업 발표 평가용 자료</p>
+    <div class="meta">
+      <p><span class="small">신청 기업</span>　<b>예시팜테크</b></p>
+      <p><span class="small">발표자</span>　<b>대표 박예시</b></p>
+      <p><span class="small">사업 기간</span>　<b>2027년 3월 ~ 2028년 2월 (12개월)</b></p>
+    </div>
+    <img class="cover-logo" data-logo alt="예시팜테크 로고">
+  </div>
+  <div class="cover-right">
+    <img src="photo.jpg" alt="온실에서 자라는 붉게 익은 딸기">
+  </div>
+  <aside class="notes">안녕하십니까, 예시팜테크 대표 박예시입니다. 중소 딸기농가용 AI 생육관리 서비스 고도화 사업을 발표드리겠습니다.</aside>
+</section>
+
+<!-- 2. 문제 정의 -->
+<section>
+  <div class="head">
+    <h2>농가의 63%가 병해 조기 발견에 실패해 연간 매출의 8~15%를 잃고 있습니다</h2>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <div class="stats">
+        <div class="stat">
+          <p class="num">63%</p>
+          <p class="label">병해 조기 발견에 실패하는 농가 비중</p>
+        </div>
+        <div class="stat">
+          <p class="num small-num">8~15%</p>
+          <p class="label">농가별 연간 매출 손실 규모</p>
+        </div>
+      </div>
+      <div class="rows">
+        <div class="row"><i data-icon="search"></i><div><b>발견이 늦는 이유</b><br><span>병해 관리가 육안 관찰에 의존해 발견 시점이 늦고, 농가 간 숙련도 차이가 큽니다.</span></div></div>
+        <div class="row"><i data-icon="trending-down"></i><div><b>파급 영향</b><br><span>방제 비용 증가와 출하량 감소로 이어져 중소 농가의 경영 안정성을 위협합니다.</span></div></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="photo-frame">
+        <img src="photo.jpg" alt="장갑 낀 손으로 딸기 잎을 살피는 모습">
+      </div>
+      
+    </div>
+  </div>
+  <aside class="notes">딸기 병해 관리는 지금까지 육안 관찰에 의존해 왔습니다. 농가의 63%가 조기 발견에 실패하고, 이로 인해 연간 매출의 8~15%를 잃습니다. 이것이 이 사업이 해결하려는 핵심 문제입니다.</aside>
+</section>
+
+<!-- 3. 검증된 성과 -->
+<section>
+  <div class="head">
+    <h2>2025년 시범 농가에서 수확량 17% 증가, 난방비 11% 절감을 이미 확인했습니다</h2>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <div class="stat" style="flex: none;">
+        <p class="num">64곳</p>
+        <p class="label">서비스 도입 농가 (2025년 시범)</p>
+      </div>
+      <div class="rows">
+        <div class="row"><i data-icon="trending-up"></i><div><b>평균 수확량 +17%</b><br><span>생육 환경 관리 최적화로 수확량이 늘었습니다.</span></div></div>
+        <div class="row"><i data-icon="piggy-bank"></i><div><b>난방비 -11%</b><br><span>환경 자동 제어로 난방비가 줄었습니다.</span></div></div>
+        <div class="row"><i data-icon="circle-check"></i><div><b>시장 검증 완료</b><br><span>서비스가 실제 운영되며 효과가 확인되었습니다.</span></div></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="photo-frame">
+        <img src="photo.jpg" alt="온실에서 자라는 붉게 익은 딸기">
+      </div>
+      <p class="small">시범 농가의 딸기 온실</p>
+    </div>
+  </div>
+  <aside class="notes">이 서비스는 이미 시장에 나와 있습니다. 2025년 시범 농가 기준 도입 농가 64곳에서 평균 수확량 17% 증가, 난방비 11% 절감이 확인되었습니다. 검증된 기술 위에 고도화 사업을 올리는 구조입니다.</aside>
+</section>
+
+<!-- 4. 사업 개요 -->
+<section>
+  <div class="head">
+    <h2>12개월간 AI 생육관리 서비스를 고도화해 도입 농가 200곳까지 확산합니다</h2>
+  </div>
+  <div class="cols">
+    <div class="col" style="justify-content: space-evenly;">
+      <div class="rows" style="gap: 36px;">
+        <div class="row"><i data-icon="calendar"></i><div><b>사업 기간</b><br><span>2027년 3월 ~ 2028년 2월 (12개월)</span></div></div>
+        <div class="row"><i data-icon="briefcase"></i><div><b>총 사업비</b><br><span>6억 원, 정부 지원금 4.5억 원과 자부담 1.5억 원으로 구성</span></div></div>
+        <div class="row"><i data-icon="target"></i><div><b>핵심 목표</b><br><span>도입 농가 200곳, 병해 판별 정확도 92% 이상, 신규 고용 6명</span></div></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="photo-frame">
+        <img src="photo.jpg" alt="딸기 온실 재배 열">
+      </div>
+      <p class="small">고도화 기술이 적용될 딸기 온실 재배 현장</p>
+    </div>
+  </div>
+  <aside class="notes">사업 기간은 2027년 3월부터 2028년 2월까지 12개월입니다. 총 사업비 6억 원 중 정부 지원금 4.5억 원, 자부담 1.5억 원으로 추진하고, 도입 농가 200곳 확산을 목표로 합니다.</aside>
+</section>
+
+<!-- 5. 개발 내용 -->
+<section>
+  <div class="head">
+    <h2>병해 판별, 환경 자동 제어, 출하 시기 예측의 세 가지로 고도화합니다</h2>
+  </div>
+  <div class="rows" style="gap: 40px; justify-content: center; flex: 1;">
+    <div class="feature wide" style="padding: 40px 36px;">
+      <p class="no">1</p>
+      <div>
+        <h3><i data-icon="search"></i>잎 사진 기반 병해 판별 모델</h3>
+        
+      </div>
+    </div>
+    <div class="feature bare">
+      <p class="no">2</p>
+      <div>
+        <h3><i data-icon="settings"></i>온실 환경 자동 제어 연동</h3>
+        <p>생육 상태와 온실 환경 데이터를 연동해 온도와 습도 등 환경 제어를 자동화합니다.</p>
+      </div>
+    </div>
+    <div class="feature bare">
+      <p class="no">3</p>
+      <div>
+        <h3><i data-icon="truck"></i>출하 시기 예측</h3>
+        <p>생육 데이터 기반으로 최적 출하 시기를 예측해 농가의 출하 계획을 지원합니다.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">고도화의 핵심은 세 가지입니다. 첫째 잎 사진 기반 병해 판별 모델, 둘째 온실 환경 자동 제어 연동, 셋째 출하 시기 예측입니다. 세 기능이 문제 정의의 손실을 직접 줄입니다.</aside>
+</section>
+
+<!-- 6. 추진 일정 -->
+<section>
+  <div class="head">
+    <h2>데이터 수집, 모델 개발, 현장 실증의 3단계로 12개월을 배치했습니다</h2>
+  </div>
+  <div class="timeline">
+    <div class="phase">
+      <p class="k">1~3개월</p>
+      <h3>데이터 수집</h3>
+      <ul>
+        <li>시범 농가 잎 사진·환경 데이터 수집</li>
+        <li>학습용 데이터셋 구축</li>
+      </ul>
+    </div>
+    <div class="phase hot">
+      <p class="k">4~8개월</p>
+      <h3>모델 개발</h3>
+      <ul>
+        <li>병해 판별 모델 개발·고도화</li>
+        <li>온실 환경 자동 제어 연동 개발</li>
+        <li>출하 시기 예측 모델 개발</li>
+      </ul>
+    </div>
+    <div class="phase">
+      <p class="k">9~12개월</p>
+      <h3>현장 실증</h3>
+      <ul>
+        <li>농가 현장 실증 및 성능 검증</li>
+        <li>도입 농가 확산</li>
+      </ul>
+    </div>
+  </div>
+  <aside class="notes">12개월을 세 단계로 나눕니다. 1~3개월 데이터 수집, 4~8개월 모델 개발, 9~12개월 현장 실증입니다. 각 단계의 산출물이 다음 단계의 입력이 되도록 배치했습니다.</aside>
+</section>
+
+<!-- 7. 사업비 계획 -->
+<section>
+  <div class="head">
+    <h2>총 사업비 6억 원을 정부 지원금 4.5억 원, 자부담 1.5억 원으로 구성합니다</h2>
+  </div>
+  <div class="cols">
+    <div class="col" style="flex: 1.2;">
+      <div class="chart-wrap">
+        <figure data-chart="donut" style="height: 620px;" data-labels="정부 지원금, 자부담" data-values="4.5, 1.5" data-unit="억 원">
+          <figcaption>단위: 억 원, 총 사업비 6억 원 기준</figcaption>
+        </figure>
+      </div>
+    </div>
+    <div class="col" style="justify-content: space-evenly;">
+      <div class="rows" style="gap: 40px;">
+        <div class="row"><i data-icon="banknote"></i><div><b>정부 지원금 4.5억 원</b><br><span>AI 모델 개발, 환경 제어 연동, 현장 실증에 집행</span></div></div>
+        <div class="row"><i data-icon="wallet"></i><div><b>자부담 1.5억 원</b><br><span>인력 운영과 현장 적용 지원에 사용</span></div></div>
+      </div>
+      <p class="small">정부 지원금이 총 사업비의 75%, 자부담이 25%입니다.</p>
+    </div>
+  </div>
+  <aside class="notes">총 사업비 6억 원 중 정부 지원금 4.5억 원, 자부담 1.5억 원입니다. 지원금은 개발과 실증에, 자부담은 인력 운영과 현장 적용에 사용합니다.</aside>
+</section>
+
+<!-- 8. 정량 목표 -->
+<section>
+  <div class="head">
+    <h2>도입 농가 200곳, 판별 정확도 92% 이상, 신규 고용 6명을 달성합니다</h2>
+  </div>
+  <div class="cols">
+    <div class="col" style="flex: 1.2;">
+      <div class="chart-wrap">
+        <figure data-chart="column" data-labels="2025년 시범 농가, 사업 완료 목표" data-values="64, 200" data-unit="곳" data-highlight="사업 완료 목표">
+          <figcaption>단위: 곳, 2025년 시범 농가 대비 목표 확산</figcaption>
+        </figure>
+      </div>
+    </div>
+    <div class="col" style="justify-content: space-evenly;">
+      <div class="rows" style="gap: 40px;">
+        <div class="row"><i data-icon="users"></i><div><b>도입 농가 200곳</b><br><span>시범 농가 64곳에서 3배 이상 확산</span></div></div>
+        <div class="row"><i data-icon="shield-check"></i><div><b>병해 판별 정확도 92% 이상</b><br><span>조기 발견 실패율을 낮추는 핵심 지표</span></div></div>
+        <div class="row"><i data-icon="user-plus"></i><div><b>신규 고용 6명</b><br><span>개발과 현장 실증 인력 채용</span></div></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">정량 목표는 세 가지입니다. 도입 농가 200곳, 병해 판별 정확도 92% 이상, 신규 고용 6명입니다. 농가 수는 시범 사업의 3배 이상 확산 계획입니다.</aside>
+</section>
+
+<!-- 9. 기대효과 -->
+<section>
+  <div class="head">
+    <h2>병해 손실을 줄이고 생산성과 고용을 함께 키우는 사업입니다</h2>
+  </div>
+  <div class="cols">
+    <div class="col" style="justify-content: space-evenly;">
+      <div class="rows" style="gap: 48px;">
+        <div class="row"><i data-icon="leaf"></i><div><b>농가 손실 감소</b><br><span>병해 조기 발견으로 매출 손실(연간 8~15%)을 줄입니다.</span></div></div>
+        <div class="row"><i data-icon="gauge"></i><div><b>생산성 향상</b><br><span>수확량 증가와 난방비 절감 효과가 전체 농가로 확산됩니다.</span></div></div>
+      </div>
+    </div>
+    <div class="col" style="justify-content: space-evenly;">
+      <div class="rows" style="gap: 48px;">
+        <div class="row"><i data-icon="rocket"></i><div><b>서비스 확산</b><br><span>시범 검증 기술을 200곳으로 확산해 시장 신뢰를 높입니다.</span></div></div>
+        <div class="row"><i data-icon="handshake"></i><div><b>지역 고용 창출</b><br><span>신규 고용 6명으로 개발과 실증 역량을 강화합니다.</span></div></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">기대효과는 농가 손실 감소, 생산성 향상, 서비스 확산, 지역 고용 창출입니다. 검증된 성과가 목표 지표와 직접 연결됩니다.</aside>
+</section>
+
+<!-- 10. 결론 -->
+<section>
+  <div class="head">
+    <h2>검증된 성과 위에 고도화를 얹어 12개월 안에 200곳 확산을 완성하겠습니다</h2>
+  </div>
+  <div class="close-grid" style="flex-direction: column; gap: 32px;">
+    <table>
+      <tr><th>지표</th><th>값</th></tr>
+      <tr><td>서비스 도입 농가 (2025년 시범)</td><td><b>64곳</b></td></tr>
+      <tr><td>평균 수확량</td><td><b>+17%</b></td></tr>
+      <tr><td>난방비</td><td><b>-11%</b></td></tr>
+      <tr><td>사업 완료 시 목표 농가</td><td><b>200곳</b></td></tr>
+    </table>
+    <div class="rows" style="margin-top: 24px; gap: 30px;">
+      <div class="row"><i data-icon="circle-check"></i><div><b>지원 필요성</b><br><span>정부 지원금 4.5억 원으로 병해 판별, 환경 제어, 출하 예측을 12개월 내 완성합니다.</span></div></div>
+    </div>
+  </div>
+  <p class="closing">예시팜테크 대표 <b>박예시</b>. 검토와 지원 부탁드립니다.</p>
+  <aside class="notes">시범 사업에서 확인한 성과를 바탕으로 12개월 안에 고도화와 200곳 확산을 완성하겠습니다. 검토와 지원 부탁드립니다.</aside>
+</section>
+
+</body>
+</html>
