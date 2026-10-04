@@ -55,7 +55,6 @@ PAPERWORK_DOCUMENT = Record("document", "the values office merge draws on letter
     FORM_FIELD,
     Field("title", Text(non_empty=True), "centered document title", required=True),
     Field("documentNumber", CellValue(), "the number company_document_register returned for this document, as it is; printed under the title after the jurisdiction's document-number label"),
-    Field("company", Text(non_empty=True), "the path of company-profile.json, the file company_info_get answers beside its result; the letterhead, seal and logo print from it as it is", required=True),
     Field("approvalLine", ListOf(AnyOf((Text(), APPROVER))), "approval boxes left to right, each a role or {role, name}; the approvers the request names, in its order"),
     Field("recipient", RECIPIENT, "addressee"),
     Field("meta", ListOf(LABELED_VALUE), "label-value table under the title"),

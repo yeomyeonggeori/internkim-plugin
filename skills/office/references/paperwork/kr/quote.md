@@ -24,7 +24,6 @@ An external document proposing prices for goods or services to a customer. It ne
   "form": "kr/quote",
   "title": "견 적 서",
   "documentNumber": "<the number company_document_register returned>",
-  "company": "<the company-profile.json path company_info_get answered>",
   "recipient": { "label": "수신", "lines": ["<recipient company name>", "<contact name> 님"] },
   "meta": [
     { "label": "합계금액", "value": "" },

@@ -21,7 +21,6 @@ An external document proving that the principal (위임인) entrusts the agent (
   "form": "kr/power-of-attorney",
   "title": "위 임 장",
   "documentNumber": "<the number company_document_register returned>",
-  "company": "<the company-profile.json path company_info_get answered>",
   "meta": [
     { "label": "위임인 성명", "value": "<principal name>" },
     { "label": "위임인 생년월일/사업자번호", "value": "<YYYY-MM-DD, or the business registration number>" },

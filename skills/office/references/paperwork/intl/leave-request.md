@@ -21,7 +21,6 @@ An internal document by which an employee requests leave and routes it to the re
   "form": "intl/leave-request",
   "title": "Leave Request",
   "documentNumber": "<the number company_document_register returned>",
-  "company": "<the company-profile.json path company_info_get answered>",
   "approvalLine": [{ "role": "<role>", "name": "<name>" }],
   "meta": [
     { "label": "Requester", "value": "<full name>" },

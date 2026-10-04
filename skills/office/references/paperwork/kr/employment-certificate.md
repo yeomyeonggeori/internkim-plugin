@@ -22,7 +22,6 @@ A certificate that a current employee works at the company, submitted inside or 
   "form": "kr/employment-certificate",
   "title": "재 직 증 명 서",
   "documentNumber": "<the number company_document_register returned>",
-  "company": "<the company-profile.json path company_info_get answered>",
   "meta": [
     { "label": "성명", "value": "<name>" },
     { "label": "생년월일", "value": "<YYYY-MM-DD>" },

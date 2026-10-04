@@ -21,7 +21,6 @@ An internal document requesting management sign-off on a proposed action, purcha
   "form": "intl/approval-request",
   "title": "Internal Approval Request",
   "documentNumber": "<the number company_document_register returned>",
-  "company": "<the company-profile.json path company_info_get answered>",
   "approvalLine": [{ "role": "<role>", "name": "<name>" }],
   "meta": [
     { "label": "Requester", "value": "<name>, <team>" },

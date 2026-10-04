@@ -23,7 +23,6 @@ An external document that records a completed transaction between the supplier a
   "form": "kr/transaction-statement",
   "title": "거 래 명 세 서",
   "documentNumber": "<the number company_document_register returned>",
-  "company": "<the company-profile.json path company_info_get answered>",
   "recipient": { "label": "공급받는자", "lines": ["<buyer company name>", "<contact name> 님"] },
   "meta": [
     { "label": "거래일자", "value": "<YYYY-MM-DD>" },

@@ -23,7 +23,6 @@ An external document asking a customer to pay for goods or services already supp
   "form": "kr/invoice",
   "title": "청 구 서",
   "documentNumber": "<the number company_document_register returned>",
-  "company": "<the company-profile.json path company_info_get answered>",
   "recipient": { "label": "수신", "lines": ["<recipient company name>", "<contact name> 님"] },
   "meta": [
     { "label": "합계금액", "value": "" },

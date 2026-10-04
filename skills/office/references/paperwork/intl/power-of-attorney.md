@@ -21,7 +21,6 @@ A document by which a principal grants a named agent authority to act on the pri
   "form": "intl/power-of-attorney",
   "title": "POWER OF ATTORNEY",
   "documentNumber": "<the number company_document_register returned>",
-  "company": "<the company-profile.json path company_info_get answered>",
   "meta": [
     { "label": "Principal's name", "value": "<principal name>" },
     { "label": "Principal's ID / registration number", "value": "<ID number or business registration number>" },

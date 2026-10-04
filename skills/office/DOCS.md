@@ -75,9 +75,9 @@ Every known value reaches `office` through one file, the runtime context, which 
 | `company.<field>` | the `company-profile.json` that `company_info_get` writes into the task directory, with the kept seal and logo beside it |
 | `document.number` | the last entry `company_document_register` appended to `registeredDocuments` |
 
-A company entry may also hold the profile inline, which is what the tests and the evaluation harness do.
+On a later `merge` to the same output, the known values come from the snapshot `merge` wrote beside the file (`<output>.source.json`). Completing a blank therefore keeps the document's number, date and letterhead even after the profile changes, and a value that was blank in the snapshot is resolved again.
 
-Draft #64 binds the company differently: a form's values carry `"company": <path to company-profile.json>`. Both read the same file, and the difference is who names it. With the path in the values, the model copies a path from one tool result into a JSON object, and nothing stops it from leaving it out, pointing at another file, or copying company fields beside it. With the runtime context, the command finds the profile the way it finds the requester and the date, so all four known values have one binding and the model has no field to put any of them in. On a later `merge` to the same output, the known values come from the snapshot `merge` wrote beside the file (`<output>.source.json`). Completing a blank therefore keeps the document's number, date and letterhead even after the profile changes, and a value that was blank in the snapshot is resolved again.
+The catalog forms that still have a Markdown spec read the same binding: `merge` prints their letterhead, seal and logo from the profile the runtime context names for the form's language, and their values have no company field. A form with no recorded profile prints its letterhead as blanks and lists them.
 
 ### Expressions
 

@@ -76,12 +76,13 @@ def main() -> Result:
     document = read_json_file(arguments.file)
     if not isinstance(document, dict):
         raise OfficeFailure(WRONG_TYPE.issue("values: expected an object", "values"))
-    template = form_of(document, "values").contract_template
+    form = form_of(document, "values")
+    template = form.contract_template
     rules = document_rules(document)
     reading = read_document(with_amount_in_words(document), rules)
     if template is not None:
         return contract_result(template, document, reading, rules)
-    printed = with_company_profile(document) if "company" in document else document
+    printed = with_company_profile(document, form.jurisdiction.language)
     blanks = {"blanks": [blank.to_json() for blank in form_blanks(printed)]}
     if not reading.facts and not reading.unreadable and not reading.has_blanks:
         return Result(summary="no amounts to check", issues=(NO_AMOUNTS_FOUND.issue("the input holds no amounts to check"),), details=blanks)

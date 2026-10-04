@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -11,6 +12,8 @@ SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scri
 if str(SCRIPTS_PATH) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_PATH))
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
+
+from core.host_contract import RUNTIME_CONTEXT_VARIABLE  # noqa: E402
 
 FIXTURE_DOCUMENT = """
 from docx import Document
@@ -27,9 +30,24 @@ document.save("fixture.docx")
 """
 
 
+RUNTIME_CONTEXT_FILE = "office-runtime-context.json"
+
+
 def run_office(arguments, working_directory):
-    completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *arguments], capture_output=True, text=True, cwd=working_directory)
+    completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *arguments], capture_output=True, text=True, cwd=working_directory, env=office_environment(working_directory))
     return json.loads(completed.stdout)
+
+
+def office_environment(working_directory):
+    environment = {name: value for name, value in os.environ.items() if name != RUNTIME_CONTEXT_VARIABLE}
+    context_path = Path(working_directory) / RUNTIME_CONTEXT_FILE
+    return environment | ({RUNTIME_CONTEXT_VARIABLE: str(context_path)} if context_path.is_file() else {})
+
+
+def write_runtime_context(directory, profile_path):
+    context = {"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04",
+               "company": {"ko": str(profile_path), "en": str(profile_path)}, "registeredDocuments": [], "attachments": []}
+    write_json(Path(directory) / RUNTIME_CONTEXT_FILE, context)
 
 
 def run_office_python(code, working_directory):
@@ -44,8 +62,9 @@ def write_form_values(path, values):
     form_values = dict(values)
     profile = form_values.pop("profile", None)
     if profile is not None:
-        write_json(Path(path).parent / "company-profile.json", profile)
-        form_values["company"] = "company-profile.json"
+        profile_path = Path(path).resolve().parent / "company-profile.json"
+        write_json(profile_path, profile)
+        write_runtime_context(profile_path.parent, profile_path)
     write_json(path, form_values)
 
 

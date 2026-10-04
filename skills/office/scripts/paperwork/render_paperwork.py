@@ -4,7 +4,6 @@ from __future__ import annotations
 from fonts.docx_embedding import save_document
 from core.office_result import MISSING_FIELD, OfficeFailure
 from core.office_schema import require_valid
-from paperwork.company_profile import with_company_profile
 from paperwork.paperwork_definitions import CONTRACT_DOCUMENT, PAPERWORK_CONTENT_FIELDS, PAPERWORK_DOCUMENT
 from paperwork.paperwork_design import COLOR_INK, FONT_KOREAN_DOCX, LINE_SPACING, SIZE_BODY, SIZE_CLAUSE_HEADING, SIZE_TITLE
 
@@ -16,7 +15,7 @@ def load_document(document: dict) -> dict:
     require_valid(PAPERWORK_DOCUMENT, document, "values")
     require_content(document)
     normalize_document(document)
-    return with_company_profile(document)
+    return document
 
 
 def require_content(document):

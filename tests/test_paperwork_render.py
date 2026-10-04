@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 
-from doc_fixture import OFFICE_ENTRY, run_office, write_form_values
+from doc_fixture import OFFICE_ENTRY, run_office, write_form_values, write_runtime_context
 from render_fixture import can_render, pdf_page_count
 
 
@@ -75,7 +75,7 @@ class PaperworkRenderTest(unittest.TestCase):
     def test_an_international_form_prints_its_fixed_labels_in_english(self):
         values = quote(self.directory, [{"title": "Notes", "bullets": ["Installation included"]}])
         values.update({
-            "form": "intl/quote",
+            "form": "intl/purchase-order",
             "title": "Quotation",
             "profile": {"name": "Sample Electronics", "registrationNumber": "123-45-67890", "representative": "Alex Sample", "sealImage": "seal.png"},
             "approvalLine": ["Prepared", "Approved"],
@@ -86,7 +86,7 @@ class PaperworkRenderTest(unittest.TestCase):
             "footer": "Valid for 30 days.",
         })
         write_form_values(self.directory / "quote.json", values)
-        envelope = run_office(["merge", "intl/quote", "quote.json", "quote.pdf"], self.directory)
+        envelope = run_office(["merge", "intl/purchase-order", "quote.json", "quote.pdf"], self.directory)
         self.assertEqual(envelope["status"], "ok", envelope["issues"])
         completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", PAGE_TEXTS, "quote.pdf"], cwd=self.directory, capture_output=True, text=True, check=True)
         text = "".join(json.loads(completed.stdout))
@@ -99,7 +99,7 @@ class PaperworkRenderTest(unittest.TestCase):
         values.update({"profile": {"name": "Sample Electronics"}, "recipient": {"lines": ["주식회사 견본물산"]}, "meta": [], "signature": {"line": "Alex Sample"}, "footer": "", "title": "Quotation", "approvalLine": []})
         values.pop("items")
         write_form_values(self.directory / "quote.json", values)
-        self.assertEqual(run_office(["merge", "intl/quote", "quote.json", "quote.pdf"], self.directory)["status"], "ok")
+        self.assertEqual(run_office(["merge", "intl/purchase-order", "quote.json", "quote.pdf"], self.directory)["status"], "ok")
         completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", PAGE_TEXTS, "quote.pdf"], cwd=self.directory, capture_output=True, text=True, check=True)
         self.assertEqual(re.findall(r"[\uac00-\ud7a3]+", "".join(json.loads(completed.stdout))), ["주식회사", "견본물산"])
 
@@ -177,18 +177,19 @@ class CompanyProfileFileTest(unittest.TestCase):
         self.answered.mkdir(parents=True)
         subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", SEAL_AND_LOGO], cwd=self.answered, check=True)
 
-    def merge(self, answered_profile: dict, **changes) -> tuple[dict, str, bytes]:
-        (self.answered / "company-profile.json").write_text(json.dumps(answered_profile, ensure_ascii=False), encoding="utf-8")
+    def merge(self, answered_profile: dict | None, **changes) -> tuple[dict, str, bytes]:
+        if answered_profile is not None:
+            (self.answered / "company-profile.json").write_text(json.dumps(answered_profile, ensure_ascii=False), encoding="utf-8")
+            write_runtime_context(self.directory, self.answered / "company-profile.json")
         values = {
-            "form": "kr/quote",
+            "form": "kr/purchase-order",
             "title": "견 적 서",
-            "company": str(self.answered / "company-profile.json"),
             "recipient": {"lines": ["주식회사 견본물산"]},
             "items": {"headers": ["품명", "수량", "금액"], "rows": [["사무용 의자", "10", "4,000,000"]]},
             "signature": {"date": "2026년 10월 3일", "line": "주식회사 샘플테크 대표이사 이샘플", "stamp": True},
         } | changes
         (self.directory / "values.json").write_text(json.dumps(values, ensure_ascii=False), encoding="utf-8")
-        envelope = run_office(["merge", "kr/quote", "values.json", "quote.pdf"], self.directory)
+        envelope = run_office(["merge", "kr/purchase-order", "values.json", "quote.pdf"], self.directory)
         if envelope["status"] == "error":
             return envelope, "", b""
         completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", PAGE_TEXTS, "quote.pdf"], cwd=self.directory, capture_output=True, text=True, check=True)
@@ -230,12 +231,36 @@ class CompanyProfileFileTest(unittest.TestCase):
         self.assertEqual(envelope["status"], "error")
         self.assertIn("values.profile", [issue["location"] for issue in envelope["issues"]])
 
-    def test_a_missing_company_profile_names_the_path_it_looked_for(self):
-        envelope, _, _ = self.merge(ANSWERED_PROFILE, company="nowhere/company-profile.json")
+    def test_a_company_path_in_the_values_is_refused(self):
+        envelope, _, _ = self.merge(ANSWERED_PROFILE, company=str(self.answered / "company-profile.json"))
 
-        self.assertEqual(envelope["issues"][0]["location"], "values.company")
-        self.assertIn(str((self.directory / "nowhere" / "company-profile.json").resolve()), envelope["issues"][0]["message"])
-        self.assertIn("company_info_get", envelope["issues"][0]["suggestion"])
+        self.assertEqual(envelope["status"], "error")
+        self.assertIn("values.company", [issue["location"] for issue in envelope["issues"]])
+
+    def test_without_a_runtime_context_the_letterhead_is_left_blank_and_listed(self):
+        envelope, _, _ = self.merge(None)
+
+        self.assertEqual(envelope["status"], "ok", envelope["issues"])
+        locations = [blank["location"] for blank in envelope["details"]["blanks"]]
+        self.assertIn("profile.name", locations)
+        self.assertIn("signature.stamp", locations)
+
+    def test_an_english_form_reads_the_profile_for_english(self):
+        english = self.directory / "english"
+        english.mkdir()
+        (english / "company-profile.json").write_text(json.dumps({"name": "Sample Tech Inc."}), encoding="utf-8")
+        (self.answered / "company-profile.json").write_text(json.dumps(ANSWERED_PROFILE, ensure_ascii=False), encoding="utf-8")
+        context = {"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04", "registeredDocuments": [], "attachments": [],
+                   "company": {"ko": str(self.answered / "company-profile.json"), "en": str(english / "company-profile.json")}}
+        (self.directory / "office-runtime-context.json").write_text(json.dumps(context, ensure_ascii=False), encoding="utf-8")
+        values = {"form": "intl/purchase-order", "title": "Quotation", "recipient": {"lines": ["Example Buyer Ltd."]},
+                  "items": {"headers": ["Item", "Qty", "Amount"], "rows": [["Chair", "10", "4,000"]]}}
+        (self.directory / "values.json").write_text(json.dumps(values), encoding="utf-8")
+        envelope = run_office(["merge", "intl/purchase-order", "values.json", "quote.pdf"], self.directory)
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", PAGE_TEXTS, "quote.pdf"], cwd=self.directory, capture_output=True, text=True, check=True)
+
+        self.assertEqual(envelope["status"], "ok", envelope["issues"])
+        self.assertIn("Sample Tech Inc.", "".join(json.loads(completed.stdout)))
 
     def test_an_image_name_never_leaves_the_profile_directory(self):
         (self.directory / "outside.png").write_bytes((self.answered / "seal.png").read_bytes())

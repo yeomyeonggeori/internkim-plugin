@@ -20,7 +20,6 @@ An internal record of what was discussed and decided in a meeting, kept so atten
   "form": "intl/meeting-minutes",
   "title": "Meeting Minutes",
   "documentNumber": "<the number company_document_register returned>",
-  "company": "<the company-profile.json path company_info_get answered>",
   "meta": [
     { "label": "Meeting", "value": "<meeting name>" },
     { "label": "Date and time", "value": "<YYYY-MM-DD, HH:MM–HH:MM>" },
