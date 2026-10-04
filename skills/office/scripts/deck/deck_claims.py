@@ -5,6 +5,7 @@ import html
 import html.parser
 import re
 
+from charts.numbers import split_chart_list
 from schemas.claims import sentences
 
 UNIT_TAGS = ("h1", "h2", "h3", "h4", "p", "li", "td", "th", "figcaption", "blockquote")
@@ -154,8 +155,8 @@ def visible_strings(node: Node):
 
 
 def chart_text(node: Node) -> str:
-    labels = [label.strip() for label in node.attributes.get("data-labels", "").split(",")]
-    values = [value.strip() for value in node.attributes.get("data-values", "").split(",")]
+    labels = split_chart_list(node.attributes.get("data-labels", ""))
+    values = split_chart_list(node.attributes.get("data-values", ""))
     unit = node.attributes.get("data-unit", "")
     pairs = ", ".join(f"{label} {value}{unit}" for label, value in zip(labels, values) if label or value)
     series = node.attributes.get("data-series", "")
