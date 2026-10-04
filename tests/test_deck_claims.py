@@ -44,6 +44,11 @@ class DeckClaimTest(unittest.TestCase):
         self.assertIn("영업 20억", texts)
         self.assertNotIn("매출 10억에서 45억.", texts)
 
+    def test_a_chart_claim_keeps_grouped_numbers_whole(self):
+        grouped = DECK.replace('data-labels="2023, 2024, 2025" data-values="10, 21, 45"', 'data-labels="Q1 2026, Q2 2026, Q3 2026" data-values="3,100, 3,500, 4,200"')
+        texts = [claim["text"] for claim in deck_claims(grouped)]
+        self.assertIn("column chart: Q1 2026 3,100억, Q2 2026 3,500억, Q3 2026 4,200억", texts)
+
     def test_a_claim_names_its_slide_and_role_in_the_deck_language(self):
         self.assertEqual(claim_at("92%")["at"], "슬라이드 2 수치")
         self.assertEqual(claim_at("국내 시장 점유율 1위")["at"], "슬라이드 3 항목")
