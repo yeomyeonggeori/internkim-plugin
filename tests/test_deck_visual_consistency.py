@@ -151,6 +151,7 @@ class VisualConsistencyTest(unittest.TestCase):
         self.assertEqual([slide["slide"] for slide in snapshot["slides"]], [1, 2, 3])
         self.assertEqual(images_exist, [True, True, True])
         self.assertIn(review["question"]["cleanOption"], review["question"]["options"])
+        self.assertIn(review["deck"]["cleanOption"], review["deck"]["options"])
         self.assertTrue(0 < review["threshold"] < 1)
         second = review["slides"][1]
         self.assertEqual(second["number"], 2)
