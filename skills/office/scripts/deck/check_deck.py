@@ -305,7 +305,7 @@ def check_details(slides: list[Slide]) -> dict:
 
 
 def check_request(source_path: pathlib.Path, parsed) -> CheckRequest:
-    return CheckRequest(source_path.resolve(), parsed.slide_count, tuple(parsed.required_text), tuple(parsed.forbidden_text), bool(getattr(parsed, "blank", None)))
+    return CheckRequest(source_path.resolve(), parsed.slide_count, tuple(parsed.required_text), tuple(parsed.forbidden_text), bool(getattr(parsed, "blank", None) or getattr(parsed, "replace", None)))
 
 
 def deck_source_path(target: str) -> pathlib.Path:

@@ -16,12 +16,12 @@ sys.path.insert(0, str(SCRIPTS_PATH))
 from deck.deck_claims import deck_units  # noqa: E402
 
 
-def remake(blanked_paths: list[str]) -> tuple[int, dict]:
+def remake(blanked_paths: list[str], replaced: dict[str, str] | None = None) -> tuple[int, dict]:
     with tempfile.TemporaryDirectory() as directory:
         path = Path(directory)
         (path / "DESIGN.md").write_text(design_markdown(), encoding="utf-8")
         (path / "slides.html").write_text(deck(CLEAN[0], CLEAN_STYLE), encoding="utf-8")
-        arguments = ["create", "build/deck.pdf", "slides.html"] + [argument for blanked in blanked_paths for argument in ("--blank", blanked)]
+        arguments = ["create", "build/deck.pdf", "slides.html"] + [argument for blanked in blanked_paths for argument in ("--blank", blanked)] + [argument for path, text in (replaced or {}).items() for argument in ("--replace", f"{path}={text}")]
         completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *arguments], capture_output=True, text=True, cwd=path)
         return completed.returncode, json.loads(completed.stdout)
 
@@ -44,6 +44,10 @@ class BlankRemakeTest(unittest.TestCase):
 
     def test_a_remake_that_blanks_the_cover_title_builds(self):
         code, envelope = remake(["slides[0].units[0]"])
+        self.assertEqual(code, 0, envelope["summary"])
+
+    def test_a_remake_that_only_replaces_text_builds_even_when_the_new_text_leaves_a_band(self):
+        code, envelope = remake([], {"slides[3].units[1]": "Open it"})
         self.assertEqual(code, 0, envelope["summary"])
 
     def test_a_remake_that_blanks_every_value_builds(self):
