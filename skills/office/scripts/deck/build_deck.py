@@ -11,6 +11,7 @@ from core.host_contract import DELIVERABLE_EXTENSIONS
 from core.office_result import Result, run_command
 from core.source_snapshot import write_source
 from deck.deck_claims import blank_labels, blanked_deck, deck_claims
+from deck.deck_holds import deck_slides
 
 
 def export_request(parsed) -> ExportRequest:
@@ -32,7 +33,8 @@ def keep_built_provenance(request: ExportRequest, blanks: list[dict], details: d
         built_path = request.output_path(suffix)
         if built_path.is_file():
             write_source(built_path, {"command": "office create", "arguments": [str(built_path), str(request.source_path)],
-                                      "deck": str(request.source_path), "claims": deck_claims(source_text), "blanks": blanks, **visual_review})
+                                      "deck": str(request.source_path), "claims": deck_claims(source_text), "slides": deck_slides(source_text),
+                                      "blanks": blanks, **visual_review})
 
 
 def blank_source(request: ExportRequest, paths: list[str]) -> list[dict]:
