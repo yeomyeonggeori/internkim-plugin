@@ -225,6 +225,16 @@ class CoverageNoteTest(DeclaredWorkbookFixture):
         result = self.create(sales_declaration([by_year]))
         self.assertIn("2026 (2 of 4 Quarter)", result["details"]["views"][0]["notes"][-1])
 
+    def test_members_laid_side_by_side_over_a_summed_away_dimension_are_labelled(self):
+        by_year = {"sheet": "Summary", "title": "By year", "rows": ["Year"], "columns": "Region", "measure": "Revenue", "totals": True}
+        result = self.create(sales_declaration([by_year]))
+        self.assertIn("2026 (2 of 4 Quarter)", result["details"]["views"][0]["notes"][-1])
+
+    def test_a_view_that_shows_every_period_needs_no_coverage_note(self):
+        by_period = {"sheet": "Summary", "title": "By period", "rows": ["Year", "Quarter"], "columns": "Region", "measure": "Revenue"}
+        result = self.create(sales_declaration([by_period]))
+        self.assertTrue(all("coverage" not in note for note in result["details"]["views"][0].get("notes", [])), result["details"]["views"][0])
+
     def test_a_view_whose_members_cover_the_same_records_has_no_coverage_note(self):
         result = self.create(BUDGET)
         self.assertTrue(all("coverage" not in note for note in result["details"]["views"][0].get("notes", [])))

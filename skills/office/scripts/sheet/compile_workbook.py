@@ -239,18 +239,20 @@ class Compiler:
             context.add_column(added, f"{location}.add[{index}]")
         placed.width = max(placed.cells, key=lambda key: key[1])[1] if placed.cells else 1
         last_row = total_row or (body_rows[-1] if body_rows else header_row)
-        for note in self.view_notes(table, placed, measures, compared_dimensions(column_dimension, added_entries, location)):
+        laid_out = [dimension.name for dimension in row_dimensions] + ([column_dimension.name] if column_dimension is not None else [])
+        for note in self.view_notes(table, placed, measures, compared_dimensions(column_dimension, added_entries, location), laid_out):
             last_row += 1
             placed.note_rows.append(last_row)
             placed.cells[(last_row, 1)] = note
         self.next_row[sheet] = last_row + 3
         return placed
 
-    def view_notes(self, table: SourceTable, placed: Placed, measures: list, compared: list[str]) -> list[str]:
+    def view_notes(self, table: SourceTable, placed: Placed, measures: list, compared: list[str], laid_out: list[str]) -> list[str]:
         notes = []
         if placed.partial:
             notes.append(PARTIAL_NOTES.get(self.language, PARTIAL_NOTES["en"]).format(labels=", ".join(missing_labels(table, measures))))
-        uneven = coverage_labels(table, compared, COVERAGE_LABELS.get(self.language, COVERAGE_LABELS["en"]))
+        template = COVERAGE_LABELS.get(self.language, COVERAGE_LABELS["en"])
+        uneven = list(dict.fromkeys(coverage_labels(table, compared, template) + summed_away_coverage_labels(table, laid_out, template)))
         if uneven:
             notes.append(COVERAGE_NOTES.get(self.language, COVERAGE_NOTES["en"]).format(labels=", ".join(uneven)))
         return notes
@@ -480,15 +482,18 @@ def compared_dimensions(column_dimension: Column | None, added_entries: list, lo
 
 def coverage_labels(table: SourceTable, compared: list[str], template: str) -> list[str]:
     dimensions = [column.name for column in table.columns if column.role == "dimension"]
-    labels = []
-    for compared_name in compared:
-        for other_name in dimensions:
-            if other_name == compared_name:
-                continue
-            covered = {member: len(table.members_where(other_name, compared_name, member)) for member in table.members(compared_name)}
-            most = max(covered.values(), default=0)
-            labels += [template.format(member=member, dimension=other_name, covered=count, most=most) for member, count in covered.items() if count < most]
-    return labels
+    return [label for compared_name in compared for other_name in dimensions if other_name != compared_name for label in uneven_members(table, compared_name, other_name, template)]
+
+
+def summed_away_coverage_labels(table: SourceTable, laid_out: list[str], template: str) -> list[str]:
+    summed_away = [column.name for column in table.columns if column.role == "dimension" and column.name not in laid_out]
+    return [label for shown in laid_out for other_name in summed_away for label in uneven_members(table, shown, other_name, template)]
+
+
+def uneven_members(table: SourceTable, shown: str, other_name: str, template: str) -> list[str]:
+    covered = {member: len(table.members_where(other_name, shown, member)) for member in table.members(shown)}
+    most = max(covered.values(), default=0)
+    return [template.format(member=member, dimension=other_name, covered=count, most=most) for member, count in covered.items() if count < most]
 
 
 def share_dimension(entry: dict, location: str) -> str | None:
