@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from core.office_arguments import route_arguments
 from core.office_result import WRONG_OUTPUT_FORMAT, OfficeFailure, Result, read_json_file, run_command
 from paperwork.jurisdictions import find_jurisdiction
+from schemas.claims import written_claims
 from schemas.given_values import blank_fields, empty_optional_fields, normalized_values, validated_values
 from schemas.known_values import load_runtime_context
 from schemas.resolution import Instance, compute_derived, known_snapshot, resolved_known
@@ -63,7 +64,8 @@ def previous_snapshot(output_path: Path, schema: DocumentSchema) -> dict:
 
 
 def schema_source(instance: Instance, blanks: list[dict]) -> dict:
-    return {"schema": instance.schema.name, "given": instance.original, "known": known_snapshot(instance), "blanks": blanks}
+    return {"schema": instance.schema.name, "given": instance.original, "known": known_snapshot(instance), "blanks": blanks,
+            "claims": written_claims(instance.schema, instance.original)}
 
 
 def render(instance: Instance, output_path: Path) -> tuple[list, list]:

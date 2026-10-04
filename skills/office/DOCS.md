@@ -36,6 +36,8 @@ office merge kr/quote quote.values.json quote.pdf
 
 `merge` validates the values against the schema, resolves the known fields, computes the derived ones, draws the layout and writes the file. A field the request does not state is `null`; the result's `details.blanks` lists every blank, so the reply can name them and offer to complete the same file.
 
+The snapshot `merge` writes beside the file (`<output>.source.json`) also lists `claims`: every value the model composed as text, person or organization, one entry per paragraph sentence, item text, owner, text cell and text field, each with its path and where it sits. Known, derived, typed and choice values are not claims. The host's change check asks of each claim whether the request, its attachments and the known values support it, and sends the model back to revise or blank only the values that fail.
+
 ### A file the command validates
 
 `office guide <schema>` prints the given fields and `merge` validates them; nothing is added to the host's tool schemas. A forced `response_format` was tried against the same requests. On one upstream provider the constrained decoder produced a quotation with fourteen items the request never named, and on another it returned field names the schema does not have (`price`, `amount`) despite `strict`. OpenRouter routes one model to several providers, and each enforces a strict schema its own way or ignores it. A validation in our own command is the same everywhere, and its error names the field path and what it takes, which the model fixes in one step.
@@ -162,7 +164,7 @@ The proposal was a typed fact sheet with a verbatim quote per fact, references f
 | A given value has the wrong shape | `merge` fails before writing, naming the field path and what it accepts; an unknown field name lists the fields there are |
 | The runtime does not know a known value | the field is blank and listed as `<field> (<provider>)`, never filled by the model |
 | No schema fits the request | the free-Markdown path in `references/doc.md` stays, with its checks, until a schema covers the case |
-| A paragraph states something the request does not | still possible; the schema guidance pairs "write it from the request" with "never add", which is a prompt and does not prevent it |
+| A paragraph states something the request does not | the host's change check asks about each claim in the snapshot and sends the model back to revise or blank the ones the sources do not support |
 | The model writes its own script instead of the declaration | possible today through `office python`; the evaluation measured it and the rollout closes it |
 | The model asks for a value a known or derived field covers | cannot happen through the command: those fields are not in the guide's JSON Schema |
 
