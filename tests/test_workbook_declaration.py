@@ -9,6 +9,9 @@ import unittest
 from doc_fixture import OFFICE_ENTRY, run_office, write_json
 
 
+HOST_CONTRACT = json.loads((Path(__file__).resolve().parents[1] / "skills" / "office" / "assets" / "host-contract.json").read_text(encoding="utf-8"))
+
+
 SALES = {"2025": {"Q1": [820, 410], "Q2": [870, 395], "Q3": [905, 450], "Q4": [990, 480]}, "2026": {"Q1": [940, 455], "Q2": [1010, None]}}
 SALES_ROWS = [[int(year), quarter, region, value] for year, quarters in SALES.items() for quarter, values in quarters.items() for region, value in zip(["North", "South"], values)]
 SALES_TABLE = {"name": "Data", "columns": [{"name": "Year"}, {"name": "Quarter"}, {"name": "Region"}, {"name": "Revenue", "type": "amount", "unit": "USD"}], "rows": SALES_ROWS}
@@ -302,6 +305,18 @@ class CompiledCellsTest(DeclaredWorkbookFixture):
         self.assertIn({"sheet": "Data", "range": "A1:C4"}, source["compiled"])
         self.assertIn({"sheet": "Summary", "range": "A1:E7"}, source["compiled"])
         self.assertEqual(source["blanks"], [{"field": "Data!C3", "label": "Travel Actual"}])
+
+    def test_create_records_what_the_workbook_holds_beside_it(self):
+        self.create(sales_declaration([BY_QUARTER], [{"view": "By quarter", "type": "line", "title": "Revenue trend"}]))
+        source = json.loads(Path(self.directory.name, "book.xlsx.source.json").read_text(encoding="utf-8"))
+        self.assertEqual(source["tables"], [{"name": "Data", "columns": ["Year", "Quarter", "Region", "Revenue"], "rowCount": len(SALES_ROWS)}])
+        self.assertEqual(source["views"][0]["title"], "By quarter")
+        self.assertEqual(source["views"][0]["rows"][1], ["Q1", "$1,230", "$1,395", "13.4%"])
+        self.assertEqual(source["charts"], [{"view": "By quarter", "type": "line", "title": "Revenue trend"}])
+
+    def test_every_field_the_host_reads_as_content_is_declared_in_the_snapshot(self):
+        declared = HOST_CONTRACT["source"]["properties"]
+        self.assertEqual([field for field in HOST_CONTRACT["sourceContent"]["fields"] if field not in declared], [])
 
     def test_apply_refuses_to_write_into_a_compiled_view(self):
         self.create(BUDGET)
