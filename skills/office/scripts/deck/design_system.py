@@ -28,7 +28,7 @@ DESIGN_INCOMPLETE = IssueKind("DESIGN_INCOMPLETE", ERROR, "DESIGN.md lacks a tok
 DESIGN_VALUE_INVALID = IssueKind("DESIGN_VALUE_INVALID", ERROR, "a DESIGN.md token has a value the build cannot read", "write colors as #RRGGBB and sizes as px")
 DESIGN_LOW_CONTRAST = IssueKind("DESIGN_LOW_CONTRAST", ERROR, "two DESIGN.md colors that must be read against each other are too close", "darken the text or accent, or lighten the ground, until the contrast reaches the ratio the message names")
 REQUESTED_FONT_UNAVAILABLE = IssueKind("REQUESTED_FONT_UNAVAILABLE", WARNING, "the font the person asked for could not be used, so the deck is set in Paperlogy", "tell the person which font was not available and what was tried, and offer to rebuild the same deck when they attach the font file")
-DESIGN_ISSUE_KINDS = (DESIGN_MISSING, DESIGN_INCOMPLETE, DESIGN_VALUE_INVALID, DESIGN_LOW_CONTRAST)
+DESIGN_ISSUE_KINDS = (DESIGN_MISSING, DESIGN_INCOMPLETE, DESIGN_VALUE_INVALID, DESIGN_LOW_CONTRAST, REQUESTED_FONT_UNAVAILABLE)
 
 
 @dataclass(frozen=True)
