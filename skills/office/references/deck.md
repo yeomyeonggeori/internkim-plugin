@@ -1,35 +1,44 @@
 # Decks
 
-A deck is one file, `slides.html`, that you design and style yourself, built into `build/<deck-slug>.pdf`. The skill supplies the fonts, line icons, the company logo and photos, and the checks: contrast, overflow and overlap, the palette, the smallest type and a visual review of every slide. SKILL.md's rules for source truth apply: a deck never invents dates, people, values or claims.
+A deck is two files you design yourself: `DESIGN.md`, its design system, and `slides.html`, one `<section>` per slide, built into `build/<deck-slug>.pdf`. There are no templates. The skill supplies the fonts, line icons, native charts, the company logo, photos and the checks. SKILL.md's rules for source truth apply: a deck never invents dates, people, values or claims, and design adds no text.
 
-## Write slides.html
+## Design first
 
-Work in `artifacts/<deck-slug>/`. There are no templates: you design the deck yourself. First run `<skill>/scripts/office guide slides`; it gives the canvas, the fonts, the icons and the checks. Then run `<skill>/scripts/office guide design`, which lists the photos and the logo the deck can use. Then write two files with your file tool, never through a heredoc.
+Work in `artifacts/<deck-slug>/`. Run `<skill>/scripts/office guide slides`, then, as a command of its own, `<skill>/scripts/office guide design`. The host answers the design questions and gathers photos between the two commands, so never chain them; if `guide design` says InternKim is still gathering, run it again.
 
-1. `DESIGN.md`, the deck's design system, decided from the request's subject, audience and purpose before any slide:
+`guide design` gives the design intent chosen from the request (accent, mood, type pairing, density, imagery) and palette candidates derived from it, the logo, the photos, and the avoid-list. Write `DESIGN.md` with your file tool, never a heredoc:
 
 ```markdown
 ---
 intent: "one line: the style and why it fits this subject and audience"
 colors:
-  bg: "#FBFAF7"
-  ink: "#1A1C20"
-  muted: "#6B6F76"
-  accent: "#1F6F5C"
-  accent-2: "#C98A2B"
-  surface: "#EFEDE6"
+  ground: "#FFFFFF"
+  text: "#14213D"
+  accent: "#1F5FBF"
+  secondary: "#0F766E"
 fonts:
   display: Pretendard
   body: Pretendard
+type:
+  display: 64px
+  title: 48px
+  body: 24px
+radius: 10px
+border: 1px
+shadow: none
 spacing:
   margin: 96px
   gap: 32px
 ---
 ```
 
-At most six colors, picked so text reads at 4.5:1 on its background. Fonts are the shipped ones `office guide slides` lists.
+A color the request names, or the logo's own color, becomes the accent. Run `<skill>/scripts/office check DESIGN.md`: it refuses the tokens it names, each with a code, before any slide exists. Fix only those.
 
-2. `slides.html`: one `<style>` in `<head>` that sets the design system's tokens on `:root` and styles everything, and one `<section>` per slide of exactly 1600x900 px. Lay each slide out from the shape of its content: a key number large, a sequence as steps, a comparison side by side, a trend as a chart you draw in HTML or SVG from the request's numbers. Give two slides in a row different compositions. Slide 1 is the cover; the last is the decision or next steps. Every title states the slide's conclusion in the request's language. Speaker notes go in `<aside class="notes">`.
+## Write slides.html
+
+One `<style>` in `<head>` styles everything with the tokens the build puts on `:root` (`var(--accent)`, `var(--font-display)` and the rest `guide slides` lists), and one `<section>` per slide of exactly 1600x900 px. Lay each slide out from the shape of its content, and give two slides in a row different compositions. Slide 1 is the cover; the last is the decision or next steps. Every title states the slide's conclusion in the request's language. A trend, ranking or share is a `<figure data-chart>` from the request's numbers, a native editable chart in the PPTX. Speaker notes go in `<aside class="notes">`.
+
+`<skill>/scripts/office check slides.html` renders the slides and measures each against the same rule table as `DESIGN.md`. It refuses with the code, the slide and the selector; fix only that.
 
 ## Build and deliver
 
@@ -39,24 +48,26 @@ Run from `artifacts/<deck-slug>`, passing the slide count the user asked for and
 {"command": "<skill>/scripts/office create build/<deck-slug>.pdf slides.html --slide-count 10 --required-text \"128M\" --required-text \"Q3 2026\"", "workingDirectoryPath": "artifacts/<deck-slug>"}
 ```
 
-The output's extension picks the format: `build/<deck-slug>.pptx` writes the PowerPoint and the PDF beside it. `<skill>/scripts/office check slides.html` runs the first stage alone.
+The output's extension picks the format: `build/<deck-slug>.pptx` writes the PowerPoint and the PDF beside it.
 
-1. The build first checks the markup of `slides.html` and stops on any problem it finds, listing them all at once, each naming the slide and the fix.
+1. The build runs `office check` first and stops on any refusal, listing them all at once.
 2. It then renders and measures every slide. The summary starts with the verdict:
    - `ACCEPTABLE`: deliver the file it names. Other issues are advice; do not redesign a slide that is clean.
    - `FIX ROUND 1 OF 2` or `2 OF 2`: fix only the listed defects by shortening, splitting or filling, then build again.
    - `STOP FIXING`: deliver and name the defects that remain.
 3. When the build result names `visualReview`, deliver the file without opening the renders: the host asks a reviewer about every slide's render at delivery, repairs the slides it flags and reports what remains, which the reply then names. When it does not, open `build/review/contact-sheet-01.png` once before attaching and confirm the slides read as intended.
 
-## Images
+## Photos and logo
 
-The photos a deck can use are the ones `office guide design` lists: the request's attachments and the data room images the requester can read. Use each one that shows the deck's subject, on the cover, a section divider or an `image` slide beside what it shows, and skip one that does not fit. Point `src` at the listed path and crop it with `object-fit: cover` in a frame of your own. A caption or a fact about a photo comes only from its title, its summary or the request. Never put a grey box or a placeholder where a photo would go; without a fitting photo, design the slide without one. Place the company logo yourself, at one size and place on every slide, from the path `office guide design` gives. No emoji.
+The photos a deck can use are the ones `guide design` lists: the request's attachments and the data room images the requester can read. Use them readily, on the cover, a divider or beside what they show, and skip one that does not fit. Point `src` at the listed path and crop with `object-fit: cover` in a frame of your own; the build sets each photo's focal point. A caption or a fact about a photo comes only from its title, its summary or the request. Never put a grey box or a placeholder where a photo would go.
+
+When the company has a logo, place `<img data-logo>` on the cover and on the other slides where it fits, at a height you choose. The build fills in the file and puts a plate behind it when its background needs one. No emoji.
 
 Only when the person asks for photos to be found, `<skill>/scripts/office image "warehouse shelves" images/warehouse.jpg` saves up to three public-domain candidates for an English query, with each one's ratio and source page; keep the one that shows the subject, delete the rest, and name its source in `.source`.
 
 ## PPTX
 
-The PPTX is built from the rendered slides: every word is an editable text box, boxes are native shapes, diagram arrows are connectors attached to their boxes, each table is a native table, and the shipped fonts the slides use are embedded.
+The PPTX is built from the rendered slides: every word is an editable text box, boxes are native shapes, each table is a native table, each chart a native chart, and the shipped fonts the slides use are embedded.
 
 ## Editing a delivered .pptx
 
