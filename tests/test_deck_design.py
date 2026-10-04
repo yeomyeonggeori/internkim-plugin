@@ -77,8 +77,10 @@ class DesignIntentTest(unittest.TestCase):
         from fonts.registry import bundled_family
 
         for faces in DESIGN["types"].values():
-            for name in faces.values():
-                self.assertIsNotNone(bundled_family(name), name)
+            for role in ("display", "body"):
+                self.assertIsNotNone(bundled_family(faces[role]), faces[role])
+            for weight in faces["weights"]:
+                self.assertIn(weight, [face.weight for face in bundled_family(faces["display"]).faces])
 
 
 class LogoTest(unittest.TestCase):

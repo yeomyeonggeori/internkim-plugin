@@ -11,32 +11,17 @@ Work in `artifacts/<deck-slug>/`. Run `<skill>/scripts/office guide slides`, the
 ```markdown
 ---
 intent: "one line: the style and why it fits this subject and audience"
-colors:
-  ground: "#FFFFFF"
-  text: "#14213D"
-  accent: "#1F5FBF"
-  secondary: "#0F766E"
-fonts:
-  display: Pretendard
-  body: Pretendard
-type:
-  display: 64px
-  title: 48px
-  body: 24px
-radius: 10px
-border: 1px
-shadow: none
-spacing:
-  margin: 96px
-  gap: 32px
+palette: primary
 ---
 ```
 
-A color the request names, or the logo's own color, becomes the accent. Run `<skill>/scripts/office check DESIGN.md`: it refuses the tokens it names, each with a code, before any slide exists. Fix only those.
+`palette` names one of the candidates. Optional lines choose from closed lists: `type` (paperlogy, freesentation or a2z; the intent sets it, paperlogy by default), `density` (airy, balanced or dense), `shape` (sharp, soft or round) and `weight` (the title weight the type ships). Colors, fonts, sizes, radius and shadow come from these choices, so DESIGN.md holds no hex, font name or size. A color the request names, or the logo's own color, is already in the candidates.
+
+A color the request names, or the logo's own color, becomes the accent. Run `<skill>/scripts/office check DESIGN.md`: it names a choice that is not on its list before any slide exists.
 
 ## Write slides.html
 
-One `<style>` in `<head>` styles everything with the tokens the build puts on `:root` (`var(--accent)`, `var(--font-display)` and the rest `guide slides` lists), and one `<section>` per slide of exactly 1600x900 px. Lay each slide out from the shape of its content, and give two slides in a row different compositions. Slide 1 is the cover; the last is the decision or next steps. Every title states the slide's conclusion in the request's language. A trend, ranking or share is a `<figure data-chart>` from the request's numbers, a native editable chart in the PPTX. Speaker notes go in `<aside class="notes">`.
+One `<style>` in `<head>` styles everything with the tokens the build puts on `:root` (`var(--accent)`, `var(--size-body)` and the rest `guide slides` lists; the build sets every font, and `font-family` in your CSS is dropped), and one `<section>` per slide of exactly 1600x900 px. Lay each slide out from the shape of its content, and give two slides in a row different compositions. Slide 1 is the cover; the last is the decision or next steps. Every title states the slide's conclusion in the request's language. A trend, ranking or share is a `<figure data-chart>` from the request's numbers, a native editable chart in the PPTX. Speaker notes go in `<aside class="notes">`.
 
 `<skill>/scripts/office check slides.html` renders the slides and measures each against the same rule table as `DESIGN.md`. It refuses with the code, the slide and the selector; fix only that.
 

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import json
+import math
 
 from core.css_color import contrast_ratio, hex_oklch, oklch_hex
+from core.design_rules import threshold_of
 from deck.deck_kit import KIT_PATH
 from deck.design_system import DesignSystem, build_design_system, token_issues
 from deck.design_tokens import parse_front_matter
@@ -147,7 +149,7 @@ def candidate_colors(design: Design, variant: dict) -> dict[str, str]:
 
 
 def candidate_system(colors: dict[str, str]) -> DesignSystem:
-    document = {"colors": colors, "fonts": {"display": "Pretendard", "body": "Pretendard"}, "type": {"title": "48px", "body": "28px"}}
+    document = {"colors": colors, "fonts": {"display": "Paperlogy", "body": "Paperlogy"}, "type": {"title": "48px", "body": "28px"}}
     return build_design_system(document)
 
 
@@ -168,5 +170,20 @@ def type_pairing(design: Design) -> dict[str, str]:
     return DESIGN["types"][design.option("type")]
 
 
+def stepped(value: float) -> int:
+    step = DESIGN["scaleStep"]
+    return step * round(value / step)
+
+
 def type_scale(design: Design) -> dict[str, str]:
-    return DESIGN["densities"][design.option("density")]
+    density = DESIGN["densities"][design.option("density")]
+    floors = threshold_of("TEXT_TOO_SMALL")
+    body = max(density["base"], floors["bodyMinimum"])
+    sizes = {
+        "body": body,
+        "small": max(stepped(body * density["smallRatio"]), floors["captionMinimum"]),
+        "title": max(stepped(body * density["titleRatio"]), math.ceil(body * threshold_of("FLAT_HIERARCHY")["minimumRatio"])),
+        "display": stepped(body * density["displayRatio"]),
+    }
+    sizes["display"] = max(sizes["display"], sizes["title"])
+    return {name: f"{value}px" for name, value in sizes.items()} | {"margin": density["margin"], "gap": density["gap"]}

@@ -60,7 +60,6 @@ SEEDED_STYLE = """
 .glow { padding: 40px; border-radius: var(--radius); background: var(--ground); box-shadow: 0 0 48px rgba(31, 95, 191, 0.6); }
 .hairline-shadow { padding: 40px; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18); }
 .tight { letter-spacing: -0.06em; }
-.italic-serif { font-family: "NanumMyeongjo", serif; font-style: italic; }
 .oversized { font-size: 148px; line-height: 1.05; }
 .flat { font-size: 26px; }
 .cream { background: #F6EFDD; }
@@ -82,7 +81,6 @@ SEEDED = {
     "GLOW_SHADOW": f'{HEADING}<div class="glow">{BODY}</div>',
     "HAIRLINE_WIDE_SHADOW": f'{HEADING}<div class="hairline-shadow">{BODY}</div>',
     "TIGHT_TRACKING": f'<h2 class="tight">Revenue grew 18 percent in the third quarter</h2>{BODY}',
-    "ITALIC_SERIF_DISPLAY": f'<h2 class="italic-serif">Revenue grew 18 percent in the third quarter</h2>{BODY}',
     "OVERSIZED_TITLE": f'<h1 class="oversized">Revenue grew 18 percent</h1>{BODY}',
     "FLAT_HIERARCHY": f'<h2 class="flat">Revenue grew 18 percent in the third quarter</h2>{BODY}{BODY}',
     "CREAM_GROUND": f'<div class="cream" style="padding:40px; flex:1">{HEADING}{BODY}</div>',

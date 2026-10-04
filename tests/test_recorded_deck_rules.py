@@ -19,7 +19,7 @@ from deck.deck_logo import logo_crop_box, read_logo  # noqa: E402
 from core.design_rules import render_rule_issues  # noqa: E402
 from core.host_contract import RUNTIME_CONTEXT_VARIABLE  # noqa: E402
 from deck.deck_html import measure_for_gate  # noqa: E402
-from deck.design_system import read_design_system, token_issues  # noqa: E402
+from deck.design_system import read_token_document, token_issues  # noqa: E402
 
 
 def measure_with_company_logo(path: Path, system) -> list[dict]:
@@ -46,7 +46,7 @@ def measured(name: str) -> list:
         for source in (RECORDED / name).iterdir():
             shutil.copy(source, path / source.name)
         Image.new("RGB", (1200, 800), (90, 140, 70)).save(path / "photo.jpg")
-        system, _ = read_design_system(path / "DESIGN.md")
+        system, _ = read_token_document(path / "DESIGN.md")
         slides = measure_with_company_logo(path, system)
     return [issue for number, slide in enumerate(slides, start=1) for issue in render_rule_issues(slide.get("designFindings", []), f"slide {number}")]
 
@@ -106,7 +106,7 @@ class RecordedKoreanDeckTest(unittest.TestCase):
 
 class TypeScaleTokenTest(unittest.TestCase):
     def read(self, name: str):
-        system, issues = read_design_system(RECORDED / name / "DESIGN.md")
+        system, issues = read_token_document(RECORDED / name / "DESIGN.md")
         self.assertEqual(issues, [])
         return system
 

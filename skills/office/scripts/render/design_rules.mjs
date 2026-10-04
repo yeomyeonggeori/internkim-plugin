@@ -302,14 +302,6 @@ export function measureDesignRules(page, rules, tools) {
         return tracking < minimumEm - 0.0005 ? [finding(element, `letter-spacing ${tracking.toFixed(3)}em`)] : [];
       }),
 
-    italicSerifDisplay: ({ serifFamilies = [] }) => {
-      const title = titleOf();
-      if (!title || !/italic|oblique/.test(styleOf(title).fontStyle)) return [];
-      const families = String(styleOf(title).fontFamily).split(",").map((family) => family.trim().replace(/^["']|["']$/g, "").toLowerCase());
-      const isSerif = families.some((family) => family === "serif" || serifFamilies.some((serif) => serif.toLowerCase() === family));
-      return isSerif ? [finding(title, "italic serif")] : [];
-    },
-
     oversizedTitle: ({ maximumShareOfHeight }) => {
       const title = titleOf();
       const limit = slideSize.height * maximumShareOfHeight;
@@ -361,6 +353,8 @@ export function measureDesignRules(page, rules, tools) {
       const count = countIn(page.textContent);
       return count > maximumPerSlide ? [finding(page, `${count} em dashes`), ...titles] : titles;
     },
+
+    fontFamilies: () => Array.from(new Set(textElements().map((element) => styleOf(element).fontFamily))).map((family) => finding(page, family)),
 
     textSize: ({ bodyMinimum, captionMinimum, bodyCharacters, bodyWords }) => {
       const isChartText = (element) => element.closest("svg, figure[data-chart], [data-native-chart]");

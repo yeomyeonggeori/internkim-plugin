@@ -6,23 +6,18 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from deck.design_system import read_design_system, token_issues  # noqa: E402
-from design_gate_fixture import design_markdown, issue_codes, run_office  # noqa: E402
+from deck.design_system import read_design_system, read_token_document, token_issues  # noqa: E402
+from design_gate_fixture import design_markdown, issue_codes, legacy_tokens_markdown, run_office  # noqa: E402
 
 
 SEEDED_TOKENS = {
     "CREAM_GROUND": [{"colors": {"ground": "#F5EFE0"}}, {"colors": {"ground": "#FAF6EC"}}],
     "AI_PALETTE": [{"colors": {"accent": "#7C3AED", "secondary": "#2563EB"}}, {"colors": {"ground": "#0B1220", "text": "#F5F7FA", "accent": "#22D3EE"}}],
-    "FONT_NOT_BUNDLED": [{"fonts": {"display": "Inter"}}, {"fonts": {"body": "Helvetica Neue"}}],
-    "ITALIC_SERIF_DISPLAY": [{"fonts": {"display": "NanumMyeongjo", "display-style": "italic"}}],
     "FLAT_HIERARCHY": [{"type": {"display": "30px", "title": "30px", "body": "28px"}}],
     "TIGHT_TRACKING": [{"type": {"tracking": "-0.05em"}}],
     "EXTREME_RADIUS": [{"radius": "40px"}, {"radius": "999px"}],
     "HAIRLINE_WIDE_SHADOW": [{"border": "1px", "shadow": "0 24px 64px rgba(0,0,0,0.2)"}],
     "GLOW_SHADOW": [{"shadow": "0 0 32px rgba(31,95,191,0.6)"}, {"glow": "0 0 24px #1F5FBF"}],
-    "GLASS_BLUR": [{"glass": "blur(12px)"}, {"backdrop-blur": "16px"}],
-    "DECORATIVE_GRADIENT": [{"gradient": "linear-gradient(90deg, #1F5FBF, #0F766E)"}],
-    "GRADIENT_TEXT": [{"text-gradient": "linear-gradient(90deg, #1F5FBF, #0F766E)"}],
 }
 
 CLEAN_VARIANTS = [
@@ -38,12 +33,14 @@ CLEAN_VARIANTS = [
 def codes_for(overrides: dict) -> set[str]:
     with tempfile.TemporaryDirectory() as directory:
         path = Path(directory) / "DESIGN.md"
-        path.write_text(design_markdown(overrides), encoding="utf-8")
-        system, issues = read_design_system(path)
+        path.write_text(legacy_tokens_markdown(overrides), encoding="utf-8")
+        system, issues = read_token_document(path)
         return {issue.kind.code for issue in issues + (token_issues(system) if system else [])}
 
 
 class TokenGateTest(unittest.TestCase):
+    """The screen the generated palettes, scales and shapes must pass; a model's DESIGN.md can no longer carry these tokens."""
+
     def test_each_rule_refuses_its_seeded_tokens(self):
         for code, variants in SEEDED_TOKENS.items():
             for index, overrides in enumerate(variants):
@@ -59,7 +56,7 @@ class TokenGateTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             self.assertEqual({issue.kind.code for issue in read_design_system(Path(directory) / "DESIGN.md")[1]}, {"DESIGN_MISSING"})
 
-    def test_a_missing_token_is_named(self):
+    def test_a_missing_token_is_named_by_the_screen(self):
         self.assertEqual(codes_for({"colors": {"secondary": None}}), {"DESIGN_INCOMPLETE"})
 
     def test_low_contrast_text_is_refused(self):
@@ -68,10 +65,10 @@ class TokenGateTest(unittest.TestCase):
     def test_office_check_refuses_design_before_any_slide_is_read(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)
-            (path / "DESIGN.md").write_text(design_markdown({"colors": {"ground": "#F5EFE0"}, "radius": "40px"}), encoding="utf-8")
+            (path / "DESIGN.md").write_text(legacy_tokens_markdown({"colors": {"ground": "#F5EFE0"}, "radius": "40px"}), encoding="utf-8")
             envelope = run_office(["check", "DESIGN.md"], path)
             self.assertEqual(envelope["status"], "error")
-            self.assertEqual(issue_codes(envelope), {"CREAM_GROUND", "EXTREME_RADIUS"})
+            self.assertEqual(issue_codes(envelope), {"DESIGN_VALUE_INVALID"})
 
     def test_office_check_passes_a_clean_design(self):
         with tempfile.TemporaryDirectory() as directory:
