@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import pathlib
 import re
 
@@ -15,7 +15,6 @@ DESIGN_FILE_NAME = "DESIGN.md"
 REQUIRED_COLORS = ("ground", "text", "accent", "secondary")
 REQUIRED_FONTS = ("display", "body")
 REQUIRED_SIZES = ("title", "body")
-GRADIENT_KEYS = {"decorativeGradient": ("gradient", "background-gradient"), "gradientText": ("text-gradient",), "glassBlur": ("glass", "blur", "backdrop-blur", "backdrop-filter")}
 GLOW_KEYS = ("glow", "glow-shadow")
 LIGHTNESS_STEP = 0.01
 TEXT_CONTRAST = 4.5
@@ -41,13 +40,14 @@ class DesignSystem:
     radius: float
     border: float
     shadow: str
+    weights: dict[str, int] = field(default_factory=lambda: {"display": 700, "body": 400})
 
     def section(self, name: str) -> dict[str, str]:
         value = self.document.get(name)
         return value if isinstance(value, dict) else {}
 
 
-def read_design_system(path: pathlib.Path) -> tuple[DesignSystem | None, list[Issue]]:
+def read_token_document(path: pathlib.Path) -> tuple[DesignSystem | None, list[Issue]]:
     if not path.is_file():
         return None, [DESIGN_MISSING.issue(f"{DESIGN_FILE_NAME} was not found beside slides.html", DESIGN_FILE_NAME)]
     document = parse_front_matter(path.read_text(encoding="utf-8"))
@@ -58,6 +58,67 @@ def read_design_system(path: pathlib.Path) -> tuple[DesignSystem | None, list[Is
     if invalid:
         return None, [DESIGN_VALUE_INVALID.issue(f"{DESIGN_FILE_NAME} {token} is \"{value}\"", DESIGN_FILE_NAME) for token, value in invalid]
     return build_design_system(document), []
+
+
+TYPOGRAPHY_RULES = "section, section * { font-family: var(--font-body); } section h1, section h2, section h3, section h4, section h5, section h6 { font-family: var(--font-display); font-weight: var(--weight-display); }"
+SELECTION_KEYS = ("intent", "palette", "type", "density", "shape", "weight")
+WEIGHT_KEY = "weight"
+
+
+def read_design_system(path: pathlib.Path) -> tuple[DesignSystem | None, list[Issue]]:
+    from deck.deck_design import palette_candidates
+    from deck.deck_preparation import prepare_deck
+
+    if not path.is_file():
+        return None, [DESIGN_MISSING.issue(f"{DESIGN_FILE_NAME} was not found beside slides.html", DESIGN_FILE_NAME)]
+    selection = parse_front_matter(path.read_text(encoding="utf-8"))
+    design = prepare_deck().design
+    candidates = {candidate["name"]: candidate for candidate in palette_candidates(design)}
+    problems = selection_problems(selection, design, candidates)
+    if problems:
+        return None, problems
+    return build_design_system(selected_document(selection, design, candidates)), []
+
+
+def selection_problems(selection: dict, design, candidates: dict) -> list[Issue]:
+    from deck.deck_design import DESIGN, options
+
+    unknown = [key for key in selection if key not in SELECTION_KEYS]
+    if unknown:
+        return [DESIGN_VALUE_INVALID.issue(f"{DESIGN_FILE_NAME} has no {key} token: it takes only {', '.join(SELECTION_KEYS)}; colors, fonts, sizes and shape come from those choices", DESIGN_FILE_NAME) for key in unknown]
+    if "palette" not in selection:
+        return [DESIGN_INCOMPLETE.issue(f"{DESIGN_FILE_NAME} has no palette; choose one of {', '.join(candidates)}", DESIGN_FILE_NAME)]
+    type_option = str(selection.get("type") or design.option("type"))
+    allowed = {
+        "palette": tuple(candidates),
+        "type": options("type"),
+        "density": options("density"),
+        "shape": tuple(DESIGN["shapes"]),
+        WEIGHT_KEY: tuple(str(weight) for weight in DESIGN["types"].get(type_option, {}).get("weights", ())),
+    }
+    return [DESIGN_VALUE_INVALID.issue(f"{DESIGN_FILE_NAME} {key} is \"{selection[key]}\"; choose one of {', '.join(choices)}", DESIGN_FILE_NAME) for key, choices in allowed.items() if key in selection and str(selection[key]) not in choices]
+
+
+def selected_document(selection: dict, design, candidates: dict) -> dict:
+    from deck.deck_design import DESIGN, type_scale
+    from deck.deck_design import Choice, Design
+
+    chosen = {axis: Choice(str(selection[axis]), "decided") for axis in ("type", "density") if axis in selection}
+    effective = Design({**design.choices, **chosen}, design.secondary_accent, design.brand_color)
+    pairing, scale = DESIGN["types"][effective.option("type")], type_scale(effective)
+    shape = DESIGN["shapes"][str(selection.get("shape") or DESIGN["defaultShape"])]
+    weight = int(selection.get(WEIGHT_KEY) or DESIGN["weights"]["display"])
+    colors = {role: value for role, value in candidates[str(selection["palette"])]["colors"].items()}
+    return {
+        "colors": colors,
+        "fonts": {"display": pairing["display"], "body": pairing["body"]},
+        "type": {name: scale[name] for name in ("display", "title", "body", "small")},
+        "radius": shape["radius"],
+        "border": shape["border"],
+        "shadow": shape["shadow"],
+        "spacing": {"margin": scale["margin"], "gap": scale["gap"]},
+        "weights": {"display": weight, "body": DESIGN["weights"]["body"]},
+    }
 
 
 def missing_tokens(document: dict) -> list[str]:
@@ -87,6 +148,7 @@ def build_design_system(document: dict) -> DesignSystem:
         radius=length_of(str(document.get("radius", "12px"))) or 0.0,
         border=length_of(str(document.get("border", "1px"))) or 0.0,
         shadow=str(document.get("shadow", "none")),
+        weights={name: int(value) for name, value in (document.get("weights") or {"display": 700, "body": 400}).items()},
     )
 
 
@@ -140,21 +202,6 @@ def first_family(value: str) -> str:
     return value.split(",")[0].strip().strip('"').strip("'")
 
 
-def font_not_bundled(system: DesignSystem, threshold: dict) -> list[str]:
-    known = bundled_names()
-    return [f"fonts.{role} \"{first_family(value)}\" is not a bundled font" for role, value in system.fonts.items() if role in REQUIRED_FONTS and first_family(value).casefold() not in known]
-
-
-def is_serif(font_value: str) -> bool:
-    family = bundled_names().get(first_family(font_value).casefold())
-    return any(entry.name == family and entry.role == SERIF_BODY for entry in FAMILIES)
-
-
-def italic_serif_display(system: DesignSystem, threshold: dict) -> list[str]:
-    style = system.fonts.get("display-style", system.section("type").get("display-style", "")).casefold()
-    return ["fonts.display is a serif set in italic"] if ("italic" in style or "oblique" in style) and is_serif(system.fonts["display"]) else []
-
-
 def flat_hierarchy(system: DesignSystem, threshold: dict) -> list[str]:
     ratio = max(system.sizes["title"], system.sizes.get("display", 0)) / system.sizes["body"]
     return [f"type.title is {ratio:.2f} times type.body; the title needs at least {threshold['minimumRatio']}"] if ratio < threshold["minimumRatio"] else []
@@ -198,26 +245,15 @@ def glow_shadow(system: DesignSystem, threshold: dict) -> list[str]:
     return [f"{key} declares a glow" for key in declared] + (["shadow is a colored glow"] if is_glow else [])
 
 
-def keyed(rule_measure: str):
-    def check(system: DesignSystem, threshold: dict) -> list[str]:
-        return [f"{key} is declared" for key in GRADIENT_KEYS[rule_measure] if key in system.document]
-    return check
-
-
 TOKEN_CHECKS = {
     "creamGround": cream_ground,
     "aiPalette": ai_palette,
-    "fontNotBundled": font_not_bundled,
-    "italicSerifDisplay": italic_serif_display,
     "flatHierarchy": flat_hierarchy,
     "tightTracking": tight_tracking,
     "textSize": text_size,
     "extremeRadius": extreme_radius,
     "hairlineWideShadow": hairline_wide_shadow,
     "glowShadow": glow_shadow,
-    "decorativeGradient": keyed("decorativeGradient"),
-    "gradientText": keyed("gradientText"),
-    "glassBlur": keyed("glassBlur"),
 }
 
 
@@ -279,13 +315,13 @@ def design_tokens(system: DesignSystem) -> dict[str, str]:
         {name: f"#{value}" for name, value in derived_colors(system).items()}
         | {"font-display": font_stack(system.fonts["display"]), "font-body": font_stack(system.fonts["body"])}
         | size_tokens(system)
-        | {"radius": f"{system.radius:g}px", "border": f"{system.border:g}px", "shadow": system.shadow, "tracking": f"{system.tracking:g}em", "margin": spacing.get("margin", "96px"), "gap": spacing.get("gap", "32px")}
+        | {"radius": f"{system.radius:g}px", "border": f"{system.border:g}px", "shadow": system.shadow, "weight-display": str(system.weights["display"]), "weight-body": str(system.weights["body"]), "tracking": f"{system.tracking:g}em", "margin": spacing.get("margin", "96px"), "gap": spacing.get("gap", "32px")}
     )
 
 
 def design_style(system: DesignSystem) -> str:
     declarations = " ".join(f"--{name}: {value};" for name, value in design_tokens(system).items())
-    return f":root {{ {declarations} }}"
+    return f":root {{ {declarations} }} {TYPOGRAPHY_RULES}"
 
 
 def palette_of(system: DesignSystem) -> dict[str, str]:

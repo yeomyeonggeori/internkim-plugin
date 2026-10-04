@@ -4,7 +4,6 @@ import json
 import pathlib
 
 from core.office_result import ERROR, Issue, IssueKind
-from fonts.registry import FAMILIES, SERIF_BODY
 
 
 DESIGN_RULES_PATH = pathlib.Path(__file__).resolve().parents[2] / "assets" / "design-rules.json"
@@ -14,7 +13,6 @@ DESIGN_RULE_KINDS = {rule["code"]: IssueKind(rule["code"], ERROR, rule["meaning"
 TOKEN_STAGE = "tokens"
 RENDER_STAGE = "render"
 FINDINGS_NAMED_PER_ISSUE = 3
-SERIF_FAMILIES_RULE = "ITALIC_SERIF_DISPLAY"
 
 
 def threshold_of(code: str) -> dict:
@@ -25,13 +23,9 @@ def rules_for(stage: str) -> tuple[dict, ...]:
     return tuple(rule for rule in DESIGN_RULES if stage in rule["stages"])
 
 
-def serif_family_names() -> list[str]:
-    return [name for family in FAMILIES if family.role == SERIF_BODY for name in family.names]
-
-
 def render_rule_requests() -> list[dict]:
     return [
-        {"code": rule["code"], "measure": rule["measure"], "threshold": rule["threshold"] | ({"serifFamilies": serif_family_names()} if rule["code"] == SERIF_FAMILIES_RULE else {})}
+        {"code": rule["code"], "measure": rule["measure"], "threshold": rule["threshold"]}
         for rule in rules_for(RENDER_STAGE)
     ]
 

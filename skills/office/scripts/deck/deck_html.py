@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import tempfile
 
 from core.design_rules import render_rule_issues
@@ -24,8 +25,15 @@ GATE_GEOMETRY_FILE = "geometry.json"
 GATE_HTML_FILE = "gate.html"
 
 
+FONT_DECLARATION = re.compile(r"(?<![-\w])font(?:-family)?\s*:\s*(?:[^;}\"'<>]|(?<=[:,\s])(?:\"[^\"<>]*\"|'[^'<>]*'))*;?", re.I)
+
+
+def without_font_choices(source_text: str) -> str:
+    return FONT_DECLARATION.sub("", source_text)
+
+
 def kit_html_text(source_path: pathlib.Path, system: DesignSystem | None) -> str:
-    source_text = source_path.read_text(encoding="utf-8")
+    source_text = without_font_choices(source_path.read_text(encoding="utf-8"))
     source_text = inject_deck_kit(source_text, kit_additions(prepare_deck(), system))
     source_text = inject_vendored_paperlogy_fallback(source_text)
     source_text = inline_local_images(focus_photos(source_text, source_path.parent), source_path.parent)

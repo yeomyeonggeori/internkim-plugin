@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 
-from design_gate_fixture import design_markdown
+from design_gate_fixture import decided_context, design_markdown
 from design_gate_slides import fill_sections
 from render_fixture import can_render
 
@@ -28,7 +28,13 @@ p { margin: 0; }
 .card { padding: 28px; background: var(--surface); border-radius: var(--radius); }
 figure { width: 900px; height: 420px; margin: 0; }
 """
-DARK_TOKENS = {"colors": {"ground": "#0F1720", "text": "#F2F5F9", "accent": "#6FA8F5", "secondary": "#7FD1B9"}}
+def dark_ground() -> str:
+    from deck.deck_design import palette_candidates, resolve_design
+
+    return palette_candidates(resolve_design({"choices": {"mood": {"option": "bold"}}}))[0]["colors"]["ground"]
+
+
+DARK_TOKENS = {"mood": "bold"}
 
 
 def deck(*slides: str) -> str:
@@ -79,8 +85,11 @@ class VisualConsistencyTest(unittest.TestCase):
     def build(self, source: str, overrides: dict | None = None) -> dict:
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / "slides.html").write_text(source, encoding="utf-8")
-            (Path(directory) / "DESIGN.md").write_text(design_markdown(overrides), encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/deck.pdf", "slides.html"], capture_output=True, text=True, cwd=directory)
+            (Path(directory) / "DESIGN.md").write_text(design_markdown(), encoding="utf-8")
+            environment = {name: value for name, value in os.environ.items() if name != RUNTIME_CONTEXT_VARIABLE}
+            if overrides:
+                environment[RUNTIME_CONTEXT_VARIABLE] = str(decided_context(Path(directory), **overrides))
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/deck.pdf", "slides.html"], capture_output=True, text=True, cwd=directory, env=environment)
         return json.loads(completed.stdout)
 
     def located(self, envelope: dict, code: str) -> set[str]:
@@ -112,11 +121,11 @@ class VisualConsistencyTest(unittest.TestCase):
 
     def build_pptx(self, directory: str, reviews_deck_renders: bool | None) -> dict:
         (Path(directory) / "slides.html").write_text(deck(COVER, cards(), ICON_SLIDE), encoding="utf-8")
-        (Path(directory) / "DESIGN.md").write_text(design_markdown(DARK_TOKENS), encoding="utf-8")
+        (Path(directory) / "DESIGN.md").write_text(design_markdown(), encoding="utf-8")
         environment = {name: value for name, value in os.environ.items() if name != RUNTIME_CONTEXT_VARIABLE}
         if reviews_deck_renders is not None:
             context_path = Path(directory) / "office-runtime-context.json"
-            context_path.write_text(json.dumps({"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04", "company": {}, "registeredDocuments": [], "attachments": [], "reviewsDeckRenders": reviews_deck_renders}), encoding="utf-8")
+            context_path.write_text(json.dumps({"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04", "company": {}, "registeredDocuments": [], "attachments": [], "reviewsDeckRenders": reviews_deck_renders, "deckDesign": {"choices": {"mood": {"option": "bold"}}}}), encoding="utf-8")
             environment[RUNTIME_CONTEXT_VARIABLE] = str(context_path)
         completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/deck.pptx", "slides.html"], capture_output=True, text=True, cwd=directory, env=environment)
         return json.loads(completed.stdout)
@@ -146,7 +155,7 @@ class VisualConsistencyTest(unittest.TestCase):
         second = review["slides"][1]
         self.assertEqual(second["number"], 2)
         self.assertEqual(second["state"]["deck"], "시험 덱")
-        self.assertEqual(second["state"]["design"]["colors"]["ground"], "#0F1720")
+        self.assertEqual(second["state"]["design"]["colors"]["ground"], dark_ground())
         self.assertTrue(second["section"].startswith("<section>"))
         self.assertEqual([icon["icon"] for icon in review["slides"][2]["state"]["icons"]], ["lightbulb", "megaphone"])
         self.assertIn("Canvas", review["fixer"]["kitGuide"])

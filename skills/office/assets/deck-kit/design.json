@@ -35,14 +35,13 @@
       "fallback": "neutral"
     },
     "type": {
-      "instructions": "Which pairing of typefaces suits the deck's voice? Judge from the occasion and audience the request states; do not choose for a voice the request does not suggest. Choose modern when unsure.",
+      "instructions": "Which typeface carries the deck's voice? Choose paperlogy unless the request clearly asks for the voice of another face; do not choose for a voice the request does not suggest.",
       "options": {
-        "geometric": "Paperlogy for titles and text: confident and contemporary; pitches, strategy, launches.",
-        "modern": "Pretendard for titles and text: neutral and precise; reports, research, operations, reviews.",
-        "classic": "Nanum Myeongjo titles over Pretendard text: established and serious; annual reports, governance, anniversaries, heritage.",
-        "literary": "MaruBuri titles over Pretendard text: warm and bookish; cultural programs, education, publishing, stories."
+        "paperlogy": "Paperlogy for titles and text: confident and contemporary. The face for most decks: pitches, strategy, launches, reports.",
+        "freesentation": "Freesentation for titles and text: neutral and precise; research, operations, reviews, plain internal reports.",
+        "a2z": "A2Z for titles and text: distinctive and graphic; creative, cultural or campaign subjects."
       },
-      "fallback": "modern"
+      "fallback": "paperlogy"
     },
     "density": {
       "instructions": "How much should each slide hold for this audience and setting? Choose dense only when the request asks for a reading deck or detailed figures for every slide. Choose balanced when unsure.",
@@ -67,37 +66,223 @@
   "secondaryShare": 0.75,
   "hueBlend": 0.3,
   "hues": {
-    "trust": {"hue": 258, "chroma": 0.17},
-    "fresh": {"hue": 150, "chroma": 0.14},
-    "energy": {"hue": 27, "chroma": 0.19},
-    "warmth": {"hue": 52, "chroma": 0.16},
-    "creative": {"hue": 305, "chroma": 0.15},
-    "clarity": {"hue": 178, "chroma": 0.11},
-    "prestige": {"hue": 8, "chroma": 0.12},
-    "neutral": {"hue": 255, "chroma": 0.025}
+    "trust": {
+      "hue": 258,
+      "chroma": 0.17
+    },
+    "fresh": {
+      "hue": 150,
+      "chroma": 0.14
+    },
+    "energy": {
+      "hue": 27,
+      "chroma": 0.19
+    },
+    "warmth": {
+      "hue": 52,
+      "chroma": 0.16
+    },
+    "creative": {
+      "hue": 305,
+      "chroma": 0.15
+    },
+    "clarity": {
+      "hue": 178,
+      "chroma": 0.11
+    },
+    "prestige": {
+      "hue": 8,
+      "chroma": 0.12
+    },
+    "neutral": {
+      "hue": 255,
+      "chroma": 0.025
+    }
   },
-  "temperatures": {"warm": 75, "cool": 250},
+  "temperatures": {
+    "warm": 75,
+    "cool": 250
+  },
   "moods": {
-    "formal": {"dark": false, "ground": [0.995, 0.0], "text": [0.2, 0.015]},
-    "friendly": {"dark": false, "ground": [0.985, 0.012], "text": [0.22, 0.02]},
-    "calm": {"dark": false, "ground": [0.975, 0.012], "text": [0.24, 0.025]},
-    "bold": {"dark": true, "ground": [0.18, 0.02], "text": [0.96, 0.01]}
+    "formal": {
+      "dark": false,
+      "ground": [
+        0.995,
+        0.0
+      ],
+      "text": [
+        0.2,
+        0.015
+      ]
+    },
+    "friendly": {
+      "dark": false,
+      "ground": [
+        0.985,
+        0.012
+      ],
+      "text": [
+        0.22,
+        0.02
+      ]
+    },
+    "calm": {
+      "dark": false,
+      "ground": [
+        0.975,
+        0.012
+      ],
+      "text": [
+        0.24,
+        0.025
+      ]
+    },
+    "bold": {
+      "dark": true,
+      "ground": [
+        0.18,
+        0.02
+      ],
+      "text": [
+        0.96,
+        0.01
+      ]
+    }
   },
-  "creamHues": [40, 125],
+  "creamHues": [
+    40,
+    125
+  ],
   "variants": {
-    "primary": {"light": [0.5, 1.0], "dark": [0.76, 0.9], "secondaryTurn": -35, "secondaryLightness": [0.45, 0.72], "secondaryScale": 0.8},
-    "deep": {"light": [0.4, 0.9], "dark": [0.7, 0.8], "secondaryTurn": 0, "secondaryLightness": [0.6, 0.82], "secondaryScale": 0.55},
-    "vivid": {"light": [0.56, 1.15], "dark": [0.8, 1.0], "secondaryTurn": 150, "secondaryLightness": [0.45, 0.7], "secondaryScale": 0.6}
+    "primary": {
+      "light": [
+        0.5,
+        1.0
+      ],
+      "dark": [
+        0.76,
+        0.9
+      ],
+      "secondaryTurn": -35,
+      "secondaryLightness": [
+        0.45,
+        0.72
+      ],
+      "secondaryScale": 0.8
+    },
+    "deep": {
+      "light": [
+        0.4,
+        0.9
+      ],
+      "dark": [
+        0.7,
+        0.8
+      ],
+      "secondaryTurn": 0,
+      "secondaryLightness": [
+        0.6,
+        0.82
+      ],
+      "secondaryScale": 0.55
+    },
+    "vivid": {
+      "light": [
+        0.56,
+        1.15
+      ],
+      "dark": [
+        0.8,
+        1.0
+      ],
+      "secondaryTurn": 150,
+      "secondaryLightness": [
+        0.45,
+        0.7
+      ],
+      "secondaryScale": 0.6
+    }
   },
   "types": {
-    "geometric": {"display": "Paperlogy", "body": "Paperlogy"},
-    "modern": {"display": "Pretendard", "body": "Pretendard"},
-    "classic": {"display": "NanumMyeongjo", "body": "Pretendard"},
-    "literary": {"display": "MaruBuri", "body": "Pretendard"}
+    "paperlogy": {
+      "display": "Paperlogy",
+      "body": "Paperlogy",
+      "weights": [
+        600,
+        700,
+        800
+      ]
+    },
+    "freesentation": {
+      "display": "Freesentation",
+      "body": "Freesentation",
+      "weights": [
+        700
+      ]
+    },
+    "a2z": {
+      "display": "A2Z",
+      "body": "A2Z",
+      "weights": [
+        700
+      ]
+    }
   },
   "densities": {
-    "airy": {"display": "72px", "title": "56px", "body": "30px", "small": "22px", "margin": "104px", "gap": "40px"},
-    "balanced": {"display": "64px", "title": "48px", "body": "28px", "small": "21px", "margin": "96px", "gap": "32px"},
-    "dense": {"display": "56px", "title": "42px", "body": "28px", "small": "20px", "margin": "72px", "gap": "24px"}
-  }
+    "airy": {
+      "base": 30,
+      "titleRatio": 1.9,
+      "displayRatio": 2.4,
+      "smallRatio": 0.75,
+      "margin": "104px",
+      "gap": "40px"
+    },
+    "balanced": {
+      "base": 28,
+      "titleRatio": 1.7,
+      "displayRatio": 2.3,
+      "smallRatio": 0.75,
+      "margin": "96px",
+      "gap": "32px"
+    },
+    "dense": {
+      "base": 28,
+      "titleRatio": 1.5,
+      "displayRatio": 2.0,
+      "smallRatio": 0.72,
+      "margin": "72px",
+      "gap": "24px"
+    }
+  },
+  "weights": {
+    "display": 700,
+    "body": 400
+  },
+  "shapes": {
+    "sharp": {
+      "radius": "4px",
+      "border": "1px",
+      "shadow": "none"
+    },
+    "soft": {
+      "radius": "12px",
+      "border": "1px",
+      "shadow": "none"
+    },
+    "round": {
+      "radius": "20px",
+      "border": "1px",
+      "shadow": "none"
+    }
+  },
+  "defaultShape": "soft",
+  "scaleStep": 2,
+  "selectionKeys": [
+    "intent",
+    "palette",
+    "type",
+    "density",
+    "shape",
+    "weight"
+  ]
 }

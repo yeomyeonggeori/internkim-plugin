@@ -11,14 +11,12 @@ IMAGERY_WORK = {
     "data": "charts, key numbers and tables lead; icons only where a list needs them",
 }
 AVOID_LIST = (
-    "cream or beige grounds, purple-and-blue palettes, cyan on dark",
-    "gradients of any kind: fills, text, halos, grid or stripe backgrounds",
-    "glass blur, glows, a wide shadow under a hairline border, radius past 24px",
-    "eyebrows, badges or icon tiles above headings",
-    "one-sided accent bars, nested cards, grids of identical cards",
-    "oversized or italic serif headlines, tight letter-spacing, a flat type scale",
-    "a big metric used as a cover template, rough illustrations, one spacing everywhere, numbering with no real sequence",
-    "em dash strings",
+    "text under 28px (body) or 20px (captions); an empty band over a fifth of the slide height",
+    "eyebrows, badges or small caps labels above text; icon tiles above headings; a big number over a small label as a slide's design",
+    "one-sided accent bars including a left or right rule, nested cards, grids of identical cards",
+    "gradients, glass blur, glows, wide shadows, radius past 24px, oversized or italic serif headlines, tight letter-spacing",
+    "rough illustrations, one spacing everywhere, numbering with no real sequence",
+    "em dashes in titles, more than two on a slide",
 )
 
 
@@ -42,17 +40,17 @@ def is_decided(design: Design) -> bool:
 
 def intent_lines(design: Design) -> list[str]:
     if not is_decided(design):
-        return ["Design intent: none was decided for this request. Choose it yourself from the request's subject, audience and purpose, and write it in DESIGN.md."]
+        return ["Design intent: none was decided for this request; the build uses the default intent. Palette candidates, each checked for contrast; write palette: <name> in DESIGN.md:", *candidate_lines(design)]
     pairing, scale = type_pairing(design), type_scale(design)
     return [
-        "Design intent, chosen by InternKim from the request; write your own DESIGN.md within it. A color the request names, or the logo's own color, takes precedence over the accent.",
+        "Design intent, chosen by InternKim from the request; DESIGN.md names a palette from the candidates below and nothing else is required. The build sets colors from it, and fonts, sizes and shape from the intent.",
         f"  accent: {choice_label(design.choices['accent'])}{'; leaning toward ' + design.secondary_accent if design.secondary_accent else ''}",
         f"  mood: {choice_label(design.choices['mood'])}; temperature: {choice_label(design.choices['temperature'])}",
-        f"  type: {choice_label(design.choices['type'])}; {pairing['display']} titles, {pairing['body']} text",
-        f"  density: {choice_label(design.choices['density'])}; scale display {scale['display']}, title {scale['title']}, body {scale['body']}, small {scale['small']}, margin {scale['margin']}, gap {scale['gap']}",
+        f"  type: {choice_label(design.choices['type'])}; {pairing['display']} titles and text",
+        f"  density: {choice_label(design.choices['density'])}; display {scale['display']}, title {scale['title']}, body {scale['body']}, small {scale['small']}",
         f"  imagery: {choice_label(design.choices['imagery'])}; {IMAGERY_WORK[design.option('imagery')]}",
         *(["  brand color from the logo: #" + design.brand_color] if design.brand_color else []),
-        "Palette candidates derived from that hue family, each checked for contrast and against the design gate; pick one, adjust it or keep your own within the gate:",
+        "Palette candidates, each checked for contrast; write palette: <name> in DESIGN.md:",
         *candidate_lines(design),
     ]
 

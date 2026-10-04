@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from deck.check_deck import CheckRequest, check_deck  # noqa: E402
 
 
-from design_gate_fixture import design_markdown  # noqa: E402
+from design_gate_fixture import design_markdown, legacy_tokens_markdown  # noqa: E402
 from design_gate_slides import fill_sections  # noqa: E402
 
 
@@ -37,6 +37,14 @@ CHART = (
 )
 TABLE = "<section><h2>수도권이 성장을 이끌었습니다</h2><table><tr><th>지역</th><th>매출</th></tr><tr><td>수도권</td><td>58억</td></tr></table></section>"
 CLOSING = "<section><h2>예산을 승인해 주십시오</h2><ol><li>예산 6억 원</li><li>11월 3일 출시</li></ol></section>"
+def primary_accent() -> str:
+    from deck.deck_design import palette_candidates
+    from deck.deck_preparation import prepare_deck
+
+    return palette_candidates(prepare_deck().design)[0]["colors"]["accent"]
+
+
+OWN_ACCENT = primary_accent()
 CLEAN_DECK = free_deck(COVER, STATEMENT, KPI, CHART, TABLE, CLOSING)
 
 
@@ -129,16 +137,16 @@ class DeckCheckTest(unittest.TestCase):
         self.assertNotIn(("IMAGE_NOT_FOUND", "slide 4"), codes)
 
     def test_colors_outside_the_design_system_are_reported_but_its_own_colors_are_not(self):
-        head = "<style>.note { color: #1A56DB; border-color: rgba(12, 26, 48, 0.2); background: #FF00AA; } .x { color: hsl(120, 100%, 25%); } .own { color: #1F5FBF; }</style>"
+        head = f"<style>.note {{ color: #1A56DB; border-color: rgba(12, 26, 48, 0.2); background: #FF00AA; }} .x {{ color: hsl(120, 100%, 25%); }} .own {{ color: {OWN_ACCENT}; }}</style>"
         result = self.check(free_deck(COVER, head=head))
         issue = next(issue for issue in result.issues if issue.kind.code == "OFF_PALETTE_COLOR")
         self.assertEqual(issue.kind.severity, "warning")
         self.assertIn("#008000, #0C1A30, #1A56DB, #FF00AA", issue.message)
-        self.assertNotIn("#1F5FBF,", issue.message.split(":", 1)[1])
+        self.assertNotIn(OWN_ACCENT, issue.message.split(":", 1)[1])
 
     def test_the_design_gate_stops_the_check_before_any_slide_is_measured(self):
-        result = self.check(CLEAN_DECK, design=design_markdown({"colors": {"ground": "#F5EFE0"}}))
-        self.assertEqual([issue.kind.code for issue in result.issues], ["CREAM_GROUND"])
+        result = self.check(CLEAN_DECK, design=legacy_tokens_markdown({"colors": {"ground": "#F5EFE0"}}))
+        self.assertEqual({issue.kind.code for issue in result.issues}, {"DESIGN_VALUE_INVALID"})
         self.assertEqual(result.status, "error")
 
     def test_a_deck_without_a_design_document_is_refused(self):
@@ -160,11 +168,11 @@ class DeckCheckCommandTest(unittest.TestCase):
     def test_the_command_prints_the_envelope_and_exits_one_on_errors(self):
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / "slides.html").write_text(free_deck(COVER, "<section><h2>제목</h2></section>"), encoding="utf-8")
-            (Path(directory) / "DESIGN.md").write_text(design_markdown({"radius": "40px"}), encoding="utf-8")
+            (Path(directory) / "DESIGN.md").write_text(legacy_tokens_markdown({"radius": "40px"}), encoding="utf-8")
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "check", "slides.html", "--slide-count", "2"], capture_output=True, text=True, cwd=directory)
         envelope = json.loads(completed.stdout)
         self.assertEqual(completed.returncode, 1)
-        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["EXTREME_RADIUS"])
+        self.assertEqual({issue["code"] for issue in envelope["issues"]}, {"DESIGN_VALUE_INVALID"})
         self.assertIn("before the deck can be built", envelope["summary"])
 
 

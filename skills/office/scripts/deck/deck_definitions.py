@@ -89,7 +89,7 @@ IMAGE_SEARCH_FAILED = IssueKind("IMAGE_SEARCH_FAILED", ERROR, "the image search 
 NO_IMAGE_FOUND = IssueKind("NO_IMAGE_FOUND", ERROR, "no usable public-domain image matched", "try a simpler English query or skip imagery")
 
 IMAGE_ISSUE_KINDS = (IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND)
-DESIGN_TOKEN_NAMES = ("ground", "text", "text-soft", "muted", "line", "surface", "accent", "secondary", "on-accent", "font-display", "font-body", "size-display", "size-title", "size-body", "size-small", "radius", "border", "shadow", "margin", "gap")
+DESIGN_TOKEN_NAMES = ("ground", "text", "text-soft", "muted", "line", "surface", "accent", "secondary", "on-accent", "size-display", "size-title", "size-body", "size-small", "radius", "border", "shadow", "margin", "gap")
 CHART_ATTRIBUTES = (
     "data-chart: " + ", ".join(chart_types()),
     "data-labels: category names separated by commas",
@@ -112,18 +112,17 @@ CHART_ATTRIBUTES = (
 def canvas_lines() -> list[str]:
     return [
         "  each slide is a <section> of exactly 1600x900 px; write one <style> in <head> and lay every slide out yourself",
-        "  DESIGN.md beside slides.html declares the design system in its front matter; run office check DESIGN.md before any slide, then office check slides.html",
+        "  DESIGN.md beside slides.html names the palette and the few other choices in its front matter; run office check DESIGN.md before any slide, then office check slides.html",
         f"  the build puts the tokens on :root, so write var(--accent) and the rest, never a color of your own: {', '.join('--' + name for name in DESIGN_TOKEN_NAMES)}",
-        "  text is 18px or larger and reads at 4.5:1 on its background, or 3:1 from 24px; office create measures both",
+        "  body text is 28px or larger and captions 20px or larger, and text reads at 4.5:1 on its background, or 3:1 from 24px; office create measures both. The build sets every font; font-family in your CSS is dropped",
         "  <aside class=\"notes\">: the speaker notes of a slide",
     ]
 
 
 def font_lines() -> list[str]:
-    from fonts.registry import FAMILIES, face_facts
+    from deck.deck_design import DESIGN
 
-    names = [family.name if all(face_facts(family, face).can_embed_in_office for face in family.faces) else f"{family.name} (PDF only)" for family in FAMILIES]
-    return [f"  {', '.join(names)}; name them in DESIGN.md and font-family, and the PDF and PPTX carry them"]
+    return [f"  {', '.join(pairing['display'] for pairing in DESIGN['types'].values())}: DESIGN.md names one as type, and the PDF and PPTX carry it"]
 
 
 def icon_lines() -> list[str]:

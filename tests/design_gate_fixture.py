@@ -7,7 +7,7 @@ import sys
 SCRIPTS_PATH = Path(os.environ.get("OFFICE_SCRIPTS_PATH") or Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts")
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
 
-CLEAN_TOKENS = {
+LEGACY_CLEAN_TOKENS = {
     "intent": "a calm investor update: white ground, one blue accent, Pretendard throughout",
     "colors": {"ground": "#FFFFFF", "text": "#14213D", "accent": "#1F5FBF", "secondary": "#0F766E"},
     "fonts": {"display": "Pretendard", "body": "Pretendard"},
@@ -19,8 +19,20 @@ CLEAN_TOKENS = {
 }
 
 
-def design_markdown(overrides: dict | None = None) -> str:
-    tokens = json.loads(json.dumps(CLEAN_TOKENS))
+def design_markdown(selection: dict | None = None) -> str:
+    chosen = {"intent": "a calm update: white ground, one accent", "palette": "primary"} | (selection or {})
+    return "---\n" + "".join(f'{key}: "{value}"\n' for key, value in chosen.items()) + "---\n"
+
+
+def decided_context(directory: Path, **options: str) -> Path:
+    context = directory / "office-runtime-context.json"
+    design = {"choices": {axis: {"option": option} for axis, option in options.items()}}
+    context.write_text(json.dumps({"requester": {"name": "", "email": ""}, "today": "2026-10-04", "company": {}, "registeredDocuments": [], "attachments": [], "reviewsDeckRenders": False, "deckDesign": design}), encoding="utf-8")
+    return context
+
+
+def legacy_tokens_markdown(overrides: dict | None = None) -> str:
+    tokens = json.loads(json.dumps(LEGACY_CLEAN_TOKENS))
     for key, value in (overrides or {}).items():
         if isinstance(value, dict) and isinstance(tokens.get(key), dict):
             tokens[key].update(value)
