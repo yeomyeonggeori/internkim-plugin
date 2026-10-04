@@ -10,6 +10,7 @@ from core.office_result import OfficeFailure, Result, read_json_file, run_comman
 from core.source_snapshot import write_source
 from schemas.known_values import load_runtime_context
 from sheet.operations.operation_set import SHEET_OPERATIONS, SheetEditing, save_editing
+from sheet.declaration_claims import declaration_claims
 from sheet.workbook_declaration import DECLARATION_REQUIRED
 
 
@@ -25,7 +26,8 @@ def create_declared(arguments, declaration):
     apply_batch(SHEET_OPERATIONS, editing, chart_operations)
     show_hidden_chart_data(workbook)
     issues = save_atomically(lambda temporary_path: save_editing(editing, temporary_path), str(output_path))
-    write_source(output_path, {"declaration": str(Path(arguments.source).expanduser().resolve()), "compiled": compiled_ranges(compiler), "blanks": blanks})
+    write_source(output_path, {"declaration": str(Path(arguments.source).expanduser().resolve()), "compiled": compiled_ranges(compiler), "blanks": blanks,
+                               "claims": declaration_claims(declaration)})
     summary = f"created {output_path}" + (f"; {len(blanks)} blank input cells for the person to fill or send: {', '.join(blank['label'] for blank in blanks)}" if blanks else "; no blank cells")
     titles = [view["title"] for view in declaration.get("views") or []]
     views = shown_views(str(output_path), compiler, titles)

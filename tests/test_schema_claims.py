@@ -84,3 +84,20 @@ class WrittenClaimsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DeclarationClaimsTest(unittest.TestCase):
+    def test_titles_and_text_cells_are_claims_and_numbers_and_members_typed_otherwise_are_not(self):
+        from sheet.declaration_claims import declaration_claims
+        declaration = {
+            "kind": "workbook",
+            "title": "지역별 매출",
+            "tables": [{"name": "Data", "columns": [{"name": "Year", "type": "date"}, {"name": "Region"}, {"name": "Revenue", "type": "amount"}],
+                        "rows": [["2025", "수도권", 820], ["2026", "호남", None]]}],
+            "views": [{"sheet": "Summary", "title": "By quarter", "rows": ["Region"]}],
+            "charts": [{"view": "By quarter", "type": "line", "title": "호남 실적은 시스템 장애로 지연되었습니다."}],
+        }
+        claims = declaration_claims(declaration)
+        self.assertEqual([claim["text"] for claim in claims], ["지역별 매출", "수도권", "호남", "By quarter", "호남 실적은 시스템 장애로 지연되었습니다."])
+        self.assertEqual(claims[1]["path"], "tables[0].rows[0][1]")
+        self.assertEqual(claims[1]["at"], "Data > Region")
