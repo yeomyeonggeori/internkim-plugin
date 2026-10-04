@@ -3,14 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 import base64
 import json
-import mimetypes
 import os
 import pathlib
 
 from core.host_contract import HOST_CONTRACT, RUNTIME_CONTEXT_VARIABLE
 from deck.deck_design import DESIGN_PATH, Design, resolve_design
 from deck.deck_kit import KIT_MARKER
-from deck.deck_logo import Logo, read_logo
+from deck.deck_logo import Logo, cropped_logo_bytes, read_logo
 from deck.design_system import DesignSystem, design_style
 from schemas.known_values import RuntimeContext, load_runtime_context
 
@@ -73,17 +72,12 @@ def logo_script(preparation: DeckPreparation) -> str:
     if logo is None:
         return ""
     document = {
-        "src": data_uri(logo.path),
+        "src": f"data:image/png;base64,{base64.b64encode(cropped_logo_bytes(logo)).decode('ascii')}",
         "ratio": round(logo.width / logo.height, 4),
         "ink": [int(logo.ink[index:index + 2], 16) for index in (0, 2, 4)],
         "hasTransparency": logo.has_transparency,
     }
     return f"<script {KIT_MARKER}>\nwindow.deckKitLogo = {json.dumps(document)};\n</script>\n"
-
-
-def data_uri(path: pathlib.Path) -> str:
-    mime_type = mimetypes.guess_type(path.name)[0] or "image/png"
-    return f"data:{mime_type};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
 
 
 def request_preparation(preparation: DeckPreparation) -> pathlib.Path | None:

@@ -11,7 +11,7 @@ CLEAN_TOKENS = {
     "intent": "a calm investor update: white ground, one blue accent, Pretendard throughout",
     "colors": {"ground": "#FFFFFF", "text": "#14213D", "accent": "#1F5FBF", "secondary": "#0F766E"},
     "fonts": {"display": "Pretendard", "body": "Pretendard"},
-    "type": {"display": "64px", "title": "48px", "body": "24px"},
+    "type": {"display": "64px", "title": "48px", "body": "28px"},
     "radius": "10px",
     "border": "1px",
     "shadow": "none",

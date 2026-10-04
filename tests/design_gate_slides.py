@@ -30,7 +30,7 @@ SEEDED_STYLE = """
 .strip { position: relative; padding: 28px 40px; background: var(--surface); }
 .strip > i.bar { position: absolute; left: 0; top: 0; width: 8px; height: 100%; background: var(--accent); }
 .round { padding: 40px; border-radius: 48px; background: var(--surface); }
-.eyebrow { font-size: 18px; letter-spacing: 0.1em; color: var(--accent); }
+.eyebrow { font-size: 20px; letter-spacing: 0.1em; color: var(--accent); }
 .tile { width: 72px; height: 72px; border-radius: 16px; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 40px; }
 .outer { padding: 40px; background: var(--surface); border-radius: var(--radius); }
 .inner { padding: 24px; background: var(--ground); border-radius: var(--radius); }
@@ -73,36 +73,40 @@ SEEDED = {
 }
 
 CLEAN_STYLE = """
-.split { display: flex; gap: 64px; align-items: center; height: 100%; }
+.centered { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 24px; }
+.split { display: flex; gap: 64px; align-items: stretch; flex: 1; }
 .split > * { flex: 1; }
-.big { font-size: 120px; font-family: var(--font-display); color: var(--accent); line-height: 1; }
-table { border-collapse: collapse; width: 100%; font-size: 24px; }
+.split > p, .split > div { align-self: center; }
+.big { font-size: 160px; font-family: var(--font-display); color: var(--accent); line-height: 1; }
+table { border-collapse: collapse; width: 100%; font-size: 28px; height: 560px; }
 th, td { text-align: left; padding: 14px 0; border-bottom: 1px solid var(--line); }
 th { color: var(--muted); font-weight: 600; }
-.steps { display: flex; flex-direction: column; gap: 24px; list-style: none; padding: 0; margin: 0; }
-.steps li { display: flex; gap: 24px; align-items: baseline; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+.steps { display: flex; flex-direction: column; justify-content: space-between; flex: 1; list-style: none; padding: 0; margin: 0; }
+.steps li { display: flex; flex: 1; gap: 24px; align-items: center; border-bottom: 1px solid var(--line); font-size: 30px; }
 .steps b { width: 220px; color: var(--accent); }
 .wide { flex: 2; }
 .narrow { flex: 1; }
 .dark { background: var(--text); color: var(--ground); }
 .dark h2 { color: var(--ground); }
-figure { width: 860px; height: 440px; margin: 0; }
+figure { width: 900px; height: 620px; margin: 0; }
+.stretch { flex: 1; align-items: stretch; }
+.stretch > .card { justify-content: center; }
 """
 
 CLEAN = [
     [
-        f'<h1>Third quarter results beat the plan</h1>{BODY}',
-        f'{HEADING}<div class="split"><figure data-chart="column" data-labels="Q1, Q2, Q3" data-values="96, 110, 128" data-unit="M"></figure><p>Q3 was the strongest quarter of the year, ahead of Q2 by 16 percent.</p></div>',
+        f'<div class="centered"><h1>Third quarter results beat the plan</h1>{BODY}</div>',
+        f'{HEADING}<div class="split"><figure data-chart="bar" data-labels="Q1, Q2, Q3, Q4 plan" data-values="96, 110, 128, 140" data-unit="M"></figure><p>Q3 was the strongest quarter of the year, ahead of Q2 by 16 percent.</p></div>',
         f'<h2>Regional results</h2><table><tr><th>Region</th><th>Revenue</th><th>Plan</th></tr><tr><td>Seoul</td><td>52M</td><td>48M</td></tr><tr><td>Busan</td><td>41M</td><td>40M</td></tr><tr><td>Daegu</td><td>35M</td><td>33M</td></tr></table>',
-        '<h2>Three steps for the fourth quarter</h2><ol class="steps"><li><b>October</b><span>Open the Incheon depot</span></li><li><b>November</b><span>Move peak routes to night shifts</span></li><li><b>December</b><span>Review cost per parcel with the board</span></li></ol>',
+        '<h2>Four steps for the fourth quarter</h2><ol class="steps"><li><b>October</b><span>Open the Incheon depot</span></li><li><b>November</b><span>Move peak routes to night shifts</span></li><li><b>December</b><span>Review cost per parcel with the board</span></li><li><b>January</b><span>Publish the new route map</span></li></ol>',
     ],
     [
-        '<h1>Cold chain readiness review</h1><p>Prepared for the operations committee</p>',
+        '<div class="centered"><h1>Cold chain readiness review</h1><p>Prepared for the operations committee</p></div>',
         '<div class="split"><div class="wide"><h2>Spoilage fell to 0.8 percent</h2><p>Sensors on all 41 trucks report every minute, and alerts reach the dispatcher in under two.</p></div><div class="narrow"><div class="big">0.8%</div><p>spoilage, down from 2.1%</p></div></div>',
-        '<h2>Where the losses came from</h2><div class="row"><div class="card" style="flex:2"><h3>Door openings</h3><p>Most losses followed long loading stops at two depots, which now have a second dock door and a fixed stop limit.</p></div><div class="card"><h3>Power cuts</h3><p>Two events, both covered by backup units.</p></div></div>',
+        '<h2>Where the losses came from</h2><div class="row stretch"><div class="card" style="flex:2"><h3>Door openings</h3><p>Most losses followed long loading stops at two depots, which now have a second dock door and a fixed stop limit.</p></div><div class="card"><h3>Power cuts</h3><p>Two events, both covered by backup units.</p></div></div>',
     ],
     [
-        '<h1>Hiring plan for the next two quarters</h1>',
+        '<div class="centered"><h1>Hiring plan for the next two quarters</h1></div>',
         '<h2>Headcount by team</h2><div class="split"><figure data-chart="bar" data-labels="Operations, Sales, Support, Data" data-values="12, 8, 6, 4" data-unit=""></figure><p>Operations carries half of the plan because the new depot opens in October.</p></div>',
         '<h2>Costs and timing</h2><table><tr><th>Team</th><th>Start</th><th>Cost</th></tr><tr><td>Operations</td><td>October</td><td>$480k</td></tr><tr><td>Sales</td><td>January</td><td>$320k</td></tr></table>',
     ],
@@ -110,7 +114,7 @@ CLEAN = [
 
 VARIANT_STYLE = SEEDED_STYLE + """
 .topbar { border-top: 8px solid var(--accent); padding: 28px; background: var(--surface); }
-.pill { display: inline-block; align-self: flex-start; padding: 6px 16px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 18px; }
+.pill { display: inline-block; align-self: flex-start; padding: 6px 16px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 20px; }
 .number { font-size: 20px; color: var(--accent); }
 .plain-icon { font-size: 44px; }
 .wide-pill { padding: 28px 64px; border-radius: 999px; background: var(--surface); }

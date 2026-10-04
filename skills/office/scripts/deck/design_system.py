@@ -160,6 +160,11 @@ def flat_hierarchy(system: DesignSystem, threshold: dict) -> list[str]:
     return [f"type.title is {ratio:.2f} times type.body; the title needs at least {threshold['minimumRatio']}"] if ratio < threshold["minimumRatio"] else []
 
 
+def text_size(system: DesignSystem, threshold: dict) -> list[str]:
+    declared = {"body": threshold["bodyMinimum"], "small": threshold["captionMinimum"]}
+    return [f"type.{name} is {system.sizes[name]:g}px; it needs at least {minimum}px at the 1600px canvas" for name, minimum in declared.items() if name in system.sizes and system.sizes[name] < minimum]
+
+
 def tight_tracking(system: DesignSystem, threshold: dict) -> list[str]:
     return [f"type.tracking {system.tracking:g}em squeezes letters past {threshold['minimumEm']:g}em"] if system.tracking < threshold["minimumEm"] else []
 
@@ -206,6 +211,7 @@ TOKEN_CHECKS = {
     "italicSerifDisplay": italic_serif_display,
     "flatHierarchy": flat_hierarchy,
     "tightTracking": tight_tracking,
+    "textSize": text_size,
     "extremeRadius": extreme_radius,
     "hairlineWideShadow": hairline_wide_shadow,
     "glowShadow": glow_shadow,
@@ -263,7 +269,7 @@ def font_stack(font_value: str) -> str:
 
 def size_tokens(system: DesignSystem) -> dict[str, str]:
     body = system.sizes["body"]
-    sizes = {"display": system.sizes.get("display", system.sizes["title"]), "title": system.sizes["title"], "body": body, "small": system.sizes.get("small", max(18.0, round(body * 0.8)))}
+    sizes = {"display": system.sizes.get("display", system.sizes["title"]), "title": system.sizes["title"], "body": body, "small": system.sizes.get("small", max(float(threshold_of("TEXT_TOO_SMALL")["captionMinimum"]), round(body * 0.8)))}
     return {f"size-{name}": f"{value:g}px" for name, value in sizes.items()}
 
 

@@ -165,7 +165,8 @@ export function measureDesignRules(page, rules, tools) {
         const widest = Math.max(...widths);
         const side = widths.indexOf(widest);
         if (widest < minimumWidth || widths.some((width, index) => index !== side && width * ratio > widest)) return [];
-        const isBox = isVisibleColor(backgroundOf(element)) || largestRadius(element) > 0 || widths.some((width, index) => index !== side && width > 0);
+        const isSideRule = (side === 1 || side === 3) && descendantTextRects(element).length > 0;
+        const isBox = isSideRule || isVisibleColor(backgroundOf(element)) || largestRadius(element) > 0 || widths.some((width, index) => index !== side && width > 0);
         return isBox ? [finding(element, `a ${widest}px ${sides[side].toLowerCase()} border`)] : [];
       });
       const strips = elementsOf(page).slice(1).flatMap((element) => {
@@ -188,21 +189,30 @@ export function measureDesignRules(page, rules, tools) {
         return Math.min(rect.width, rect.height) >= minimumSide && radius > maximum && !isRound ? [finding(element, `${Math.round(radius)}px corners`)] : [];
       }),
 
-    labelAboveHeading: ({ sizeShare, reach, maximumCharacters }) => {
-      const headings = textElements().filter((element) => /^H[1-4]$/.test(element.tagName.toUpperCase()));
-      return headings.flatMap((heading) => {
-        const headingRect = unionRect(ownTextRects(heading));
-        const headingSize = fontSize(heading);
+    labelAboveHeading: ({ sizeShare, eyebrowSizeShare, reach, maximumCharacters, spacingEm }) => {
+      const isHeading = (element) => /^H[1-4]$/.test(element.tagName.toUpperCase());
+      const isShortAndSmallerThan = (element, size, share) => fontSize(element) <= size * share && (element.textContent || "").trim().length <= maximumCharacters;
+      const isEyebrowStyled = (element) => {
+        const style = styleOf(element);
+        const spacing = String(style.letterSpacing || "normal");
+        const tracking = spacing === "normal" ? 0 : spacing.endsWith("em") ? parseFloat(spacing) : pixels(spacing) / Math.max(fontSize(element), 1);
+        return style.textTransform === "uppercase" || tracking >= spacingEm;
+      };
+      const sitsDirectlyAbove = (label, target, size) => {
+        const labelRect = unionRect(ownTextRects(label));
+        const targetRect = unionRect(ownTextRects(target));
+        return labelRect.bottom <= targetRect.top + 2 && labelRect.bottom >= targetRect.top - reach * size && overlapsHorizontally(labelRect, targetRect);
+      };
+      const labelsAbove = (target) => {
+        const targetSize = fontSize(target);
+        const headingTarget = isHeading(target);
         return textElements()
-          .filter((element) => !heading.contains(element) && !element.contains(heading))
-          .filter((element) => !/^H[1-4]$/.test(element.tagName.toUpperCase()) || fontSize(element) <= headingSize * sizeShare)
-          .filter((element) => fontSize(element) <= headingSize * sizeShare && (element.textContent || "").trim().length <= maximumCharacters)
-          .filter((element) => {
-            const rect = unionRect(ownTextRects(element));
-            return rect.bottom <= headingRect.top + 2 && rect.bottom >= headingRect.top - reach * headingSize && overlapsHorizontally(rect, headingRect);
-          })
-          .map((element) => finding(element, `above ${describe(heading).selector}`));
-      });
+          .filter((element) => !target.contains(element) && !element.contains(target) && !isHeading(element))
+          .filter((element) => (headingTarget ? isShortAndSmallerThan(element, targetSize, sizeShare) : isEyebrowStyled(element) && isShortAndSmallerThan(element, targetSize, eyebrowSizeShare)))
+          .filter((element) => sitsDirectlyAbove(element, target, targetSize))
+          .map((element) => finding(element, `above ${describe(target).selector}`));
+      };
+      return textElements().filter((target) => !target.closest("table, svg")).flatMap(labelsAbove);
     },
 
     iconAboveHeading: ({ maximumIcon, reach, headingWeight }) => {
@@ -343,9 +353,69 @@ export function measureDesignRules(page, rules, tools) {
       return [...gradients, ...cyan.slice(0, 1)];
     },
 
-    emDashes: ({ maximumPerSlide }) => {
-      const count = (page.textContent.match(/—/g) || []).length;
-      return count > maximumPerSlide ? [finding(page, `${count} em dashes`)] : [];
+    emDashes: ({ maximumPerSlide, titleMaximum }) => {
+      const countIn = (text) => (text.match(/—/g) || []).length;
+      const titles = textElements().filter((element) => /^H[1-4]$/.test(element.tagName.toUpperCase()) && countIn(element.textContent) > titleMaximum).map((element) => finding(element, "an em dash in a title"));
+      const count = countIn(page.textContent);
+      return count > maximumPerSlide ? [finding(page, `${count} em dashes`), ...titles] : titles;
+    },
+
+    textSize: ({ bodyMinimum, captionMinimum, bodyCharacters, bodyWords }) => {
+      const isChartText = (element) => element.closest("svg, figure[data-chart], [data-native-chart]");
+      const ownText = (element) => Array.from(element.childNodes).filter((node) => node.nodeType === Node.TEXT_NODE).map((node) => node.textContent.trim()).join(" ").trim();
+      const isBody = (element) => {
+        const text = ownText(element);
+        return ["LI", "TD", "DD", "BLOCKQUOTE"].includes(element.tagName.toUpperCase()) || text.length >= bodyCharacters || text.split(/\s+/).length >= bodyWords;
+      };
+      return textElements().filter((element) => !isChartText(element)).flatMap((element) => {
+        const minimum = isBody(element) ? bodyMinimum : captionMinimum;
+        return fontSize(element) < minimum - 0.01 ? [finding(element, `${Math.round(fontSize(element) * 10) / 10}px, under ${minimum}px for ${isBody(element) ? "body text" : "a caption or label"}`)] : [];
+      });
+    },
+
+    contentDistribution: ({ bandShare, centeredEdgeShare }) => {
+      const pageRect = rectOf(page);
+      const pageArea = pageRect.width * pageRect.height;
+      const isMedia = (element) => ["IMG", "SVG", "CANVAS", "VIDEO", "TABLE"].includes(element.tagName.toUpperCase()) && !element.parentElement.closest("svg") && rectOf(element).width > 0;
+      const contentRects = [
+        ...textElements().flatMap((element) => ownTextRects(element)),
+        ...elementsOf(page).slice(1).filter((element) => isMedia(element) || isCard(element)).map(rectOf).filter((rect) => rect.width * rect.height < pageArea * coveringShare),
+      ];
+      const spans = contentRects.map((rect) => ({ top: Math.max(rect.top, pageRect.top), bottom: Math.min(rect.bottom, pageRect.bottom) })).filter((span) => span.bottom > span.top).sort((first, second) => first.top - second.top);
+      if (!spans.length) return [];
+      const merged = spans.reduce((bands, span) => {
+        const last = bands[bands.length - 1];
+        if (last && span.top <= last.bottom) last.bottom = Math.max(last.bottom, span.bottom);
+        else bands.push({ ...span });
+        return bands;
+      }, []);
+      const above = merged[0].top - pageRect.top;
+      const below = pageRect.bottom - merged[merged.length - 1].bottom;
+      const between = merged.slice(1).map((band, index) => band.top - merged[index].bottom);
+      const isCentered = above >= pageRect.height * centeredEdgeShare && below >= pageRect.height * centeredEdgeShare;
+      const edges = isCentered ? [] : [above, below];
+      const widest = Math.max(0, ...edges, ...between);
+      const place = edges.length && widest === above ? "above the content" : edges.length && widest === below ? "below the content" : "between parts of the content";
+      return widest >= pageRect.height * bandShare ? [finding(page, `an empty band ${Math.round(widest)}px tall (${Math.round((widest / pageRect.height) * 100)}% of the slide height) ${place}`)] : [];
+    },
+
+    heroMetric: ({ minimumPairs, numberToBody, labelToNumber, reach, maximumCharacters }) => {
+      const sizes = textElements().filter((element) => !element.closest("svg")).flatMap((element) => Array((element.textContent || "").trim().length).fill(fontSize(element))).sort((first, second) => first - second);
+      if (!sizes.length) return [];
+      const body = sizes[Math.floor(sizes.length / 2)];
+      const hasDigit = (element) => /\d/.test(element.textContent || "");
+      const numbers = textElements().filter((element) => !/^H[1-4]$/.test(element.tagName.toUpperCase()) && !element.closest("svg, table") && (element.textContent || "").trim().length <= maximumCharacters && hasDigit(element) && fontSize(element) >= body * numberToBody);
+      const hasLabel = (number) => {
+        const numberRect = unionRect(ownTextRects(number));
+        return textElements().some((label) => {
+          if (label === number || label.contains(number) || number.contains(label) || fontSize(label) > fontSize(number) * labelToNumber) return false;
+          const labelRect = unionRect(ownTextRects(label));
+          const gap = labelRect.top >= numberRect.bottom - 2 ? labelRect.top - numberRect.bottom : numberRect.top >= labelRect.bottom - 2 ? numberRect.top - labelRect.bottom : Infinity;
+          return gap <= reach * fontSize(number) && overlapsHorizontally(labelRect, numberRect);
+        });
+      };
+      const pairs = numbers.filter(hasLabel);
+      return pairs.length >= minimumPairs ? [finding(pairs[0], `${pairs.length} numbers set at ${numberToBody}x the body size or more, each over a small label`)] : [];
     },
   };
 

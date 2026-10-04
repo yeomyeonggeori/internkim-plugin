@@ -9,8 +9,8 @@
     {"code": "EXTREME_RADIUS", "stages": ["tokens", "render"], "measure": "extremeRadius", "threshold": {"maximum": 24, "minimumSide": 80},
      "meaning": "corners are rounded far past a restrained radius",
      "suggestion": "round boxes by at most 24px"},
-    {"code": "LABEL_ABOVE_HEADING", "stages": ["render"], "measure": "labelAboveHeading", "threshold": {"sizeShare": 0.72, "reach": 1.6, "maximumCharacters": 60},
-     "meaning": "a small label, eyebrow, badge or pill sits directly above a heading",
+    {"code": "LABEL_ABOVE_HEADING", "stages": ["render"], "measure": "labelAboveHeading", "threshold": {"sizeShare": 0.72, "eyebrowSizeShare": 1, "reach": 1.6, "maximumCharacters": 60, "spacingEm": 0.04},
+     "meaning": "a small label, eyebrow, badge or pill sits directly above a heading, or a small letter-spaced or all-caps label sits directly above a block of text",
      "suggestion": "remove the label, or fold what it says into the heading or the line under it"},
     {"code": "ICON_ABOVE_HEADING", "stages": ["render"], "measure": "iconAboveHeading", "threshold": {"maximumIcon": 160, "reach": 2, "headingWeight": 600},
      "meaning": "an icon or icon tile is stacked above a heading",
@@ -63,8 +63,17 @@
     {"code": "FONT_NOT_BUNDLED", "stages": ["tokens"], "measure": "fontNotBundled", "threshold": {},
      "meaning": "the design system names a font the skill does not bundle, so the PDF and PPTX would substitute another",
      "suggestion": "name a bundled font family"},
-    {"code": "EM_DASH_OVERUSE", "stages": ["render"], "measure": "emDashes", "threshold": {"maximumPerSlide": 2},
-     "meaning": "a slide strings clauses together with em dashes",
-     "suggestion": "split the sentence, or use a colon or a comma"}
+    {"code": "EM_DASH_OVERUSE", "stages": ["render"], "measure": "emDashes", "threshold": {"maximumPerSlide": 2, "titleMaximum": 0},
+     "meaning": "a slide strings clauses together with em dashes, or a title holds one",
+     "suggestion": "split the sentence, or use a colon or a comma; a title takes no em dash"},
+    {"code": "TEXT_TOO_SMALL", "stages": ["tokens", "render"], "measure": "textSize", "threshold": {"bodyMinimum": 28, "captionMinimum": 20, "bodyCharacters": 40, "bodyWords": 4},
+     "meaning": "text is set below presentation size at the 1600px canvas: body text under 28px or a caption or label under 20px",
+     "suggestion": "raise body text to 28px and captions to 20px or more, and cut words until it fits; a slide holds less text rather than smaller text"},
+    {"code": "CONTENT_CLUSTERED", "stages": ["render"], "measure": "contentDistribution", "threshold": {"bandShare": 0.2, "centeredEdgeShare": 0.2},
+     "meaning": "the content gathers in one part of the slide and leaves a wide empty band across it",
+     "suggestion": "rebalance the slide: stretch the content to the canvas, enlarge the main figure, chart or photo, or regroup the parts so no empty band is taller than a fifth of the slide"},
+    {"code": "HERO_METRIC_TEMPLATE", "stages": ["render"], "measure": "heroMetric", "threshold": {"minimumPairs": 2, "numberToBody": 1.25, "labelToNumber": 0.65, "reach": 1.2, "maximumCharacters": 14},
+     "meaning": "two or more big numbers each sit over or under a small label, the generic stat-hero template",
+     "suggestion": "state the figures in the sentence that carries the point, set them in a table or chart, or keep one number that the slide is about"}
   ]
 }
