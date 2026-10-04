@@ -1,7 +1,7 @@
 export const capacityAttribute = "data-kit-capacity";
 
 export function measurePageGeometry(pages, thresholds) {
-  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, labelLineMaximum, repeatedFigureMinimum, backgroundShareOfSlide, deadZoneShareOfSlide, markBreadthMinimum, roundSlotMinimum } = thresholds;
+  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, labelLineMaximum, repeatedFigureMinimum, backgroundShareOfSlide, deadZoneShareOfSlide, markBreadthMinimum, roundSlotMinimum, textContrastMinimum, largeTextContrastMinimum, largeTextShareOfWidth, largeBoldTextShareOfWidth } = thresholds;
 
   const isMeasurable = (element) => {
     const style = getComputedStyle(element);
@@ -554,6 +554,171 @@ export function measurePageGeometry(pages, thresholds) {
       .filter(({ fill }) => fill && fill.share < fill.minimum)
       .map(({ chart, fill }) => ({ ...describe(chart.closest("figure") || chart), ...fill }));
 
+  const colorChannels = (color) => {
+    const match = /^rgba?\(([^)]+)\)$/.exec(String(color).trim());
+    if (!match) return null;
+    const [red, green, blue, alpha = 1] = match[1].split(",").map((part) => parseFloat(part));
+    return { red, green, blue, alpha };
+  };
+
+  const blend = (top, bottom) => ({
+    red: top.red * top.alpha + bottom.red * (1 - top.alpha),
+    green: top.green * top.alpha + bottom.green * (1 - top.alpha),
+    blue: top.blue * top.alpha + bottom.blue * (1 - top.alpha),
+    alpha: 1,
+  });
+
+  const linearChannel = (channel) => {
+    const share = channel / 255;
+    return share <= 0.04045 ? share / 12.92 : ((share + 0.055) / 1.055) ** 2.4;
+  };
+
+  const luminance = ({ red, green, blue }) => 0.2126 * linearChannel(red) + 0.7152 * linearChannel(green) + 0.0722 * linearChannel(blue);
+
+  const contrastRatio = (first, second) => {
+    const [lighter, darker] = [luminance(first), luminance(second)].sort((one, other) => other - one);
+    return (lighter + 0.05) / (darker + 0.05);
+  };
+
+  const paintOrder = (page) => {
+    const elements = elementsOf(page);
+    return new Map(elements.map((element, order) => [element, stackingKey(element, page, order)]));
+  };
+
+  const isMedia = (element) => mediaTags.has(element.tagName.toUpperCase());
+
+  const fillsUnder = (page, element, order) => {
+    const text = unionRect(ownTextRects(element));
+    const center = { x: (text.left + text.right) / 2, y: (text.top + text.bottom) / 2 };
+    const key = order.get(element);
+    return elementsOf(page)
+      .filter((candidate) => !element.contains(candidate) || candidate === element)
+      .filter((candidate) => candidate === page || candidate.contains(element) || paintsAbove(key, order.get(candidate)))
+      .filter((candidate) => {
+        const style = getComputedStyle(candidate);
+        return isMedia(candidate) || colorIsVisible(style.backgroundColor) || style.backgroundImage !== "none";
+      })
+      .filter((candidate) => {
+        const rect = candidate.getBoundingClientRect();
+        return rect.left <= center.x && center.x <= rect.right && rect.top <= center.y && center.y <= rect.bottom;
+      })
+      .sort((first, second) => (paintsAbove(order.get(first), order.get(second)) ? 1 : paintsAbove(order.get(second), order.get(first)) ? -1 : 0));
+  };
+
+  const backdropOf = (page, element, order) => {
+    let backdrop = null;
+    for (const fill of fillsUnder(page, element, order)) {
+      const style = getComputedStyle(fill);
+      if (isMedia(fill) || style.backgroundImage.includes("url(")) return null;
+      const color = colorChannels(style.backgroundColor);
+      if (!color || color.alpha === 0) continue;
+      backdrop = backdrop ? blend(color, backdrop) : color.alpha >= 1 ? color : null;
+    }
+    return backdrop;
+  };
+
+  const opacityOf = (element) => {
+    let opacity = 1;
+    for (let current = element; current; current = current.parentElement) {
+      const own = parseFloat(getComputedStyle(current).opacity);
+      opacity *= Number.isNaN(own) ? 1 : own;
+    }
+    return opacity;
+  };
+
+  const isLargeText = (style, slideWidth) => {
+    const size = parseFloat(style.fontSize);
+    return size >= slideWidth * largeTextShareOfWidth || (parseInt(style.fontWeight, 10) >= 700 && size >= slideWidth * largeBoldTextShareOfWidth);
+  };
+
+  const lowContrastText = (page) => {
+    const slideWidth = page.getBoundingClientRect().width;
+    const order = paintOrder(page);
+    return elementsOf(page)
+      .filter((element) => ownTextRects(element).length > 0)
+      .flatMap((element) => {
+        const style = getComputedStyle(element);
+        const ink = colorChannels(style.color);
+        const backdrop = backdropOf(page, element, order);
+        if (!ink || !backdrop) return [];
+        const ratio = contrastRatio(blend({ ...ink, alpha: ink.alpha * opacityOf(element) }, backdrop), backdrop);
+        const minimum = isLargeText(style, slideWidth) ? largeTextContrastMinimum : textContrastMinimum;
+        if (ratio >= minimum) return [];
+        return [{ ...describe(element), ratio: Math.round(ratio * 100) / 100, minimum }];
+      });
+  };
+
+  const titleStyle = (page) => {
+    const title = Array.from(page.children).find((child) => ["H1", "H2"].includes(child.tagName) && isMeasurable(child));
+    if (!title) return null;
+    const style = getComputedStyle(title);
+    const lines = descendantTextRects(title);
+    return {
+      ...describe(title),
+      fontFamily: style.fontFamily,
+      fontWeight: parseInt(style.fontWeight, 10),
+      color: style.color,
+      textAlign: style.textAlign,
+      textLeft: lines.length ? round(Math.min(...lines.map((rect) => rect.left)) - page.getBoundingClientRect().left) : null,
+    };
+  };
+
+  const near = (first, second) => Math.abs(first - second) <= pixelTolerance;
+
+  const sharesTopOrMiddle = (first, second) => near(first.top, second.top) || near(first.top + first.bottom, second.top + second.bottom);
+
+  const sharesAColumnEdge = (first, second) => near(first.left, second.left) || near(first.right, second.right) || near(first.left + first.right, second.left + second.right);
+
+  const isPlacedByHand = (element) => ["absolute", "fixed"].includes(getComputedStyle(element).position);
+
+  const emphasisClasses = new Set(["pick", "done", "up", "down"]);
+
+  const kindOf = (element) => Array.from(element.classList).filter((name) => !emphasisClasses.has(name)).sort().join(".");
+
+  const siblingGroups = (parent) => {
+    const groups = new Map();
+    Array.from(parent.children)
+      .filter((child) => isMeasurable(child) && !isPlacedByHand(child) && !getComputedStyle(child).display.startsWith("inline") && kindOf(child) && descendantTextRects(child).length > 0)
+      .forEach((child) => {
+        const key = `${child.tagName}.${kindOf(child)}`;
+        groups.set(key, [...(groups.get(key) || []), { element: child, rect: child.getBoundingClientRect() }]);
+      });
+    return Array.from(groups.values()).filter((group) => group.length >= 2);
+  };
+
+  const pairMisalignment = (first, second) => {
+    const [one, other] = [first.rect, second.rect];
+    const sideBySide = one.top < other.bottom && other.top < one.bottom;
+    const stacked = one.left < other.right && other.left < one.right;
+    if (sideBySide && !stacked && !sharesTopOrMiddle(one, other)) return { axis: "row", offset: round(Math.abs(one.top - other.top)) };
+    if (stacked && !sideBySide && !sharesAColumnEdge(one, other)) return { axis: "column", offset: round(Math.abs(one.left - other.left)) };
+    return null;
+  };
+
+  const unevenGap = (group, low, high) => {
+    const ordered = [...group].sort((one, other) => one.rect[low] - other.rect[low]);
+    const gaps = ordered.slice(1).map((box, index) => ({ first: ordered[index], second: box, gap: box.rect[low] - ordered[index].rect[high] }));
+    if (gaps.length < 2) return null;
+    const widest = gaps.reduce((one, other) => (other.gap > one.gap ? other : one));
+    const narrowest = Math.min(...gaps.map(({ gap }) => gap));
+    return widest.gap - narrowest > pixelTolerance ? { first: widest.first, second: widest.second, offset: round(widest.gap - narrowest) } : null;
+  };
+
+  const unevenSpacing = (group) => {
+    const pairs = group.flatMap((first, index) => group.slice(index + 1).map((second) => [first.rect, second.rect]));
+    const isColumn = pairs.every(([one, other]) => one.left < other.right && other.left < one.right && !(one.top < other.bottom && other.top < one.bottom));
+    const isRow = pairs.every(([one, other]) => one.top < other.bottom && other.top < one.bottom && !(one.left < other.right && other.left < one.right));
+    const uneven = isColumn ? unevenGap(group, "top", "bottom") : isRow ? unevenGap(group, "left", "right") : null;
+    return uneven ? [{ first: uneven.first, second: uneven.second, misalignment: { axis: isColumn ? "column spacing" : "row spacing", offset: uneven.offset } }] : [];
+  };
+
+  const misalignedSiblings = (page) =>
+    elementsOf(page)
+      .flatMap(siblingGroups)
+      .flatMap((group) => [...group.flatMap((first, index) => group.slice(index + 1).map((second) => ({ first, second, misalignment: pairMisalignment(first, second) }))), ...unevenSpacing(group)])
+      .filter(({ misalignment }) => misalignment)
+      .map(({ first, second, misalignment }) => ({ first: describe(first.element), second: describe(second.element), ...misalignment }));
+
   return pages.map((page, index) => ({
     index: index + 1,
     width: round(page.getBoundingClientRect().width),
@@ -573,6 +738,9 @@ export function measurePageGeometry(pages, thresholds) {
     longLabels: longLabels(page),
     repeatedFigures: repeatedFigures(page),
     underfilledCharts: underfilledCharts(page),
+    lowContrastText: lowContrastText(page),
+    misalignedSiblings: misalignedSiblings(page),
+    titleStyle: titleStyle(page),
     capacity: JSON.parse(page.getAttribute(capacityAttribute) || "[]"),
   }));
 }

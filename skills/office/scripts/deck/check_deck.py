@@ -122,7 +122,7 @@ def deck_issues(request: CheckRequest, root: Element, slides: list[Slide], is_ki
     for slide in slides:
         issues += empty_slide_issues(slide) + chart_issues(slide) + image_issues(slide, request.source_path.parent) + placeholder_issues(slide)
     issues += text_presence_issues(" ".join(slide.text() for slide in slides), request.required_text, request.forbidden_text)
-    return issues + palette_issues(root, request.source_path.parent, is_kit_deck)
+    return issues + palette_issues(root, slides, request.source_path.parent, is_kit_deck)
 
 
 def theme_issues(root: Element) -> list[Issue]:
@@ -398,16 +398,30 @@ def placeholder_issues(slide: Slide) -> list[Issue]:
     return [PLACEHOLDER_LEFT.issue(f"{slide.location} still shows {', '.join(sorted(set(found)))}", slide.location, suggestion="replace it with the real value from the source, or write \"Not provided\" in the deck's language")]
 
 
-def palette_issues(root: Element, base_path: pathlib.Path, is_kit_deck: bool) -> list[Issue]:
+def palette_issues(root: Element, slides: list[Slide], base_path: pathlib.Path, is_kit_deck: bool) -> list[Issue]:
     palette = allowed_colors(root, base_path, is_kit_deck)
     if palette is None:
         return []
-    off_palette = sorted(used_colors(root) - palette - ALWAYS_ALLOWED_COLORS)
+    places = [("slides.html", shared_style_texts(root, slides))] + [(slide.location, slide_style_texts(slide.element)) for slide in slides]
+    palette_listed = ", ".join(sorted(f"#{color}" for color in palette))
+    return [issue for location, texts in places for issue in off_palette_issues(colors_in(texts) - palette - ALWAYS_ALLOWED_COLORS, location, palette_listed)]
+
+
+def off_palette_issues(off_palette: set[str], location: str, palette_listed: str) -> list[Issue]:
     if not off_palette:
         return []
-    listed = ", ".join(f"#{color}" for color in off_palette)
-    palette_listed = ", ".join(sorted(f"#{color}" for color in palette))
-    return [OFF_PALETTE_COLOR.issue(f"{len(off_palette)} colors are outside the palette: {listed}", "slides.html", suggestion=f"{OFF_PALETTE_COLOR.default_suggestion()}; the palette is {palette_listed}")]
+    listed = ", ".join(f"#{color}" for color in sorted(off_palette))
+    return [OFF_PALETTE_COLOR.issue(f"{len(off_palette)} colors are outside the palette: {listed}", location, suggestion=f"{OFF_PALETTE_COLOR.default_suggestion()}; the palette is {palette_listed}")]
+
+
+def slide_style_texts(section: Element) -> list[str]:
+    return [element.attributes["style"] for element in (section, *section.descendants()) if "style" in element.attributes]
+
+
+def shared_style_texts(root: Element, slides: list[Slide]) -> list[str]:
+    in_slides = {id(element) for slide in slides for element in (slide.element, *slide.element.descendants())}
+    blocks = ["".join(child for child in style.children if isinstance(child, str)) for style in find_all(root, "style")]
+    return blocks + [element.attributes["style"] for element in root.descendants() if "style" in element.attributes and id(element) not in in_slides]
 
 
 def allowed_colors(root: Element, base_path: pathlib.Path, is_kit_deck: bool) -> set[str] | None:
@@ -440,9 +454,9 @@ def token_overrides(root: Element, token_names: set[str]) -> set[str]:
     return colors
 
 
-def used_colors(root: Element) -> set[str]:
+def colors_in(style_texts_found: list[str]) -> set[str]:
     colors = set()
-    for style_text in style_texts(root):
+    for style_text in style_texts_found:
         for name, value in DECLARATION_PATTERN.findall(style_text):
             colors |= {normalized_color(literal) for literal in COLOR_LITERAL_PATTERN.findall(value) if parse_css_color(literal).alpha > 0}
     return colors - {""}

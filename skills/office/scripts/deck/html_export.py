@@ -3,10 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 import pathlib
 
-from deck.review.acceptance import judge_build
+from deck.review.acceptance import OBJECTIVE_DEFECT_CODES, judge_build
+from deck.review.visual_review import write_visual_review
 from deck.check_deck import CheckRequest, check_deck
 from deck.deck_definitions import FONT_NOT_EMBEDDED, TEXT_KEPT_AS_PICTURE
 from deck.deck_kit import KIT_MARKER, inject_deck_kit, slide_size
+from pptx import Presentation
+
+from powerpoint.chart_audit import presentation_chart_issues
 from deck.pptx_export.editable import EditablePptx, read_text_layers, text_layers_path, write_editable_pptx
 from deck.review.geometry_checks import GEOMETRY_FILE_NAME
 from deck.layout_thresholds import renderer_thresholds
@@ -59,11 +63,12 @@ def export_deck(request: ExportRequest) -> Result:
     derived = write_derived_outputs(request, html_output_path, slide_sources)
     issues = list(check.issues) + derived.issues
     acceptance = judge_build(request.build_path, source_text, issues, deliverable_path(request))
+    visual_review_path = write_visual_review(request.source_path, request.review_path, request.deck_name, issues, OBJECTIVE_DEFECT_CODES)
     return Result(
         summary=f"{acceptance.verdict}. {build_summary(request, derived)}",
         output_path=deliverable_path(request),
         issues=tuple(issues),
-        details=build_details(request, derived) | {"acceptance": acceptance.to_json()},
+        details=build_details(request, derived) | {"acceptance": acceptance.to_json(), "visualReview": str(visual_review_path)},
     )
 
 
@@ -142,7 +147,7 @@ def write_pptx(request: ExportRequest, notes: list[str]) -> tuple[dict, list[Iss
     if layers is None:
         raise OfficeFailure(RENDER_FAILED.issue(f"{pptx_path.name} was not written: the renderer left no editable layer for each of the {len(notes)} slides", str(layers_path)))
     written = write_editable_pptx(layers, notes, pptx_path)
-    return editable_pptx_details(written, layers_path), editable_pptx_issues(written, pptx_path)
+    return editable_pptx_details(written, layers_path), editable_pptx_issues(written, pptx_path) + presentation_chart_issues(Presentation(str(pptx_path)))
 
 
 def editable_pptx_details(written: EditablePptx, layers_path: pathlib.Path) -> dict:

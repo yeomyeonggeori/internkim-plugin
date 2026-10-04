@@ -11,18 +11,22 @@ from deck.deck_definitions import (
     DRAWING_DISTORTED,
     EMPTY_REGION,
     FOOTER_CROSSED,
+    GRID_MISALIGNED,
     IMAGE_DISTORTED,
     OFF_PALETTE_COLOR,
     OUT_OF_FRAME,
     SLIDE_BLANK,
     TEXT_COVERED,
+    TEXT_LOW_CONTRAST,
     TEXT_OVERLAP,
     TINY_TEXT,
+    TITLE_STYLE_INCONSISTENT,
     TITLE_TOO_LONG,
     VERTICAL_DEAD_ZONE,
 )
 from core.office_result import Issue
 from core.text_checks import REQUIRED_TEXT_MISSING
+from powerpoint.definitions import CHART_POINT_OUTSIDE_AXIS, CHART_ZERO_MISALIGNED
 
 
 FIX_ROUNDS_ALLOWED = 2
@@ -43,6 +47,11 @@ OBJECTIVE_DEFECT_CODES = frozenset(
         VERTICAL_DEAD_ZONE.kind,
         EMPTY_REGION.kind,
         TINY_TEXT.kind,
+        TEXT_LOW_CONTRAST.kind,
+        GRID_MISALIGNED.kind,
+        TITLE_STYLE_INCONSISTENT.kind,
+        CHART_POINT_OUTSIDE_AXIS.kind,
+        CHART_ZERO_MISALIGNED.kind,
         REQUIRED_TEXT_MISSING,
         OFF_PALETTE_COLOR,
     )
