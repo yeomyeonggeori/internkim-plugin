@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 import re
 
-from deck.slide_source import SPEAKER_NOTES_BLOCK_PATTERN, normalize_structure_text, remove_invisible_markup, slide_layout, slide_role, slide_title, split_slide_sources
+from deck.slide_source import SPEAKER_NOTES_BLOCK_PATTERN, normalize_structure_text, remove_invisible_markup, slide_role, slide_title, split_slide_sources
 
 
 PREVIEW_CHARACTER_LIMIT = 180
@@ -69,7 +69,6 @@ def inspect_slide_structure(slide_source: str) -> dict[str, object]:
         "title": title,
         "normalizedTitle": normalize_structure_text(title),
         "slideRole": declared_role,
-        "kitLayout": slide_layout(slide_source),
         "classNames": class_names,
     }
 

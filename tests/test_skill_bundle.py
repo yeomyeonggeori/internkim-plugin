@@ -9,6 +9,8 @@ import sys
 import tempfile
 import unittest
 
+from free_deck_fixture import write_free_deck
+
 from bundle_fixture import bundled_files
 
 
@@ -72,9 +74,7 @@ class OfficeEntryTest(unittest.TestCase):
         self.assertEqual([verb.name for verb in VERBS if f"office {verb.name}" not in documents and verb.name not in listed], [])
 
 
-DECK_SOURCE = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>예시</title></head><body data-theme="corporate">
-<section data-layout="cover"><h1>매출이 6% 늘었습니다</h1><p class="meta">이샘플</p></section>
-</body></html>"""
+DECK_SECTIONS = ["<h1>매출이 6% 늘었습니다</h1><p>이샘플</p>"]
 QUOTE = {
     "form": "kr/quote",
     "title": "견 적 서",
@@ -87,7 +87,7 @@ QUOTE = {
 
 
 def prepare_deck_restore(directory):
-    (directory / "slides.html").write_text(DECK_SOURCE, encoding="utf-8")
+    write_free_deck(directory, DECK_SECTIONS)
     subprocess.run([sys.executable, str(OFFICE_SCRIPTS_PATH / "office"), "create", "build/deck.html", "slides.html"], capture_output=True, check=True, cwd=directory)
     return ["convert", "build/deck.html", "restored.html"]
 

@@ -11,6 +11,7 @@ import unittest
 from xml.etree import ElementTree
 import zipfile
 
+from design_gate_fixture import design_markdown
 from render_fixture import can_render
 
 
@@ -291,6 +292,7 @@ class RenderedEditablePptxTest(unittest.TestCase):
     def test_the_pptx_holds_each_slides_visible_text_in_the_deck_font_inside_the_slide(self):
         with tempfile.TemporaryDirectory() as directory:
             deck_path = Path(directory)
+            (deck_path / "DESIGN.md").write_text(design_markdown({"fonts": {"display": "Paperlogy", "body": "Paperlogy"}}), encoding="utf-8")
             (deck_path / "slides.html").write_text(DECK_SOURCE, encoding="utf-8")
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path)
             envelope = json.loads(completed.stdout)

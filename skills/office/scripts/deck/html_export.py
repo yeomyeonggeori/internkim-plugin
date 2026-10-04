@@ -7,7 +7,9 @@ from deck.review.acceptance import OBJECTIVE_DEFECT_CODES, judge_build
 from deck.review.visual_review import write_visual_review
 from deck.check_deck import CheckRequest, check_deck
 from deck.deck_definitions import FONT_NOT_EMBEDDED, TEXT_KEPT_AS_PICTURE
-from deck.deck_kit import KIT_MARKER, inject_deck_kit, slide_size
+from deck.deck_kit import KIT_MARKER, slide_size
+from deck.deck_html import EXCLUDED_STYLES, SPEAKER_NOTES_HIDDEN_STYLE, deck_html_text
+from deck.design_system import read_design_system
 from pptx import Presentation
 
 from powerpoint.chart_audit import presentation_chart_issues
@@ -18,18 +20,12 @@ from core.office_result import Issue, OfficeFailure, Result
 from render.renderer import PIXELS_FILE_NAME, RENDER_FAILED, RENDERER_UNAVAILABLE, RenderFailed, RendererUnavailable, RenderRequest, render_html, render_issues
 from deck.review.evidence import clear_stale_render_evidence
 from deck.review.deck_review import review_deck
-from deck.resource_inlining import VENDORED_FONTS_MARKER, inject_vendored_paperlogy_fallback, inline_local_fonts, inline_local_images
-from deck.slide_source import SPEAKER_NOTES_CLASS
 from deck.slide_structure import extract_notes
-from deck.slide_viewer import SLIDE_VIEWER_MARKER, inject_screen_slide_viewer
 from deck.source_preflight import read_checked_source
 from schemas.known_values import load_runtime_context
-from deck.deck_preparation import kit_additions, prepare_deck
-from deck.deck_source import parse_source
 
 
 BUILD_REVIEW_FACTS = ("slideCount", "renderedSlideCount")
-SPEAKER_NOTES_HIDDEN_STYLE = f"section .{SPEAKER_NOTES_CLASS} {{ display: none !important; }}"
 
 
 @dataclass(frozen=True)
@@ -62,7 +58,7 @@ def export_deck(request: ExportRequest) -> Result:
         return check
     remove_previous_outputs(request)
     html_output_path = request.output_path(".html")
-    html_output_path.write_text(deck_html_text(request.source_path), encoding="utf-8")
+    html_output_path.write_text(deck_html_text(request.source_path, read_design_system(request.source_path.parent / "DESIGN.md")[0]), encoding="utf-8")
     derived = write_derived_outputs(request, html_output_path, slide_sources)
     issues = list(check.issues) + derived.issues
     acceptance = judge_build(request.build_path, source_text, issues, deliverable_path(request))
@@ -109,15 +105,6 @@ def output_formats(requested: str) -> set[str]:
     return {requested, "html", "review", *(("pdf",) if requested == "pptx" else ())}
 
 
-def deck_html_text(source_path: pathlib.Path) -> str:
-    source_text = source_path.read_text(encoding="utf-8")
-    source_text = inject_deck_kit(source_text, kit_additions(prepare_deck(parse_source(source_text))))
-    source_text = inject_vendored_paperlogy_fallback(source_text)
-    source_text = inline_local_images(source_text, source_path.parent)
-    source_text = inline_local_fonts(source_text, source_path.parent)
-    return inject_screen_slide_viewer(source_text)
-
-
 def deck_render_request(request: ExportRequest, html_output_path: pathlib.Path) -> RenderRequest:
     return RenderRequest(
         html_path=html_output_path,
@@ -132,7 +119,7 @@ def deck_render_request(request: ExportRequest, html_output_path: pathlib.Path) 
         pixels_path=request.review_path / PIXELS_FILE_NAME,
         contact_sheet_directory=request.review_path,
         script_selector=f"script[{KIT_MARKER}]",
-        excluded_styles=f"style[{SLIDE_VIEWER_MARKER}], style[{VENDORED_FONTS_MARKER}]",
+        excluded_styles=EXCLUDED_STYLES,
         extra_css=(SPEAKER_NOTES_HIDDEN_STYLE,),
     )
 

@@ -3,18 +3,17 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import random
-import subprocess
 import sys
 import tempfile
 import unittest
 import zipfile
 from xml.etree import ElementTree
 
+from free_deck_fixture import build_pptx, write_free_deck
 from render_fixture import can_render
 
 
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
-OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from charts.combo import AXIS_INTERVALS, SECONDARY_AXIS_RATIO, combo_chart_space, lines_need_own_axis, zero_aligned_ranges  # noqa: E402
@@ -105,9 +104,8 @@ CHARTS = (ONE_UNIT, TWO_UNITS, NEGATIVE_COLUMNS, ONE_UNIT_APART)
 PLAIN_NEGATIVE_COLUMNS = '<figure data-chart="column" data-labels="Q1, Q2, Q3, Q4" data-values="-40, -15, 10, 35" data-unit="M"><figcaption>Net cash flow, USD M</figcaption></figure>'
 
 
-def combo_deck() -> str:
-    slides = "".join(f'<section data-layout="chart"><h2>Chart {index} reads against its own zero</h2>{chart}</section><section data-layout="statement"><h2>Statement {index} follows</h2></section>' for index, chart in enumerate((*CHARTS, PLAIN_NEGATIVE_COLUMNS), start=1))
-    return f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Combo axes</title></head><body data-theme="corporate"><section data-layout="cover"><h1>Combo axes</h1><p class="meta">Sample team</p></section>{slides}<section data-layout="closing"><h2>Keep every zero where the reader expects it</h2><ol><li>Check</li><li>Ship</li></ol></section></body></html>'
+def combo_sections() -> list[str]:
+    return [f"<h2>Chart {index} reads against its own zero</h2>{chart}" for index, chart in enumerate((*CHARTS, PLAIN_NEGATIVE_COLUMNS), start=1)]
 
 
 @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
@@ -115,10 +113,8 @@ class DeckComboAxesTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         with tempfile.TemporaryDirectory() as directory:
-            deck_path = Path(directory) / "combo"
-            deck_path.mkdir()
-            (deck_path / "slides.html").write_text(combo_deck(), encoding="utf-8")
-            cls.envelope = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/combo.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path).stdout)
+            deck_path = write_free_deck(Path(directory) / "combo", combo_sections())
+            cls.envelope = build_pptx(deck_path, "combo")
             layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
             with zipfile.ZipFile(deck_path / "build" / "combo.pptx") as archive:
                 names = sorted((name for name in archive.namelist() if name.startswith("ppt/charts/chart") and name.endswith(".xml")), key=lambda name: int(name.removeprefix("ppt/charts/chart").removesuffix(".xml")))

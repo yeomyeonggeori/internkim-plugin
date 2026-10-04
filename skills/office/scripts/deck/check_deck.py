@@ -7,51 +7,26 @@ import re
 
 from core.css_color import parse_css_color
 from deck.deck_definitions import (
-    CLOSING_ACTION,
-    CLOSING_LAYOUT,
-    CLOSING_SLIDE_MINIMUM,
-    CLOSING_WITHOUT_ACTION,
-    COVER_LAYOUT,
-    REPEAT_LIMIT,
-    VARIETY_LAYOUT_MINIMUM,
-    VARIETY_SLIDE_MINIMUM,
     CHART_DATA_INVALID,
+    ICON_UNKNOWN,
     IMAGE_NOT_FOUND,
-    KIT_LAYOUT_NAMES,
-    LAYOUT_MISSING,
-    LAYOUT_PART_EXCESS,
-    LAYOUT_PART_MISSING,
-    LAST_SLIDE_NOT_CLOSING,
-    LAYOUT_REPEATED,
-    LAYOUT_UNKNOWN,
+    LOGO_UNUSED,
     NO_SLIDE_SECTIONS,
     OFF_PALETTE_COLOR,
-    OUTLINE_LAYOUT_MISPLACED,
     SLIDE_COUNT_MISMATCH,
     SLIDE_WITHOUT_CONTENT,
     SOURCE_NOT_HTML,
-    THEME_UNKNOWN,
-    TOO_FEW_LAYOUTS,
-    FIRST_SLIDE_NOT_COVER,
-    ICON_HOST_CLASSES,
-    ICON_LIST_LAYOUTS,
-    ICON_MISPLACED,
-    ICON_UNKNOWN,
-    COVER_MIXED,
-    ItemLimits,
-    KitLayout,
-    kit_layout,
-    part_label,
 )
 from charts.kinds import KIT_STACKED_CHARTS, is_round_kind
 from charts.numbers import chart_number, split_chart_list
-from deck.deck_preparation import deck_palette, prepare_deck
-from deck.deck_kit import chart_types, icon_names, theme_palettes, uses_deck_kit
+from deck.deck_html import render_gate_issues
+from deck.deck_kit import chart_types, icon_names
+from deck.deck_preparation import prepare_deck
 from deck.deck_source import Element, find_all, normalized_text, parse_source, style_texts, visible_text
-from deck.design_tokens import design_front_matter
+from deck.design_system import DESIGN_FILE_NAME, DesignSystem, palette_of, read_design_system, token_issues
 from core.office_arguments import route_arguments
 from core.office_result import ERROR, Issue, OfficeFailure, Result, run_command
-from core.office_schema import closest_name, listed_names, names_suggestion
+from core.office_schema import closest_name, names_suggestion
 from deck.resource_inlining import resolve_resource_path
 from core.text_checks import PLACEHOLDER_PATTERN, PLACEHOLDER_LEFT, text_presence_issues
 
@@ -78,16 +53,6 @@ class Slide:
     element: Element
 
     @property
-    def layout(self) -> str:
-        return self.element.attributes.get("data-layout", "").strip()
-
-    @property
-    def intended_layout(self) -> str:
-        if self.layout in KIT_LAYOUT_NAMES:
-            return self.layout
-        return closest_name(self.layout, KIT_LAYOUT_NAMES) or self.layout
-
-    @property
     def location(self) -> str:
         return f"slide {self.index}"
 
@@ -95,9 +60,6 @@ class Slide:
     def title(self) -> str:
         headings = [child for child in self.element.child_elements() if child.tag in ("h1", "h2")]
         return normalized_text(visible_text(headings[0])) if headings else ""
-
-    def parts(self) -> list[Element]:
-        return [child for child in self.element.child_elements() if not child.is_notes()]
 
     def text(self) -> str:
         return normalized_text(visible_text(self.element))
@@ -111,122 +73,36 @@ def check_deck(request: CheckRequest) -> Result:
     slides = [Slide(index, section) for index, section in enumerate(find_all(root, "section"), start=1)]
     if not slides:
         raise OfficeFailure(NO_SLIDE_SECTIONS.issue(f"{request.source_path.name} has no <section> slides", str(request.source_path)))
-    issues = deck_issues(request, root, slides, uses_deck_kit(source_text))
-    return Result(summary=check_summary(slides, issues), output_path=str(request.source_path), issues=tuple(issues), details=check_details(root, slides))
+    system, design_issues = design_gate(request.source_path.parent)
+    if has_errors(design_issues):
+        return Result(summary=check_summary(slides, design_issues), output_path=str(request.source_path), issues=tuple(design_issues), details=check_details(slides))
+    issues = design_issues + deck_issues(request, root, slides, system)
+    if not has_errors(issues):
+        issues += render_gate_issues(request.source_path, system)
+    return Result(summary=check_summary(slides, issues), output_path=str(request.source_path), issues=tuple(issues), details=check_details(slides))
 
 
-def deck_issues(request: CheckRequest, root: Element, slides: list[Slide], is_kit_deck: bool) -> list[Issue]:
-    issues = []
-    if is_kit_deck:
-        issues += theme_issues(root) + layout_issues(slides) + sequence_issues(slides) + [issue for slide in slides for issue in icon_issues(slide)] + cover_issues(slides)
-    issues += slide_count_issues(request.requested_slide_count, slides)
+def check_design(design_path: pathlib.Path) -> Result:
+    system, issues = design_gate(design_path.parent, design_path.name)
+    summary = check_summary([], issues) if has_errors(issues) else f"{design_path.name} passes the design gate: write slides.html within it, then run office check slides.html"
+    return Result(summary=summary, output_path=str(design_path), issues=tuple(issues), details={"slideCount": 0})
+
+
+def design_gate(directory: pathlib.Path, file_name: str = DESIGN_FILE_NAME) -> tuple[DesignSystem | None, list[Issue]]:
+    system, issues = read_design_system(directory / file_name)
+    return system, issues + (token_issues(system) if system else [])
+
+
+def has_errors(issues: list[Issue]) -> bool:
+    return any(issue.kind.severity == ERROR for issue in issues)
+
+
+def deck_issues(request: CheckRequest, root: Element, slides: list[Slide], system: DesignSystem) -> list[Issue]:
+    issues = slide_count_issues(request.requested_slide_count, slides) + logo_issues(slides)
     for slide in slides:
-        issues += empty_slide_issues(slide) + chart_issues(slide) + image_issues(slide, request.source_path.parent) + placeholder_issues(slide)
+        issues += empty_slide_issues(slide) + chart_issues(slide) + icon_issues(slide) + image_issues(slide, request.source_path.parent) + placeholder_issues(slide)
     issues += text_presence_issues(" ".join(slide.text() for slide in slides), request.required_text, request.forbidden_text)
-    return issues + palette_issues(root, slides, request.source_path.parent, is_kit_deck)
-
-
-def theme_issues(root: Element) -> list[Issue]:
-    theme = body_theme(root)
-    if theme is None or theme in theme_palettes():
-        return []
-    return [THEME_UNKNOWN.issue(f'data-theme="{theme}" is not a kit theme', "body", suggestion=names_suggestion(theme, tuple(theme_palettes())))]
-
-
-def layout_issues(slides: list[Slide]) -> list[Issue]:
-    issues = []
-    for slide in slides:
-        if not slide.layout:
-            issues.append(LAYOUT_MISSING.issue(f"{slide.location} has no data-layout", slide.location, suggestion=f"give the <section> a data-layout; {listed_names(KIT_LAYOUT_NAMES)}"))
-            continue
-        layout = kit_layout(slide.layout)
-        if layout is None:
-            issues.append(LAYOUT_UNKNOWN.issue(f'{slide.location} uses data-layout="{slide.layout}"', slide.location, suggestion=names_suggestion(slide.layout, KIT_LAYOUT_NAMES)))
-            layout = kit_layout(slide.intended_layout)
-        if layout is not None:
-            issues += part_issues(slide, layout)
-    return issues
-
-
-def part_issues(slide: Slide, layout: KitLayout) -> list[Issue]:
-    issues = []
-    children = slide.parts()
-    for part in layout.parts:
-        count = sum(1 for child in children if part.matches(child.tag, child.classes, child.attributes))
-        if count < part.minimum:
-            issues.append(LAYOUT_PART_MISSING.issue(f"{slide.location} ({layout.name}) has {count} of {part_label(part)} as a direct child of its <section>", slide.location, suggestion=f"add it; {layout_parts(layout)}"))
-        elif part.maximum is not None and count > part.maximum:
-            issues.append(LAYOUT_PART_EXCESS.issue(f"{slide.location} ({layout.name}) has {count} {part.selector}; the layout holds at most {part.maximum}", slide.location, suggestion=f"{LAYOUT_PART_EXCESS.default_suggestion()}; {layout_parts(layout)}"))
-        elif part.items is not None:
-            issues += item_issues(slide, layout, next(child for child in children if part.matches(child.tag, child.classes, child.attributes)), part.items)
-    return issues
-
-
-def item_issues(slide: Slide, layout: KitLayout, items_list: Element, limits: ItemLimits) -> list[Issue]:
-    items = list_items(items_list)
-    where = f"{slide.location} ({layout.name})"
-    if len(items) < limits.minimum:
-        return [LAYOUT_PART_MISSING.issue(f"{where} has {len(items)} <li> in its <{items_list.tag}>; the layout needs at least {limits.minimum}", slide.location, suggestion=f"give the <{items_list.tag}> {limits.minimum} to {limits.maximum} <li>, or pick another layout")]
-    if len(items) > limits.maximum:
-        return [LAYOUT_PART_EXCESS.issue(f"{where} has {len(items)} <li> in its <{items_list.tag}>; the layout holds at most {limits.maximum}", slide.location, suggestion=f"keep {limits.maximum} <li> and move the rest to another slide")]
-    levels, leaves = tree_levels(items_list), tree_leaves(items_list)
-    if levels > limits.levels:
-        return [LAYOUT_PART_EXCESS.issue(f"{where} nests {levels} levels of <li>; the layout draws at most {limits.levels}", slide.location, suggestion=f"keep {limits.levels} levels and show the deeper ones on a slide of their own")]
-    if limits.leaves is not None and leaves > limits.leaves:
-        return [LAYOUT_PART_EXCESS.issue(f"{where} has {leaves} boxes on its lowest level; the layout fits at most {limits.leaves} side by side", slide.location, suggestion=f"group the lowest boxes into at most {limits.leaves}, or split the chart by branch over two slides")]
-    return []
-
-
-def list_items(items_list: Element) -> list[Element]:
-    return [child for child in items_list.child_elements() if child.tag == "li"]
-
-
-def nested_lists(item: Element) -> list[Element]:
-    return [child for child in item.child_elements() if child.tag in ("ul", "ol")]
-
-
-def tree_levels(items_list: Element) -> int:
-    return 1 + max((tree_levels(nested) for item in list_items(items_list) for nested in nested_lists(item)), default=0)
-
-
-def tree_leaves(items_list: Element) -> int:
-    return sum(sum(tree_leaves(nested) for nested in nested_lists(item)) or 1 for item in list_items(items_list))
-
-
-def sequence_issues(slides: list[Slide]) -> list[Issue]:
-    issues = []
-    layouts_in_order = [slide.intended_layout for slide in slides]
-    for start in range(len(slides) - REPEAT_LIMIT + 1):
-        window = layouts_in_order[start:start + REPEAT_LIMIT]
-        if window[0] and len(set(window)) == 1:
-            issues.append(LAYOUT_REPEATED.issue(f"slides {start + 1}-{start + REPEAT_LIMIT} all use {window[0]}", f"slide {start + REPEAT_LIMIT}"))
-    return issues + variety_issues(slides) + outline_issues(slides)
-
-
-def variety_issues(slides: list[Slide]) -> list[Issue]:
-    body = [slide for slide in slides if slide.layout and slide.intended_layout not in (COVER_LAYOUT, CLOSING_LAYOUT)]
-    layouts = {slide.intended_layout for slide in body}
-    needed = min(VARIETY_LAYOUT_MINIMUM, len(body) - 1)
-    if len(slides) < VARIETY_SLIDE_MINIMUM or len(layouts) >= needed:
-        return []
-    return [TOO_FEW_LAYOUTS.issue(f"the {len(body)} slides between the cover and the closing use only {', '.join(sorted(layouts))}; they need {needed} different layouts", "deck")]
-
-
-def outline_issues(slides: list[Slide]) -> list[Issue]:
-    issues = []
-    if slides[0].intended_layout != COVER_LAYOUT:
-        issues.append(FIRST_SLIDE_NOT_COVER.issue(f'slide 1 uses data-layout="{slides[0].layout}"', slides[0].location))
-    if len(slides) >= CLOSING_SLIDE_MINIMUM and slides[-1].intended_layout != CLOSING_LAYOUT:
-        issues.append(LAST_SLIDE_NOT_CLOSING.issue(f'the last slide uses data-layout="{slides[-1].layout}"', slides[-1].location))
-    issues += [misplaced_issue(slide, "after slide 1") for slide in slides[1:] if slide.intended_layout == COVER_LAYOUT]
-    issues += [misplaced_issue(slide, "before the last slide") for slide in slides[:-1] if slide.intended_layout == CLOSING_LAYOUT]
-    if slides[-1].intended_layout == CLOSING_LAYOUT and not any(CLOSING_ACTION.matches(part.tag, part.classes, part.attributes) for part in slides[-1].parts()):
-        issues.append(CLOSING_WITHOUT_ACTION.issue(f"{slides[-1].location} (closing) holds only {', '.join(part.tag for part in slides[-1].parts()) or 'nothing'}", slides[-1].location))
-    return issues
-
-
-def misplaced_issue(slide: Slide, place: str) -> Issue:
-    return OUTLINE_LAYOUT_MISPLACED.issue(f'{slide.location} uses data-layout="{slide.layout}" {place}', slide.location)
+    return issues + palette_issues(root, slides, system)
 
 
 def slide_count_issues(requested_slide_count: int | None, slides: list[Slide]) -> list[Issue]:
@@ -235,46 +111,15 @@ def slide_count_issues(requested_slide_count: int | None, slides: list[Slide]) -
     return [SLIDE_COUNT_MISMATCH.issue(f"slides.html has {len(slides)} slides, but {requested_slide_count} were requested", "deck")]
 
 
-ICON_ATTRIBUTE = "data-icon"
-LIST_TAGS = ("ol", "ul")
-
-
-def cover_issues(slides: list[Slide]) -> list[Issue]:
-    return [issue for slide in slides if slide.intended_layout == COVER_LAYOUT for issue in cover_carrier_issues(slide)]
-
-
-def cover_carrier_issues(slide: Slide) -> list[Issue]:
-    parts = slide.parts()
-    icon = slide.element.attributes.get(ICON_ATTRIBUTE, "").strip()
-    carriers = [name for name, is_present in (("a photo", any(part.tag == "img" for part in parts)), ("figures", any("kpi" in part.classes for part in parts)), ("an icon", bool(icon))) if is_present]
-    issues = []
-    if len(carriers) > 1:
-        issues.append(COVER_MIXED.issue(f"{slide.location} (cover) carries {' and '.join(carriers)}", slide.location))
-    if icon and icon not in icon_names():
-        issues.append(ICON_UNKNOWN.issue(f'{slide.location}: data-icon="{icon}" is not an icon the kit ships', slide.location, suggestion=names_suggestion(icon, icon_names())))
-    return issues
+def logo_issues(slides: list[Slide]) -> list[Issue]:
+    if prepare_deck().logo is None or any("data-logo" in image.attributes for image in find_all(slides[0].element, "img")):
+        return []
+    return [LOGO_UNUSED.issue("the company has a logo and slide 1 does not place <img data-logo>", slides[0].location)]
 
 
 def icon_issues(slide: Slide) -> list[Issue]:
-    hosts = icon_hosts(slide)
-    issues = []
-    for element in slide.element.descendants():
-        if ICON_ATTRIBUTE not in element.attributes:
-            continue
-        name = element.attributes[ICON_ATTRIBUTE].strip()
-        if name not in icon_names():
-            issues.append(ICON_UNKNOWN.issue(f'{slide.location}: data-icon="{name}" is not an icon the kit ships', slide.location, suggestion=names_suggestion(name, icon_names())))
-        if not any(element is host for host in hosts):
-            issues.append(ICON_MISPLACED.issue(f'{slide.location}: data-icon="{name}" is on a <{element.tag}>, where the kit draws no icon', slide.location))
-    return issues
-
-
-def icon_hosts(slide: Slide) -> list[Element]:
-    classed = [element for element in slide.element.descendants() if element.classes & set(ICON_HOST_CLASSES)]
-    if slide.layout not in ICON_LIST_LAYOUTS:
-        return classed
-    lists = [child for child in slide.element.child_elements() if child.tag in LIST_TAGS]
-    return classed + [item for items_list in lists for item in items_list.child_elements() if item.tag == "li"]
+    names = [element.attributes["data-icon"].strip() for element in slide.element.descendants() if "data-icon" in element.attributes]
+    return [ICON_UNKNOWN.issue(f'{slide.location}: data-icon="{name}" is not an icon the kit ships', slide.location, suggestion=names_suggestion(name, icon_names())) for name in names if name not in icon_names()]
 
 
 def empty_slide_issues(slide: Slide) -> list[Issue]:
@@ -368,7 +213,7 @@ def is_number(text: str) -> bool:
 
 def image_issues(slide: Slide, base_path: pathlib.Path) -> list[Issue]:
     issues = []
-    for image in find_all(slide.element, "img"):
+    for image in [image for image in find_all(slide.element, "img") if "data-logo" not in image.attributes]:
         source = image.attributes.get("src", "").strip()
         problem = image_problem(source, base_path)
         if problem:
@@ -394,10 +239,8 @@ def placeholder_issues(slide: Slide) -> list[Issue]:
     return [PLACEHOLDER_LEFT.issue(f"{slide.location} still shows {', '.join(sorted(set(found)))}", slide.location, suggestion="replace it with the real value from the source, or write \"Not provided\" in the deck's language")]
 
 
-def palette_issues(root: Element, slides: list[Slide], base_path: pathlib.Path, is_kit_deck: bool) -> list[Issue]:
-    palette = allowed_colors(root, base_path, is_kit_deck)
-    if palette is None:
-        return []
+def palette_issues(root: Element, slides: list[Slide], system: DesignSystem) -> list[Issue]:
+    palette = allowed_colors(system)
     places = [("slides.html", shared_style_texts(root, slides))] + [(slide.location, slide_style_texts(slide.element)) for slide in slides]
     palette_listed = ", ".join(sorted(f"#{color}" for color in palette))
     return [issue for location, texts in places for issue in off_palette_issues(colors_in(texts) - palette - ALWAYS_ALLOWED_COLORS, location, palette_listed)]
@@ -420,34 +263,8 @@ def shared_style_texts(root: Element, slides: list[Slide]) -> list[str]:
     return blocks + [element.attributes["style"] for element in root.descendants() if "style" in element.attributes and id(element) not in in_slides]
 
 
-def allowed_colors(root: Element, base_path: pathlib.Path, is_kit_deck: bool) -> set[str] | None:
-    design_colors = design_document_colors(base_path / "DESIGN.md")
-    if not is_kit_deck and not design_colors:
-        return None
-    palette = set(design_colors)
-    if is_kit_deck:
-        theme = deck_palette(prepare_deck(root))
-        palette |= {normalized_color(f"#{value}") for value in theme.values()}
-        palette |= token_overrides(root, set(theme))
-        accent = body_element(root).attributes.get("data-accent", "") if body_element(root) else ""
-        palette |= {normalized_color(accent)} if accent else set()
-    return palette - {""}
-
-
-def design_document_colors(design_path: pathlib.Path) -> set[str]:
-    if not design_path.exists():
-        return set()
-    front_matter = design_front_matter(design_path.read_text(encoding="utf-8"))
-    return {normalized_color(value) for value in HEX_PATTERN.findall(front_matter)}
-
-
-def token_overrides(root: Element, token_names: set[str]) -> set[str]:
-    colors = set()
-    for style_text in style_texts(root):
-        for name, value in DECLARATION_PATTERN.findall(style_text):
-            if name.startswith("--") and name[2:] in token_names:
-                colors |= {normalized_color(literal) for literal in COLOR_LITERAL_PATTERN.findall(value)}
-    return colors
+def allowed_colors(system: DesignSystem) -> set[str]:
+    return {normalized_color(f"#{value}") for value in palette_of(system).values()} - {""}
 
 
 def colors_in(style_texts_found: list[str]) -> set[str]:
@@ -465,37 +282,19 @@ def normalized_color(literal: str) -> str:
         return ""
 
 
-def body_element(root: Element) -> Element | None:
-    bodies = find_all(root, "body")
-    return bodies[0] if bodies else None
-
-
-def body_theme(root: Element) -> str | None:
-    body = body_element(root)
-    if body is None or "data-theme" not in body.attributes:
-        return None
-    return body.attributes["data-theme"].strip()
-
-
-def layout_parts(layout: KitLayout) -> str:
-    return f"the {layout.name} layout takes, as direct children of its <section>: {', '.join(part_label(part) for part in layout.parts)}"
 
 
 def check_summary(slides: list[Slide], issues: list[Issue]) -> str:
     errors = [issue for issue in issues if issue.kind.severity == ERROR]
     if errors:
-        listed = "; ".join(f"{number}. {issue.message}" for number, issue in enumerate(errors, start=1))
-        return f"{len(errors)} problems to fix in slides.html before it can be built, all listed here: {listed}"
+        listed = "; ".join(f"{number}. {issue.kind.code}{' on ' + issue.location if issue.location else ''}: {issue.message}" for number, issue in enumerate(errors, start=1))
+        return f"{len(errors)} problems to fix before the deck can be built, all listed here: {listed}"
     warnings = f", {len(issues)} warnings" if issues else ""
     return f"checked {len(slides)} slides: ready to build{warnings}"
 
 
-def check_details(root: Element, slides: list[Slide]) -> dict:
-    return {
-        "slideCount": len(slides),
-        "theme": body_theme(root),
-        "outline": [{"slide": slide.index, "layout": slide.layout or None, "title": slide.title} for slide in slides],
-    }
+def check_details(slides: list[Slide]) -> dict:
+    return {"slideCount": len(slides), "outline": [{"slide": slide.index, "title": slide.title} for slide in slides]}
 
 
 def check_request(source_path: pathlib.Path, parsed) -> CheckRequest:
@@ -509,6 +308,9 @@ def deck_source_path(target: str) -> pathlib.Path:
 
 def main() -> Result:
     parsed = route_arguments("check", "slides")
+    path = pathlib.Path(parsed.file).expanduser()
+    if path.name == DESIGN_FILE_NAME:
+        return check_design(path.resolve())
     return check_deck(check_request(deck_source_path(parsed.file), parsed))
 
 

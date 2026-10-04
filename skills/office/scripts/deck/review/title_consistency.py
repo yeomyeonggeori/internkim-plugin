@@ -6,26 +6,14 @@ from deck.deck_definitions import TITLE_STYLE_INCONSISTENT
 from deck.layout_thresholds import PIXEL_TOLERANCE
 
 
-FEATURE_LAYOUTS = frozenset({"section", "closing"})
-OWN_TITLE_LAYOUTS = frozenset({"cover", "statement", "quote", "image"})
-COMPARED_PROPERTIES = (("fontFamily", "typeface"), ("fontWeight", "weight"), ("color", "color"), ("textAlign", "alignment"))
+COMPARED_PROPERTIES = (("fontFamily", "typeface"), ("fontWeight", "weight"), ("textAlign", "alignment"))
 SMALLEST_COMPARED_GROUP = 3
 
 
-def title_family(layout: str) -> str | None:
-    if layout in OWN_TITLE_LAYOUTS:
-        return None
-    return "feature" if layout in FEATURE_LAYOUTS else "content"
-
-
 def titled_slides(slides: list[dict]) -> dict[str, list[tuple[dict, dict]]]:
-    families: dict[str, list[tuple[dict, dict]]] = {}
-    for slide in slides:
-        family = title_family(str(slide["structure"].get("kitLayout") or ""))
-        title = (slide.get("geometry") or {}).get("titleStyle")
-        if family and title:
-            families.setdefault(family, []).append((slide, title))
-    return families
+    body = [slide for slide in slides[1:-1]]
+    members = [(slide, (slide.get("geometry") or {}).get("titleStyle")) for slide in body]
+    return {"content": [(slide, title) for slide, title in members if title]}
 
 
 def usual_value(values: list[object]) -> object | None:

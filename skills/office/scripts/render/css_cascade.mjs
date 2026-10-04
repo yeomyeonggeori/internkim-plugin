@@ -34,7 +34,7 @@ const properties = {
   "text-decoration-line": ["none", false], "text-shadow": ["none", true], "vertical-align": ["baseline", false],
   "white-space": ["normal", true], "word-break": ["normal", true], "writing-mode": ["horizontal-tb", true],
   "list-style-type": ["disc", true], "list-style-position": ["outside", true],
-  "background-color": ["rgba(0, 0, 0, 0)", false], "background-image": ["none", false], "background-clip": ["border-box", false],
+  "background-color": ["rgba(0, 0, 0, 0)", false], "background-image": ["none", false], "background-size": ["auto", false], "background-repeat": ["repeat", false], "background-clip": ["border-box", false],
   "-webkit-background-clip": ["border-box", false], "box-shadow": ["none", false], filter: ["none", false], "backdrop-filter": ["none", false],
   "mix-blend-mode": ["normal", false], "clip-path": ["none", false], "mask-image": ["none", false], "-webkit-mask-image": ["none", false],
   perspective: ["none", false], transform: ["none", false], isolation: ["auto", false], "object-fit": ["fill", false],

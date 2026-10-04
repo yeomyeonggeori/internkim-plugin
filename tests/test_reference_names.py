@@ -7,8 +7,7 @@ from test_office_results import OFFICE_ENTRY, OFFICE_PATH, all_known_codes, ever
 
 from core.office_commands import TOOLS, VERBS  # noqa: E402
 from core.retired_commands import RETIRED_FORMATS  # noqa: E402
-from deck.deck_definitions import KIT_LAYOUT_NAMES  # noqa: E402
-from deck.deck_kit import theme_names  # noqa: E402
+from deck.deck_definitions import DESIGN_TOKEN_NAMES  # noqa: E402
 from office_guide import guide_for  # noqa: E402
 from paperwork.forms import form_names  # noqa: E402
 
@@ -18,7 +17,7 @@ CODE_PATTERN = re.compile(r"`([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)`")
 GUIDE_PATTERN = re.compile(r"office guide((?: [a-z_]+)*)")
 FLAG_PATTERN = re.compile(r"(?<![\w-])(--[a-z][a-z0-9-]*[a-z0-9])")
 FORM_PATTERN = re.compile(r"(?<![\w/])((?:kr|intl)/[a-z]+(?:-[a-z]+)*)\b")
-KIT_STYLE = (OFFICE_PATH / "assets" / "deck-kit" / "deck-kit.css").read_text(encoding="utf-8")
+DESIGN_TOKENS = {f"--{name}" for name in DESIGN_TOKEN_NAMES}
 
 
 def documents_text() -> str:
@@ -49,19 +48,14 @@ class ReferenceNamesTest(unittest.TestCase):
         named = set(CODE_PATTERN.findall(documents_text()))
         self.assertEqual(named - guided_codes(), set())
 
-    def test_every_layout_and_theme_the_documents_name_exists(self):
-        text = documents_text()
-        self.assertEqual(set(re.findall(r'data-layout="([a-z]+)"', text)) - set(KIT_LAYOUT_NAMES), set())
-        self.assertEqual(set(re.findall(r'data-theme="([a-z]+)"', text)) - set(theme_names()), set())
-
     def test_every_guide_topic_the_documents_name_answers(self):
         for words in set(GUIDE_PATTERN.findall(documents_text())):
             topic = [word for word in words.split() if word]
             with self.subTest(topic=" ".join(topic)):
                 guide_for(topic[:3])
 
-    def test_every_flag_the_documents_name_is_a_command_flag_or_a_kit_token(self):
-        known_flags = set(FLAG_PATTERN.findall(help_text())) | set(re.findall(r"(--[a-z][a-z0-9-]*):", KIT_STYLE))
+    def test_every_flag_the_documents_name_is_a_command_flag_or_a_design_token(self):
+        known_flags = set(FLAG_PATTERN.findall(help_text())) | DESIGN_TOKENS
         self.assertEqual(set(FLAG_PATTERN.findall(documents_text())) - known_flags, set())
 
     def test_every_form_a_document_names_exists_and_every_form_has_its_spec(self):

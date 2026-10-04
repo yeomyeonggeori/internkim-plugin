@@ -6,7 +6,6 @@ import typing
 from deck.deck_definitions import EMPTY_REGION, SLIDE_BLANK, VERTICAL_DEAD_ZONE
 from deck.review.design_warnings import LABEL_ONLY_SLIDE_ROLES, slide_design_warnings
 from deck.review.geometry_checks import content_extent, geometry_warnings, slide_geometry
-from deck.review.kit_fixes import dead_zone_fix, hollow_fix
 from deck.layout_thresholds import EMPTY_REGION_SHARE_MAXIMUM, VERTICAL_DEAD_ZONE_HEIGHT_RATIO
 from core.office_result import Issue
 
@@ -14,7 +13,6 @@ from core.office_result import Issue
 UNFILLED_BOTTOM_HEIGHT_RATIO = 0.2
 HOLLOW_BOXES_NAMED = 3
 CENTERED_BODY_GAP_RATIO = 1.6
-CENTERED_KIT_LAYOUTS = {"statement", "quote", "closing"}
 UNMEASURED_PAGE = {"width": 0, "height": 0, "bounds": None, "density": 0.0, "verticalGapRatio": 0.0}
 
 
@@ -84,12 +82,10 @@ def vertical_dead_zone_warnings(analysis: dict[str, object], measured: dict[str,
     if is_composed_for_space(structure):
         return []
     extent = content_extent(measured)
-    suggestion = dead_zone_fix(str(structure["kitLayout"])) if structure["kitLayout"] else None
     if extent is not None and extent.unfilled_ratio >= UNFILLED_BOTTOM_HEIGHT_RATIO and not body_is_centered(extent):
-        below = "above the footer" if extent.has_footer else "below it"
-        return [VERTICAL_DEAD_ZONE.issue(f"the content ends at {extent.body_bottom_ratio:.0%} of the slide height and leaves {extent.unfilled_ratio:.0%} of it empty {below}", suggestion=suggestion)]
+        return [VERTICAL_DEAD_ZONE.issue(f"the content ends at {extent.body_bottom_ratio:.0%} of the slide height and leaves {extent.unfilled_ratio:.0%} of it empty below it")]
     if analysis["verticalGapRatio"] >= VERTICAL_DEAD_ZONE_HEIGHT_RATIO:
-        return [VERTICAL_DEAD_ZONE.issue(f"an empty band spans {analysis['verticalGapRatio']:.0%} of the slide height", suggestion=suggestion)]
+        return [VERTICAL_DEAD_ZONE.issue(f"an empty band spans {analysis['verticalGapRatio']:.0%} of the slide height")]
     return []
 
 
@@ -99,12 +95,11 @@ def empty_region_warnings(measured: dict[str, object] | None, structure: dict[st
     region = (measured or {}).get("emptyRegion")
     if not region or region["share"] < EMPTY_REGION_SHARE_MAXIMUM:
         return []
-    suggestion = dead_zone_fix(str(structure["kitLayout"])) if structure["kitLayout"] else None
-    return [EMPTY_REGION.issue(f"x {region['left']:g}-{region['right']:g}, y {region['top']:g}-{region['bottom']:g} is empty inside the content: {region['share']:.0%} of its area", suggestion=suggestion)]
+    return [EMPTY_REGION.issue(f"x {region['left']:g}-{region['right']:g}, y {region['top']:g}-{region['bottom']:g} is empty inside the content: {region['share']:.0%} of its area")]
 
 
 def is_composed_for_space(structure: dict[str, object]) -> bool:
-    return str(structure["slideRole"]) in LABEL_ONLY_SLIDE_ROLES or structure["kitLayout"] in CENTERED_KIT_LAYOUTS
+    return str(structure["slideRole"]) in LABEL_ONLY_SLIDE_ROLES
 
 
 def hollow_box_warnings(measured: dict[str, object] | None, structure: dict[str, object]) -> list[Issue]:
@@ -112,7 +107,7 @@ def hollow_box_warnings(measured: dict[str, object] | None, structure: dict[str,
     if not boxes:
         return []
     named = "; ".join(f"{box['selector']} \"{box['text']}\" is {box['height']:g}px tall and {box['emptyHeight']:g}px of it holds nothing" for box in boxes[:HOLLOW_BOXES_NAMED])
-    return [VERTICAL_DEAD_ZONE.issue(f"{len(boxes)} boxes are mostly empty inside: {named}", suggestion=hollow_fix() if structure["kitLayout"] else None)]
+    return [VERTICAL_DEAD_ZONE.issue(f"{len(boxes)} boxes are mostly empty inside: {named}")]
 
 
 def body_is_centered(extent) -> bool:
@@ -121,4 +116,4 @@ def body_is_centered(extent) -> bool:
 
 def slide_warnings(is_blank: bool, structure: dict[str, object], measured: dict[str, object] | None) -> list[Issue]:
     warnings = [SLIDE_BLANK.issue("slide render appears blank")] if is_blank else []
-    return warnings + geometry_warnings(measured, str(structure["kitLayout"] or "")) + slide_design_warnings(structure)
+    return warnings + geometry_warnings(measured) + slide_design_warnings(structure)
