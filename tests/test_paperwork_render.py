@@ -245,6 +245,14 @@ class CompanyProfileFileTest(unittest.TestCase):
         self.assertIn("profile.name", locations)
         self.assertIn("signature.stamp", locations)
 
+    def test_a_task_whose_company_profile_was_never_read_is_told_to_read_it(self):
+        context = {"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04", "company": {}, "registeredDocuments": [], "attachments": []}
+        (self.directory / "office-runtime-context.json").write_text(json.dumps(context, ensure_ascii=False), encoding="utf-8")
+        envelope, _, _ = self.merge(None)
+
+        self.assertEqual(envelope["status"], "error")
+        self.assertEqual(envelope["issues"][0]["code"], "COMPANY_NOT_READ")
+
     def test_an_english_form_reads_the_profile_for_english(self):
         english = self.directory / "english"
         english.mkdir()

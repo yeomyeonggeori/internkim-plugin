@@ -220,6 +220,16 @@ class QuoteMergeTest(unittest.TestCase):
             for expected in ("16,790,000원", "1,639,000원", "18,429,000원", "SAMPLE-1", "2026년 10월 4일", "최견본"):
                 self.assertIn(expected, text)
 
+    def test_a_task_whose_company_profile_was_never_read_is_told_to_read_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.merge(directory, QUOTE_VALUES, runtime_context() | {"company": {}})
+            self.assertEqual(result["status"], "error")
+            issue = result["issues"][0]
+            self.assertEqual(issue["code"], "COMPANY_NOT_READ")
+            self.assertIn("company_info_get", issue["suggestion"])
+            self.assertIn("'ko'", issue["suggestion"])
+            self.assertFalse(Path(directory, "quote.pdf").exists())
+
     def test_a_runtime_field_in_the_values_is_refused(self):
         with tempfile.TemporaryDirectory() as directory:
             result = self.merge(directory, {**QUOTE_VALUES, "number": "X-1"}, runtime_context())

@@ -7,6 +7,10 @@ import os
 from pathlib import Path
 
 from core.host_contract import RUNTIME_CONTEXT_VARIABLE
+from core.office_result import ERROR, IssueKind, OfficeFailure
+
+
+COMPANY_NOT_READ = IssueKind("COMPANY_NOT_READ", ERROR, "no company profile was read in this task, so the letterhead has nothing to print", "call company_info_get for the document's language, then run the same command again")
 
 
 @dataclass(frozen=True)
@@ -19,6 +23,12 @@ class RuntimeContext:
     attachments: tuple = ()
 
     def company(self, language: str) -> dict:
+        if not self.companies:
+            raise OfficeFailure(COMPANY_NOT_READ.issue(
+                f"the runtime context names no company profile: company_info_get has not answered in this task",
+                "company",
+                f"call company_info_get with language {language!r}, then run the same command again; the runtime records the profile it answers",
+            ))
         found = self.companies.get(language) or next(iter(self.companies.values()), "")
         return company_profile(found) if isinstance(found, str) and found else {}
 

@@ -6,7 +6,7 @@ A schema says what a document holds. Its given fields are the only values you wr
 
 1. Pick the schema: `<skill>/scripts/office guide schema` lists them. `report` is for reports, status updates, memos and postmortems, `letter` for a letter or notice on letterhead, and `kr/quote`, `intl/invoice`, `kr/meeting-minutes` are company forms. A company form without a schema still uses `references/paperwork.md`.
 2. Run `<skill>/scripts/office guide <schema>`. It prints the given fields as JSON Schema.
-3. For a company form, call `company_document_register` first; `merge` reads the number it returns.
+3. For a company form or a letter, call `company_info_get` for the document's language and, for a company form, `company_document_register`; `merge` prints the letterhead from the profile the first answers and the number the second returns. Never copy either into the values.
 4. Write the values as one JSON object at `~/documents/<title>.values.json`. Copy names, figures and dates exactly as the request writes them; dates are `YYYY-MM-DD`, numbers are plain numbers.
 5. A value the document needs that the request and attachments do not state is `null`, never a guess, a placeholder word or a value from an example. Leave out an optional field that does not apply.
 6. Run `<skill>/scripts/office merge <schema> ~/documents/<title>.values.json ~/documents/<title>.<pdf|docx>`. An error names the field path and what it takes; fix that field and run it again.
