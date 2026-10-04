@@ -10,6 +10,7 @@
   const clauseEndPattern = /[,，、·:;]$/;
   const phraseBreakPenalty = 0.35;
   const footerlessLayouts = new Set(["cover", "section"]);
+  const featureLayouts = new Set(["section", "closing"]);
   const itemClasses = ["kpi", "card", "step", "column"];
   const rowItemClasses = ["kpi", "card", "column"];
   const alignedAttribute = "data-kit-aligned";
@@ -56,9 +57,11 @@
   const columnKinds = new Set(["column", "stacked", "stacked100", "combo"]);
   const roundKinds = new Set(["donut", "pie"]);
   const lineInsetShare = 5;
-  const motifAttribute = "data-motif";
-  const coverMotifs = ["panel", "rings"];
-  const coverRingRadii = [442, 342, 242];
+  const coverBleedRatio = 1.3;
+  const coverFigureClass = "kpi";
+  const coverLogoHeight = 44;
+  const footerLogoHeight = 24;
+  const backdropSelector = ".kit-scrim, .kit-cover-bleed > img:not(.kit-logo), .kit-logo";
   const groupedNumberPattern = /^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/;
   const twoAxisTypes = new Set(["combo", "scatter"]);
   const separateAxisRatio = 10;
@@ -462,17 +465,52 @@
     });
   }
 
-  function coverMotif(slide) {
-    const name = (slide.getAttribute(motifAttribute) || "").trim();
-    return coverMotifs.includes(name) && !slide.querySelector(":scope > img") ? name : null;
+  function coverPanel(slide, className, parts) {
+    const panel = element("div", `kit-cover-panel ${className}`);
+    parts.forEach((part) => panel.appendChild(part));
+    slide.appendChild(panel);
+    slide.classList.add("kit-paneled");
   }
 
-  function drawCoverPanels() {
-    document.querySelectorAll("section[data-layout='cover']").forEach((slide) => {
-      const motif = coverMotif(slide);
-      if (slide.querySelector(":scope > img") || motif) slide.classList.add("kit-paneled");
-      if (motif !== "rings" || slide.querySelector(":scope > .kit-ring")) return;
-      coverRingRadii.forEach((radius) => slide.appendChild(element("span", "kit-ring", { width: `${radius}px`, height: `${radius}px` })));
+  function composeCover(slide) {
+    if (slide.querySelector(":scope > .kit-cover-panel, :scope > .kit-scrim")) return;
+    const photo = slide.querySelector(":scope > img:not(.kit-logo)");
+    if (photo) {
+      const isWide = photo.naturalWidth >= coverBleedRatio * photo.naturalHeight;
+      if (isWide) slide.insertBefore(element("span", "kit-scrim"), photo.nextSibling);
+      slide.classList.add(isWide ? "kit-cover-bleed" : "kit-paneled");
+      return;
+    }
+    const figures = directChildren(slide, coverFigureClass);
+    if (figures.length) return coverPanel(slide, "kit-cover-figures", figures);
+    const icon = (slide.getAttribute(iconAttribute) || "").trim();
+    if (icon) coverPanel(slide, "kit-cover-icon", [iconFor(icon)]);
+  }
+
+  function composeCovers() {
+    document.querySelectorAll("section[data-layout='cover']").forEach(composeCover);
+  }
+
+  function logoFor(isOnFeature, height) {
+    const logo = window.deckKitLogo;
+    const image = element("img", isOnFeature ? logo.featureClass : logo.pageClass, { height: `${height}px`, width: `${Math.round(height * logo.ratio)}px` });
+    image.setAttribute("src", logo.src);
+    image.setAttribute("alt", "");
+    return image;
+  }
+
+  function placeLogos() {
+    if (!window.deckKitLogo) return;
+    slides().forEach((slide) => {
+      if (slide.querySelector(".kit-logo")) return;
+      const layout = slide.getAttribute("data-layout");
+      if (layout === "cover") return slide.appendChild(logoFor(slide.classList.contains("kit-cover-bleed"), coverLogoHeight));
+      const footer = directChildren(slide, "kit-footer")[0];
+      if (!footer) return;
+      const page = footer.querySelector(":scope > .kit-page");
+      if (!page) return;
+      page.insertBefore(logoFor(featureLayouts.has(layout), footerLogoHeight), page.firstChild);
+      page.classList.add("kit-logoed");
     });
   }
 
@@ -631,14 +669,14 @@
     if (slide.scrollHeight > slide.clientHeight + overflowTolerance || slide.scrollWidth > slide.clientWidth + overflowTolerance) return true;
     if (partsCollide(slide)) return true;
     return Array.from(slide.querySelectorAll("*")).some((child) => {
-      if (child.closest("aside.notes, .kit-chart") || child.clientHeight === 0) return false;
+      if (child.closest("aside.notes, .kit-chart, .kit-logo") || child.clientHeight === 0) return false;
       return child.scrollHeight > child.clientHeight + overflowTolerance || child.scrollWidth > child.clientWidth + overflowTolerance;
     });
   }
 
   function placedParts(slide) {
     return Array.from(slide.children)
-      .filter((child) => !child.classList.contains("kit-ring") && child.tagName !== "ASIDE")
+      .filter((child) => !child.matches(backdropSelector) && child.tagName !== "ASIDE")
       .map((child) => child.getBoundingClientRect())
       .filter((rect) => rect.width > 0 && rect.height > 0);
   }
@@ -969,7 +1007,7 @@
 
   function slideCapacity(slide) {
     const floor = contentFloor(slide);
-    const parts = Array.from(slide.children).filter((child) => !child.matches("aside, .kit-footer, .kit-ring") && child.getBoundingClientRect().height > 0);
+    const parts = Array.from(slide.children).filter((child) => !child.matches(`aside, .kit-footer, ${backdropSelector}`) && child.getBoundingClientRect().height > 0);
     const crowded = parts.filter((part) => spills(part, floor) || itemsOf(part).some((item) => spills(item, floor)));
     if (crowded.length) return crowded.map((part) => partCapacity(part, floor));
     const used = Math.max(...parts.map((part) => part.getBoundingClientRect().bottom)) - slide.getBoundingClientRect().top;
@@ -1781,7 +1819,8 @@
     addListIndexes();
     groupComparisonPoints();
     groupSteps();
-    drawCoverPanels();
+    composeCovers();
+    placeLogos();
     addQuoteMarks();
     markNumericCells();
     keepMixedWords();

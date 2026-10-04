@@ -37,7 +37,7 @@ from deck.deck_definitions import (
     ICON_LIST_LAYOUTS,
     ICON_MISPLACED,
     ICON_UNKNOWN,
-    MOTIF_NOT_DRAWN,
+    COVER_MIXED,
     ItemLimits,
     KitLayout,
     kit_layout,
@@ -45,7 +45,8 @@ from deck.deck_definitions import (
 )
 from charts.kinds import KIT_STACKED_CHARTS, is_round_kind
 from charts.numbers import chart_number, split_chart_list
-from deck.deck_kit import DEFAULT_THEME, chart_types, icon_names, kit_names, theme_palettes, uses_deck_kit
+from deck.deck_preparation import deck_palette, prepare_deck
+from deck.deck_kit import chart_types, icon_names, theme_palettes, uses_deck_kit
 from deck.deck_source import Element, find_all, normalized_text, parse_source, style_texts, visible_text
 from deck.design_tokens import design_front_matter
 from core.office_arguments import route_arguments
@@ -117,7 +118,7 @@ def check_deck(request: CheckRequest) -> Result:
 def deck_issues(request: CheckRequest, root: Element, slides: list[Slide], is_kit_deck: bool) -> list[Issue]:
     issues = []
     if is_kit_deck:
-        issues += theme_issues(root) + layout_issues(slides) + sequence_issues(slides) + [issue for slide in slides for issue in icon_issues(slide)] + motif_issues(root, slides)
+        issues += theme_issues(root) + layout_issues(slides) + sequence_issues(slides) + [issue for slide in slides for issue in icon_issues(slide)] + cover_issues(slides)
     issues += slide_count_issues(request.requested_slide_count, slides)
     for slide in slides:
         issues += empty_slide_issues(slide) + chart_issues(slide) + image_issues(slide, request.source_path.parent) + placeholder_issues(slide)
@@ -198,11 +199,17 @@ def sequence_issues(slides: list[Slide]) -> list[Issue]:
     for start in range(len(slides) - REPEAT_LIMIT + 1):
         window = layouts_in_order[start:start + REPEAT_LIMIT]
         if window[0] and len(set(window)) == 1:
-            issues.append(LAYOUT_REPEATED.issue(f"slides {start + 1}-{start + REPEAT_LIMIT} all use {window[0]}", f"slide {start + 2}"))
-    layouts = {slide.intended_layout for slide in slides if slide.layout}
-    if len(slides) >= VARIETY_SLIDE_MINIMUM and len(layouts) < VARIETY_LAYOUT_MINIMUM:
-        issues.append(TOO_FEW_LAYOUTS.issue(f"{len(slides)} slides use only {', '.join(sorted(layouts))}", "deck"))
-    return issues + outline_issues(slides)
+            issues.append(LAYOUT_REPEATED.issue(f"slides {start + 1}-{start + REPEAT_LIMIT} all use {window[0]}", f"slide {start + REPEAT_LIMIT}"))
+    return issues + variety_issues(slides) + outline_issues(slides)
+
+
+def variety_issues(slides: list[Slide]) -> list[Issue]:
+    body = [slide for slide in slides if slide.layout and slide.intended_layout not in (COVER_LAYOUT, CLOSING_LAYOUT)]
+    layouts = {slide.intended_layout for slide in body}
+    needed = min(VARIETY_LAYOUT_MINIMUM, len(body) - 1)
+    if len(slides) < VARIETY_SLIDE_MINIMUM or len(layouts) >= needed:
+        return []
+    return [TOO_FEW_LAYOUTS.issue(f"the {len(body)} slides between the cover and the closing use only {', '.join(sorted(layouts))}; they need {needed} different layouts", "deck")]
 
 
 def outline_issues(slides: list[Slide]) -> list[Issue]:
@@ -232,6 +239,22 @@ ICON_ATTRIBUTE = "data-icon"
 LIST_TAGS = ("ol", "ul")
 
 
+def cover_issues(slides: list[Slide]) -> list[Issue]:
+    return [issue for slide in slides if slide.intended_layout == COVER_LAYOUT for issue in cover_carrier_issues(slide)]
+
+
+def cover_carrier_issues(slide: Slide) -> list[Issue]:
+    parts = slide.parts()
+    icon = slide.element.attributes.get(ICON_ATTRIBUTE, "").strip()
+    carriers = [name for name, is_present in (("a photo", any(part.tag == "img" for part in parts)), ("figures", any("kpi" in part.classes for part in parts)), ("an icon", bool(icon))) if is_present]
+    issues = []
+    if len(carriers) > 1:
+        issues.append(COVER_MIXED.issue(f"{slide.location} (cover) carries {' and '.join(carriers)}", slide.location))
+    if icon and icon not in icon_names():
+        issues.append(ICON_UNKNOWN.issue(f'{slide.location}: data-icon="{icon}" is not an icon the kit ships', slide.location, suggestion=names_suggestion(icon, icon_names())))
+    return issues
+
+
 def icon_issues(slide: Slide) -> list[Issue]:
     hosts = icon_hosts(slide)
     issues = []
@@ -244,33 +267,6 @@ def icon_issues(slide: Slide) -> list[Issue]:
         if not any(element is host for host in hosts):
             issues.append(ICON_MISPLACED.issue(f'{slide.location}: data-icon="{name}" is on a <{element.tag}>, where the kit draws no icon', slide.location))
     return issues
-
-
-MOTIF_ATTRIBUTE = "data-motif"
-
-
-def motif_issues(root: Element, slides: list[Slide]) -> list[Issue]:
-    sections = {id(slide.element): slide for slide in slides}
-    issues = []
-    for element in [root, *root.descendants()]:
-        if MOTIF_ATTRIBUTE not in element.attributes:
-            continue
-        reason = motif_problem(element, sections.get(id(element)))
-        if reason:
-            location = sections[id(element)].location if id(element) in sections else element.tag
-            issues.append(MOTIF_NOT_DRAWN.issue(f'{location}: data-motif="{element.attributes[MOTIF_ATTRIBUTE]}" {reason}', location, suggestion=names_suggestion(element.attributes[MOTIF_ATTRIBUTE].strip(), kit_names("coverMotifs"))))
-    return issues
-
-
-def motif_problem(element: Element, slide: Slide | None) -> str | None:
-    name = element.attributes[MOTIF_ATTRIBUTE].strip()
-    if name not in kit_names("coverMotifs"):
-        return "is not a motif the kit draws"
-    if slide is None or slide.layout != COVER_LAYOUT:
-        return f"is on a <{element.tag}>; only a cover <section> draws one"
-    if any(child.tag == "img" for child in slide.element.child_elements()):
-        return "shares the cover with an <img>, which fills the panel instead"
-    return None
 
 
 def icon_hosts(slide: Slide) -> list[Element]:
@@ -430,8 +426,8 @@ def allowed_colors(root: Element, base_path: pathlib.Path, is_kit_deck: bool) ->
         return None
     palette = set(design_colors)
     if is_kit_deck:
-        theme = theme_palettes().get(body_theme(root) or DEFAULT_THEME, {})
-        palette |= {normalized_color(value) for value in theme.values()}
+        theme = deck_palette(prepare_deck(root))
+        palette |= {normalized_color(f"#{value}") for value in theme.values()}
         palette |= token_overrides(root, set(theme))
         accent = body_element(root).attributes.get("data-accent", "") if body_element(root) else ""
         palette |= {normalized_color(accent)} if accent else set()

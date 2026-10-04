@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import json
 import pathlib
 
-from deck.deck_definitions import CHART_UNDERFILLED, DRAWING_DISTORTED, FOOTER_CROSSED, GRID_MISALIGNED, LABEL_TOO_LONG, REPEATED_FIGURE, TEXT_COVERED, TEXT_LOW_CONTRAST, TINY_TEXT, TITLE_TOO_LONG
+from deck.deck_definitions import CHART_UNDERFILLED, DRAWING_DISTORTED, FOOTER_CROSSED, GRID_MISALIGNED, IMAGE_LOW_RESOLUTION, LABEL_TOO_LONG, REPEATED_FIGURE, TEXT_COVERED, TEXT_LOW_CONTRAST, TINY_TEXT, TITLE_TOO_LONG
 from powerpoint.definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_OVERLAP
 from deck.deck_kit import kit_length, slide_size
 from deck.review.kit_fixes import capacity_fix, photo_fix, placement_fix, size_fix, text_fix
@@ -17,7 +17,7 @@ FINDINGS_NAMED_PER_ISSUE = 3
 SLIDE_HEIGHT = slide_size()[1]
 FOOTER_HEIGHT_RATIO = kit_length("footer-height") / SLIDE_HEIGHT
 FOOTER_REACH_RATIO = 2 * FOOTER_HEIGHT_RATIO
-SELF_EXPLAINED_CHECKS = (TITLE_TOO_LONG, LABEL_TOO_LONG, REPEATED_FIGURE, DRAWING_DISTORTED, CHART_UNDERFILLED, TEXT_LOW_CONTRAST, GRID_MISALIGNED)
+SELF_EXPLAINED_CHECKS = (TITLE_TOO_LONG, LABEL_TOO_LONG, REPEATED_FIGURE, IMAGE_LOW_RESOLUTION, DRAWING_DISTORTED, CHART_UNDERFILLED, TEXT_LOW_CONTRAST, GRID_MISALIGNED)
 
 
 @dataclass(frozen=True)
@@ -161,6 +161,10 @@ def describe_distorted_image(finding: dict[str, object]) -> str:
     return f"{element_label(finding)} renders at ratio {finding['renderedRatio']} but is {finding['naturalRatio']}"
 
 
+def describe_soft_image(finding: dict[str, object]) -> str:
+    return f"{element_label(finding)} is {finding['naturalWidth']}x{finding['naturalHeight']} pixels drawn at {finding['scale']} times that"
+
+
 def describe_underfilled_chart(finding: dict[str, object]) -> str:
     measure = "its bars cover" if finding["kind"] == "bars" else "its ring spans"
     room = "of the plot's category axis" if finding["kind"] == "bars" else "of its slot's longer side"
@@ -197,6 +201,7 @@ GEOMETRY_FINDINGS = (
     (LABEL_TOO_LONG, "longLabels", describe_long_label, f"{{count}} labels run past {LABEL_LINE_MAXIMUM} lines"),
     (REPEATED_FIGURE, "repeatedFigures", describe_repeated_figure, "{count} figures are repeated on the slide"),
     (IMAGE_DISTORTED, "distortedImages", describe_distorted_image, "{count} images are stretched"),
+    (IMAGE_LOW_RESOLUTION, "softImages", describe_soft_image, "{count} photos are drawn larger than their pixels"),
     (DRAWING_DISTORTED, "distortedDrawings", describe_distorted_image, "{count} drawings are stretched out of their own proportions"),
     (CHART_UNDERFILLED, "underfilledCharts", describe_underfilled_chart, "{count} charts leave most of their room empty"),
     (TINY_TEXT, "smallText", describe_small_text, "{count} text elements are smaller than the slide can show legibly"),

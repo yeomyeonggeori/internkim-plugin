@@ -41,12 +41,13 @@ def strip_deck_kit(source_text: str) -> str:
     return source_text
 
 
-def inject_deck_kit(source_text: str) -> str:
+def inject_deck_kit(source_text: str, additions: str = "") -> str:
     source_text = strip_deck_kit(source_text)
     if not uses_deck_kit(source_text):
         return source_text
     kit_markup = (
         f"<style {KIT_MARKER}>\n{KIT_STYLESHEET_PATH.read_text(encoding='utf-8')}</style>\n"
+        f"{additions}"
         f"{icon_script(source_text)}"
         f"<script {KIT_MARKER}>\n{KIT_SCRIPT_PATH.read_text(encoding='utf-8')}</script>\n"
     )

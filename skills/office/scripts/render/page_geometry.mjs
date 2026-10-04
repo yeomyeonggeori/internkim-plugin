@@ -1,7 +1,7 @@
 export const capacityAttribute = "data-kit-capacity";
 
 export function measurePageGeometry(pages, thresholds) {
-  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, labelLineMaximum, repeatedFigureMinimum, backgroundShareOfSlide, deadZoneShareOfSlide, markBreadthMinimum, roundSlotMinimum, textContrastMinimum, largeTextContrastMinimum, largeTextShareOfWidth, largeBoldTextShareOfWidth } = thresholds;
+  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, imageUpscaleMaximum, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, labelLineMaximum, repeatedFigureMinimum, backgroundShareOfSlide, deadZoneShareOfSlide, markBreadthMinimum, roundSlotMinimum, textContrastMinimum, largeTextContrastMinimum, largeTextShareOfWidth, largeBoldTextShareOfWidth } = thresholds;
 
   const isMeasurable = (element) => {
     const style = getComputedStyle(element);
@@ -107,6 +107,19 @@ export function measurePageGeometry(pages, thresholds) {
       })
       .filter(({ renderedRatio, naturalRatio }) => Math.abs(renderedRatio / naturalRatio - 1) > aspectRatioTolerance)
       .map(({ image, renderedRatio, naturalRatio }) => ({ ...describe(image), renderedRatio: roundRatio(renderedRatio), naturalRatio: roundRatio(naturalRatio) }));
+
+  const upscale = (image, rect) => {
+    const widthScale = rect.width / image.naturalWidth;
+    const heightScale = rect.height / image.naturalHeight;
+    return getComputedStyle(image).objectFit === "contain" ? Math.min(widthScale, heightScale) : Math.max(widthScale, heightScale);
+  };
+
+  const softImages = (page) =>
+    Array.from(page.querySelectorAll("img"))
+      .filter((image) => isMeasurable(image) && image.naturalWidth > 0 && image.naturalHeight > 0)
+      .map((image) => ({ image, scale: upscale(image, image.getBoundingClientRect()) }))
+      .filter(({ scale }) => scale > imageUpscaleMaximum)
+      .map(({ image, scale }) => ({ ...describe(image), scale: roundRatio(scale), naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight }));
 
   const viewBoxRatio = (svg) => {
     const [, , width, height] = (svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
@@ -730,6 +743,7 @@ export function measurePageGeometry(pages, thresholds) {
     outOfFrame: elementsOutsideFrame(page).map((element) => ({ ...describe(element), rect: describeRect(element.getBoundingClientRect()) })),
     overlaps: overlappingText(page),
     distortedImages: distortedImages(page),
+    softImages: softImages(page),
     distortedDrawings: distortedDrawings(page),
     smallText: smallText(page),
     coveredText: coveredText(page),

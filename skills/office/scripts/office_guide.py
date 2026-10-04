@@ -27,6 +27,9 @@ ENVELOPE_LINE = (
 def guide_for(arguments: list[str]) -> str:
     if not arguments or arguments[0] in {"-h", "--help", "help"}:
         return index_text()
+    topic = kind_topic(arguments[0])
+    if topic is not None:
+        return topic()
     verb = find_verb(arguments[0])
     if verb is None and is_schema_reference(arguments[0]):
         return schema_guide_text(arguments[0])
@@ -40,6 +43,11 @@ def guide_for(arguments: list[str]) -> str:
     if len(arguments) == 2:
         return route_text(route)
     return operation_text(route, arguments[2])
+
+
+def kind_topic(name: str):
+    modules = [importlib.import_module(kind.definitions_module) for kind in KINDS if kind.definitions_module]
+    return next((getattr(module, "GUIDE_TOPICS")[name] for module in modules if name in getattr(module, "GUIDE_TOPICS", {})), None)
 
 
 def require_kind(topic: str) -> Kind:
@@ -116,12 +124,14 @@ def command_line(route: Route) -> str:
 
 def kind_text(kind: Kind) -> str:
     routes = kind_routes(kind.name)
-    lines = [f"{kind.label}: {kind.summary}", "", "Commands (each verb's --help lists its options)", *(command_line(route) for route in routes)]
+    module = importlib.import_module(kind.definitions_module)
+    preamble = getattr(module, "guide_preamble", lambda: [])()
+    lines = [f"{kind.label}: {kind.summary}", *preamble, "", "Commands (each verb's --help lists its options)", *(command_line(route) for route in routes)]
     listed: list[Variant] = []
     for route in routes:
         for label, shape in route_inputs(route):
             lines.extend(["", *summary_lines(route, label, shape, listed)])
-    lines.extend(topic_sections(importlib.import_module(kind.definitions_module), kind.name))
+    lines.extend(topic_sections(module, kind.name))
     lines.extend(["", f"Issue codes (office guide <verb> {kind.name} explains a verb's own)"])
     lines.extend(f"  {route.verb}: {', '.join(issue.code for issue in route_issue_kinds(route))}" for route in routes if route_issue_kinds(route))
     return "\n".join(lines)
