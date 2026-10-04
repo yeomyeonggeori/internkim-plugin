@@ -94,7 +94,7 @@ class MarkdownDocument:
         label = f"{self.words[name]} " if name in ("owner", "due") else ""
         value = item.get(name)
         if value is None:
-            self.blanks.append({"field": f"{location}.{name}", "label": f"{item.get('text', '')} {self.words.get(name, name)}".strip()})
+            self.blanks.append({"field": f"{location}.{name}", "label": f"{item.get('text') or ''} {self.words.get(name, name)}".strip()})
             return f"{label}{BLANK}"
         value_type = {"date": "date", "due": "date", "amount": "amount", "quantity": "quantity", "percent": "percent"}.get(name, "text")
         unit = item.get("currency", "") if name == "amount" else item.get("unit", "")

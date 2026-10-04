@@ -88,7 +88,7 @@
   ],
   "source": {
     "type": "object",
-    "description": "the snapshot an office command writes beside each file it writes, named <file><sourceSuffix>; the host delivers a new file with a deliverable extension only when this snapshot is beside it, and reads its blanks into the delivery result",
+    "description": "the snapshot an office command writes beside each file it writes, named <file><sourceSuffix>; the host delivers a new file with a deliverable extension only when this snapshot is beside it, and reads its blanks into the delivery result; the host also asks of each claim whether the request, its attachments and the runtime facts support it, and remakes a file whose snapshot names a schema or a declaration with the unsupported ones blank",
     "properties": {
       "blanks": {
         "type": "array",
@@ -110,7 +110,51 @@
             "label"
           ]
         }
+      },
+      "claims": {
+        "type": "array",
+        "description": "every value the model composed as text in a file whose layout code owns: one entry per paragraph sentence, item text, owner, text cell and text field",
+        "items": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "where the value sits in the given values; a sentence of a paragraph ends in #<index>"
+            },
+            "at": {
+              "type": "string",
+              "description": "where it sits, as a person would name it"
+            },
+            "text": {
+              "type": "string",
+              "description": "the value as written"
+            }
+          },
+          "required": [
+            "path",
+            "at",
+            "text"
+          ]
+        }
       }
     }
+  },
+  "blankCommand": {
+    "description": "how the host remakes a file with claims blank, run as the person: merge for a snapshot that names a schema, create for one that names a declaration; the snapshot stands in for the values or the declaration, and each --blank names a claim path",
+    "merge": [
+      "merge",
+      "<schema>",
+      "<file><sourceSuffix>",
+      "<file>",
+      "--blank",
+      "<path>"
+    ],
+    "create": [
+      "create",
+      "<file>",
+      "<file><sourceSuffix>",
+      "--blank",
+      "<path>"
+    ]
   }
 }

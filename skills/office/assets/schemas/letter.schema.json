@@ -3,7 +3,7 @@
   "kind": "document",
   "language": "ko",
   "summary": "a letter or notice from the company on its letterhead; the runtime writes the letterhead, date and signer",
-  "guidance": "Choose the sections and block kinds the request's content needs. Every item, row and field comes from the request or its attachments; a section, item or paragraph the request gives no content for is left out, never filled in.",
+  "guidance": "Choose the sections and block kinds the request's content needs. Every item, row and field comes from the request or its attachments; a section, item or paragraph the request gives no content for is left out, never filled in. A letter may open or close with a short courtesy line, such as a greeting, thanks or good wishes, that states no date, number, name, promise, condition or cause.",
   "fields": [
     {
       "name": "language",

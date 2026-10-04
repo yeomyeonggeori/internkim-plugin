@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from core.office_arguments import route_arguments
 from core.office_result import WRONG_OUTPUT_FORMAT, OfficeFailure, Result, read_json_file, run_command
 from paperwork.jurisdictions import find_jurisdiction
+from schemas.blank_paths import blanked
 from schemas.claims import written_claims
 from schemas.given_values import blank_fields, empty_optional_fields, normalized_values, validated_values
 from schemas.known_values import load_runtime_context
@@ -21,15 +22,29 @@ OUTPUTS_BY_KIND = {"form": (".pdf",), "document": (".docx", ".pdf", ".html"), "d
 def main() -> Result:
     arguments = route_arguments("merge", "schema")
     schema = load_schema(arguments.template)
-    values = validated_values(schema, read_json_file(arguments.values))
+    written = given_values_of(schema, read_json_file(arguments.values))
+    values = validated_values(schema, blanked(written, arguments.blank))
     output_path = Path(arguments.output).expanduser()
     require_output_kind(schema, output_path)
     instance = schema_instance(schema, values, output_path)
     issues, drawn_blanks = render(instance, output_path)
     blanks = given_blanks(schema, values) + drawn_blanks + unknown_known_values(instance)
+    blanks += left_blank(schema, written, arguments.blank, blanks)
     source_path = write_source(output_path, schema_source(instance, blanks))
     details = {"blanks": blanks, "emptyOptional": empty_optional_fields(schema.fields, values), "source": str(source_path)}
     return Result(summary=summary(schema, output_path, blanks), output_path=str(output_path), issues=tuple(issues), details=details)
+
+
+def given_values_of(schema: DocumentSchema, document: object) -> object:
+    if isinstance(document, dict) and document.get("schema") == schema.name and isinstance(document.get("given"), dict):
+        return document["given"]
+    return document
+
+
+def left_blank(schema: DocumentSchema, written: dict, paths: list[str], listed: list[dict]) -> list[dict]:
+    places = {claim["path"]: claim["at"] for claim in written_claims(schema, written)}
+    fields = {blank.get("field") for blank in listed}
+    return [{"field": path, "label": places.get(path, path)} for path in dict.fromkeys(paths) if path not in fields]
 
 
 def require_output_kind(schema: DocumentSchema, output_path: Path) -> None:

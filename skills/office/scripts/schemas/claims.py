@@ -18,7 +18,7 @@ def record_claims(fields: tuple, record: dict, location: str, names: tuple):
         if value is None or field.choices:
             continue
         path = f"{location}.{field.name}" if location else field.name
-        yield from field_claims(field, value, record, path, names + (field.label,))
+        yield from field_claims(field, value, record, path, names + human_label(field))
 
 
 def field_claims(field: SchemaField, value: object, record: dict, path: str, names: tuple):
@@ -45,8 +45,9 @@ def text_claims(kind: str, value: object, path: str, names: tuple):
     if kind not in WRITTEN_TYPES or not isinstance(value, str) or not value.strip():
         return
     pieces = sentences(value)
+    place = " > ".join(names) or path.rsplit(".", 1)[-1]
     for index, piece in enumerate(pieces):
-        yield {"path": f"{path}#{index}" if len(pieces) > 1 else path, "at": " > ".join(names), "text": piece}
+        yield {"path": f"{path}#{index}" if len(pieces) > 1 else path, "at": place, "text": piece}
 
 
 def sentences(text: str) -> list[str]:
@@ -55,6 +56,10 @@ def sentences(text: str) -> list[str]:
 
 def listed(value: object) -> list:
     return value if isinstance(value, list) else []
+
+
+def human_label(field: SchemaField) -> tuple:
+    return (field.label,) if field.label != field.name else ()
 
 
 def heading_of(record: dict) -> tuple:
