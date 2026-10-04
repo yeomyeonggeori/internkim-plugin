@@ -21,7 +21,7 @@ def chart_section(title: str, figure: str) -> str:
 def write_free_deck(directory: Path, sections: list, style: str = "", design: dict | None = None) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "DESIGN.md").write_text(design_markdown(design), encoding="utf-8")
-    (directory / "slides.html").write_text(deck(sections, CHART_STYLE + style), encoding="utf-8")
+    (directory / "slides.html").write_text(deck(sections, CHART_STYLE + style, filled=True), encoding="utf-8")
     return directory
 
 
