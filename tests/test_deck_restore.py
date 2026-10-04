@@ -21,9 +21,9 @@ AUTHORED_DECK = """<!doctype html>
 <html lang="ko">
 <head><meta charset="utf-8"><title>복원 시험</title>
 <style>@font-face { font-family: "Brand"; src: url("fonts/brand.woff2") format("woff2"); } h2 { font-family: "Paperlogy", sans-serif; }</style></head>
-<body data-theme="editorial">
-<section data-layout="image"><img src="images/photo.png" alt="사진"><h2>진열대가 비기 전에 알려 드립니다</h2><ul><li>포스 데이터를 가져옵니다</li></ul></section>
-<section data-layout="statement"><h2>재고 확인이 하루 47분 줄어듭니다</h2></section>
+<body>
+<section><img src="images/photo.png" alt="사진"><h2>진열대가 비기 전에 알려 드립니다</h2><ul><li>포스 데이터를 가져옵니다</li></ul></section>
+<section><h2>재고 확인이 하루 47분 줄어듭니다</h2></section>
 </body>
 </html>
 """
@@ -45,13 +45,27 @@ class RestoreTest(unittest.TestCase):
             (deck_path / "fonts" / "brand.woff2").write_bytes(b"wOF2" + bytes(2048))
             delivered_path = deck_path / "build" / "deck.html"
             delivered_path.parent.mkdir()
-            delivered_path.write_text(deck_html_text(source_path), encoding="utf-8")
+            delivered_path.write_text(deck_html_text(source_path, None), encoding="utf-8")
             restored_path = deck_path / "restored.html"
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "convert", str(delivered_path), str(restored_path)], capture_output=True, text=True)
             self.assertEqual(json.loads(completed.stdout)["status"], "ok", completed.stdout)
             restored = restored_path.read_text(encoding="utf-8")
         self.assertEqual(squeezed(restored), squeezed(AUTHORED_DECK))
         self.assertLess(len(restored.encode()), 2 * len(AUTHORED_DECK.encode()))
+
+    def test_restore_keeps_the_style_the_deck_wrote_on_a_photo(self):
+        deck = AUTHORED_DECK.replace('<img src="images/photo.png" alt="사진">', '<img src="images/photo.png" alt="사진" style="object-fit: cover">')
+        with tempfile.TemporaryDirectory() as directory:
+            deck_path = Path(directory)
+            (deck_path / "slides.html").write_text(deck, encoding="utf-8")
+            (deck_path / "images").mkdir()
+            write_png(deck_path / "images" / "photo.png", 64, 48, [[(30, 60, 90, 255)] * 64 for _ in range(48)])
+            delivered_path = deck_path / "deck.html"
+            delivered_path.write_text(deck_html_text(deck_path / "slides.html", None), encoding="utf-8")
+            self.assertIn("object-position", delivered_path.read_text(encoding="utf-8"))
+            restored_path = deck_path / "restored.html"
+            subprocess.run([sys.executable, str(OFFICE_ENTRY), "convert", str(delivered_path), str(restored_path)], capture_output=True, text=True)
+            self.assertEqual(squeezed(restored_path.read_text(encoding="utf-8")), squeezed(deck))
 
 
 if __name__ == "__main__":

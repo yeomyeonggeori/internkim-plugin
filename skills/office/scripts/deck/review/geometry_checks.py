@@ -4,27 +4,20 @@ from dataclasses import dataclass
 import json
 import pathlib
 
-from deck.deck_definitions import CHART_UNDERFILLED, DRAWING_DISTORTED, FOOTER_CROSSED, GRID_MISALIGNED, IMAGE_LOW_RESOLUTION, LABEL_TOO_LONG, REPEATED_FIGURE, TEXT_COVERED, TEXT_LOW_CONTRAST, TINY_TEXT, TITLE_TOO_LONG
+from deck.deck_definitions import CHART_UNDERFILLED, DRAWING_DISTORTED, GRID_MISALIGNED, IMAGE_LOW_RESOLUTION, LABEL_TOO_LONG, REPEATED_FIGURE, TEXT_COVERED, TEXT_LOW_CONTRAST, TINY_TEXT, TITLE_TOO_LONG
 from powerpoint.definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_OVERLAP
-from deck.deck_kit import kit_length, slide_size
-from deck.review.kit_fixes import capacity_fix, photo_fix, placement_fix, size_fix, text_fix
 from deck.layout_thresholds import LABEL_LINE_MAXIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
 from core.office_result import Issue
 
 
 GEOMETRY_FILE_NAME = "geometry.json"
 FINDINGS_NAMED_PER_ISSUE = 3
-SLIDE_HEIGHT = slide_size()[1]
-FOOTER_HEIGHT_RATIO = kit_length("footer-height") / SLIDE_HEIGHT
-FOOTER_REACH_RATIO = 2 * FOOTER_HEIGHT_RATIO
-SELF_EXPLAINED_CHECKS = (TITLE_TOO_LONG, LABEL_TOO_LONG, REPEATED_FIGURE, IMAGE_LOW_RESOLUTION, DRAWING_DISTORTED, CHART_UNDERFILLED, TEXT_LOW_CONTRAST, GRID_MISALIGNED)
 
 
 @dataclass(frozen=True)
 class ContentExtent:
     body_bottom_ratio: float
     unfilled_ratio: float
-    has_footer: bool
     gap_under_title_ratio: float
 
 
@@ -45,75 +38,29 @@ def content_extent(measured: dict[str, object] | None) -> ContentExtent | None:
     if measured is None or not measured["contentBands"]:
         return None
     bands, height = measured["contentBands"], measured["height"]
-    footer_start = footer_start_index(bands, height)
-    body_bottom = bands[footer_start - 1][1]
-    has_footer = footer_start < len(bands)
-    floor = bands[footer_start][0] if has_footer else height - bands[0][0]
-    gap_under_title = bands[1][0] - bands[0][1] if footer_start >= 2 else 0.0
-    return ContentExtent(body_bottom / height, max(0.0, floor - body_bottom) / height, has_footer, gap_under_title / height)
+    body_bottom = bands[-1][1]
+    floor = height - bands[0][0]
+    gap_under_title = bands[1][0] - bands[0][1] if len(bands) >= 2 else 0.0
+    return ContentExtent(body_bottom / height, max(0.0, floor - body_bottom) / height, gap_under_title / height)
 
 
-def footer_start_index(bands: list[list[float]], height: float) -> int:
-    if bands[-1][1] < height * (1 - FOOTER_REACH_RATIO):
-        return len(bands)
-    start = len(bands)
-    for index in range(len(bands) - 1, 0, -1):
-        if bands[-1][1] - bands[index][0] > height * FOOTER_HEIGHT_RATIO:
-            break
-        start = index
-    return start
-
-
-def geometry_warnings(measured: dict[str, object] | None, kit_layout: str = "") -> list[Issue]:
+def geometry_warnings(measured: dict[str, object] | None) -> list[Issue]:
     if measured is None:
         return []
     return [
         issue
         for check, key, describe, headline in GEOMETRY_FINDINGS
-        for issue in finding_issues(check, measured.get(key, []), describe, headline, kit_suggestion(check, measured, kit_layout))
+        for issue in finding_issues(check, measured.get(key, []), describe, headline)
     ]
 
 
-def finding_issues(check, findings: list[dict[str, object]], describe, headline: str, kit_fix) -> list[Issue]:
+def finding_issues(check, findings: list[dict[str, object]], describe, headline: str) -> list[Issue]:
     if not findings:
         return []
     named = "; ".join(describe(finding) for finding in findings[:FINDINGS_NAMED_PER_ISSUE])
     remainder = len(findings) - FINDINGS_NAMED_PER_ISSUE
     more = f"; and {remainder} more" if remainder > 0 else ""
-    return [check.issue(f"{headline.format(count=len(findings))}: {named}{more}", suggestion=kit_fix(findings[0]) if kit_fix else None)]
-
-
-def kit_suggestion(check, measured: dict[str, object], kit_layout: str):
-    if not kit_layout or check in SELF_EXPLAINED_CHECKS:
-        return None
-    if check is IMAGE_DISTORTED:
-        return lambda finding: photo_fix(kit_layout)
-    capacity = measured.get("capacity") or []
-    if capacity:
-        return lambda finding: capacity_fix(capacity, kit_layout)
-    return UNCROWDED_KIT_FIXES[check]
-
-
-def covered_fix(finding: dict[str, object]) -> str:
-    return placement_fix(f"{element_label(finding['box'])} is drawn over {element_label(finding['text'])}")
-
-
-def overlap_fix(finding: dict[str, object]) -> str:
-    return placement_fix(f"{element_label(finding['first'])} and {element_label(finding['second'])} share one place")
-
-
-def overflow_fix(finding: dict[str, object]) -> str:
-    return text_fix(element_label(finding), len(finding["text"]), round(len(finding["text"]) * finding["clientHeight"] / max(finding["scrollHeight"], 1)))
-
-
-UNCROWDED_KIT_FIXES = {
-    CONTENT_OVERFLOW: overflow_fix,
-    OUT_OF_FRAME: lambda finding: placement_fix(f"{element_label(finding)} lies off the slide"),
-    TEXT_OVERLAP: overlap_fix,
-    TEXT_COVERED: covered_fix,
-    FOOTER_CROSSED: lambda finding: placement_fix(f"{element_label(finding)} reaches into the footer"),
-    TINY_TEXT: lambda finding: size_fix(finding["minimum"]),
-}
+    return [check.issue(f"{headline.format(count=len(findings))}: {named}{more}")]
 
 
 def element_label(element: dict[str, object]) -> str:
@@ -139,10 +86,6 @@ def describe_overlap(finding: dict[str, object]) -> str:
 
 def describe_covered_text(finding: dict[str, object]) -> str:
     return f"{element_label(finding['text'])} lies {finding['ratio']:.0%} under {element_label(finding['box'])}"
-
-
-def describe_footer_crossing(finding: dict[str, object]) -> str:
-    return f"{element_label(finding)} ends at y {finding['bottom']}, below the footer's top at y {finding['footerTop']}"
 
 
 def describe_long_title(finding: dict[str, object]) -> str:
@@ -196,7 +139,6 @@ GEOMETRY_FINDINGS = (
     (OUT_OF_FRAME, "outOfFrame", describe_out_of_frame, "{count} elements lie outside the slide"),
     (TEXT_OVERLAP, "overlaps", describe_overlap, "{count} pairs of text overlap"),
     (TEXT_COVERED, "coveredText", describe_covered_text, "{count} text elements are hidden under a box drawn over them"),
-    (FOOTER_CROSSED, "footerCrossings", describe_footer_crossing, "{count} parts of the slide reach into the footer"),
     (TITLE_TOO_LONG, "longTitles", describe_long_title, f"{{count}} titles run past {TITLE_LINE_MAXIMUM} lines"),
     (LABEL_TOO_LONG, "longLabels", describe_long_label, f"{{count}} labels run past {LABEL_LINE_MAXIMUM} lines"),
     (REPEATED_FIGURE, "repeatedFigures", describe_repeated_figure, "{count} figures are repeated on the slide"),

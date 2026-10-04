@@ -1,7 +1,9 @@
+import { measureDesignRules } from "./design_rules.mjs";
+
 export const capacityAttribute = "data-kit-capacity";
 
 export function measurePageGeometry(pages, thresholds) {
-  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, imageUpscaleMaximum, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, labelLineMaximum, repeatedFigureMinimum, backgroundShareOfSlide, deadZoneShareOfSlide, markBreadthMinimum, roundSlotMinimum, textContrastMinimum, largeTextContrastMinimum, largeTextShareOfWidth, largeBoldTextShareOfWidth } = thresholds;
+  const { pixelTolerance, overlapRatioMinimum, aspectRatioTolerance, imageUpscaleMaximum, textPreviewLength, smallestTextShareOfWidth, titleLineMaximum, labelLineMaximum, repeatedFigureMinimum, backgroundShareOfSlide, deadZoneShareOfSlide, markBreadthMinimum, roundSlotMinimum, textContrastMinimum, largeTextContrastMinimum, largeTextShareOfWidth, largeBoldTextShareOfWidth, slideSize, designRules = [] } = thresholds;
 
   const isMeasurable = (element) => {
     const style = getComputedStyle(element);
@@ -756,5 +758,6 @@ export function measurePageGeometry(pages, thresholds) {
     misalignedSiblings: misalignedSiblings(page),
     titleStyle: titleStyle(page),
     capacity: JSON.parse(page.getAttribute(capacityAttribute) || "[]"),
+    designFindings: measureDesignRules(page, designRules, { describe, isMeasurable, elementsOf, ownTextRects, descendantTextRects, unionRect, slideSize }),
   }));
 }

@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 
+from free_deck_fixture import build_pptx, write_free_deck
 from render_fixture import can_render
 
 
@@ -88,17 +89,14 @@ class ChartAxisAuditTest(unittest.TestCase):
 
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_a_built_deck_with_a_loss_making_combo_writes_axes_that_hold_it(self):
-        source = (
-            '<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>재무</title></head><body data-theme="corporate">'
-            '<section data-layout="chart"><h2>영업이익은 2026년에 흑자로 돌아섭니다</h2>'
+        figure = (
             '<figure data-chart="combo" data-labels="2023, 2024, 2025, 2026" data-series="매출: 820, 1950, 3680, 6100; 영업이익: -12.4, -7.1, -1.9, 4.3" data-unit="백만원, 억원">'
-            "<figcaption>연도별 매출과 영업이익 · 자료: 재무팀</figcaption></figure><aside class=\"notes\">재무</aside></section></body></html>"
+            "<figcaption>연도별 매출과 영업이익 · 자료: 재무팀</figcaption></figure>"
         )
         with tempfile.TemporaryDirectory() as directory:
-            (Path(directory) / "slides.html").write_text(source, encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/deck.pptx", "slides.html"], capture_output=True, text=True, cwd=directory)
-            envelope = json.loads(completed.stdout)
-            presentation = Presentation(str(Path(directory) / "build" / "deck.pptx"))
+            deck_path = write_free_deck(Path(directory), [f"<h2>영업이익은 2026년에 흑자로 돌아섭니다</h2>{figure}"])
+            envelope = build_pptx(deck_path)
+            presentation = Presentation(str(deck_path / "build" / "deck.pptx"))
         chart_space = next(shape for shape in presentation.slides[0].shapes if shape.has_chart).chart._chartSpace
         self.assertEqual(len(chart_space.findall(f".//{C}valAx")), 2)
         self.assertEqual(codes(chart_issues(chart_space, "slide 1", "chart")), [])

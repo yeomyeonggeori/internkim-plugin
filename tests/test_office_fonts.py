@@ -68,9 +68,10 @@ class BundledFontRegistryTest(unittest.TestCase):
 
 
 class FontNamesOutsidePythonTest(unittest.TestCase):
-    def test_the_deck_kit_draws_with_the_registry_deck_family(self):
-        declared = re.search(r'--font:\s*"([^"]+)"', DECK_KIT_STYLE.read_text(encoding="utf-8")).group(1)
-        self.assertEqual(declared, default_family(DECK).name)
+    def test_the_deck_kit_names_no_font_of_its_own(self):
+        declarations = re.findall(r"font-family:\s*([^;}]+)", DECK_KIT_STYLE.read_text(encoding="utf-8"))
+        self.assertTrue(declarations)
+        self.assertTrue(all(declaration.strip().startswith("var(--font-") for declaration in declarations), declarations)
 
     def test_the_page_layout_script_knows_the_same_generic_families(self):
         listed = re.search(r"genericFamilies = new Set\(\[([^\]]*)\]\)", TEXT_LAYOUT_SCRIPT.read_text(encoding="utf-8")).group(1)

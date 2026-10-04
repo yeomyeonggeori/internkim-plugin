@@ -9,10 +9,12 @@ import unittest
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from deck.review.acceptance import FIX_ROUNDS_ALLOWED, judge_build  # noqa: E402
 from deck.deck_definitions import MISSING_SPEAKER_NOTES  # noqa: E402
 from powerpoint.definitions import TEXT_OVERLAP  # noqa: E402
+from design_gate_fixture import design_markdown  # noqa: E402
 from render_fixture import bare_environment, can_render  # noqa: E402
 
 
@@ -66,18 +68,19 @@ class AcceptanceTest(unittest.TestCase):
         self.assertEqual(next_request.fix_round, 0)
 
 
-KIT_DECK = '<body data-theme="editorial"><section data-layout="statement"><h2>배송이 빨라집니다</h2><aside class="notes">배송 기간이 줄었습니다</aside></section></body>'
-FREE_HTML_DECK = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>자유 형식</title>
+SMALL_DECK = '<html><head><style>section { padding: 96px; }</style></head><body><section><h2>배송이 빨라집니다</h2><aside class="notes">배송 기간이 줄었습니다</aside></section></body></html>'
+SLIDE_HTML_DECK = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>자유 형식</title>
 <style>section{width:1600px;height:900px;padding:80px;box-sizing:border-box;font-family:sans-serif;background:#fff} h1{font-size:64px} td{font-size:12px}</style></head><body>
 <section><h1>지역별 매출이 늘었습니다</h1><table><tr><td>수도권</td><td>58억</td></tr><tr><td>영남</td><td>31억</td></tr></table></section>
 </body></html>"""
 
 
-class FreeHtmlGateTest(unittest.TestCase):
+class MeasuredBarTest(unittest.TestCase):
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
-    def test_a_deck_without_the_kit_is_held_to_the_measured_bar(self):
+    def test_a_deck_is_held_to_the_measured_bar(self):
         with tempfile.TemporaryDirectory() as directory:
-            (Path(directory) / "slides.html").write_text(FREE_HTML_DECK, encoding="utf-8")
+            (Path(directory) / "slides.html").write_text(SLIDE_HTML_DECK, encoding="utf-8")
+            (Path(directory) / "DESIGN.md").write_text(design_markdown(), encoding="utf-8")
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.pdf", "slides.html"], capture_output=True, text=True, cwd=directory)
             acceptance = json.loads(completed.stdout)["details"]["acceptance"]
         self.assertFalse(acceptance["acceptable"])
@@ -87,7 +90,8 @@ class FreeHtmlGateTest(unittest.TestCase):
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_a_build_with_its_streams_merged_still_prints_one_json_document(self):
         with tempfile.TemporaryDirectory() as directory:
-            (Path(directory) / "slides.html").write_text(FREE_HTML_DECK, encoding="utf-8")
+            (Path(directory) / "slides.html").write_text(SLIDE_HTML_DECK, encoding="utf-8")
+            (Path(directory) / "DESIGN.md").write_text(design_markdown(), encoding="utf-8")
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.pdf", "slides.html"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, cwd=directory)
         self.assertIn("acceptance", json.loads(completed.stdout)["details"])
 
@@ -108,7 +112,7 @@ class BuildHelpTest(unittest.TestCase):
 
     def test_an_output_the_deck_cannot_be_is_refused_before_anything_renders(self):
         with tempfile.TemporaryDirectory() as directory:
-            (Path(directory) / "slides.html").write_text('<body data-theme="editorial"><section data-layout="statement"><h2>배송이 빨라집니다</h2></section></body>', encoding="utf-8")
+            (Path(directory) / "slides.html").write_text(SMALL_DECK, encoding="utf-8")
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.keynote", "slides.html"], capture_output=True, text=True, cwd=directory)
             envelope = json.loads(completed.stdout)
             self.assertEqual(completed.returncode, 1)
@@ -122,7 +126,8 @@ class WithoutRendererTest(unittest.TestCase):
 
     def test_the_build_refuses_and_names_what_to_install_while_the_check_still_runs(self):
         with tempfile.TemporaryDirectory() as directory:
-            (Path(directory) / "slides.html").write_text(KIT_DECK, encoding="utf-8")
+            (Path(directory) / "slides.html").write_text(SMALL_DECK, encoding="utf-8")
+            (Path(directory) / "DESIGN.md").write_text(design_markdown(), encoding="utf-8")
             built = self.run_without_renderer(directory, "create", "build/deck.pptx", "slides.html")
             checked = self.run_without_renderer(directory, "check", "slides.html")
             written = sorted(path.name for path in Path(directory).rglob("*") if path.suffix in {".pdf", ".pptx", ".html"} and path.name != "slides.html")
@@ -134,7 +139,9 @@ class WithoutRendererTest(unittest.TestCase):
         self.assertIn("node 18 or newer", envelope["summary"])
         self.assertIn("office setup", envelope["issues"][0]["suggestion"])
         self.assertEqual(written, [])
-        self.assertNotEqual(json.loads(checked.stdout)["status"], "error", checked.stdout)
+        checked_envelope = json.loads(checked.stdout)
+        self.assertNotEqual(checked_envelope["status"], "error", checked.stdout)
+        self.assertEqual([issue["code"] for issue in checked_envelope["issues"]], ["RENDER_GATE_SKIPPED"])
 
 
 if __name__ == "__main__":

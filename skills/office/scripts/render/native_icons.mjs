@@ -41,12 +41,19 @@ async function writeIcon(renderer, directory, host, origin, fileStem) {
   };
 }
 
+function isDrawnIcon(host) {
+  const svg = Array.from(host.children).find((child) => child.localName === "svg");
+  if (!svg) return false;
+  const rect = svg.getBoundingClientRect();
+  return rect.right > rect.left && rect.bottom > rect.top;
+}
+
 export async function extractNativeIcons({ pages, renderer, directory }) {
   await fs.mkdir(directory, { recursive: true });
   const layouts = [];
   for (const [pageIndex, page] of pages.entries()) {
     const origin = page.getBoundingClientRect();
-    const hosts = Array.from(page.querySelectorAll(`[${nativeIconAttribute}]`)).filter((host) => Array.from(host.children).some((child) => child.localName === "svg"));
+    const hosts = Array.from(page.querySelectorAll(`[${nativeIconAttribute}]`)).filter(isDrawnIcon);
     const icons = [];
     for (const [iconIndex, host] of hosts.entries()) icons.push(await writeIcon(renderer, directory, host, origin, `icon.${String(pageIndex + 1).padStart(3, "0")}.${iconIndex + 1}`));
     layouts.push({ icons });

@@ -13,7 +13,6 @@ from core.source_snapshot import write_source
 from deck.deck_claims import blank_labels, blanked_deck, deck_claims
 from deck.deck_holds import deck_slides
 from deck.deck_preparation import prepare_deck
-from deck.deck_source import parse_source
 
 
 def export_request(parsed) -> ExportRequest:
@@ -30,7 +29,7 @@ def export_request(parsed) -> ExportRequest:
 
 def keep_built_provenance(request: ExportRequest, blanks: list[dict], details: dict) -> None:
     source_text = request.source_path.read_text(encoding="utf-8")
-    design = prepare_deck(parse_source(source_text)).to_json()
+    design = prepare_deck().to_json()
     visual_review = {"visualReview": details["visualReview"]} if "visualReview" in details else {}
     for suffix in DELIVERABLE_EXTENSIONS:
         built_path = request.output_path(suffix)

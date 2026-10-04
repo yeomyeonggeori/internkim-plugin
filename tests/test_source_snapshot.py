@@ -6,6 +6,8 @@ import sys
 import tempfile
 import unittest
 
+from free_deck_fixture import write_free_deck
+
 from doc_fixture import OFFICE_ENTRY, run_office, write_json
 from render_fixture import can_render
 
@@ -56,7 +58,7 @@ class ProvenanceTest(unittest.TestCase):
 
     @unittest.skipUnless(can_render(), "needs the deck renderer")
     def test_a_deck_built_as_pptx_leaves_a_snapshot_beside_the_pdf_it_also_writes(self):
-        Path(self.directory, "slides.html").write_text('<body data-theme="editorial"><section data-layout="statement"><h2>배송이 빨라집니다</h2></section></body>', encoding="utf-8")
+        write_free_deck(self.directory, ["<h2>배송이 빨라집니다</h2><p>주문 후 하루 안에 도착합니다.</p>"])
         result = run_office(["create", "build/deck.pptx", "slides.html"], self.directory)
         self.assertNotEqual(result["status"], "error", result)
         for name in ("deck.pptx", "deck.pdf"):
@@ -81,6 +83,9 @@ class HostContractTest(unittest.TestCase):
             "registeredDocuments": [{"documentNumber": "SAMPLE-20261004-001"}],
             "attachments": [{"name": "budget.csv", "path": str(Path(directory, "budget.csv"))}],
             "reviewsDeckRenders": True,
+            "preparesDecks": True,
+            "deckDesign": None,
+            "images": [],
         }
 
     def test_the_sample_context_holds_exactly_the_fields_the_contract_names(self):

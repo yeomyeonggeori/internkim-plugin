@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from deck.deck_kit import kit_length, kit_number, slide_size
+from core.design_rules import render_rule_requests
+from deck.deck_kit import slide_size
 from powerpoint.definitions import BACKGROUND_SHARE_OF_SLIDE, DISTORTION_TOLERANCE, OVERLAP_RATIO
 
 
 PIXEL_TOLERANCE = 4
 TEXT_PREVIEW_LENGTH = 40
-SMALLEST_TEXT_SHARE_OF_WIDTH = kit_length("size-floor") / slide_size()[0]
+SMALLEST_TEXT_PIXELS = 18
+SMALLEST_TEXT_SHARE_OF_WIDTH = SMALLEST_TEXT_PIXELS / slide_size()[0]
 VERTICAL_DEAD_ZONE_HEIGHT_RATIO = 0.27
 EMPTY_REGION_SHARE_MAXIMUM = 0.14
-TITLE_LINE_MAXIMUM = kit_number("titleLineMaximum")
+TITLE_LINE_MAXIMUM = 3
 LABEL_LINE_MAXIMUM = 2
 REPEATED_FIGURE_MINIMUM = 3
 MARK_BREADTH_MINIMUM = 0.45
@@ -22,7 +24,7 @@ LARGE_TEXT_SHARE_OF_WIDTH = 24 / 1600
 LARGE_BOLD_TEXT_SHARE_OF_WIDTH = 18.66 / 1600
 
 
-def renderer_thresholds() -> dict[str, float]:
+def renderer_thresholds() -> dict[str, object]:
     return {
         "pixelTolerance": PIXEL_TOLERANCE,
         "overlapRatioMinimum": OVERLAP_RATIO,
@@ -42,3 +44,7 @@ def renderer_thresholds() -> dict[str, float]:
         "largeTextShareOfWidth": LARGE_TEXT_SHARE_OF_WIDTH,
         "largeBoldTextShareOfWidth": LARGE_BOLD_TEXT_SHARE_OF_WIDTH,
     }
+
+
+def gate_thresholds() -> dict[str, object]:
+    return renderer_thresholds() | {"slideSize": {"width": slide_size()[0], "height": slide_size()[1]}, "designRules": render_rule_requests()}
