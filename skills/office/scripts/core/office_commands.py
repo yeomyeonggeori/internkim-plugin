@@ -165,7 +165,7 @@ VERBS = (
 
 ROUTES = (
     Route("create", "md", "doc.export_document", "a document written in Markdown, the usual way to make one", ("--font", "--font-size", "--font-path"), (".docx", ".pdf", ".html")),
-    Route("create", "slides", "deck.build_deck", "a deck: checked first, then drawn, with a verdict and review images", ("--slide-count",) + TEXT_FLAGS, (".pdf", ".pptx", ".html")),
+    Route("create", "slides", "deck.build_deck", "a deck: checked first, then drawn, with a verdict and review images", ("--slide-count", "--blank") + TEXT_FLAGS, (".pdf", ".pptx", ".html")),
     Route("create", "docx", "doc.create_docx", "exact page setup, styles and blocks", outputs=(".docx",), label="JSON spec"),
     Route("create", "xlsx", "sheet.create_xlsx", "a new workbook compiled from its declaration: typed source tables, views and charts; formulas, formats and chart ranges are written for you", ("--blank",), (".xlsx",), label="workbook declaration"),
     Route("create", "pdf", "pdf.create_pdf", "sections and tables placed on the page", outputs=(".pdf",), label="JSON spec"),

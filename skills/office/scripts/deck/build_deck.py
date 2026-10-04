@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pathlib
+from dataclasses import replace
 
 from deck.check_deck import check_request, deck_source_path
 from deck.html_export import ExportRequest, export_deck, output_formats
@@ -9,6 +10,7 @@ from core.office_arguments import route_arguments
 from core.host_contract import DELIVERABLE_EXTENSIONS
 from core.office_result import Result, run_command
 from core.source_snapshot import write_source
+from deck.deck_claims import blank_labels, blanked_deck, deck_claims
 
 
 def export_request(parsed) -> ExportRequest:
@@ -23,18 +25,37 @@ def export_request(parsed) -> ExportRequest:
     )
 
 
-def keep_built_provenance(request: ExportRequest) -> None:
+def keep_built_provenance(request: ExportRequest, blanks: list[dict]) -> None:
+    source_text = request.source_path.read_text(encoding="utf-8")
     for suffix in DELIVERABLE_EXTENSIONS:
         built_path = request.output_path(suffix)
         if built_path.is_file():
-            write_source(built_path, {"command": "office create", "arguments": [str(built_path), str(request.source_path)]})
+            write_source(built_path, {"command": "office create", "arguments": [str(built_path), str(request.source_path)],
+                                      "deck": str(request.source_path), "claims": deck_claims(source_text), "blanks": blanks})
+
+
+def blank_source(request: ExportRequest, paths: list[str]) -> list[dict]:
+    if not paths:
+        return []
+    source_text = request.source_path.read_text(encoding="utf-8")
+    request.source_path.write_text(blanked_deck(source_text, paths), encoding="utf-8")
+    return blank_labels(source_text, paths)
 
 
 def main() -> Result:
-    request = export_request(route_arguments("create", "slides"))
+    parsed = route_arguments("create", "slides")
+    request = export_request(parsed)
+    blanks = blank_source(request, parsed.blank or [])
     result = export_deck(request)
-    keep_built_provenance(request)
-    return result
+    if result.status == "error":
+        return result
+    keep_built_provenance(request, blanks)
+    return result if not blanks else blanked_result(result, blanks)
+
+
+def blanked_result(result: Result, blanks: list[dict]) -> Result:
+    labels = ", ".join(blank["label"] for blank in blanks)
+    return replace(result, summary=f"{result.summary} {len(blanks)} values left blank for the person to complete: {labels}", details=(result.details or {}) | {"blanks": blanks})
 
 
 if __name__ == "__main__":
