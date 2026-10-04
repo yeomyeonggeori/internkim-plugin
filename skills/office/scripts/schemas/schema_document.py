@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import json
 from pathlib import Path
+import re
 
 from core.office_result import INVALID_VALUE, OfficeFailure
 from core.office_schema import closest_name
@@ -16,6 +17,7 @@ FIELD_TYPES = ("text", "person", "organization", "date", "amount", "quantity", "
 SCALAR_ITEM_TYPES = ("text", "person", "organization", "date", "amount", "quantity", "percent")
 PROVIDERS = ("requester", "requesterEmail", "today", "document.number", "company")
 PROVIDER_TYPES = {"today": "date"}
+TEMPLATE_NAME = re.compile(r"\{([A-Za-z_][A-Za-z0-9_.]*)(?::[a-z]+)?\}")
 
 
 @dataclass(frozen=True)
@@ -139,6 +141,33 @@ def schema_from_document(document: dict, path: Path | None) -> DocumentSchema:
     )
 
 
+LAYOUT_FIELD_KEYS = ("list", "each", "bullets", "paragraphs", "when", "field")
+KINDS_PLACING_BY_CELL = FORM_KINDS
+KINDS_DRAWING_THE_COMPANY = ("form",)
+
+
+def placed_names(layout: object) -> set[str]:
+    if isinstance(layout, str):
+        return {match.group(1).split(".")[0] for match in TEMPLATE_NAME.finditer(layout)}
+    if isinstance(layout, list):
+        return set().union(*(placed_names(item) for item in layout)) if layout else set()
+    if not isinstance(layout, dict):
+        return set()
+    names = {value for key, value in layout.items() if key in LAYOUT_FIELD_KEYS and isinstance(value, str)}
+    return names.union(*(placed_names(value) for value in layout.values()))
+
+
+def require_placed_fields(schema: DocumentSchema) -> None:
+    if schema.kind in KINDS_PLACING_BY_CELL:
+        return
+    placed = placed_names(schema.layout)
+    drawn_anyway = {name for name, provider in schema.known.items() if provider == "company" and schema.kind in KINDS_DRAWING_THE_COMPANY}
+    reported = [field.name for field in schema.fields if not field.optional] + list(schema.known)
+    unplaced = [name for name in reported if name not in placed | drawn_anyway]
+    if unplaced:
+        raise OfficeFailure(INVALID_VALUE.issue(f"schema {schema.name}: the layout never places {', '.join(unplaced)}, so a blank there would be reported and not drawn", "layout", "place each required given field and each known field in the layout, mark a setting such as language optional, or remove the field"))
+
+
 def bundled_schema_path(name: str) -> Path:
     return SCHEMAS_PATH / f"{name}{SCHEMA_SUFFIX}"
 
@@ -156,4 +185,6 @@ def load_schema(reference: str) -> DocumentSchema:
     if not path.is_file():
         meant = closest_name(reference, bundled_schema_names())
         raise OfficeFailure(INVALID_VALUE.issue(f"{reference!r} is not a bundled schema or a .schema.json file", reference, f"use {meant}" if meant else f"one of: {', '.join(bundled_schema_names())}"))
-    return schema_from_document(json.loads(path.read_text(encoding="utf-8")), path)
+    schema = schema_from_document(json.loads(path.read_text(encoding="utf-8")), path)
+    require_placed_fields(schema)
+    return schema

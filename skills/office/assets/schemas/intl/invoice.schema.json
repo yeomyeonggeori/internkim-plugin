@@ -36,6 +36,7 @@
       {"label": "Invoice date", "value": "{issueDate}"},
       {"label": "Due date", "value": "{shownDueDate}"},
       {"label": "PO number", "value": "{poNumber}"},
+      {"label": "Tax rate", "value": "{taxRatePercent}"},
       {"label": "Payment method", "value": "{paymentMethod}"},
       {"label": "Bank account", "value": "{company.bankAccount}"}
     ],

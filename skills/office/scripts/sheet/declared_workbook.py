@@ -66,7 +66,7 @@ def write_view(workbook: Workbook, placed: Placed, title: str) -> None:
         if row == placed.header_row:
             style_header(cell)
             continue
-        if row == placed.note_row:
+        if row in placed.note_rows:
             cell.font = Font(italic=True, size=9)
             continue
         cell.border = thin_border()
@@ -87,6 +87,14 @@ def fit_columns(sheet, overflowing_rows: set) -> None:
         sheet.column_dimensions[get_column_letter(column)].width = min(max(width, MINIMUM_WIDTH), MAXIMUM_WIDTH)
 
 
+def compiled_ranges(compiler: Compiler) -> list[dict]:
+    ranges = [{"sheet": table.name, "range": f"A1:{get_column_letter(len(table.columns))}{len(table.rows) + 1}"} for table in compiler.tables]
+    for placed in compiler.views:
+        last_row = max(row for row, _ in placed.cells)
+        ranges.append({"sheet": placed.sheet, "range": f"A{placed.title_row}:{get_column_letter(placed.width)}{last_row}"})
+    return ranges + [{"sheet": sheet, "range": block} for sheet, block in compiler.chart_blocks]
+
+
 def chart_operations(workbook: Workbook, compiler: Compiler, titles: list[str]) -> list[dict]:
     operations = []
     placed_by_title = dict(zip(titles, compiler.views))
@@ -102,6 +110,7 @@ def chart_operations(workbook: Workbook, compiler: Compiler, titles: list[str]) 
         first_column = helper_columns[placed.sheet]
         helper_columns[placed.sheet] += len(placed.base_columns) + 2
         data_range = chart_data_block(workbook[placed.sheet], placed, first_column)
+        compiler.chart_blocks.append((placed.sheet, data_range))
         anchor_row = compiler.next_row.get(placed.sheet, 1)
         compiler.next_row[placed.sheet] = anchor_row + CHART_HEIGHT_ROWS + 1
         operation = {"op": "add_chart", "sheet": placed.sheet, "range": data_range, "anchor": f"A{anchor_row}", **CHART_OPERATIONS[chart["type"]]}
@@ -175,13 +184,13 @@ def shown_view(sheet, placed: Placed, title: str, displayed) -> dict:
     rows = [placed.header_row, *placed.body_rows, *([placed.total_row] if placed.total_row else [])]
     shown = [[displayed(sheet.cell(row, column).value, sheet.cell(row, column).number_format).text for column in columns] for row in rows]
     view = {"title": title, "sheet": placed.sheet, "rows": shown}
-    if placed.note_row:
-        view["note"] = placed.cells[(placed.note_row, 1)]
+    if placed.note_rows:
+        view["notes"] = [placed.cells[(row, 1)] for row in placed.note_rows]
     return view
 
 
-def declared_workbook(declaration: dict) -> tuple[Workbook, list[dict], Compiler]:
-    compiler = compile_declaration(declaration)
+def declared_workbook(declaration: dict, attachments: tuple = ()) -> tuple[Workbook, list[dict], Compiler]:
+    compiler = compile_declaration(declaration, attachments)
     workbook = Workbook()
     workbook.remove(workbook.active)
     if declaration.get("title"):
@@ -191,6 +200,6 @@ def declared_workbook(declaration: dict) -> tuple[Workbook, list[dict], Compiler
     for placed, title in zip(compiler.views, titles):
         write_view(workbook, placed, title)
     for sheet_name in dict.fromkeys(placed.sheet for placed in compiler.views):
-        overflowing_rows = {row for placed in compiler.views if placed.sheet == sheet_name for row in (placed.title_row, placed.note_row) if row}
+        overflowing_rows = {row for placed in compiler.views if placed.sheet == sheet_name for row in (placed.title_row, *placed.note_rows)}
         fit_columns(workbook[sheet_name], overflowing_rows)
     return workbook, chart_operations(workbook, compiler, titles), compiler

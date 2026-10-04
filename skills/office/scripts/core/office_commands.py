@@ -168,7 +168,7 @@ ROUTES = (
     Route("create", "docx", "doc.create_docx", "exact page setup, styles and blocks", outputs=(".docx",), label="JSON spec"),
     Route("create", "xlsx", "sheet.create_xlsx", "a new workbook compiled from its declaration: typed source tables, views and charts; formulas, formats and chart ranges are written for you", outputs=(".xlsx",), label="workbook declaration"),
     Route("create", "pdf", "pdf.create_pdf", "sections and tables placed on the page", outputs=(".pdf",), label="JSON spec"),
-    Route("create", "csv", "convert.import_table", "typed cells under a frozen, filtered header", outputs=(".xlsx", ".pdf")),
+    Route("create", "csv", "convert.import_table", "the table printed with typed cells under its header; a new .xlsx is refused, because a workbook is compiled from a declaration whose table reads the file through csvPath", outputs=(".xlsx", ".pdf")),
     Route("read", "docx", "doc.read_docx", "blocks, headers, footers, comments, charts and tracked changes by index", ("--start", "--limit", "--revisions", "--styles")),
     Route("read", "xlsx", "sheet.read_xlsx", "sheets, charts and features; a range's values, formulas, stats or formats", ("--sheet", "--range", "--columns", "--limit", "--where", "--stats", "--formats")),
     Route("read", "pptx", "powerpoint.read_pptx", "each slide's shapes with index, box, text and style, tables, charts and notes", ("--pages", "--detail")),

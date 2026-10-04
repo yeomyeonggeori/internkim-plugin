@@ -150,6 +150,29 @@ def blank_fields(schema_fields: tuple, values: dict, location: str = "") -> list
     return blanks
 
 
+def empty_optional_fields(schema_fields: tuple, values: dict, location: str = "") -> list[dict]:
+    empty = []
+    for field in schema_fields:
+        value = values.get(field.name)
+        path = f"{location}.{field.name}" if location else field.name
+        if value in (None, "", []) and field.optional:
+            empty.append({"field": path, "label": field.label})
+        elif field.is_record_list and isinstance(value, list):
+            empty.extend(empty_optional_columns(field, [item for item in value if isinstance(item, dict)], path))
+    return empty
+
+
+def empty_optional_columns(field, rows: list[dict], path: str) -> list[dict]:
+    empty = []
+    for child in field.fields:
+        if not child.optional:
+            continue
+        count = sum(1 for row in rows if row.get(child.name) in (None, ""))
+        if count:
+            empty.append({"field": f"{path}[].{child.name}", "label": f"{field.label}: {child.label}, empty in {count} of {len(rows)} rows"})
+    return empty
+
+
 DATE_HINT = DATE_SHAPES
 
 

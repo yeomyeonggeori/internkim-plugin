@@ -109,16 +109,6 @@ class SpecificSuggestionTest(WorkbookEditTest):
     def test_a_field_written_under_another_word_names_the_field_it_means(self):
         issues = self.apply([{"op": "add_chart", "sheet": "Sales", "type": "line", "data": "A1:B4"}], name="fixture.xlsx")["issues"]
         self.assertEqual([(issue["location"], issue["suggestion"]) for issue in issues], [("ops[0].data", "rename the field to 'range'")])
-        write_json(self.directory / "spec.json", {"sheets": [{"name": "매출", "data": [["월", "매출"], ["1월", 5]]}]})
-        issues = run_office(["create", "book.xlsx", "spec.json"], self.directory)["issues"]
-        self.assertEqual([issue["suggestion"] for issue in issues], ["rename the field to 'title'", "rename the field to 'rows'"])
-
-    def test_rows_written_as_objects_are_answered_with_the_lists_they_mean(self):
-        write_json(self.directory / "spec.json", {"sheets": [{"title": "매출", "rows": [{"담당자": "이샘플", "매출": 5}, {"매출": 6, "담당자": "박예시"}]}]})
-        issue = run_office(["create", "book.xlsx", "spec.json"], self.directory)["issues"][0]
-        self.assertEqual((issue["code"], issue["location"]), ("WRONG_TYPE", "spec.sheets[0].rows"))
-        self.assertIn("spec.sheets[0].rows[1] lists its keys in another order", issue["message"])
-        self.assertIn('[["담당자", "매출"], ["이샘플", 5], ["박예시", 6]]', issue["suggestion"])
 
 
 class TextLimitTest(WorkbookEditTest):
@@ -128,11 +118,6 @@ class TextLimitTest(WorkbookEditTest):
         self.assertIn("more than the 255", issue["message"])
         issue = self.apply([{"op": "set_cell", "sheet": "Sales", "cell": "A9", "value": "x" * 32768}], name="fixture.xlsx")["issues"][0]
         self.assertIn("an Excel cell holds at most 32767", issue["message"])
-        write_json(self.directory / "spec.json", {"sheets": [{"title": "2026년 3분기 영업 실적 지역별 담당자별 상세 분석 보고서", "rows": [["a"]]}]})
-        issue = run_office(["create", "book.xlsx", "spec.json"], self.directory)["issues"][0]
-        self.assertEqual(issue["location"], "spec.sheets[0].title")
-        self.assertIn("at most 31 characters", issue["message"])
-        self.assertFalse((self.directory / "book.xlsx").exists())
 
 
 class InsertAndDeleteTest(WorkbookEditTest):

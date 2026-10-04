@@ -18,8 +18,8 @@ DECLARED_COLUMN = Record("declared column", "one column of a source table", (
 DECLARED_TABLE = Record("declared table", "the source data, one row per record exactly as the request or attachment gives it", (
     Field("name", Text(non_empty=True), "the data sheet's name", required=True),
     Field("columns", ListOf(DECLARED_COLUMN, non_empty=True), "the columns, in order", required=True),
-    Field("rows", ListOf(ListOf(CellValue())), "the records, one list of cells per row in column order; null for a value the source does not give, never 0"),
-    Field("csvPath", Text(non_empty=True), "an attached CSV holding the records, read as it is, instead of rows"),
+    Field("rows", ListOf(ListOf(CellValue())), "the records the request's text gives, one list of cells per row in column order; null for a value the source does not give, never 0; never an attached table typed out"),
+    Field("csvPath", Text(non_empty=True), "the path of an attached CSV or TSV whose header row is followed by the records, read as it is instead of rows; an attached table is always read this way"),
 ))
 
 VIEW_COLUMN = Record("added column", "a column computed from the view's own cells", (
@@ -57,3 +57,5 @@ WORKBOOK_DECLARATION = Record("workbook declaration", "a workbook declared as ty
 ))
 
 DECLARATION_INVALID = IssueKind("DECLARATION_INVALID", ERROR, "a view, chart or expression names a table, column, dimension or measure the declaration does not have, or uses one in the wrong role", "use the names the declaration's tables give, a dimension where a dimension belongs and a measure where a measure belongs")
+DECLARATION_REQUIRED = IssueKind("DECLARATION_REQUIRED", ERROR, "office create makes a new workbook only from a declaration of kind workbook; formulas, formats and charts are compiled from it, never written by hand", "write <title>.workbook.json with office guide create xlsx, reading an attached CSV or TSV through csvPath, and run office create <title>.xlsx <title>.workbook.json")
+COMPILED_CELLS = IssueKind("COMPILED_CELLS", ERROR, "the edit changes cells compiled from a declaration", "change the declaration and run office create again")

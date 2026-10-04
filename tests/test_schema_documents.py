@@ -50,7 +50,18 @@ def sample_instance(given):
     return instance
 
 
+def with_company_files(context_path):
+    context = json.loads(Path(context_path).read_text(encoding="utf-8"))
+    for language, profile in (context.get("company") or {}).items():
+        if isinstance(profile, dict):
+            profile_path = Path(context_path).with_name(f"company-profile.{language}.json")
+            write_json(profile_path, profile)
+            context["company"][language] = str(profile_path)
+    write_json(context_path, context)
+
+
 def run_office_with_context(arguments, working_directory, context_path):
+    with_company_files(context_path)
     environment = dict(os.environ, OFFICE_RUNTIME_CONTEXT=str(context_path))
     completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *arguments], capture_output=True, text=True, cwd=working_directory, env=environment)
     return json.loads(completed.stdout)
@@ -236,6 +247,25 @@ class QuoteMergeTest(unittest.TestCase):
             self.assertEqual(result["status"], "ok", result)
             self.assertIn("프로필파일 주식회사", self.pdf_text(directory))
 
+    def test_a_number_not_yet_registered_is_drawn_as_the_blank_the_result_lists(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.merge(directory, QUOTE_VALUES, runtime_context(number=""))
+            self.assertIn("number (document.number)", [blank["label"] for blank in result["details"]["blanks"]])
+            self.assertIn("문서번호 __________", self.pdf_text(directory))
+
+    def test_the_registered_number_is_the_last_one_the_runtime_context_lists(self):
+        with tempfile.TemporaryDirectory() as directory:
+            context = runtime_context() | {"registeredDocuments": [{"documentNumber": "QT-2026-0001"}, {"documentNumber": "QT-2026-0002"}]}
+            result = self.merge(directory, QUOTE_VALUES, context)
+            self.assertNotIn("number (document.number)", [blank["label"] for blank in result["details"]["blanks"]])
+            self.assertIn("문서번호 QT-2026-0002", self.pdf_text(directory))
+
+    def test_an_optional_column_left_empty_is_reported_apart_from_the_blanks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.merge(directory, QUOTE_VALUES, runtime_context())
+            self.assertIn({"field": "items[].spec", "label": "품목: 규격, empty in 3 of 3 rows"}, result["details"]["emptyOptional"])
+            self.assertNotIn("items[].spec", [blank["field"] for blank in result["details"]["blanks"]])
+
     def test_a_number_registered_after_the_first_merge_is_taken_on_the_next(self):
         with tempfile.TemporaryDirectory() as directory:
             first = self.merge(directory, QUOTE_VALUES, runtime_context(number=""))
@@ -259,6 +289,24 @@ class InvoiceMergeTest(unittest.TestCase):
             text = json.dumps(json.loads(completed.stdout), ensure_ascii=False)
             self.assertIn("Subtotal 1,000 USD", text)
             self.assertIn("Total due __________ USD", text)
+            self.assertIn("Tax rate __________", text)
+
+
+class LayoutPlacementTest(unittest.TestCase):
+    def test_a_schema_whose_layout_never_places_a_required_field_is_refused(self):
+        schema = {"name": "sample", "kind": "document", "language": "en", "fields": [{"name": "title"}, {"name": "owner", "type": "person"}],
+                  "known": {"date": "today"}, "layout": {"parts": [{"type": "heading", "text": "{title}"}]}}
+        with tempfile.TemporaryDirectory() as directory:
+            write_json(Path(directory, "sample.schema.json"), schema)
+            write_json(Path(directory, "values.json"), {"title": "T", "owner": None})
+            write_json(Path(directory, "context.json"), runtime_context())
+            result = run_office_with_context(["merge", "sample.schema.json", "values.json", "out.pdf"], directory, Path(directory, "context.json"))
+        self.assertEqual(result["status"], "error")
+        self.assertIn("never places owner, date", result["issues"][0]["message"])
+
+    def test_every_bundled_schema_places_each_field_it_can_report_blank(self):
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", "from schemas.schema_document import load_schema, bundled_schema_names; [load_schema(name) for name in bundled_schema_names()]"], capture_output=True, text=True)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
 
 
 class MinutesMergeTest(unittest.TestCase):

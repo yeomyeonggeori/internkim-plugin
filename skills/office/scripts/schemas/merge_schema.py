@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from types import SimpleNamespace
 
 from core.office_arguments import route_arguments
 from core.office_result import WRONG_OUTPUT_FORMAT, OfficeFailure, Result, read_json_file, run_command
 from paperwork.jurisdictions import find_jurisdiction
-from schemas.given_values import blank_fields, normalized_values, validated_values
+from schemas.given_values import blank_fields, empty_optional_fields, normalized_values, validated_values
 from schemas.known_values import load_runtime_context
 from schemas.resolution import Instance, compute_derived, known_snapshot, resolved_known
 from schemas.schema_document import DocumentSchema, load_schema
+from core.source_snapshot import read_source, write_source
 
 
-SOURCE_SUFFIX = ".source.json"
 OUTPUTS_BY_KIND = {"form": (".pdf",), "document": (".docx", ".pdf", ".html"), "docx-form": (".docx",), "xlsx-form": (".xlsx",)}
 
 
@@ -27,8 +26,9 @@ def main() -> Result:
     instance = schema_instance(schema, values, output_path)
     issues, drawn_blanks = render(instance, output_path)
     blanks = given_blanks(schema, values) + drawn_blanks + unknown_known_values(instance)
-    source_path = write_source(output_path, instance)
-    return Result(summary=summary(schema, output_path, blanks), output_path=str(output_path), issues=tuple(issues), details={"blanks": blanks, "source": str(source_path)})
+    source_path = write_source(output_path, schema_source(instance, blanks))
+    details = {"blanks": blanks, "emptyOptional": empty_optional_fields(schema.fields, values), "source": str(source_path)}
+    return Result(summary=summary(schema, output_path, blanks), output_path=str(output_path), issues=tuple(issues), details=details)
 
 
 def require_output_kind(schema: DocumentSchema, output_path: Path) -> None:
@@ -57,23 +57,13 @@ def words_by(jurisdiction):
     return lambda value: jurisdiction.amount_in_words.line(int(value))
 
 
-def source_path_of(output_path: Path) -> Path:
-    return output_path.with_name(output_path.name + SOURCE_SUFFIX)
-
-
 def previous_snapshot(output_path: Path, schema: DocumentSchema) -> dict:
-    path = source_path_of(output_path)
-    if not path.is_file():
-        return {}
-    source = json.loads(path.read_text(encoding="utf-8"))
+    source = read_source(output_path)
     return source.get("known") or {} if source.get("schema") == schema.name else {}
 
 
-def write_source(output_path: Path, instance: Instance) -> Path:
-    path = source_path_of(output_path)
-    source = {"schema": instance.schema.name, "given": instance.original, "known": known_snapshot(instance)}
-    path.write_text(json.dumps(source, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-    return path
+def schema_source(instance: Instance, blanks: list[dict]) -> dict:
+    return {"schema": instance.schema.name, "given": instance.original, "known": known_snapshot(instance), "blanks": blanks}
 
 
 def render(instance: Instance, output_path: Path) -> tuple[list, list]:

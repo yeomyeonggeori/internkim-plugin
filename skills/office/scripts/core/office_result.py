@@ -8,6 +8,8 @@ import logging
 import os
 from typing import Callable
 
+from core.source_snapshot import keep_provenance
+
 
 ERROR = "error"
 WARNING = "warning"
@@ -210,6 +212,7 @@ def command_result(command: Callable[[], Result]) -> Result:
         root_logger.removeHandler(library_warnings)
     if result.status == "error":
         return result
+    keep_provenance(result.output_path)
     return replace(result, issues=result.issues + library_warnings.issues())
 
 

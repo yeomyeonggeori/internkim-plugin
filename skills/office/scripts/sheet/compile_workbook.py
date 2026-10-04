@@ -4,6 +4,8 @@ import csv
 from dataclasses import dataclass, field
 from decimal import Decimal
 import io
+import os
+from pathlib import Path as FilePath
 
 from openpyxl.utils import get_column_letter
 
@@ -20,6 +22,8 @@ CURRENCY_FORMATS = {"USD": '"$"#,##0', "EUR": '"€"#,##0', "GBP": '"£"#,##0', 
 TOTAL_WORDS = {"ko": "합계", "en": "Total"}
 PARTIAL_MARK = "*"
 PARTIAL_NOTES = {"ko": "* 주어진 값만 더했습니다. 주어지지 않은 값: {labels}", "en": "* Only the values given are summed. Not given: {labels}"}
+COVERAGE_NOTES = {"ko": "범위가 다릅니다: {labels}", "en": "Unequal coverage: {labels}"}
+COVERAGE_LABELS = {"ko": "{member} ({dimension} {most}개 중 {covered}개)", "en": "{member} ({covered} of {most} {dimension})"}
 INPUT_FILL = "FFF2CC"
 CHANGE_FUNCTIONS = ("change", "percentChange")
 
@@ -55,6 +59,9 @@ class SourceTable:
     def members(self, dimension: str) -> list:
         return distinct(row[self.index(dimension)] for row in self.rows if row[self.index(dimension)] is not None)
 
+    def members_where(self, dimension: str, filter_dimension: str, filter_member) -> list:
+        return distinct(row[self.index(dimension)] for row in self.rows if row[self.index(filter_dimension)] == filter_member and row[self.index(dimension)] is not None)
+
     def combinations(self, dimensions: list[str]) -> list[tuple]:
         return distinct(tuple(row[self.index(name)] for name in dimensions) for row in self.rows)
 
@@ -73,12 +80,12 @@ class Placed:
     cells: dict = field(default_factory=dict)
     formats: dict = field(default_factory=dict)
     partial: set = field(default_factory=set)
-    note_row: int | None = None
+    note_rows: list = field(default_factory=list)
     width: int = 0
 
 
-def invalid(message: str, location: str) -> OfficeFailure:
-    return OfficeFailure(DECLARATION_INVALID.issue(message, location))
+def invalid(message: str, location: str, suggestion: str | None = None) -> OfficeFailure:
+    return OfficeFailure(DECLARATION_INVALID.issue(message, location, suggestion))
 
 
 def quoted(sheet_name: str) -> str:
@@ -114,11 +121,15 @@ def typed_cell(column: Column, value: object, location: str):
     return value.strip() if isinstance(value, str) else value
 
 
+def delimited_records(csv_path: str) -> list[list[str]]:
+    text = read_text_input(csv_path)
+    first_line = text.split("\n", 1)[0]
+    delimiter = "\t" if csv_path.lower().endswith(".tsv") or "\t" in first_line and "," not in first_line else ","
+    return list(csv.reader(io.StringIO(text, newline=""), delimiter=delimiter))[1:]
+
+
 def source_rows(entry: dict, columns: list, location: str) -> list:
-    if entry.get("csvPath"):
-        records = list(csv.reader(io.StringIO(read_text_input(entry["csvPath"]), newline="")))[1:]
-    else:
-        records = entry.get("rows") or []
+    records = delimited_records(entry["csvPath"]) if entry.get("csvPath") else entry.get("rows") or []
     rows = []
     for row_index, record in enumerate(records):
         if len(record) != len(columns):
@@ -172,6 +183,7 @@ class Compiler:
         self.next_row: dict[str, int] = {}
         self.views: list[Placed] = []
         self.blanks: list[dict] = []
+        self.chart_blocks: list[tuple[str, str]] = []
 
     def table(self, name: str | None, location: str) -> SourceTable:
         if name is None:
@@ -227,12 +239,21 @@ class Compiler:
             context.add_column(added, f"{location}.add[{index}]")
         placed.width = max(placed.cells, key=lambda key: key[1])[1] if placed.cells else 1
         last_row = total_row or (body_rows[-1] if body_rows else header_row)
-        if placed.partial:
-            placed.note_row = last_row + 1
-            placed.cells[(placed.note_row, 1)] = PARTIAL_NOTES.get(self.language, PARTIAL_NOTES["en"]).format(labels=", ".join(missing_labels(table, measures)))
-            last_row = placed.note_row
+        for note in self.view_notes(table, placed, measures, compared_dimensions(column_dimension, added_entries, location)):
+            last_row += 1
+            placed.note_rows.append(last_row)
+            placed.cells[(last_row, 1)] = note
         self.next_row[sheet] = last_row + 3
         return placed
+
+    def view_notes(self, table: SourceTable, placed: Placed, measures: list, compared: list[str]) -> list[str]:
+        notes = []
+        if placed.partial:
+            notes.append(PARTIAL_NOTES.get(self.language, PARTIAL_NOTES["en"]).format(labels=", ".join(missing_labels(table, measures))))
+        uneven = coverage_labels(table, compared, COVERAGE_LABELS.get(self.language, COVERAGE_LABELS["en"]))
+        if uneven:
+            notes.append(COVERAGE_NOTES.get(self.language, COVERAGE_NOTES["en"]).format(labels=", ".join(uneven)))
+        return notes
 
 
 class ViewContext:
@@ -448,6 +469,28 @@ class ViewContext:
         return self.placed.body_rows + ([self.placed.total_row] if self.placed.total_row else [])
 
 
+def compared_dimensions(column_dimension: Column | None, added_entries: list, location: str) -> list[str]:
+    compared = [column_dimension.name] if column_dimension is not None else []
+    for index, entry in enumerate(added_entries):
+        expression = parse_expression(entry["expression"], f"{location}.add[{index}].expression")
+        if isinstance(expression, Call) and expression.function in CHANGE_FUNCTIONS and len(expression.arguments) == 2 and isinstance(expression.arguments[1], Path):
+            compared.append(expression.arguments[1].name)
+    return distinct(compared)
+
+
+def coverage_labels(table: SourceTable, compared: list[str], template: str) -> list[str]:
+    dimensions = [column.name for column in table.columns if column.role == "dimension"]
+    labels = []
+    for compared_name in compared:
+        for other_name in dimensions:
+            if other_name == compared_name:
+                continue
+            covered = {member: len(table.members_where(other_name, compared_name, member)) for member in table.members(compared_name)}
+            most = max(covered.values(), default=0)
+            labels += [template.format(member=member, dimension=other_name, covered=count, most=most) for member, count in covered.items() if count < most]
+    return labels
+
+
 def share_dimension(entry: dict, location: str) -> str | None:
     expression = parse_expression(entry["expression"], f"{location}.expression")
     if isinstance(expression, Call) and expression.function == "share" and len(expression.arguments) == 2 and isinstance(expression.arguments[1], Path):
@@ -536,8 +579,30 @@ def inferred_type(expression, table: SourceTable) -> str:
     return next(iter(types), "amount")
 
 
-def compile_declaration(declaration: object) -> Compiler:
+TABLE_EXTENSIONS = (".csv", ".tsv")
+
+
+def require_attached_tables_read(declaration: dict, attachments: tuple) -> None:
+    attached = [attachment for attachment in attachments if FilePath(str(attachment.get("path", ""))).suffix.lower() in TABLE_EXTENSIONS]
+    read_paths = [entry["csvPath"] for entry in declaration["tables"] if entry.get("csvPath")]
+    unread = [attachment for attachment in attached if not any(is_same_file(attachment["path"], read_path) for read_path in read_paths)]
+    typed = next((index for index, entry in enumerate(declaration["tables"]) if not entry.get("csvPath")), None)
+    if not unread or typed is None:
+        return
+    location = f"declaration.tables[{typed}].rows"
+    raise invalid(f"{location}: the request attached {', '.join(attachment['path'] for attachment in unread)}; an attached table is read as it is, never typed", location, f'set "csvPath": "{unread[0]["path"]}" on that table in place of its rows')
+
+
+def is_same_file(first: str, second: str) -> bool:
+    first_path, second_path = FilePath(first).expanduser(), FilePath(second).expanduser()
+    if first_path.exists() and second_path.exists():
+        return os.path.samefile(first_path, second_path)
+    return first_path.resolve() == second_path.resolve()
+
+
+def compile_declaration(declaration: object, attachments: tuple = ()) -> Compiler:
     require_valid(WORKBOOK_DECLARATION, declaration, "declaration")
+    require_attached_tables_read(declaration, attachments)
     compiler = Compiler(declaration)
     for index, entry in enumerate(declaration.get("views") or []):
         compiler.views.append(compiler.compile_view(entry, f"declaration.views[{index}]"))

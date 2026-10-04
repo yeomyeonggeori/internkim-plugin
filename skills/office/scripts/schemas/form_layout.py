@@ -8,7 +8,7 @@ def paperwork_document(instance: Instance) -> dict:
     layout = instance.schema.layout
     document = {"form": instance.schema.name, "title": instance.schema.title, "profile": instance.known.get("company") or {"name": BLANK}}
     if "documentNumber" in layout:
-        document["documentNumber"] = render_template(instance, layout["documentNumber"]) or ""
+        document["documentNumber"] = render_template(instance, layout["documentNumber"], whole_blank=BLANK) or BLANK
     if layout.get("approvalLine"):
         document["approvalLine"] = list(layout["approvalLine"])
     if "recipient" in layout:
@@ -37,7 +37,7 @@ def recipient_block(instance: Instance, layout: dict) -> dict:
 
 
 def meta_rows(instance: Instance, rows: list) -> list[dict]:
-    rendered = [(row["label"], render_template(instance, row["value"])) for row in rows]
+    rendered = [(row["label"], render_template(instance, row["value"], whole_blank=BLANK)) for row in rows]
     return [{"label": label, "value": value} for label, value in rendered if value is not None]
 
 

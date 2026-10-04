@@ -142,11 +142,11 @@ class OutputPathTest(unittest.TestCase):
             (working_directory / "plain").write_text("not a folder", encoding="utf-8")
             (working_directory / "notes.md").write_text("# 제목\n\n본문\n", encoding="utf-8")
             (working_directory / "notes.html").write_text("<h1>제목</h1>", encoding="utf-8")
-            (working_directory / "rows.csv").write_text("a,b\n", encoding="utf-8")
+            (working_directory / "book.workbook.json").write_text('{"kind": "workbook", "tables": [{"name": "Data", "columns": [{"name": "a"}, {"name": "b"}], "rows": [["x", "y"]]}]}', encoding="utf-8")
             long_name = "n" * 300
             cases = {
-                ("create", "folder.xlsx", "rows.csv"): ("PATH_UNUSABLE", "folder.xlsx"),
-                ("create", "plain/book.xlsx", "rows.csv"): ("PATH_UNUSABLE", "plain"),
+                ("create", "folder.xlsx", "book.workbook.json"): ("PATH_UNUSABLE", "folder.xlsx"),
+                ("create", "plain/book.xlsx", "book.workbook.json"): ("PATH_UNUSABLE", "plain"),
                 ("create", "plain/notes.docx", "notes.md"): ("PATH_UNUSABLE", "plain"),
                 ("convert", "notes.html", f"{long_name}.docx"): ("PATH_UNUSABLE", f"{long_name}.docx"),
             }
@@ -184,15 +184,15 @@ class OutputPathTest(unittest.TestCase):
     def test_apply_and_merge_write_the_kind_of_file_they_read(self):
         with tempfile.TemporaryDirectory() as directory:
             working_directory = Path(directory)
-            (working_directory / "rows.csv").write_text("a,b\n", encoding="utf-8")
-            self.assertEqual(run_office(["create", "book.xlsx", "rows.csv"], working_directory)[1]["status"], "ok")
-            (working_directory / "ops.json").write_text('[{"op": "set_cell", "cell": "A2", "value": 1}]', encoding="utf-8")
+            (working_directory / "book.workbook.json").write_text('{"kind": "workbook", "tables": [{"name": "Data", "columns": [{"name": "a"}, {"name": "b"}], "rows": [["x", "y"]]}]}', encoding="utf-8")
+            self.assertEqual(run_office(["create", "book.xlsx", "book.workbook.json"], working_directory)[1]["status"], "ok")
+            (working_directory / "ops.json").write_text('[{"op": "set_cell", "cell": "D5", "value": 1}]', encoding="utf-8")
             (working_directory / "values.json").write_text("{}", encoding="utf-8")
             for arguments in (["apply", "book.xlsx", "ops.json", "--output", "book.csv"], ["merge", "book.xlsx", "values.json", "filled.pdf"]):
                 with self.subTest(command=arguments[:2]):
                     _, envelope = run_office(arguments, working_directory)
                     self.assertEqual([issue["code"] for issue in envelope["issues"]], ["WRONG_OUTPUT_FORMAT"])
-            self.assertEqual(sorted(path.name for path in working_directory.iterdir()), ["book.xlsx", "ops.json", "rows.csv", "values.json"])
+            self.assertEqual(sorted(path.name for path in working_directory.iterdir()), ["book.workbook.json", "book.xlsx", "book.xlsx.source.json", "ops.json", "values.json"])
 
     def test_an_empty_image_query_is_refused_before_any_search(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -203,9 +203,9 @@ class OutputPathTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             working_directory = Path(directory)
             (working_directory / "documents").mkdir()
-            (working_directory / "rows.csv").write_text("a,b\n", encoding="utf-8")
+            (working_directory / "book.workbook.json").write_text('{"kind": "workbook", "tables": [{"name": "Data", "columns": [{"name": "a"}, {"name": "b"}], "rows": [["x", "y"]]}]}', encoding="utf-8")
             (working_directory / "ops.json").write_text('[{"op": "append_rows", "rows": [[1, 2]]}]', encoding="utf-8")
-            self.assertEqual(run_office(["create", "documents/book.xlsx", "rows.csv"], working_directory)[1]["status"], "ok")
+            self.assertEqual(run_office(["create", "documents/book.xlsx", "book.workbook.json"], working_directory)[1]["status"], "ok")
             original = (working_directory / "documents" / "book.xlsx").read_bytes()
             for arguments in (["apply", "ops.json"], ["apply"], ["apply", "documents"]):
                 with self.subTest(command=arguments):

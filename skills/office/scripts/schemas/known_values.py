@@ -6,8 +6,7 @@ import json
 import os
 from pathlib import Path
 
-
-RUNTIME_CONTEXT_VARIABLE = "OFFICE_RUNTIME_CONTEXT"
+from core.host_contract import RUNTIME_CONTEXT_VARIABLE
 
 
 @dataclass(frozen=True)
@@ -17,10 +16,11 @@ class RuntimeContext:
     today: date | None = None
     companies: dict = field(default_factory=dict)
     registered_documents: tuple = ()
+    attachments: tuple = ()
 
     def company(self, language: str) -> dict:
-        found = self.companies.get(language) or next(iter(self.companies.values()), {})
-        return company_profile(found) if isinstance(found, str) else found
+        found = self.companies.get(language) or next(iter(self.companies.values()), "")
+        return company_profile(found) if isinstance(found, str) and found else {}
 
     def document_number(self) -> str:
         numbers = [document.get("documentNumber") for document in self.registered_documents if document.get("documentNumber")]
@@ -74,4 +74,5 @@ def load_runtime_context() -> RuntimeContext | None:
         today=date.fromisoformat(document["today"]) if document.get("today") else None,
         companies=document.get("company") or {},
         registered_documents=tuple(document.get("registeredDocuments") or ()),
+        attachments=tuple(document.get("attachments") or ()),
     )

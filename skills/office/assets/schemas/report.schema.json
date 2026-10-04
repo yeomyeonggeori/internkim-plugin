@@ -11,7 +11,8 @@
       "choices": [
         "ko",
         "en"
-      ]
+      ],
+      "optional": true
     },
     {
       "name": "title",

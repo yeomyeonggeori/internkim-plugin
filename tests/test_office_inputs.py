@@ -176,7 +176,8 @@ class InputBoundaryTest(unittest.TestCase):
         for name in ("보고서.md", "utf16.md"):
             envelope, _ = run_office(["create", "보고서.docx", name], self.directory)
             self.assertEqual(envelope["status"], "ok", envelope["issues"])
-        envelope, _ = run_office(["create", "실적.xlsx", "실적.csv"], self.directory)
+        (self.directory / "실적.workbook.json").write_text(json.dumps({"kind": "workbook", "tables": [{"name": "실적", "columns": [{"name": "지역"}, {"name": "매출", "type": "quantity"}], "csvPath": "실적.csv"}]}, ensure_ascii=False), encoding="utf-8")
+        envelope, _ = run_office(["create", "실적.xlsx", "실적.workbook.json"], self.directory)
         self.assertEqual(envelope["status"], "ok", envelope["issues"])
         rows, _ = run_office(["read", "실적.xlsx"], self.directory)
         self.assertIn("서울", json.dumps(rows, ensure_ascii=False))

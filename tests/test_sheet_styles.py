@@ -74,13 +74,10 @@ DEFAULT_RULE = ("thin", "thin", "top", True)
 class DefaultTableStyleTest(WorkbookFixture):
     def setUp(self):
         super().setUp()
-        (self.directory / "sales.csv").write_text("item,amount\nA,1000\nB,2000\n", encoding="utf-8")
-        write_json(self.directory / "spec.json", {"sheets": [
-            {"title": "Sales", "csvPath": "sales.csv"},
+        self.create_workbook([
+            {"title": "Sales", "rows": [["item", "amount"], ["A", 1000], ["B", 2000]]},
             {"title": "Calculated", "rows": [["item", "double"], ["A", "=2*5"], ["B", 7]]},
-        ]})
-        envelope = run_office(["create", "book.xlsx", "spec.json"], self.directory)
-        self.assertEqual(envelope["status"], "ok", envelope)
+        ])
 
     def apply(self, operations):
         envelope = super().apply(operations)

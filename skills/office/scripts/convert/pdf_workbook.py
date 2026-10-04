@@ -7,7 +7,7 @@ from pathlib import Path
 import pdfplumber
 
 from sheet.workbook.cell_values import typed_text
-from sheet.create_xlsx import create_workbook
+from sheet.tabular_workbook import create_workbook
 from core.office_inputs import unlocked_pdf_bytes
 from pdf.ocr.pdf_ocr import OcrLine
 from pdf.pdf_tables import page_tables, stream_tables
