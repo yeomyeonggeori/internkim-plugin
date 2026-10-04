@@ -6,6 +6,7 @@ import math
 
 from pptx.oxml.ns import qn
 
+from powerpoint.chart_audit import slide_chart_issues
 from powerpoint.definitions import BACKGROUND_SHARE_OF_SLIDE, CONTENT_OVERFLOW, DISTORTION_TOLERANCE, IMAGE_DISTORTED, OUT_OF_FRAME, OVERLAP_RATIO, TEXT_OVERLAP, ReviewCheck
 from core.office_result import Issue
 from powerpoint.model.geometry import SLIDE_FRAME, Box, Frame, child_frame, local_box
@@ -68,6 +69,7 @@ def audit_presentation(presentation, numbered_slides: list[tuple[int, object]]) 
         entries = slide_entries(presentation, slide)
         area = SlideArea(number, presentation.slide_width, presentation.slide_height)
         issues.extend(slide_issues(entries, area))
+        issues.extend(slide_chart_issues(slide, number))
         faces.update(pair for entry in entries if entry.fit is not None for pair in entry.fit.faces)
     return Audit(issues, frozenset(faces))
 

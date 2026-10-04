@@ -17,6 +17,7 @@ from deck.review.evidence import read_contact_sheets, read_page_pixels
 from deck.review.report import write_review_outputs
 from deck.review.slide_images import rendered_slide_image_paths
 from deck.review.slide_checks import review_slides
+from deck.review.title_consistency import apply_title_consistency_warning
 from deck.slide_source import read_optional_text, split_slide_sources
 from deck.slide_structure import read_slide_texts
 
@@ -87,3 +88,4 @@ def apply_deck_warnings(
     apply_unsourced_current_date_warning(slides, slide_texts, required_texts)
     apply_emoji_icon_warning(slides, slide_texts)
     apply_missing_speaker_notes_warning(slides, source_text)
+    apply_title_consistency_warning(slides)

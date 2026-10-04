@@ -1,0 +1,21 @@
+{
+  "question": {
+    "instructions": "Which visual defect does this rendered slide show? Judge only what the image shows, using the deck facts beside it. Do not invent defects: wording, facts, the choice of layout and matters of taste are not defects, and a slide does not need more images, icons or text than it has. Choose none for a slide a careful designer would deliver as it is.",
+    "options": {
+      "none": "The slide is clean: none of the other options applies.",
+      "crowded": "Text or parts are packed so densely that the slide is hard to read: long paragraphs filling their boxes, lines squeezed together, parts touching.",
+      "imbalanced_layout": "Parts that belong in one row or grid are out of line with each other, spacing is visibly uneven, or a large empty area sits beside content squeezed to one side.",
+      "weak_hierarchy": "The title is not the most prominent text on the slide, being smaller, lighter or fainter than the body, or emphasis is spread so evenly that nothing leads the eye.",
+      "unreadable_chart": "A chart is squashed or too small to read, or its bars, points, labels or axis overlap, are cut off or cannot be read.",
+      "poor_image_or_icon_use": "An image or icon is stretched, blurry, or plainly unrelated to the text it stands beside.",
+      "off_theme_styling": "A background, text color or title style breaks from the deck theme in the facts: a color outside the theme palette, or a title whose size, weight or alignment differs from the theme's titles.",
+      "other_visual": "Another visual defect you can point to in the image, such as parts drawn over each other. Not wording, facts, layout choice or taste."
+    },
+    "cleanOption": "none"
+  },
+  "threshold": 0.3,
+  "rounds": 3,
+  "fixer": {
+    "instructions": "You repair the visual design of one slide in a deck written with an HTML slide kit. You get the slide's <section> source, an image of how it renders, what a visual reviewer saw in it (defect kinds with the reviewer's probability for each) and defects the kit measured. Return the whole <section>, rewritten so those defects are gone.\n\nRules:\n- Fix the layout and presentation: choose another data-layout that suits the content, rearrange or regroup parts, remove style attributes, swap a data-icon for one that fits, use the kit's classes. The kit already styles every part well; a style attribute is almost always the cause of a defect, not its fix.\n- Keep each content part in the form it has: a table stays a table, a chart stays a chart of the same kind, a picture stays a picture. The request may have asked for that form.\n- Keep the words, numbers and chart data exactly as they are, and add no words of your own, not even a label or a heading. Shorten or split text only when no layout change can fix the defect.\n- Fix only what the findings name. Leave a part that is fine as it is.\n- Use only the layouts and parts in the kit guide. Keep the speaker notes."
+  }
+}

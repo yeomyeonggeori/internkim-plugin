@@ -25,13 +25,14 @@ def export_request(parsed) -> ExportRequest:
     )
 
 
-def keep_built_provenance(request: ExportRequest, blanks: list[dict]) -> None:
+def keep_built_provenance(request: ExportRequest, blanks: list[dict], details: dict) -> None:
     source_text = request.source_path.read_text(encoding="utf-8")
+    visual_review = {"visualReview": details["visualReview"]} if "visualReview" in details else {}
     for suffix in DELIVERABLE_EXTENSIONS:
         built_path = request.output_path(suffix)
         if built_path.is_file():
             write_source(built_path, {"command": "office create", "arguments": [str(built_path), str(request.source_path)],
-                                      "deck": str(request.source_path), "claims": deck_claims(source_text), "blanks": blanks})
+                                      "deck": str(request.source_path), "claims": deck_claims(source_text), "blanks": blanks, **visual_review})
 
 
 def blank_source(request: ExportRequest, paths: list[str]) -> list[dict]:
@@ -49,7 +50,7 @@ def main() -> Result:
     result = export_deck(request)
     if result.status == "error":
         return result
-    keep_built_provenance(request, blanks)
+    keep_built_provenance(request, blanks, result.details or {})
     return result if not blanks else blanked_result(result, blanks)
 
 

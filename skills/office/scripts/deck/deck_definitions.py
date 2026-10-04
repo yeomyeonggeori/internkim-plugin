@@ -4,10 +4,10 @@ from dataclasses import dataclass
 
 from fonts.registry import DECK, default_family
 from deck.deck_kit import DEFAULT_THEME, chart_types, icon_names, kit_names, kit_number, slide_size, theme_palettes
-from deck.layout_thresholds import EMPTY_REGION_SHARE_MAXIMUM, LABEL_LINE_MAXIMUM, MARK_BREADTH_MINIMUM, REPEATED_FIGURE_MINIMUM, ROUND_SLOT_MINIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
+from deck.layout_thresholds import EMPTY_REGION_SHARE_MAXIMUM, LABEL_LINE_MAXIMUM, LARGE_TEXT_CONTRAST_MINIMUM, MARK_BREADTH_MINIMUM, REPEATED_FIGURE_MINIMUM, ROUND_SLOT_MINIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TEXT_CONTRAST_MINIMUM, TITLE_LINE_MAXIMUM
 from core.office_commands import EVERY_KIND
 from core.office_result import ERROR, WARNING, IssueKind
-from powerpoint.definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, SLIDE_COUNT_MISMATCH, TEXT_OVERLAP, review_check
+from powerpoint.definitions import CHART_POINT_OUTSIDE_AXIS, CHART_ZERO_MISALIGNED, CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, SLIDE_COUNT_MISMATCH, TEXT_OVERLAP, review_check
 from render.renderer import RENDER_ISSUE_KINDS
 from core.text_checks import PLACEHOLDER_LEFT, TEXT_CHECK_ISSUE_KINDS
 
@@ -21,6 +21,9 @@ REPEATED_FIGURE = review_check("REPEATED_FIGURE", f"one slide shows the same fig
 TINY_TEXT = review_check("TINY_TEXT", f"rendered text is smaller than {SMALLEST_TEXT_SHARE_OF_WIDTH * slide_size()[0]:g}px on a {slide_size()[0]}px slide ({SMALLEST_TEXT_SHARE_OF_WIDTH:.2%} of its width)", "shorten the slide so the kit does not shrink its type; the suggestion says how much fits at full size")
 CHART_UNDERFILLED = review_check("CHART_UNDERFILLED", f"a chart's marks fill too little of the room it is given: bars cover less than {MARK_BREADTH_MINIMUM:.0%} of their axis, or a donut or pie is under {ROUND_SLOT_MINIMUM:.0%} of its slot's longer side", "drop custom styles that size the chart's figure, bars or ring and let the kit fit the chart to its data; two or three values read best beside an .insight")
 DRAWING_DISTORTED = review_check("DRAWING_DISTORTED", "a drawing that must keep its proportions, such as a donut or pie chart, is stretched into another shape", "give the chart a slot the kit can square, such as a chart slide without extra parts beside the figure; a donut or pie is always drawn as a circle")
+TEXT_LOW_CONTRAST = review_check("TEXT_LOW_CONTRAST", f"text is too close in color to what is drawn behind it: under {TEXT_CONTRAST_MINIMUM:g}:1, or {LARGE_TEXT_CONTRAST_MINIMUM:g}:1 for large text", "remove the style that recolors the text or its box; the kit picks every text color to read on its own background")
+GRID_MISALIGNED = review_check("GRID_MISALIGNED", "parts of one kind that sit side by side share neither a top edge nor a middle, parts stacked in a column share no left, center or right edge, or the gaps between parts in one row or column differ", "remove the style that moves the part named; the kit lines parts of one kind up on its grid")
+TITLE_STYLE_INCONSISTENT = review_check("TITLE_STYLE_INCONSISTENT", "a slide's title differs in typeface, weight, color, alignment or indent from the titles of the deck's other slides of its kind", "remove the style that changes this title; the kit sets every title's type, color and place")
 
 TOPIC_TITLE = review_check("TOPIC_TITLE", "the title is a topic label, not a claim", "write the title as the slide's conclusion")
 LANGUAGE_MISMATCH = review_check("LANGUAGE_MISMATCH", "slide titles are Latin-only in a Korean deck", "write the titles in the request language")
@@ -30,7 +33,7 @@ EMPTY_REGION = review_check("EMPTY_REGION", f"an empty rectangle inside the cont
 EMOJI_ICON = review_check("EMOJI_ICON", "a slide uses emoji glyphs", "write a .label word or a data-icon office guide deck lists instead; the kit draws list markers and numbers itself")
 MISSING_SPEAKER_NOTES = review_check("MISSING_SPEAKER_NOTES", "a slide has no speaker notes", 'add an <aside class="notes"> script to every slide')
 
-SLIDE_RENDER_CHECKS = (SLIDE_BLANK, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, TEXT_COVERED, FOOTER_CROSSED, TITLE_TOO_LONG, LABEL_TOO_LONG, REPEATED_FIGURE, IMAGE_DISTORTED, DRAWING_DISTORTED, CHART_UNDERFILLED, TINY_TEXT)
+SLIDE_RENDER_CHECKS = (SLIDE_BLANK, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, TEXT_COVERED, FOOTER_CROSSED, TITLE_TOO_LONG, LABEL_TOO_LONG, REPEATED_FIGURE, IMAGE_DISTORTED, DRAWING_DISTORTED, CHART_UNDERFILLED, TINY_TEXT, TEXT_LOW_CONTRAST, GRID_MISALIGNED, TITLE_STYLE_INCONSISTENT)
 DESIGN_CHECKS = (
     TOPIC_TITLE,
     LANGUAGE_MISMATCH,
@@ -99,6 +102,8 @@ BUILD_ISSUE_KINDS = (
     *RENDER_ISSUE_KINDS,
     FONT_NOT_EMBEDDED,
     TEXT_KEPT_AS_PICTURE,
+    CHART_POINT_OUTSIDE_AXIS.kind,
+    CHART_ZERO_MISALIGNED.kind,
 )
 
 IMAGE_SEARCH_FAILED = IssueKind("IMAGE_SEARCH_FAILED", ERROR, "the image search could not be reached", "skip imagery or try a simpler English query")

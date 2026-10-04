@@ -53,7 +53,7 @@ The output's extension picks the format: `build/<deck-slug>.pptx` writes the Pow
    - `ACCEPTABLE`: deliver the file it names. Other issues are advice; do not redesign a slide that is clean.
    - `FIX ROUND 1 OF 2` or `2 OF 2`: fix only the listed defects by shortening, splitting or filling, then build again.
    - `STOP FIXING`: deliver and name the defects that remain.
-3. Before attaching, open `build/review/contact-sheet-01.png` once and confirm the slides read as intended.
+3. When the build result names `visualReview`, deliver the file without opening the renders: the host asks a reviewer about every slide's render at delivery, repairs the slides it flags and reports what remains, which the reply then names. When it does not, open `build/review/contact-sheet-01.png` once before attaching and confirm the slides read as intended.
 
 ## Images
 

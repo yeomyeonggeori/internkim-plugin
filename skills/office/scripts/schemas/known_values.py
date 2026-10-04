@@ -21,6 +21,7 @@ class RuntimeContext:
     companies: dict = field(default_factory=dict)
     registered_documents: tuple = ()
     attachments: tuple = ()
+    reviews_deck_renders: bool = False
 
     def company(self, language: str) -> dict:
         if not self.companies:
@@ -85,4 +86,5 @@ def load_runtime_context() -> RuntimeContext | None:
         companies=document.get("company") or {},
         registered_documents=tuple(document.get("registeredDocuments") or ()),
         attachments=tuple(document.get("attachments") or ()),
+        reviews_deck_renders=document.get("reviewsDeckRenders") is True,
     )

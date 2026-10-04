@@ -44,11 +44,13 @@ CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is lar
 OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "keep every part on the slide: split or cut what pushes it off, as a build suggestion counts, or move or resize it inside the slide's edges")
 TEXT_OVERLAP = review_check("TEXT_OVERLAP", "two pieces of text cover each other", "separate the two text blocks or shorten the one that spills")
 IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "put the photo in a cover or image slide, which crops it to its frame, or give its box the image's own ratio")
+CHART_POINT_OUTSIDE_AXIS = review_check("CHART_POINT_OUTSIDE_AXIS", "a chart value lies outside the limits of the axis it is drawn on, so PowerPoint and Keynote leave that bar or point out or cut it off", "widen the axis limits to hold every value, or remove the limits so the application sets them")
+CHART_ZERO_MISALIGNED = review_check("CHART_ZERO_MISALIGNED", "a chart with two value axes draws zero at different heights, so a negative value on one axis can sit above the other's baseline", "set both axes' limits so zero falls at the same height, or draw the series on one axis")
 SLIDE_COUNT_MISMATCH = IssueKind("SLIDE_COUNT_MISMATCH", ERROR, "the slide count differs from --slide-count", "add or remove slides until the count matches the request")
 PICTURE_UNREADABLE = IssueKind("PICTURE_UNREADABLE", ERROR, f"an image file given to an operation is not a {PICTURE_FORMATS_TEXT} picture", f"pass the path of a {PICTURE_FORMATS_TEXT} file")
 PPTX_NOT_RENDERED = IssueKind("PPTX_NOT_RENDERED", WARNING, "the renderer could not draw the slides, so nobody looked at them", f"run {SETUP_COMMAND} and run again, or say the slides were checked by measurement only and not seen")
 
-LAYOUT_AUDIT_ISSUE_KINDS = (CONTENT_OVERFLOW.kind, OUT_OF_FRAME.kind, TEXT_OVERLAP.kind, IMAGE_DISTORTED.kind)
+LAYOUT_AUDIT_ISSUE_KINDS = (CONTENT_OVERFLOW.kind, OUT_OF_FRAME.kind, TEXT_OVERLAP.kind, IMAGE_DISTORTED.kind, CHART_POINT_OUTSIDE_AXIS.kind, CHART_ZERO_MISALIGNED.kind)
 APPLY_ISSUE_KINDS = (PICTURE_UNREADABLE,)
 PPTX_CHECK_ISSUE_KINDS = (PPTX_NOT_RENDERED,)
 

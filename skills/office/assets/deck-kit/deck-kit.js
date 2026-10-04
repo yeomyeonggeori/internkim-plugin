@@ -144,6 +144,12 @@
 
   function arrangeNumber(slide) {
     const support = Array.from(slide.children).filter((child) => !child.matches(numberFrameSelector));
+    if (support.length > 1) {
+      const stack = element("div", "kit-support kit-support-stack");
+      slide.insertBefore(stack, support[0]);
+      stack.append(...support);
+      return;
+    }
     support.forEach((child) => child.classList.add("kit-support"));
     if (support.length) return;
     slide.classList.add("kit-lone");
@@ -1244,14 +1250,27 @@
     });
   }
 
-  function lineLabels(values, seriesIndex, format, position, labelEveryPoint, isBelow) {
+  function lineLabels(values, seriesIndex, format, position, labelEveryPoint, isBelow, inkOver = () => null) {
     return values.flatMap((value, index) => {
       const isLast = index === values.length - 1;
       if (!labelEveryPoint && !isLast) return [];
       const point = position(index, value);
       const below = isBelow(index, value);
-      return [valueLabel(format(value), `${below ? "kit-below" : ""}${isLast ? "" : " kit-muted"}`, { left: percent(point.x), top: percent(point.y) }, { series: seriesIndex, index, position: below ? "b" : "t" })];
+      const ink = inkOver(index, point.y);
+      const placement = { left: percent(point.x), top: percent(point.y), ...(ink ? { color: ink } : {}) };
+      return [valueLabel(format(value), `${below ? "kit-below" : ""}${isLast || ink ? "" : " kit-muted"}`, placement, { series: seriesIndex, index, position: below ? "b" : "t" })];
     });
+  }
+
+  function columnInkOver(figure, columns, columnScale, colors) {
+    const top = (value) => (1 - columnScale.share(value)) * 100;
+    return (index, y) => {
+      const covering = columns.series.findIndex((item) => {
+        const [upper, lower] = [top(Math.max(0, item.values[index])), top(Math.min(0, item.values[index]))];
+        return upper < y && y < lower;
+      });
+      return covering < 0 ? null : insideLabelInk(figure, colors[covering]);
+    };
   }
 
   function renderLine(figure, data, chart, formats) {
@@ -1355,7 +1374,8 @@
     const points = line.values.map((value, index) => [position(index, value).x * 10, position(index, value).y * 10]);
     area.appendChild(polylineLayer(color, points, false));
     addDots(area, line.values, color, position);
-    lineLabels(line.values, lineIndex, formats[lineIndex].format, position, data.labels.length <= 8, (index, value) => value < 0).forEach((label) => area.appendChild(label));
+    const inkOver = columnInkOver(figure, columns, columnScale, seriesColors(data.series.length));
+    lineLabels(line.values, lineIndex, formats[lineIndex].format, position, data.labels.length <= 8, (index, value) => value < 0, inkOver).forEach((label) => area.appendChild(label));
     if (ownAxis) addRightTicks(chart, area, lineScale, formats[lineIndex].unit);
     chart.primaryRange = columnScale;
     chart.secondaryRange = ownAxis ? lineScale : null;

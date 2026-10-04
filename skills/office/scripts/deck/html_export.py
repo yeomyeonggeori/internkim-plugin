@@ -3,10 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 import pathlib
 
-from deck.review.acceptance import judge_build
+from deck.review.acceptance import OBJECTIVE_DEFECT_CODES, judge_build
+from deck.review.visual_review import write_visual_review
 from deck.check_deck import CheckRequest, check_deck
 from deck.deck_definitions import FONT_NOT_EMBEDDED, TEXT_KEPT_AS_PICTURE
 from deck.deck_kit import KIT_MARKER, inject_deck_kit, slide_size
+from pptx import Presentation
+
+from powerpoint.chart_audit import presentation_chart_issues
 from deck.pptx_export.editable import EditablePptx, read_text_layers, text_layers_path, write_editable_pptx
 from deck.review.geometry_checks import GEOMETRY_FILE_NAME
 from deck.layout_thresholds import renderer_thresholds
@@ -19,6 +23,7 @@ from deck.slide_source import SPEAKER_NOTES_CLASS
 from deck.slide_structure import extract_notes
 from deck.slide_viewer import SLIDE_VIEWER_MARKER, inject_screen_slide_viewer
 from deck.source_preflight import read_checked_source
+from schemas.known_values import load_runtime_context
 
 
 BUILD_REVIEW_FACTS = ("slideCount", "renderedSlideCount")
@@ -63,8 +68,15 @@ def export_deck(request: ExportRequest) -> Result:
         summary=f"{acceptance.verdict}. {build_summary(request, derived)}",
         output_path=deliverable_path(request),
         issues=tuple(issues),
-        details=build_details(request, derived) | {"acceptance": acceptance.to_json()},
+        details=build_details(request, derived) | {"acceptance": acceptance.to_json()} | visual_review_details(request, issues),
     )
+
+
+def visual_review_details(request: ExportRequest, issues: list[Issue]) -> dict[str, str]:
+    context = load_runtime_context()
+    if not context or not context.reviews_deck_renders:
+        return {}
+    return {"visualReview": str(write_visual_review(request.source_path, request.review_path, request.deck_name, issues, OBJECTIVE_DEFECT_CODES))}
 
 
 def remove_previous_outputs(request: ExportRequest) -> None:
@@ -142,7 +154,7 @@ def write_pptx(request: ExportRequest, notes: list[str]) -> tuple[dict, list[Iss
     if layers is None:
         raise OfficeFailure(RENDER_FAILED.issue(f"{pptx_path.name} was not written: the renderer left no editable layer for each of the {len(notes)} slides", str(layers_path)))
     written = write_editable_pptx(layers, notes, pptx_path)
-    return editable_pptx_details(written, layers_path), editable_pptx_issues(written, pptx_path)
+    return editable_pptx_details(written, layers_path), editable_pptx_issues(written, pptx_path) + presentation_chart_issues(Presentation(str(pptx_path)))
 
 
 def editable_pptx_details(written: EditablePptx, layers_path: pathlib.Path) -> dict:

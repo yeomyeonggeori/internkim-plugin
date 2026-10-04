@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import json
 import pathlib
 
-from deck.deck_definitions import CHART_UNDERFILLED, DRAWING_DISTORTED, FOOTER_CROSSED, LABEL_TOO_LONG, REPEATED_FIGURE, TEXT_COVERED, TINY_TEXT, TITLE_TOO_LONG
+from deck.deck_definitions import CHART_UNDERFILLED, DRAWING_DISTORTED, FOOTER_CROSSED, GRID_MISALIGNED, LABEL_TOO_LONG, REPEATED_FIGURE, TEXT_COVERED, TEXT_LOW_CONTRAST, TINY_TEXT, TITLE_TOO_LONG
 from powerpoint.definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_OVERLAP
 from deck.deck_kit import kit_length, slide_size
 from deck.review.kit_fixes import capacity_fix, photo_fix, placement_fix, size_fix, text_fix
@@ -17,7 +17,7 @@ FINDINGS_NAMED_PER_ISSUE = 3
 SLIDE_HEIGHT = slide_size()[1]
 FOOTER_HEIGHT_RATIO = kit_length("footer-height") / SLIDE_HEIGHT
 FOOTER_REACH_RATIO = 2 * FOOTER_HEIGHT_RATIO
-SELF_EXPLAINED_CHECKS = (TITLE_TOO_LONG, LABEL_TOO_LONG, REPEATED_FIGURE, DRAWING_DISTORTED, CHART_UNDERFILLED)
+SELF_EXPLAINED_CHECKS = (TITLE_TOO_LONG, LABEL_TOO_LONG, REPEATED_FIGURE, DRAWING_DISTORTED, CHART_UNDERFILLED, TEXT_LOW_CONTRAST, GRID_MISALIGNED)
 
 
 @dataclass(frozen=True)
@@ -171,6 +171,22 @@ def describe_small_text(finding: dict[str, object]) -> str:
     return f"{element_label(finding)} is {finding['fontSize']}px, below the {finding['minimum']}px minimum ({SMALLEST_TEXT_SHARE_OF_WIDTH:.2%} of the slide width)"
 
 
+def describe_low_contrast(finding: dict[str, object]) -> str:
+    return f"{element_label(finding)} reads at {finding['ratio']:g}:1 against what is behind it, under {finding['minimum']:g}:1"
+
+
+MISALIGNMENT_WORDING = {
+    "row": "share neither a top edge nor a middle; their tops are {offset:g}px apart",
+    "column": "share no left, center or right edge; they are {offset:g}px apart",
+    "row spacing": "are {offset:g}px further apart than the closest pair in their row",
+    "column spacing": "are {offset:g}px further apart than the closest pair in their column",
+}
+
+
+def describe_misaligned(finding: dict[str, object]) -> str:
+    return f"{element_label(finding['first'])} and {element_label(finding['second'])} {MISALIGNMENT_WORDING[finding['axis']].format(offset=finding['offset'])}"
+
+
 GEOMETRY_FINDINGS = (
     (CONTENT_OVERFLOW, "overflow", describe_overflow, "{count} elements hold more than their box shows"),
     (OUT_OF_FRAME, "outOfFrame", describe_out_of_frame, "{count} elements lie outside the slide"),
@@ -184,5 +200,7 @@ GEOMETRY_FINDINGS = (
     (DRAWING_DISTORTED, "distortedDrawings", describe_distorted_image, "{count} drawings are stretched out of their own proportions"),
     (CHART_UNDERFILLED, "underfilledCharts", describe_underfilled_chart, "{count} charts leave most of their room empty"),
     (TINY_TEXT, "smallText", describe_small_text, "{count} text elements are smaller than the slide can show legibly"),
+    (TEXT_LOW_CONTRAST, "lowContrastText", describe_low_contrast, "{count} text elements are too faint to read on their background"),
+    (GRID_MISALIGNED, "misalignedSiblings", describe_misaligned, "{count} pairs of parts are out of line with each other"),
 )
 
