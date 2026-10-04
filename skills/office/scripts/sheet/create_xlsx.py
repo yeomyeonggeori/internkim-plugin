@@ -10,13 +10,13 @@ from core.office_result import OfficeFailure, Result, read_json_file, run_comman
 from core.source_snapshot import write_source
 from schemas.known_values import load_runtime_context
 from sheet.operations.operation_set import SHEET_OPERATIONS, SheetEditing, save_editing
-from schemas.blank_paths import blanked
+from schemas.blank_paths import blanked, replacement_map
 from sheet.declaration_claims import declaration_claims
 from sheet.workbook_declaration import DECLARATION_REQUIRED
 
 
 def create_declared(arguments, written, declaration_path):
-    declaration = blanked(written, arguments.blank)
+    declaration = blanked(written, arguments.blank, replacement_map(arguments.replace or []))
     from sheet.declared_workbook import compiled_ranges, declared_workbook, show_hidden_chart_data, shown_views
 
     context = load_runtime_context()
