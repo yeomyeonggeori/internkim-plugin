@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -10,6 +11,9 @@ from render_fixture import can_render
 
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
+sys.path.insert(0, str(SCRIPTS_PATH))
+
+from core.host_contract import RUNTIME_CONTEXT_VARIABLE  # noqa: E402
 THEMES = ("editorial", "corporate", "midnight", "swiss")
 
 
@@ -120,11 +124,30 @@ class VisualConsistencyTest(unittest.TestCase):
         envelope = self.build(deck("corporate", COVER, number_with_two_points(), CLOSING))
         self.assertEqual(self.located(envelope, "TEXT_OVERLAP"), set(), envelope["summary"])
 
+    def build_pptx(self, directory: str, reviews_deck_renders: bool | None) -> dict:
+        (Path(directory) / "slides.html").write_text(deck("midnight", COVER, cards(), CLOSING_WITH_CARDS), encoding="utf-8")
+        environment = {name: value for name, value in os.environ.items() if name != RUNTIME_CONTEXT_VARIABLE}
+        if reviews_deck_renders is not None:
+            context_path = Path(directory) / "office-runtime-context.json"
+            context_path.write_text(json.dumps({"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04", "company": {}, "registeredDocuments": [], "attachments": [], "reviewsDeckRenders": reviews_deck_renders}), encoding="utf-8")
+            environment[RUNTIME_CONTEXT_VARIABLE] = str(context_path)
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/deck.pptx", "slides.html"], capture_output=True, text=True, cwd=directory, env=environment)
+        return json.loads(completed.stdout)
+
+    def test_a_build_for_a_host_that_does_not_review_renders_writes_no_visual_review(self):
+        for reviews_deck_renders in (None, False):
+            with tempfile.TemporaryDirectory() as directory:
+                envelope = self.build_pptx(directory, reviews_deck_renders)
+                snapshot = json.loads((Path(directory) / "build" / "deck.pptx.source.json").read_text(encoding="utf-8"))
+                written = (Path(directory) / "build" / "review" / "visual-review.json").exists()
+            self.assertEqual(envelope["status"], "ok", envelope["summary"])
+            self.assertNotIn("visualReview", envelope["details"])
+            self.assertNotIn("visualReview", snapshot)
+            self.assertFalse(written)
+
     def test_a_build_writes_the_visual_review_each_slide_render_is_asked_with(self):
         with tempfile.TemporaryDirectory() as directory:
-            (Path(directory) / "slides.html").write_text(deck("midnight", COVER, cards(), CLOSING_WITH_CARDS), encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/deck.pptx", "slides.html"], capture_output=True, text=True, cwd=directory)
-            envelope = json.loads(completed.stdout)
+            envelope = self.build_pptx(directory, True)
             review = json.loads(Path(envelope["details"]["visualReview"]).read_text(encoding="utf-8"))
             snapshot = json.loads((Path(directory) / "build" / "deck.pptx.source.json").read_text(encoding="utf-8"))
             images_exist = [Path(slide["image"]).is_file() for slide in review["slides"]]

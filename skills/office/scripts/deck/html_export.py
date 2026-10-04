@@ -23,6 +23,7 @@ from deck.slide_source import SPEAKER_NOTES_CLASS
 from deck.slide_structure import extract_notes
 from deck.slide_viewer import SLIDE_VIEWER_MARKER, inject_screen_slide_viewer
 from deck.source_preflight import read_checked_source
+from schemas.known_values import load_runtime_context
 
 
 BUILD_REVIEW_FACTS = ("slideCount", "renderedSlideCount")
@@ -63,13 +64,19 @@ def export_deck(request: ExportRequest) -> Result:
     derived = write_derived_outputs(request, html_output_path, slide_sources)
     issues = list(check.issues) + derived.issues
     acceptance = judge_build(request.build_path, source_text, issues, deliverable_path(request))
-    visual_review_path = write_visual_review(request.source_path, request.review_path, request.deck_name, issues, OBJECTIVE_DEFECT_CODES)
     return Result(
         summary=f"{acceptance.verdict}. {build_summary(request, derived)}",
         output_path=deliverable_path(request),
         issues=tuple(issues),
-        details=build_details(request, derived) | {"acceptance": acceptance.to_json(), "visualReview": str(visual_review_path)},
+        details=build_details(request, derived) | {"acceptance": acceptance.to_json()} | visual_review_details(request, issues),
     )
+
+
+def visual_review_details(request: ExportRequest, issues: list[Issue]) -> dict[str, str]:
+    context = load_runtime_context()
+    if not context or not context.reviews_deck_renders:
+        return {}
+    return {"visualReview": str(write_visual_review(request.source_path, request.review_path, request.deck_name, issues, OBJECTIVE_DEFECT_CODES))}
 
 
 def remove_previous_outputs(request: ExportRequest) -> None:
