@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import pathlib
 import re
 
@@ -25,7 +25,7 @@ from deck.deck_preparation import prepare_deck
 from deck.deck_source import Element, find_all, normalized_text, parse_source, style_texts, visible_text
 from deck.design_system import DESIGN_FILE_NAME, DesignSystem, palette_of, read_design_system, token_issues
 from core.office_arguments import route_arguments
-from core.office_result import ERROR, Issue, OfficeFailure, Result, run_command
+from core.office_result import ERROR, WARNING, Issue, OfficeFailure, Result, run_command
 from core.office_schema import closest_name, names_suggestion
 from deck.resource_inlining import resolve_resource_path
 from core.text_checks import PLACEHOLDER_PATTERN, PLACEHOLDER_LEFT, text_presence_issues
@@ -45,6 +45,7 @@ class CheckRequest:
     requested_slide_count: int | None = None
     required_text: tuple[str, ...] = ()
     forbidden_text: tuple[str, ...] = ()
+    is_blank_remake: bool = False
 
 
 @dataclass(frozen=True)
@@ -79,7 +80,13 @@ def check_deck(request: CheckRequest) -> Result:
     issues = design_issues + deck_issues(request, root, slides, system)
     if not has_errors(issues):
         issues += render_gate_issues(request.source_path, system)
+    if request.is_blank_remake:
+        issues = [demoted_to_warning(issue) for issue in issues]
     return Result(summary=check_summary(slides, issues), output_path=str(request.source_path), issues=tuple(issues), details=check_details(slides))
+
+
+def demoted_to_warning(issue: Issue) -> Issue:
+    return replace(issue, kind=replace(issue.kind, severity=WARNING)) if issue.kind.severity == ERROR else issue
 
 
 def check_design(design_path: pathlib.Path) -> Result:
@@ -298,7 +305,7 @@ def check_details(slides: list[Slide]) -> dict:
 
 
 def check_request(source_path: pathlib.Path, parsed) -> CheckRequest:
-    return CheckRequest(source_path.resolve(), parsed.slide_count, tuple(parsed.required_text), tuple(parsed.forbidden_text))
+    return CheckRequest(source_path.resolve(), parsed.slide_count, tuple(parsed.required_text), tuple(parsed.forbidden_text), bool(getattr(parsed, "blank", None)))
 
 
 def deck_source_path(target: str) -> pathlib.Path:
