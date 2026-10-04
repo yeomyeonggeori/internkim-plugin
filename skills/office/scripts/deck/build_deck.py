@@ -11,6 +11,7 @@ from core.host_contract import DELIVERABLE_EXTENSIONS
 from core.office_result import Result, run_command
 from core.source_snapshot import write_source
 from deck.deck_claims import blank_labels, blanked_deck, deck_claims
+from schemas.blank_paths import replacement_map
 from deck.deck_holds import deck_slides
 
 
@@ -37,18 +38,18 @@ def keep_built_provenance(request: ExportRequest, blanks: list[dict], details: d
                                       "blanks": blanks, **visual_review})
 
 
-def blank_source(request: ExportRequest, paths: list[str]) -> list[dict]:
-    if not paths:
+def blank_source(request: ExportRequest, paths: list[str], replacements: dict[str, str]) -> list[dict]:
+    if not paths and not replacements:
         return []
     source_text = request.source_path.read_text(encoding="utf-8")
-    request.source_path.write_text(blanked_deck(source_text, paths), encoding="utf-8")
+    request.source_path.write_text(blanked_deck(source_text, paths, replacements), encoding="utf-8")
     return blank_labels(source_text, paths)
 
 
 def main() -> Result:
     parsed = route_arguments("create", "slides")
     request = export_request(parsed)
-    blanks = blank_source(request, parsed.blank or [])
+    blanks = blank_source(request, parsed.blank or [], replacement_map(parsed.replace or []))
     result = export_deck(request)
     if result.status == "error":
         return result

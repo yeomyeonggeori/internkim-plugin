@@ -180,22 +180,29 @@ def place(unit: Unit, language: str) -> str:
     return f"{names['slide']} {slide_number} {names[unit.role]}"
 
 
-def blanked_deck(text: str, paths: list[str]) -> str:
+def blanked_deck(text: str, paths: list[str], replacements: dict[str, str] | None = None) -> str:
     units = {unit.path: unit for unit in deck_units(text)}
     chosen = [(path, units.get(path) or units.get(path.partition("#")[0])) for path in paths]
     chosen = [(path, unit) for path, unit in chosen if unit is not None]
     removed_slides = {slide_of(unit.node).start: slide_of(unit.node) for _, unit in chosen if unit.role == "chart"}
+    replacements = replacements or {}
     edits = {}
     for path, unit in chosen:
         if unit.role == "chart" or slide_of(unit.node).start in removed_slides:
             continue
         match = UNIT_PATH.match(path)
-        edits.setdefault(unit.node.start, (unit, set()))[1].add(int(match.group(3)) if match and match.group(3) else -1)
+        edits.setdefault(unit.node.start, (unit, set(), {}))[1].add(int(match.group(3)) if match and match.group(3) else -1)
+    for path, new_text in replacements.items():
+        unit = units.get(path) or units.get(path.partition("#")[0])
+        if unit is None or unit.role == "chart" or slide_of(unit.node).start in removed_slides:
+            continue
+        match = UNIT_PATH.match(path)
+        edits.setdefault(unit.node.start, (unit, set(), {}))[2][int(match.group(3)) if match and match.group(3) else -1] = new_text
     deck_title = units.get(DECK_TITLE_PATH)
     cover_fallback = deck_title.text if deck_title and DECK_TITLE_PATH not in paths else ""
     result = text
     spans = [(slide.start, slide.end, "") for slide in removed_slides.values()]
-    spans += [blank_span(unit, removed, cover_fallback) for unit, removed in edits.values()]
+    spans += [blank_span(unit, removed, replaced, cover_fallback) for unit, removed, replaced in edits.values()]
     for start, end, replacement in sorted(spans, reverse=True):
         result = result[:start] + replacement + result[end:]
     return result
@@ -205,9 +212,12 @@ def slide_of(node: Node) -> Node:
     return next((ancestor for ancestor in node.ancestors() if ancestor.tag == "section"), node)
 
 
-def blank_span(unit: Unit, removed: set[int], cover_fallback: str) -> tuple[int, int, str]:
+def blank_span(unit: Unit, removed: set[int], replaced: dict[int, str], cover_fallback: str) -> tuple[int, int, str]:
     node = unit.node
     pieces = split_unit(unit.role, unit_text(node))
+    if -1 in replaced:
+        pieces = [replaced[-1]]
+    pieces = [replaced.get(index, piece) for index, piece in enumerate(pieces)]
     kept = [] if -1 in removed else [piece for index, piece in enumerate(pieces) if index not in removed]
     if not kept and unit.role == "title" and unit.path.startswith("slides[0].") and cover_fallback:
         kept = [cover_fallback]

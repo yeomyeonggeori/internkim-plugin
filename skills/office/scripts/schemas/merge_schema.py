@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from core.office_arguments import route_arguments
 from core.office_result import WRONG_OUTPUT_FORMAT, OfficeFailure, Result, read_json_file, run_command
 from paperwork.jurisdictions import find_jurisdiction
-from schemas.blank_paths import blanked
+from schemas.blank_paths import blanked, replacement_map
 from schemas.claims import written_claims
 from schemas.given_values import blank_fields, empty_optional_fields, normalized_values, validated_values
 from schemas.known_values import load_runtime_context
@@ -23,7 +23,7 @@ def main() -> Result:
     arguments = route_arguments("merge", "schema")
     schema = load_schema(arguments.template)
     written = given_values_of(schema, read_json_file(arguments.values))
-    values = validated_values(schema, blanked(written, arguments.blank))
+    values = validated_values(schema, blanked(written, arguments.blank, replacement_map(arguments.replace or [])))
     output_path = Path(arguments.output).expanduser()
     require_output_kind(schema, output_path)
     instance = schema_instance(schema, values, output_path)
