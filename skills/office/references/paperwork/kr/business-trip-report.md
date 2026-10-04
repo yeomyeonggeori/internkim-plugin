@@ -21,7 +21,6 @@ A report of what a business trip covered, what it achieved and what follows from
   "form": "kr/business-trip-report",
   "title": "출 장 보 고 서",
   "documentNumber": "<the number company_document_register returned>",
-  "profile": { ...company profile... },
   "meta": [
     { "label": "출장자", "value": "<name>" },
     { "label": "출장지", "value": "<region or place>" },

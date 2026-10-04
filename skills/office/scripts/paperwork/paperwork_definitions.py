@@ -19,21 +19,6 @@ LABELED_VALUE = Record("labeled value", "one label and its value", (
     Field("value", CellValue(), "the value"),
 ))
 
-PROFILE = Record("profile", "the company_info_get result, pasted whole; the letterhead reads these fields", (
-    Field("name", CellValue(), "company name; name or companyName is required"),
-    Field("companyName", CellValue(), "company name when name is absent"),
-    Field("logoPath", CellValue(), "logo image at the letterhead's left"),
-    Field("legalAttributes", ListOf(LABELED_VALUE), "the first two print on the letterhead, such as the business registration number"),
-    Field("registrationNumber", CellValue(), "printed after the jurisdiction's registration label when legalAttributes is empty"),
-    Field("representative", CellValue(), "representative's name"),
-    Field("representativeTitle", CellValue(), "title before the name, default the jurisdiction's representative title"),
-    Field("address", CellValue(), "address line"),
-    Field("phone", CellValue(), "contact line"),
-    Field("email", CellValue(), "contact line"),
-    Field("website", CellValue(), "contact line"),
-    Field("stampPath", CellValue(), "seal image placed on the signature when signature.stamp is true"),
-), keeps_other_fields=True)
-
 ITEMS = Record("items", "the item table with its totals", (
     Field("headers", ListOf(CellValue(), non_empty=True), "column headers", required=True),
     Field("rows", ListOf(ListOf(CellValue())), "item rows"),
@@ -61,7 +46,7 @@ APPROVER = Record("approver", "one approval box: the role on top and, when the r
 SIGNATURE = Record("signature", "the dated signature line", (
     Field("date", CellValue(), "date line"),
     Field("line", CellValue(), "signer line; the jurisdiction's seal mark, where it has one, is appended"),
-    Field("stamp", Boolean(), "place profile.stampPath on the signer line"),
+    Field("stamp", Boolean(), "place the company's kept seal on the signer line"),
 ))
 
 FORM_FIELD = Field("form", Text(non_empty=True), "the form these values fill, <jurisdiction>/<form> such as kr/quote; office merge takes it from its first argument and office check from here")
@@ -70,7 +55,6 @@ PAPERWORK_DOCUMENT = Record("document", "the values office merge draws on letter
     FORM_FIELD,
     Field("title", Text(non_empty=True), "centered document title", required=True),
     Field("documentNumber", CellValue(), "the number company_document_register returned for this document, as it is; printed under the title after the jurisdiction's document-number label"),
-    Field("profile", PROFILE, "company profile for the letterhead", required=True),
     Field("approvalLine", ListOf(AnyOf((Text(), APPROVER))), "approval boxes left to right, each a role or {role, name}; the approvers the request names, in its order"),
     Field("recipient", RECIPIENT, "addressee"),
     Field("meta", ListOf(LABELED_VALUE), "label-value table under the title"),

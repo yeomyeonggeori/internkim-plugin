@@ -22,7 +22,6 @@ An external document proposing prices for goods or services to a customer. The r
   "form": "intl/quote",
   "title": "Quotation",
   "documentNumber": "<the number company_document_register returned>",
-  "profile": { ...company profile... },
   "recipient": { "label": "To", "lines": ["<recipient company name>", "Attn: <contact name>"] },
   "meta": [
     { "label": "Quotation date", "value": "<YYYY-MM-DD>" },

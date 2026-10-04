@@ -8,6 +8,7 @@ from core.office_arguments import route_arguments
 from core.office_result import WRONG_TYPE, Issue, IssueKind, OfficeFailure, Result, read_json_file, run_command
 from paperwork.amounts import parse_amount
 from paperwork.blanks import form_blanks, is_left_blank
+from paperwork.company_profile import with_company_profile
 from paperwork.contract_plan import plan_contract
 from paperwork.forms import form_of
 from paperwork.jurisdictions import Jurisdiction
@@ -75,12 +76,14 @@ def main() -> Result:
     document = read_json_file(arguments.file)
     if not isinstance(document, dict):
         raise OfficeFailure(WRONG_TYPE.issue("values: expected an object", "values"))
-    template = form_of(document, "values").contract_template
+    form = form_of(document, "values")
+    template = form.contract_template
     rules = document_rules(document)
     reading = read_document(with_amount_in_words(document), rules)
     if template is not None:
         return contract_result(template, document, reading, rules)
-    blanks = {"blanks": [blank.to_json() for blank in form_blanks(document)]}
+    printed = with_company_profile(document, form.jurisdiction.language)
+    blanks = {"blanks": [blank.to_json() for blank in form_blanks(printed)]}
     if not reading.facts and not reading.unreadable and not reading.has_blanks:
         return Result(summary="no amounts to check", issues=(NO_AMOUNTS_FOUND.issue("the input holds no amounts to check"),), details=blanks)
     checked = amount_result(reading, rules)

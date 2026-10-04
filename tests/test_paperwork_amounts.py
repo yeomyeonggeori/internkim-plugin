@@ -5,7 +5,7 @@ import sys
 import tempfile
 import unittest
 
-from doc_fixture import SCRIPTS_PATH, run_office, write_json
+from doc_fixture import SCRIPTS_PATH, run_office, write_form_values
 
 
 from paperwork.amounts import korean_amount_in_words, korean_number_words
@@ -123,7 +123,7 @@ class CheckCommandTest(unittest.TestCase):
         self.temporary_directory.cleanup()
 
     def check(self, document, form="kr/quote"):
-        write_json(self.directory / "quote.json", {"form": form, **document})
+        write_form_values(self.directory / "quote.json", {"form": form, **document})
         return run_office(["check", "quote.json"], self.directory)
 
     def test_a_correct_quote_passes(self):
@@ -223,7 +223,7 @@ class CheckCommandTest(unittest.TestCase):
         self.assertEqual([issue["code"] for issue in self.check({"title": "회의록"})["issues"]], ["NO_AMOUNTS_FOUND"])
 
     def test_values_that_name_no_form_are_refused(self):
-        write_json(self.directory / "quote.json", quote())
+        write_form_values(self.directory / "quote.json", quote())
         envelope = run_office(["check", "quote.json"], self.directory)
         self.assertEqual([(issue["code"], issue["location"]) for issue in envelope["issues"]], [("MISSING_FIELD", "values.form")])
 

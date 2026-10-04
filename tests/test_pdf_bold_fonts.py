@@ -92,7 +92,7 @@ class BoldFontTest(unittest.TestCase):
 
     def test_a_form_embeds_bold_for_titles(self):
         self.add_bold_sibling()
-        document = {"title": "Quote", "profile": {"name": "Sample Co"}, "sections": [{"title": "Terms", "paragraphs": ["Body"]}], "fontPath": str(self.regular_path)}
+        document = {"title": "Quote", "sections": [{"title": "Terms", "paragraphs": ["Body"]}], "fontPath": str(self.regular_path)}
         document_path = self.directory / "document.json"
         document_path.write_text(json.dumps(document))
         result = run_office_script("paperwork/merge_form.py", "intl/quote", str(document_path), str(self.directory / "form.pdf"))

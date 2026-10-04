@@ -21,7 +21,6 @@ An internal document in which an employee applies for leave and gets it approved
   "form": "kr/leave-request",
   "title": "휴 가 신 청 서",
   "documentNumber": "<the number company_document_register returned>",
-  "profile": { ...company profile... },
   "approvalLine": [{ "role": "<role>", "name": "<name>" }],
   "meta": [
     { "label": "신청자", "value": "<name>" },

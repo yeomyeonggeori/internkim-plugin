@@ -22,7 +22,6 @@ An internal document requesting approval to reimburse or process an expense alre
   "form": "intl/expense-approval",
   "title": "Expense Approval",
   "documentNumber": "<the number company_document_register returned>",
-  "profile": { ...company profile... },
   "approvalLine": [{ "role": "<role>", "name": "<name>" }],
   "meta": [
     { "label": "Requester", "value": "<name>" },

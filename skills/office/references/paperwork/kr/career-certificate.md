@@ -23,7 +23,6 @@ A certificate of past employment for someone who has left or who once worked at 
   "form": "kr/career-certificate",
   "title": "경 력 증 명 서",
   "documentNumber": "<the number company_document_register returned>",
-  "profile": { ...company profile... },
   "meta": [
     { "label": "성명", "value": "<name>" },
     { "label": "생년월일", "value": "<YYYY-MM-DD>" },

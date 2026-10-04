@@ -22,7 +22,6 @@ An external document requesting payment from a customer for goods or services al
   "form": "intl/invoice",
   "title": "Invoice",
   "documentNumber": "<the number company_document_register returned>",
-  "profile": { ...company profile... },
   "recipient": { "label": "Bill to", "lines": ["<recipient company name>", "Attn: <contact name>"] },
   "meta": [
     { "label": "Invoice date", "value": "<YYYY-MM-DD>" },

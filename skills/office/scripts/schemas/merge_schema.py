@@ -84,7 +84,9 @@ def render_form(instance: Instance, output_path: Path) -> list:
     from paperwork.render_paperwork import load_document
     from schemas.form_layout import paperwork_document
 
-    document = load_document(paperwork_document(instance))
+    document = paperwork_document(instance)
+    profile = document.pop("profile")
+    document = load_document(document) | {"profile": profile}
     return list(render_paperwork_pdf(document, find_jurisdiction(instance.schema.jurisdiction), output_path))
 
 

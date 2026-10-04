@@ -21,7 +21,6 @@ An internal document reporting the outcomes of a completed business trip, submit
   "form": "intl/business-trip-report",
   "title": "Business Trip Report",
   "documentNumber": "<the number company_document_register returned>",
-  "profile": { ...company profile... },
   "meta": [
     { "label": "Traveler", "value": "<name>" },
     { "label": "Destination", "value": "<destination>" },
