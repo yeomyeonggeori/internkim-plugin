@@ -20,7 +20,7 @@ from png_fixture import write_png  # noqa: E402
 AUTHORED_DECK = """<!doctype html>
 <html lang="ko">
 <head><meta charset="utf-8"><title>복원 시험</title>
-<style>@font-face { font-family: "Brand"; src: url("fonts/brand.woff2") format("woff2"); } h2 { font-family: "Paperlogy", sans-serif; }</style></head>
+<style>@font-face { font-family: "Brand"; src: url("fonts/brand.woff2") format("woff2"); }</style></head>
 <body>
 <section><img src="images/photo.png" alt="사진"><h2>진열대가 비기 전에 알려 드립니다</h2><ul><li>포스 데이터를 가져옵니다</li></ul></section>
 <section><h2>재고 확인이 하루 47분 줄어듭니다</h2></section>

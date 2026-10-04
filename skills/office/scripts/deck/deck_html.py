@@ -28,8 +28,17 @@ GATE_HTML_FILE = "gate.html"
 FONT_DECLARATION = re.compile(r"(?<![-\w])font(?:-family)?\s*:\s*(?:[^;}\"'<>]|(?<=[:,\s])(?:\"[^\"<>]*\"|'[^'<>]*'))*;?", re.I)
 
 
+FONT_FACE_BLOCK = re.compile(r"@font-face\s*\{[^}]*\}", re.I)
+
+
 def without_font_choices(source_text: str) -> str:
-    return FONT_DECLARATION.sub("", source_text)
+    kept, position = [], 0
+    for block in FONT_FACE_BLOCK.finditer(source_text):
+        kept.append(FONT_DECLARATION.sub("", source_text[position:block.start()]))
+        kept.append(block.group(0))
+        position = block.end()
+    kept.append(FONT_DECLARATION.sub("", source_text[position:]))
+    return "".join(kept)
 
 
 def kit_html_text(source_path: pathlib.Path, system: DesignSystem | None) -> str:
