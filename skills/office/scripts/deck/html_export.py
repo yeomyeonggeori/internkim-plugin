@@ -24,6 +24,8 @@ from deck.slide_structure import extract_notes
 from deck.slide_viewer import SLIDE_VIEWER_MARKER, inject_screen_slide_viewer
 from deck.source_preflight import read_checked_source
 from schemas.known_values import load_runtime_context
+from deck.deck_preparation import kit_additions, prepare_deck
+from deck.deck_source import parse_source
 
 
 BUILD_REVIEW_FACTS = ("slideCount", "renderedSlideCount")
@@ -108,7 +110,8 @@ def output_formats(requested: str) -> set[str]:
 
 
 def deck_html_text(source_path: pathlib.Path) -> str:
-    source_text = inject_deck_kit(source_path.read_text(encoding="utf-8"))
+    source_text = source_path.read_text(encoding="utf-8")
+    source_text = inject_deck_kit(source_text, kit_additions(prepare_deck(parse_source(source_text))))
     source_text = inject_vendored_paperlogy_fallback(source_text)
     source_text = inline_local_images(source_text, source_path.parent)
     source_text = inline_local_fonts(source_text, source_path.parent)

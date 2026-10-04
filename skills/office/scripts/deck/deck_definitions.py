@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from fonts.registry import DECK, default_family
-from deck.deck_kit import DEFAULT_THEME, chart_types, icon_names, kit_names, kit_number, slide_size, theme_palettes
-from deck.layout_thresholds import EMPTY_REGION_SHARE_MAXIMUM, LABEL_LINE_MAXIMUM, LARGE_TEXT_CONTRAST_MINIMUM, MARK_BREADTH_MINIMUM, REPEATED_FIGURE_MINIMUM, ROUND_SLOT_MINIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TEXT_CONTRAST_MINIMUM, TITLE_LINE_MAXIMUM
+from deck.deck_guide import DESIGN_TOPIC, design_text, guide_preamble  # noqa: F401
+from deck.deck_kit import chart_types, icon_names, kit_names, kit_number, slide_size, theme_palettes
+from deck.layout_thresholds import EMPTY_REGION_SHARE_MAXIMUM, IMAGE_UPSCALE_MAXIMUM, LABEL_LINE_MAXIMUM, LARGE_TEXT_CONTRAST_MINIMUM, MARK_BREADTH_MINIMUM, REPEATED_FIGURE_MINIMUM, ROUND_SLOT_MINIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TEXT_CONTRAST_MINIMUM, TITLE_LINE_MAXIMUM
 from core.office_commands import EVERY_KIND
 from core.office_result import ERROR, WARNING, IssueKind
 from powerpoint.definitions import CHART_POINT_OUTSIDE_AXIS, CHART_ZERO_MISALIGNED, CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, SLIDE_COUNT_MISMATCH, TEXT_OVERLAP, review_check
@@ -20,6 +21,7 @@ LABEL_TOO_LONG = review_check("LABEL_TOO_LONG", f"a .label wraps past {LABEL_LIN
 REPEATED_FIGURE = review_check("REPEATED_FIGURE", f"one slide shows the same figure, a number with its unit, {REPEATED_FIGURE_MINIMUM} or more times", "show each figure once where it carries the point: give the .insight or card a different fact, such as the change or the comparison, or set a donut's data-center to another number")
 TINY_TEXT = review_check("TINY_TEXT", f"rendered text is smaller than {SMALLEST_TEXT_SHARE_OF_WIDTH * slide_size()[0]:g}px on a {slide_size()[0]}px slide ({SMALLEST_TEXT_SHARE_OF_WIDTH:.2%} of its width)", "shorten the slide so the kit does not shrink its type; the suggestion says how much fits at full size")
 CHART_UNDERFILLED = review_check("CHART_UNDERFILLED", f"a chart's marks fill too little of the room it is given: bars cover less than {MARK_BREADTH_MINIMUM:.0%} of their axis, or a donut or pie is under {ROUND_SLOT_MINIMUM:.0%} of its slot's longer side", "drop custom styles that size the chart's figure, bars or ring and let the kit fit the chart to its data; two or three values read best beside an .insight")
+IMAGE_LOW_RESOLUTION = review_check("IMAGE_LOW_RESOLUTION", f"a photo is drawn more than {IMAGE_UPSCALE_MAXIMUM:g} times its own pixel size, so it shows soft", "use a larger image of the same subject, or move this one where its frame is smaller, such as a cover's panel instead of the whole slide")
 DRAWING_DISTORTED = review_check("DRAWING_DISTORTED", "a drawing that must keep its proportions, such as a donut or pie chart, is stretched into another shape", "give the chart a slot the kit can square, such as a chart slide without extra parts beside the figure; a donut or pie is always drawn as a circle")
 TEXT_LOW_CONTRAST = review_check("TEXT_LOW_CONTRAST", f"text is too close in color to what is drawn behind it: under {TEXT_CONTRAST_MINIMUM:g}:1, or {LARGE_TEXT_CONTRAST_MINIMUM:g}:1 for large text", "remove the style that recolors the text or its box; the kit picks every text color to read on its own background")
 GRID_MISALIGNED = review_check("GRID_MISALIGNED", "parts of one kind that sit side by side share neither a top edge nor a middle, parts stacked in a column share no left, center or right edge, or the gaps between parts in one row or column differ", "remove the style that moves the part named; the kit lines parts of one kind up on its grid")
@@ -33,7 +35,7 @@ EMPTY_REGION = review_check("EMPTY_REGION", f"an empty rectangle inside the cont
 EMOJI_ICON = review_check("EMOJI_ICON", "a slide uses emoji glyphs", "write a .label word or a data-icon office guide deck lists instead; the kit draws list markers and numbers itself")
 MISSING_SPEAKER_NOTES = review_check("MISSING_SPEAKER_NOTES", "a slide has no speaker notes", 'add an <aside class="notes"> script to every slide')
 
-SLIDE_RENDER_CHECKS = (SLIDE_BLANK, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, TEXT_COVERED, FOOTER_CROSSED, TITLE_TOO_LONG, LABEL_TOO_LONG, REPEATED_FIGURE, IMAGE_DISTORTED, DRAWING_DISTORTED, CHART_UNDERFILLED, TINY_TEXT, TEXT_LOW_CONTRAST, GRID_MISALIGNED, TITLE_STYLE_INCONSISTENT)
+SLIDE_RENDER_CHECKS = (SLIDE_BLANK, CONTENT_OVERFLOW, OUT_OF_FRAME, TEXT_OVERLAP, TEXT_COVERED, FOOTER_CROSSED, TITLE_TOO_LONG, LABEL_TOO_LONG, REPEATED_FIGURE, IMAGE_DISTORTED, IMAGE_LOW_RESOLUTION, DRAWING_DISTORTED, CHART_UNDERFILLED, TINY_TEXT, TEXT_LOW_CONTRAST, GRID_MISALIGNED, TITLE_STYLE_INCONSISTENT)
 DESIGN_CHECKS = (
     TOPIC_TITLE,
     LANGUAGE_MISMATCH,
@@ -55,16 +57,16 @@ LAYOUT_MISSING = IssueKind("LAYOUT_MISSING", ERROR, "a slide in a kit deck has n
 THEME_UNKNOWN = IssueKind("THEME_UNKNOWN", ERROR, "the body's data-theme is not one of the kit's themes", "use a theme office guide deck lists")
 LAYOUT_PART_MISSING = IssueKind("LAYOUT_PART_MISSING", ERROR, "a slide lacks a part its layout needs, as a direct child of the <section>", "add the part the message names; office guide deck lists each layout's parts")
 LAYOUT_PART_EXCESS = IssueKind("LAYOUT_PART_EXCESS", ERROR, "a slide holds more of one part than its layout can lay out", "split the slide in two, or move the detail to a table slide")
-LAYOUT_REPEATED = IssueKind("LAYOUT_REPEATED", ERROR, "three slides in a row use the same layout", "change the middle slide to another layout that fits its content")
-TOO_FEW_LAYOUTS = IssueKind("TOO_FEW_LAYOUTS", ERROR, "a deck of six or more slides uses fewer than three layouts", "pick each slide's layout from its content: one number, metrics, comparison, sequence, table or chart")
+LAYOUT_REPEATED = IssueKind("LAYOUT_REPEATED", ERROR, "two slides in a row use the same layout", "give the second slide another layout that fits its content, by the content shapes office guide slides lists")
+TOO_FEW_LAYOUTS = IssueKind("TOO_FEW_LAYOUTS", ERROR, "the slides between the cover and the closing use too few different layouts", "pick each slide's layout from the shape of its content, by the content shapes office guide slides lists")
 FIRST_SLIDE_NOT_COVER = IssueKind("FIRST_SLIDE_NOT_COVER", WARNING, "the deck does not open with a cover slide", 'make slide 1 data-layout="cover" with the deck title and who presents it')
 OUTLINE_LAYOUT_MISPLACED = IssueKind("OUTLINE_LAYOUT_MISPLACED", WARNING, "a cover layout sits after slide 1, or a closing layout before the last slide", "keep cover for slide 1 and closing for the last slide, and give this slide the layout its content calls for, such as section for a divider or statement for one message")
 CLOSING_WITHOUT_ACTION = IssueKind("CLOSING_WITHOUT_ACTION", WARNING, "the closing slide holds no part that carries a decision or a next step, such as a thank-you title alone", "put the decision asked for or the next steps in the parts office guide deck names for the closing, under the title")
 LAST_SLIDE_NOT_CLOSING = IssueKind("LAST_SLIDE_NOT_CLOSING", WARNING, "a deck of three or more slides does not end on a closing slide", 'end with data-layout="closing": the decision asked for or the next steps')
 SLIDE_WITHOUT_CONTENT = IssueKind("SLIDE_WITHOUT_CONTENT", ERROR, "a slide has no visible text, image or chart", "give the slide its content or delete it")
 CHART_DATA_INVALID = IssueKind("CHART_DATA_INVALID", ERROR, "a chart's data attributes do not parse or do not line up", "give data-labels and data-values (or data-series) the same number of plain numbers")
-IMAGE_NOT_FOUND = IssueKind("IMAGE_NOT_FOUND", ERROR, "an image is remote or its file does not exist, so the slide would show an empty box", "download it with office image and point src at the local file, or remove the image")
-MOTIF_NOT_DRAWN = IssueKind("MOTIF_NOT_DRAWN", ERROR, "a data-motif names no motif the kit draws, sits on a part other than a cover <section>, or shares the cover with a photo that takes its place", "use a motif office guide slides lists on the cover <section>, or drop it")
+IMAGE_NOT_FOUND = IssueKind("IMAGE_NOT_FOUND", ERROR, "an image is remote or its file does not exist, so the slide would show an empty box", "point src at an image office guide design lists, or remove the image")
+COVER_MIXED = IssueKind("COVER_MIXED", ERROR, "a cover carries more than one of a photo, figures and an icon", "keep the one the deck's design names, or the one that best shows the subject")
 ICON_HOST_CLASSES = kit_names("iconHostClasses")
 ICON_LIST_LAYOUTS = kit_names("iconListLayouts")
 ICON_HOSTS = f"a {', '.join('.' + name for name in ICON_HOST_CLASSES)}, or an <li> of an {' or '.join(ICON_LIST_LAYOUTS)} list"
@@ -91,7 +93,7 @@ SOURCE_CHECK_ISSUE_KINDS = (
     CHART_DATA_INVALID,
     ICON_UNKNOWN,
     ICON_MISPLACED,
-    MOTIF_NOT_DRAWN,
+    COVER_MIXED,
     IMAGE_NOT_FOUND,
     PLACEHOLDER_LEFT,
     *TEXT_CHECK_ISSUE_KINDS,
@@ -148,14 +150,9 @@ def selector_matches(selector: str, tag: str, classes: set[str], attributes: dic
     return tag == selector
 
 
-COVER_MOTIF_DESCRIPTIONS = {
-    "panel": "a plain panel in the theme's cover color",
-    "rings": "that panel with three quarter-circle arcs in its corner",
-}
-COVER_MOTIF_CHOICES = " or ".join(f'"{name}" ({description})' for name, description in COVER_MOTIF_DESCRIPTIONS.items())
 TITLE = LayoutPart("h2")
 KIT_LAYOUTS = (
-    KitLayout("cover", f"first slide: the deck's claim, a lead line and a .meta line with presenter and date; an <img> fills a panel on the right; without a photo the cover is text on the background unless data-motif on its <section> picks {COVER_MOTIF_CHOICES}", (LayoutPart("h1"), LayoutPart("img", 0))),
+    KitLayout("cover", "first slide: the deck's claim, a lead line and a .meta line with presenter and date; beside the title, at most one of: an <img> photo (a wide one fills the slide under a shade, another fills a panel on the right), one to three .kpi with the deck's headline figures, or a data-icon on the <section> drawn large; without one, the title stands alone in large type; the kit places the company logo", (LayoutPart("h1"), LayoutPart("img", 0), LayoutPart(".kpi", 0, 3))),
     KitLayout("agenda", "the order of the talk, three to six items", (TITLE, LayoutPart("ol|ul"))),
     KitLayout("section", "a divider before a part of the talk, on the deck's dark feature color; the .eyebrow holds its number", (TITLE,)),
     KitLayout("statement", "one sentence the audience must remember; <em> marks the words in the accent color", (TITLE,)),
@@ -230,30 +227,51 @@ def count_label(minimum: int, maximum: int | None) -> str:
     return str(minimum) if maximum == minimum else f"{minimum}-{maximum}" if maximum else f"{minimum}+"
 
 
-REPEAT_LIMIT = 3
+REPEAT_LIMIT = 2
 COVER_LAYOUT = "cover"
 CLOSING_LAYOUT = "closing"
 CLOSING_SLIDE_MINIMUM = 3
 CLOSING_ACTION = LayoutPart(".card|ol|.takeaway", maximum=None)
 VARIETY_SLIDE_MINIMUM = 6
-VARIETY_LAYOUT_MINIMUM = 3
+VARIETY_LAYOUT_MINIMUM = 4
 
 
 def order_lines() -> list[str]:
     return [
         f"  slide 1 is a {COVER_LAYOUT}; from {CLOSING_SLIDE_MINIMUM} slides on, the last is a {CLOSING_LAYOUT}; neither layout appears anywhere else",
         f"  the {CLOSING_LAYOUT} carries the decision or the next steps as {CLOSING_ACTION.selector.replace('|', ', ')}, never a thank-you line alone",
-        f"  {REPEAT_LIMIT} slides in a row never share a layout, and {VARIETY_SLIDE_MINIMUM} or more slides use at least {VARIETY_LAYOUT_MINIMUM} layouts",
+        f"  {REPEAT_LIMIT} slides in a row never share a layout; in a deck of {VARIETY_SLIDE_MINIMUM} or more slides, the slides between the cover and the closing use at least {VARIETY_LAYOUT_MINIMUM} different layouts, or one fewer than their count when that is less",
         "  choose every other slide's layout from its content, by the purposes below",
     ]
 
 
-def theme_lines() -> list[str]:
-    palettes = theme_palettes()
+def design_lines() -> list[str]:
     return [
-        f"  {name}{' (default)' if name == DEFAULT_THEME else ''}: background {palette['bg']}, ink {palette['ink']}, accent {palette['accent']}, second accent {palette['accent-2']}"
-        for name, palette in palettes.items()
-    ] + ["  data-accent=\"#RRGGBB\" on <body> replaces the accent with a brand color"]
+        "  each deck's palette, tone, type, density, cover and imagery follow its subject, audience and purpose; office guide design says what this deck's are",
+        "  the kit places the company logo on the cover, in every footer and on the closing",
+        "  a request that names a color sets data-accent=\"#RRGGBB\" on <body>; a request that names a dark design sets data-tone=\"bold\"",
+        f"  data-theme picks a fixed look instead, one of {', '.join(theme_palettes())}; use it only when the request names one",
+    ]
+
+
+def shape_lines() -> list[str]:
+    return [f"  {shape} -> {layouts}" for shape, layouts in CONTENT_SHAPES]
+
+
+CONTENT_SHAPES = (
+    ("one figure that carries the point", "number"),
+    ("two to four figures in one unit system", "kpi"),
+    ("a trend, ranking or share in data", "chart"),
+    ("rows and columns the audience must read", "table"),
+    ("dated events", "timeline"),
+    ("ordered steps, or stages that repeat", "process, cycle"),
+    ("two options", "comparison"),
+    ("two to four parallel points", "cards"),
+    ("a 2x2, levels, or an organization", "matrix, pyramid, hierarchy"),
+    ("one sentence to remember, or someone's words", "statement, quote"),
+    ("a photo that shows the point", "image"),
+    ("a new part of the talk", "section"),
+)
 
 
 def layout_lines() -> list[str]:
@@ -280,7 +298,8 @@ def icon_lines() -> list[str]:
 
 GUIDE_SECTIONS = (
     ("slides", "Slide order", order_lines),
-    ("slides", "Themes (<body data-theme=\"...\">)", theme_lines),
+    ("slides", "Design (office guide design says this deck's)", design_lines),
+    ("slides", "Content shapes (choose each slide's layout from the shape of its content)", shape_lines),
     ("slides", "Layouts (<section data-layout=\"...\">; parts are direct children of the section)", layout_lines),
     ("slides", "Diagrams (process, cycle, hierarchy, pyramid, matrix)", diagram_lines),
     ("slides", "Charts (<figure data-chart=\"...\"> in a chart slide)", chart_lines),
@@ -292,3 +311,5 @@ GUIDE_ISSUES = (
     ("check", "slides", SOURCE_CHECK_ISSUE_KINDS),
     ("image", EVERY_KIND, IMAGE_ISSUE_KINDS),
 )
+
+GUIDE_TOPICS = {DESIGN_TOPIC: design_text}

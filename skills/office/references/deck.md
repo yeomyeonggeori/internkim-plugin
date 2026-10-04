@@ -4,13 +4,13 @@ A deck is one file, `slides.html`, written with the built-in kit and built into 
 
 ## Write slides.html
 
-Work in `artifacts/<deck-slug>/`. First run `<skill>/scripts/office guide slides`: it gives the slide order rules, the themes, every layout with its purpose and parts, and the chart attributes. Then write the whole file in one step with your file tool, never through a heredoc. To change an existing deck, edit its `slides.html` in place; `office convert build/<deck-slug>.html slides.html` recovers it from a delivered `.html`.
+Work in `artifacts/<deck-slug>/`. First run `<skill>/scripts/office guide slides`: it gives the slide order rules, every layout with its purpose and parts, and the chart attributes. Then run `<skill>/scripts/office guide design`: it says the deck's design, which InternKim chooses from the request, and lists the photos and the logo the deck can use. Then write the whole file in one step with your file tool, never through a heredoc. To change an existing deck, edit its `slides.html` in place; `office convert build/<deck-slug>.html slides.html` recovers it from a delivered `.html`.
 
 ```html
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><title>Sample Electronics Q3 2026 Business Review</title></head>
-<body data-theme="corporate">
+<body>
 <section data-layout="cover">
   <p class="eyebrow">Q3 2026 business review</p>
   <h1>Q3 revenue reached $128M, 6% above target</h1>
@@ -35,8 +35,9 @@ Work in `artifacts/<deck-slug>/`. First run `<skill>/scripts/office guide slides
 
 - Every part is a direct child of its `<section>`.
 - A title states the slide's conclusion as a sentence in the request's language. `<em>` colors key words.
-- Choose each slide's layout from its content. `office guide slides` lists every layout with its purpose and parts, and every chart attribute; write the other slides from it rather than from this example.
-- Without photos, a `data-icon` on cards, metrics, steps and agenda or closing items gives the deck a visual rhythm; `office guide slides` lists the icon names.
+- Choose each slide's layout from the shape of its content, by the content shapes `office guide slides` lists; write the other slides from it rather than from this example.
+- Follow the cover and imagery `office guide design` names. Without photos, a `data-icon` on cards, metrics, steps and agenda or closing items gives the deck a visual rhythm.
+- The design is applied by the build: write no `data-theme`, colors or fonts unless the request names them.
 
 ## Build and deliver
 
@@ -57,11 +58,13 @@ The output's extension picks the format: `build/<deck-slug>.pptx` writes the Pow
 
 ## Images
 
-Use a photo only when it shows what the slide is about, in a `cover` or `image` slide. `<skill>/scripts/office image "warehouse shelves" images/warehouse.jpg` saves up to three public-domain candidates for an English query, with each one's ratio and source page; look at them, keep the one that shows the subject, and delete the rest. The kit crops it to fill its frame. Never put a grey box or a placeholder where a photo would go; without a fitting photo, use another layout. Name the photo's source in `.source`. No emoji.
+The photos a deck can use are the ones `office guide design` lists: the request's attachments and the data room images the requester can read. Use each one that shows the deck's subject, on the cover, a section divider or an `image` slide beside what it shows, and skip one that does not fit. Point `src` at the listed path; the kit crops each photo to its frame, and `data-focus="top"`, `bottom`, `left` or `right` keeps that side in view. A caption or a fact about a photo comes only from its title, its summary or the request. Never put a grey box or a placeholder where a photo would go; without a fitting photo, use another layout. No emoji.
+
+Only when the person asks for photos to be found, `<skill>/scripts/office image "warehouse shelves" images/warehouse.jpg` saves up to three public-domain candidates for an English query, with each one's ratio and source page; keep the one that shows the subject, delete the rest, and name its source in `.source`.
 
 ## Custom design
 
-A brand that needs more than `data-accent` adds a `<style>` that sets the theme tokens (`--accent`, `--accent-2`, `--ink`, `--bg`, `--surface`) on `:root`; they replace those of the `data-theme` it names. A `DESIGN.md` beside `slides.html` is optional; the colors in its front matter join the palette. The check reports any other color as `OFF_PALETTE_COLOR`.
+A brand that needs more than `data-accent` adds a `<style>` that sets the theme tokens (`--accent`, `--accent-2`, `--ink`, `--bg`, `--surface`) on `:root`. A `DESIGN.md` beside `slides.html` is optional; the colors in its front matter join the palette. The check reports any other color as `OFF_PALETTE_COLOR`.
 
 ## PPTX
 

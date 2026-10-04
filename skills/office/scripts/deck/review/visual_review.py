@@ -7,7 +7,7 @@ from core.office_result import Issue
 from core.skill_paths import ASSETS_PATH
 from deck.check_deck import body_theme, token_overrides
 from deck.deck_definitions import GUIDE_SECTIONS
-from deck.deck_kit import DEFAULT_THEME, theme_palettes
+from deck.deck_preparation import deck_palette, prepare_deck
 from deck.deck_source import Element, find_all, normalized_text, parse_source, visible_text
 from deck.review.slide_images import rendered_slide_image_paths
 from deck.slide_source import split_slide_sources
@@ -21,8 +21,7 @@ ICON_NEIGHBOR_LENGTH = 60
 
 
 def deck_colors(root: Element) -> dict[str, str]:
-    theme = body_theme(root) or DEFAULT_THEME
-    palette = dict(theme_palettes().get(theme, {}))
+    palette = {name: f"#{value}" for name, value in deck_palette(prepare_deck(root)).items()}
     overrides = token_overrides(root, set(palette))
     return palette | ({"custom": ", ".join(f"#{color}" for color in sorted(overrides))} if overrides else {})
 
@@ -78,7 +77,7 @@ def visual_review(source_path: pathlib.Path, review_path: pathlib.Path, deck_nam
     sections = find_all(root, "section")
     sources = split_slide_sources(source_text)
     images = rendered_slide_image_paths(review_path, deck_name)
-    theme = body_theme(root) or DEFAULT_THEME
+    theme = body_theme(root) or prepare_deck(root).design.label()
     colors = deck_colors(root)
     title = deck_title(root)
     slides = [

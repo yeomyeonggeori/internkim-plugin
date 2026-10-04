@@ -22,6 +22,9 @@ class RuntimeContext:
     registered_documents: tuple = ()
     attachments: tuple = ()
     reviews_deck_renders: bool = False
+    prepares_decks: bool = False
+    deck_design: dict | None = None
+    images: tuple = ()
 
     def company(self, language: str) -> dict:
         if not self.companies:
@@ -32,6 +35,11 @@ class RuntimeContext:
             ))
         found = self.companies.get(language) or next(iter(self.companies.values()), "")
         return company_profile(found) if isinstance(found, str) and found else {}
+
+    def logo_path(self) -> Path | None:
+        profiles = [company_profile(path) for path in self.companies.values() if isinstance(path, str) and path]
+        logos = [Path(profile["logoPath"]) for profile in profiles if profile.get("logoPath")]
+        return next((logo for logo in logos if logo.is_file()), None)
 
     def document_number(self) -> str:
         numbers = [document.get("documentNumber") for document in self.registered_documents if document.get("documentNumber")]
@@ -87,4 +95,7 @@ def load_runtime_context() -> RuntimeContext | None:
         registered_documents=tuple(document.get("registeredDocuments") or ()),
         attachments=tuple(document.get("attachments") or ()),
         reviews_deck_renders=document.get("reviewsDeckRenders") is True,
+        prepares_decks=document.get("preparesDecks") is True,
+        deck_design=document.get("deckDesign") if isinstance(document.get("deckDesign"), dict) else None,
+        images=tuple(image for image in document.get("images") or () if isinstance(image, dict) and image.get("path")),
     )

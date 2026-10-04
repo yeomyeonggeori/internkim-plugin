@@ -1,0 +1,134 @@
+{
+  "instructions": "Choose the design of a slide deck from what the request says: its subject, its audience and its purpose. Judge each question from the request and the listed images only. Do not invent a subject, audience, mood, figure or image the request and the list do not state.",
+  "questions": {
+    "palette": {
+      "instructions": "Which feeling should the deck's main color carry, judged from what the deck is about and who it is for? When the request names a color, choose the option whose hue it names. Do not read a feeling into the request that its subject and purpose do not support; choose neutral when no feeling clearly fits.",
+      "options": {
+        "trust": "Reliability and security: finance, investors, institutions, security, law, business services. A blue.",
+        "fresh": "Freshness, nature and health: environment, sustainability, agriculture, food, wellbeing. A green.",
+        "energy": "Passion and urgency: sales pushes, launches, sports, events that rally people. A red.",
+        "warmth": "Care, community and hospitality: nonprofits, people programs, hotels, restaurants, celebrations. An orange.",
+        "creative": "Imagination, design and beauty: creative work, cosmetics, fashion, entertainment. A violet.",
+        "clarity": "Calm precision and learning: research, education, healthcare, explaining technology. A teal.",
+        "prestige": "Heritage and formality: anniversaries, governance, luxury, ceremonies. A deep wine.",
+        "neutral": "No particular feeling: a plain internal report. A graphite."
+      },
+      "fallback": "neutral"
+    },
+    "tone": {
+      "instructions": "What tone suits the audience and the occasion the request names? Choose bold only for an occasion meant to excite, or when the request asks for a dark design. Do not choose a tone for a mood the request does not state; choose formal when unsure.",
+      "options": {
+        "formal": "For executives, investors, boards, clients, official reviews. A clean white page.",
+        "friendly": "For colleagues, training, community, internal culture. A warm paper page.",
+        "bold": "For launches, rallies, keynotes, celebrations, or a request for a dark design. A dark page.",
+        "calm": "For research, healthcare, education, careful explanations. A softly tinted page."
+      },
+      "fallback": "formal"
+    },
+    "temperature": {
+      "instructions": "Should the deck's neutral greys lean warm or cool, judged from the subject's setting? Do not choose by the main color alone; choose neutral when the subject suggests neither.",
+      "options": {
+        "warm": "For people, food, hospitality, craft, heritage, the outdoors.",
+        "cool": "For technology, finance, data, engineering, security.",
+        "neutral": "For neither; the greys lean toward the main color."
+      },
+      "fallback": "neutral"
+    },
+    "type": {
+      "instructions": "Which typeface family suits the deck's voice? Judge from the occasion and audience the request states; do not choose for a voice the request does not suggest. Choose modern when unsure.",
+      "options": {
+        "geometric": "Geometric sans: confident and contemporary; pitches, strategy, launches.",
+        "modern": "Modern sans: neutral and precise; reports, research, operations, reviews.",
+        "classic": "Serif titles over a sans body: established and serious; annual reports, governance, anniversaries, heritage.",
+        "condensed": "Compact presentation sans: punchy; sales, campaigns, events.",
+        "friendly": "Rounded friendly sans: approachable; training, onboarding, community, culture."
+      },
+      "fallback": "modern"
+    },
+    "density": {
+      "instructions": "How much should each slide hold for this audience and setting? Choose dense only when the request asks for a reading deck or detailed figures for every slide. Choose balanced when unsure.",
+      "options": {
+        "airy": "For a talk to a room, few words per slide, large type.",
+        "balanced": "For an ordinary presentation.",
+        "dense": "For a deck meant to be read alone or full of figures."
+      },
+      "fallback": "balanced"
+    },
+    "cover": {
+      "instructions": "What should carry the cover? Choose photo only when the image list holds a photo that shows the deck's subject, and choose it whenever one does. Choose key_figure only when the request states one figure that sums up the whole deck. Do not choose for a photo, figure or symbol the request and the image list do not give; choose type_only when none fits.",
+      "options": {
+        "photo": "A photo from the image list that shows the deck's subject.",
+        "key_figure": "The one to three figures from the request that sum up the deck, large beside the title.",
+        "icon": "One line icon that names the subject, large beside the title, when the subject is a clear object or idea and no photo fits.",
+        "type_only": "The title alone in large type."
+      },
+      "fallback": "type_only"
+    },
+    "imagery": {
+      "instructions": "What should give the slides their visual rhythm? Choose photo whenever the image list holds photos that show the deck's subject. Choose data when the request is mostly figures and series. Do not choose photo for images that do not show the subject; choose icon when unsure.",
+      "options": {
+        "photo": "Photos from the image list on the cover, dividers and the slides they show.",
+        "icon": "Line icons on cards, metrics, steps and lists.",
+        "data": "Charts, key numbers and tables lead; icons only where a list needs them."
+      },
+      "fallback": "icon"
+    }
+  },
+  "confidence": 0.4,
+  "secondaryShare": 0.75,
+  "hueBlend": 0.3,
+  "hues": {
+    "trust": {"hue": 258, "chroma": 0.17},
+    "fresh": {"hue": 150, "chroma": 0.14},
+    "energy": {"hue": 27, "chroma": 0.19},
+    "warmth": {"hue": 52, "chroma": 0.16},
+    "creative": {"hue": 305, "chroma": 0.15},
+    "clarity": {"hue": 195, "chroma": 0.11},
+    "prestige": {"hue": 8, "chroma": 0.12, "lightness": -0.08},
+    "neutral": {"hue": 255, "chroma": 0.025}
+  },
+  "temperatures": {"warm": 75, "cool": 250},
+  "tones": {
+    "formal": {
+      "dark": false, "radius": 10, "neutralChroma": 0.004,
+      "bg": [0.995, 0.3], "surface": [0.972, 1], "surface-strong": [0.935, 1.6], "line": [0.895, 1.8],
+      "ink": [0.2, 4], "ink-soft": [0.37, 3.5], "muted": [0.52, 3], "chart-muted": [0.84, 2],
+      "accent": [0.52, 1], "accent-2": [0.4, 0.55],
+      "feature-bg": [0.25, 0.3], "feature-ink": [0.98, 0.2], "feature-muted": [0.8, 0.12], "feature-accent": [0.8, 0.75]
+    },
+    "friendly": {
+      "dark": false, "radius": 20, "neutralChroma": 0.012,
+      "bg": [0.966, 1], "surface": [0.993, 0.4], "surface-strong": [0.925, 1.3], "line": [0.88, 1.4],
+      "ink": [0.21, 1.6], "ink-soft": [0.37, 1.5], "muted": [0.53, 1.2], "chart-muted": [0.82, 1.3],
+      "accent": [0.58, 1], "accent-2": [0.42, 0.55],
+      "feature-bg": [0.27, 0.35], "feature-ink": [0.97, 0.5], "feature-muted": [0.8, 0.25], "feature-accent": [0.8, 0.8]
+    },
+    "calm": {
+      "dark": false, "radius": 16, "neutralChroma": 0.012,
+      "bg": [0.978, 0.8], "surface": [0.996, 0.3], "surface-strong": [0.94, 1.4], "line": [0.9, 1.4],
+      "ink": [0.24, 2.2], "ink-soft": [0.4, 2], "muted": [0.54, 1.6], "chart-muted": [0.84, 1.6],
+      "accent": [0.53, 0.75], "accent-2": [0.42, 0.45],
+      "feature-bg": [0.33, 0.4], "feature-ink": [0.98, 0.3], "feature-muted": [0.84, 0.2], "feature-accent": [0.84, 0.6]
+    },
+    "bold": {
+      "dark": true, "radius": 12, "neutralChroma": 0.02,
+      "bg": [0.17, 1], "surface": [0.22, 1.2], "surface-strong": [0.27, 1.3], "line": [0.33, 1.3],
+      "ink": [0.97, 0.3], "ink-soft": [0.86, 0.5], "muted": [0.7, 0.6], "chart-muted": [0.42, 1.2],
+      "accent": [0.76, 0.9], "accent-2": [0.82, 0.55],
+      "feature-bg": [0.25, 0.3], "feature-ink": [0.97, 0.3], "feature-muted": [0.8, 0.12], "feature-accent": [0.8, 0.8]
+    }
+  },
+  "contrast": {"ink": 7, "ink-soft": 4.5, "muted": 4.5, "accent": 4.5, "accent-2": 3, "feature-ink": 7, "feature-muted": 4.5, "feature-accent": 4.5},
+  "types": {
+    "geometric": {"display": "Paperlogy", "body": "Paperlogy"},
+    "modern": {"display": "Pretendard", "body": "Pretendard"},
+    "classic": {"display": "NanumMyeongjo", "body": "Pretendard"},
+    "condensed": {"display": "Freesentation", "body": "Freesentation"},
+    "friendly": {"display": "A2Z", "body": "Pretendard"}
+  },
+  "densities": {
+    "airy": {"size-title": "58px", "size-body": "26px", "size-lead": "32px", "gap": "40px"},
+    "balanced": {},
+    "dense": {"size-title": "50px", "size-body": "22px", "size-lead": "27px", "gap": "26px"}
+  }
+}
