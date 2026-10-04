@@ -747,15 +747,82 @@
     return !logo.hasTransparency || contrastRatio(logo.ink, backdropChannels(image)) < logoContrastMinimum;
   }
 
+  const logoHeight = 56;
+  const logoInset = 48;
+  const logoCorners = [
+    { bottom: logoInset, left: logoInset },
+    { bottom: logoInset, right: logoInset },
+    { top: logoInset, right: logoInset },
+    { top: logoInset, left: logoInset },
+  ];
+
+  function logoSlides() {
+    const all = slides();
+    return all.length > 1 ? [all[0], all[all.length - 1]] : all;
+  }
+
   function drawLogos() {
     const logo = window.deckKitLogo;
+    document.querySelectorAll("img[data-logo]").forEach((image) => image.remove());
     if (!logo) return;
-    document.querySelectorAll("img[data-logo]").forEach((image) => {
+    logoSlides().forEach((slide) => {
+      const image = document.createElement("img");
+      image.classList.add("kit-logo");
       image.setAttribute("src", logo.src);
-      image.setAttribute("alt", image.getAttribute("alt") || "");
+      image.setAttribute("alt", "");
       image.style.setProperty("aspect-ratio", String(logo.ratio));
       if (logoNeedsPlate(logo, image)) image.classList.add("kit-plated");
+      if (getComputedStyle(slide).position === "static") slide.style.setProperty("position", "relative");
+      slide.appendChild(image);
     });
+  }
+
+  function contentRects(slide, logoImage) {
+    const rects = [];
+    const range = document.createRange();
+    const visit = (node) => {
+      if (node.nodeType === 3) {
+        if (!node.textContent.trim()) return;
+        range.selectNodeContents(node);
+        rects.push(...Array.from(range.getClientRects()));
+        return;
+      }
+      if (node.nodeType === 1 && !node.matches("aside, .kit-logo")) Array.from(node.childNodes).forEach(visit);
+    };
+    visit(slide);
+    slide.querySelectorAll("img, svg, canvas, table, figure").forEach((element) => {
+      if (element !== logoImage && !element.closest("aside") && !element.parentElement.closest("svg")) rects.push(element.getBoundingClientRect());
+    });
+    return rects.filter((rect) => rect.width > 0 && rect.height > 0);
+  }
+
+  function overlaps(first, second) {
+    return first.left < second.right && second.left < first.right && first.top < second.bottom && second.top < first.bottom;
+  }
+
+  function placeLogo(slide, corner) {
+    const image = slide.querySelector("img.kit-logo");
+    ["top", "right", "bottom", "left"].forEach((side) => image.style.removeProperty(side));
+    image.style.setProperty("position", "absolute");
+    image.style.setProperty("height", `${logoHeight}px`);
+    Object.entries(corner).forEach(([side, value]) => image.style.setProperty(side, `${value}px`));
+    return image;
+  }
+
+  async function placeLogos(layOut) {
+    for (const slide of slides()) {
+      if (!slide.querySelector("img.kit-logo")) continue;
+      let chosen = logoCorners[0];
+      for (const corner of logoCorners) {
+        const image = placeLogo(slide, corner);
+        if (layOut) await layOut(slide);
+        chosen = corner;
+        const box = image.getBoundingClientRect();
+        if (!contentRects(slide, image).some((rect) => overlaps(box, rect))) break;
+      }
+      placeLogo(slide, chosen);
+      if (layOut) await layOut(slide);
+    }
   }
 
   function prepare() {
@@ -768,6 +835,7 @@
 
   async function render(layOut) {
     prepare();
+    await placeLogos(layOut);
     for (const slide of slides()) {
       await fitTickGutters(slide, layOut);
       await squareRings(slide, layOut);

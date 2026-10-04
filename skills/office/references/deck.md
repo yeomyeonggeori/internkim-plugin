@@ -46,7 +46,7 @@ The output's extension picks the format: `build/<deck-slug>.pptx` writes the Pow
 
 The photos a deck can use are the ones `guide design` lists: the request's attachments and the data room images the requester can read. Use them readily, on the cover, a divider or beside what they show, and skip one that does not fit. Point `src` at the listed path and crop with `object-fit: cover` in a frame of your own; the build sets each photo's focal point. A caption or a fact about a photo comes only from its title, its summary or the request. Never put a grey box or a placeholder where a photo would go.
 
-When the company has a logo, place `<img data-logo>` on the cover and on the other slides where it fits, at a height you choose. The build fills in the file and puts a plate behind it when its background needs one. No emoji.
+When the company has a logo, the build places it on the cover and the closing slide, in a corner no text covers, with a plate behind it when its background needs one; do not write `<img data-logo>` and keep a corner free. No emoji.
 
 Only when the person asks for photos to be found, `<skill>/scripts/office image "warehouse shelves" images/warehouse.jpg` saves up to three public-domain candidates for an English query, with each one's ratio and source page; keep the one that shows the subject, delete the rest, and name its source in `.source`.
 

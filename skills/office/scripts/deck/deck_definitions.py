@@ -58,7 +58,6 @@ CHART_DATA_INVALID = IssueKind("CHART_DATA_INVALID", ERROR, "a chart's data attr
 IMAGE_NOT_FOUND = IssueKind("IMAGE_NOT_FOUND", ERROR, "an image is remote or its file does not exist, so the slide would show an empty box", "point src at an image office guide design lists, or remove the image")
 ICON_UNKNOWN = IssueKind("ICON_UNKNOWN", ERROR, "a data-icon names an icon the kit does not ship", "use a name office guide slides lists under Icons, or drop the data-icon")
 OFF_PALETTE_COLOR = IssueKind("OFF_PALETTE_COLOR", WARNING, "the source uses colors outside the DESIGN.md palette", "use the tokens such as var(--accent) and var(--text), or name the color in DESIGN.md colors")
-LOGO_UNUSED = IssueKind("LOGO_UNUSED", ERROR, "the company has a logo and the cover does not show it", "place <img data-logo> on slide 1, and on the other slides where it fits")
 
 SOURCE_CHECK_ISSUE_KINDS = (
     SOURCE_NOT_HTML,
@@ -68,7 +67,6 @@ SOURCE_CHECK_ISSUE_KINDS = (
     CHART_DATA_INVALID,
     ICON_UNKNOWN,
     IMAGE_NOT_FOUND,
-    LOGO_UNUSED,
     PLACEHOLDER_LEFT,
     *TEXT_CHECK_ISSUE_KINDS,
     OFF_PALETTE_COLOR,
@@ -140,7 +138,7 @@ def photo_lines() -> list[str]:
     return [
         "  office guide design lists the company logo and the photos you can use",
         "  <img src=\"<listed path>\"> with object-fit: cover in a frame of your own; the build sets each photo's focal point",
-        "  <img data-logo> becomes the company logo at the height you give it, on a plate when its background needs one",
+        "  the company logo is placed by the build on the cover and the closing slide; write no <img data-logo>",
     ]
 
 

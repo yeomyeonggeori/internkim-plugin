@@ -77,7 +77,7 @@ def logo_lines(preparation: DeckPreparation) -> list[str]:
     if logo is None:
         return ["Logo: none is known for this company; the deck goes without one."]
     kind = "transparent background" if logo.has_transparency else "its own opaque background"
-    return [f"Logo: {logo.width}x{logo.height}, {kind}. Always show it: <img data-logo> on the cover, and on the other slides where it fits, at a height you choose; never stretch or recolor it."]
+    return [f"Logo: {logo.width}x{logo.height}, {kind}. The build places it on the cover and the closing slide, in a corner no text covers; write no <img data-logo> and leave that corner free."]
 
 
 def image_lines(preparation: DeckPreparation) -> list[str]:

@@ -10,7 +10,6 @@ from deck.deck_definitions import (
     CHART_DATA_INVALID,
     ICON_UNKNOWN,
     IMAGE_NOT_FOUND,
-    LOGO_UNUSED,
     NO_SLIDE_SECTIONS,
     OFF_PALETTE_COLOR,
     SLIDE_COUNT_MISMATCH,
@@ -105,7 +104,7 @@ def has_errors(issues: list[Issue]) -> bool:
 
 
 def deck_issues(request: CheckRequest, root: Element, slides: list[Slide], system: DesignSystem) -> list[Issue]:
-    issues = slide_count_issues(request.requested_slide_count, slides) + logo_issues(slides)
+    issues = slide_count_issues(request.requested_slide_count, slides)
     for slide in slides:
         issues += empty_slide_issues(slide) + chart_issues(slide) + icon_issues(slide) + image_issues(slide, request.source_path.parent) + placeholder_issues(slide)
     issues += text_presence_issues(" ".join(slide.text() for slide in slides), request.required_text, request.forbidden_text)
@@ -116,12 +115,6 @@ def slide_count_issues(requested_slide_count: int | None, slides: list[Slide]) -
     if requested_slide_count is None or requested_slide_count == len(slides):
         return []
     return [SLIDE_COUNT_MISMATCH.issue(f"slides.html has {len(slides)} slides, but {requested_slide_count} were requested", "deck")]
-
-
-def logo_issues(slides: list[Slide]) -> list[Issue]:
-    if prepare_deck().logo is None or any("data-logo" in image.attributes for image in find_all(slides[0].element, "img")):
-        return []
-    return [LOGO_UNUSED.issue("the company has a logo and slide 1 does not place <img data-logo>", slides[0].location)]
 
 
 def icon_issues(slide: Slide) -> list[Issue]:

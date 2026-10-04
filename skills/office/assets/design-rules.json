@@ -77,6 +77,9 @@
      "suggestion": "give the chart a width and a height of its own, at least 320 by 240 px, instead of letting it shrink inside a flex box"},
     {"code": "REPEATED_LAYOUT", "stages": ["render"], "deck": true, "measure": "layoutSignature", "threshold": {"gridUnit": 150, "minimumCards": 2, "maximumRun": 2},
      "meaning": "the same card arrangement repeats on more than two slides in a row",
-     "suggestion": "give each of these slides the form its own content has, a table, a chart, a sequence, a photo with text or plain text, so no more than two in a row share one arrangement"}
+     "suggestion": "give each of these slides the form its own content has, a table, a chart, a sequence, a photo with text or plain text, so no more than two in a row share one arrangement"},
+    {"code": "CONTENT_OVERLAP", "stages": ["render"], "measure": "contentOverlap", "threshold": {"minimumArea": 64, "largeImageShare": 0.4},
+     "meaning": "two pieces of content cover each other: text over text, or text over a logo, icon or small picture",
+     "suggestion": "move one of them apart from the other, or shorten the text, so no two content boxes overlap; a photo under text is the one overlap allowed"}
   ]
 }

@@ -396,6 +396,27 @@ export function measureDesignRules(page, rules, tools) {
       return [finding(page, `${columns}x${rows}`)];
     },
 
+    contentOverlap: ({ minimumArea, largeImageShare }) => {
+      const pageRect = rectOf(page);
+      const pageArea = pageRect.width * pageRect.height;
+      const boxes = [];
+      textElements().filter((element) => !element.closest("svg, figure[data-chart]")).forEach((element) => {
+        const rects = ownTextRects(element);
+        if (rects.length) boxes.push({ element, rect: unionRect(rects), kind: "text" });
+      });
+      elementsOf(page).slice(1).filter((element) => ["IMG", "SVG"].includes(element.tagName.toUpperCase()) && !element.parentElement.closest("svg") && !element.closest("figure[data-chart]")).forEach((element) => {
+        const rect = rectOf(element);
+        if (rect.width > 0 && rect.height > 0 && rect.width * rect.height < pageArea * largeImageShare) boxes.push({ element, rect, kind: "image" });
+      });
+      const intersection = (first, second) => Math.max(0, Math.min(first.right, second.right) - Math.max(first.left, second.left)) * Math.max(0, Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top));
+      const found = [];
+      boxes.forEach((first, index) => boxes.slice(index + 1).forEach((second) => {
+        if (first.element.contains(second.element) || second.element.contains(first.element)) return;
+        if (intersection(first.rect, second.rect) >= minimumArea) found.push(finding(first.element, `covers or is covered by ${describe(second.element).selector}${second.element.textContent.trim() ? ` "${second.element.textContent.trim().slice(0, 24)}"` : ""}`));
+      }));
+      return found;
+    },
+
     textSize: ({ bodyMinimum, captionMinimum, bodyCharacters, bodyWords }) => {
       const isChartText = (element) => element.closest("svg, figure[data-chart], [data-native-chart]");
       const ownText = (element) => Array.from(element.childNodes).filter((node) => node.nodeType === Node.TEXT_NODE).map((node) => node.textContent.trim()).join(" ").trim();

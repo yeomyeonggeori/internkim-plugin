@@ -28,7 +28,6 @@ STYLE = """
 body { margin: 0; }
 section { position: relative; background: var(--ground); color: var(--text); font-family: var(--font-body); }
 h1 { position: absolute; left: 96px; top: 380px; margin: 0; font-size: 56px; }
-img[data-logo] { position: absolute; left: 96px; top: 60px; height: 64px; }
 .photo { position: absolute; right: 0; top: 0; width: 640px; height: 900px; object-fit: cover; }
 .dark { background: #14213D; }
 .filler { position: absolute; left: 96px; right: 560px; top: 160px; bottom: 96px; background: var(--surface); padding: 40px; font-size: 28px; }
@@ -38,8 +37,9 @@ img[data-logo] { position: absolute; left: 96px; top: 60px; height: 64px; }
 FILLER = '<div class="filler"><p>Shelf checks, counted by sensors instead of people.</p></div>'
 
 
-def deck(first_slide: str, second_slide: str = '<h1>Stock checks take 47 minutes less a day</h1>') -> str:
-    return f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Logo</title><style>{STYLE}</style></head><body><section>{first_slide}{FILLER}</section><section>{second_slide}{FILLER}</section></body></html>'
+def deck(first_slide: str, second_slide: str = '<h1>Stock checks take 47 minutes less a day</h1>', middle: str | None = None, extra_style: str = "") -> str:
+    middle_section = f"<section>{middle}{FILLER}</section>" if middle is not None else ""
+    return f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Logo</title><style>{STYLE}{extra_style}</style></head><body><section>{first_slide}{FILLER}</section>{middle_section}<section>{second_slide}{FILLER}</section></body></html>'
 
 
 def company_context(directory: Path) -> Path:
@@ -82,16 +82,11 @@ def has_color_near(page: Image.Image, color: tuple[int, int, int], region: tuple
 
 
 class LogoCheckTest(unittest.TestCase):
-    def test_a_cover_without_the_logo_is_refused_when_the_company_has_one(self):
+    def test_a_cover_needs_no_logo_markup_because_the_build_places_the_logo(self):
         with tempfile.TemporaryDirectory() as directory:
             envelope = run(["check", "slides.html"], prepare(directory, deck("<h1>Shelves report themselves</h1>")), with_logo=True)
-            self.assertIn("LOGO_UNUSED", [issue["code"] for issue in envelope["issues"]])
-            self.assertEqual(envelope["status"], "error")
-
-    def test_a_cover_with_the_logo_passes(self):
-        with tempfile.TemporaryDirectory() as directory:
-            envelope = run(["check", "slides.html"], prepare(directory, deck("<img data-logo><h1>Shelves report themselves</h1>")), with_logo=True)
             self.assertNotIn("LOGO_UNUSED", [issue["code"] for issue in envelope["issues"]])
+            self.assertNotEqual(envelope["status"], "error", envelope["summary"])
 
     def test_a_company_without_a_logo_is_never_asked_for_one(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -99,21 +94,44 @@ class LogoCheckTest(unittest.TestCase):
             self.assertNotIn("LOGO_UNUSED", [issue["code"] for issue in envelope["issues"]])
 
 
+BOTTOM_LEFT = (40, 780, 420, 880)
+BOTTOM_RIGHT = (1180, 780, 1560, 880)
+TOP_RIGHT = (1180, 20, 1560, 120)
+WHOLE_PAGE = (0, 0, 1600, 900)
+
+
 @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
 class LogoAndPhotoRenderTest(unittest.TestCase):
-    def test_the_logo_is_drawn_where_the_deck_placed_it(self):
+    def pages(self, source: str, with_logo: bool = True) -> list:
         with tempfile.TemporaryDirectory() as directory:
-            envelope = run(["create", "build/logo.pdf", "slides.html"], prepare(directory, deck("<img data-logo><h1>Shelves report themselves</h1>")), with_logo=True)
-            pages = pages_of(envelope)
-            self.assertTrue(has_color_near(pages[0], LOGO_COLOR, (96, 60, 400, 130)))
+            return pages_of(run(["create", "build/logo.pdf", "slides.html"], prepare(directory, source), with_logo=with_logo))
 
-    def test_a_logo_the_deck_places_on_a_dark_slide_sits_on_a_white_plate(self):
+    def test_the_build_places_the_logo_on_the_cover_and_the_closing_slide(self):
+        pages = self.pages(deck("<h1>Shelves report themselves</h1>"))
+        self.assertTrue(has_color_near(pages[0], LOGO_COLOR, BOTTOM_LEFT))
+        self.assertTrue(has_color_near(pages[1], LOGO_COLOR, BOTTOM_LEFT))
+
+    def test_a_logo_the_deck_places_itself_is_dropped_and_no_middle_slide_carries_one(self):
+        pages = self.pages(deck("<h1>Cover</h1>", middle="<h1>Middle</h1><img data-logo>"))
+        self.assertEqual([has_color_near(page, LOGO_COLOR, WHOLE_PAGE) for page in pages], [True, False, True])
+
+    def test_a_one_slide_deck_carries_the_logo_once(self):
         with tempfile.TemporaryDirectory() as directory:
-            source = deck('<div class="dark" style="position:absolute;inset:0"><img data-logo></div><h1>Dark cover</h1>')
-            envelope = run(["create", "build/logo.pdf", "slides.html"], prepare(directory, source), with_logo=True)
-            page = pages_of(envelope)[0]
-            self.assertTrue(has_color_near(page, (255, 255, 255), (96, 60, 400, 130)))
-            self.assertTrue(has_color_near(page, LOGO_COLOR, (96, 60, 400, 130)))
+            source = deck("<h1>Only slide</h1>").replace("<section><h1>Stock", "<section><h1>Stock").split("<section><h1>Stock")[0] + "</body></html>"
+            pages = pages_of(run(["create", "build/logo.pdf", "slides.html"], prepare(directory, source), with_logo=True))
+        self.assertEqual(len(pages), 1)
+        self.assertTrue(has_color_near(pages[0], LOGO_COLOR, WHOLE_PAGE))
+
+    def test_the_logo_moves_to_a_corner_that_no_text_covers(self):
+        covering = '<h1 style="top: 790px; left: 40px">A title standing where the logo would sit</h1>'
+        pages = self.pages(deck(covering))
+        self.assertFalse(has_color_near(pages[0], LOGO_COLOR, BOTTOM_LEFT))
+        self.assertTrue(has_color_near(pages[0], LOGO_COLOR, BOTTOM_RIGHT) or has_color_near(pages[0], LOGO_COLOR, TOP_RIGHT))
+
+    def test_a_logo_on_a_dark_slide_sits_on_a_white_plate(self):
+        pages = self.pages(deck("<h1>Dark cover</h1>", extra_style="section:first-child { background: #14213D; }"))
+        self.assertTrue(has_color_near(pages[0], (255, 255, 255), BOTTOM_LEFT))
+        self.assertTrue(has_color_near(pages[0], LOGO_COLOR, BOTTOM_LEFT))
 
     def test_a_listed_photo_is_drawn_in_its_frame(self):
         with tempfile.TemporaryDirectory() as directory:

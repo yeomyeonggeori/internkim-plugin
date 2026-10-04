@@ -22,8 +22,8 @@ section figure[data-chart] { display: flex; flex-direction: column; min-height: 
 section figure[data-chart] > figcaption { flex: none; margin-top: 12px; font-size: var(--size-small); color: var(--muted); }
 .kit-icon { display: flex; flex: none; width: 1em; height: 1em; color: var(--accent); }
 .kit-icon > svg { display: block; width: 100%; height: 100%; }
-img[data-logo] { display: block; object-fit: contain; }
-img[data-logo].kit-plated { box-sizing: content-box; padding: 0.4em 0.7em; border-radius: var(--radius); background: #FFFFFF; }
+img.kit-logo { display: block; object-fit: contain; }
+img.kit-logo.kit-plated { box-sizing: content-box; padding: 0.4em 0.7em; border-radius: var(--radius); background: #FFFFFF; }
 
 .kit-chart { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; font-size: var(--size-small); line-height: 1.3; color: var(--text-soft); font-variant-numeric: tabular-nums; }
 .kit-legend { display: flex; flex-wrap: wrap; gap: 10px 28px; margin-bottom: 8px; font-size: var(--size-small); font-weight: 600; color: var(--text-soft); }
