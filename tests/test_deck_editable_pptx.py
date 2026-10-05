@@ -11,8 +11,7 @@ import unittest
 from xml.etree import ElementTree
 import zipfile
 
-from design_gate_fixture import design_markdown
-from design_gate_slides import fill_sections
+from staged_deck_fixture import write_staged_deck
 from render_fixture import can_render
 
 
@@ -34,10 +33,12 @@ NAMESPACES = {
 PACKAGE_RELATIONSHIPS = "{http://schemas.openxmlformats.org/package/2006/relationships}"
 EOT_MAGIC_NUMBER = 0x504C
 EMU_PER_PIXEL = 7620
-DECK_SOURCE = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>Fixture</title>
-<style>
-body { margin: 0; font-family: "Paperlogy", system-ui; }
-section { width: 1600px; height: 900px; position: relative; overflow: hidden; box-sizing: border-box; padding: 96px 120px; display: flex; flex-direction: column; background: #f8fafc; word-break: keep-all; }
+DECK_DESIGN = {
+    "colors": {"text": "#14213D", "accent": "#2563EB", "secondary": "#B91C1C", "surface": "#E2E8F0", "line": "#CBD5E1"},
+    "backgrounds": {"cover": "#F8FAFC", "content": "#F8FAFC", "data": "#F8FAFC", "closing": "#F8FAFC"},
+}
+DECK_STYLE = """
+section { position: relative; overflow: hidden; box-sizing: border-box; padding: 96px 120px; display: flex; flex-direction: column; gap: 0; background: #f8fafc; word-break: keep-all; font-family: "Paperlogy", system-ui; }
 section > * { flex-shrink: 0; }
 h1 { font-size: 80px; font-weight: 800; margin: 0; }
 h2 { font-size: 52px; font-weight: 700; margin: 0 0 40px; }
@@ -50,18 +51,18 @@ td.number { text-align: right; }
 .narrow { width: 440px; }
 .rail { position: relative; height: 30px; }
 .rail::before { content: ""; position: absolute; left: 0; right: 0; top: 10px; height: 4px; background: #14213d; }
-</style></head><body data-visual-system="fixture">
-<section data-slide-role="cover"><h1>샘플전자 매출은<br>3분기에 18% 늘었습니다</h1><p>박예시 · <em>전략기획팀</em></p><aside class="notes">표지 노트</aside></section>
-<section data-slide-role="summary"><h2>성장은 두 가지에서 나왔습니다</h2>
-<ul><li>프리미엄 전환이 <strong>2배</strong> 늘었습니다</li><li>설치가 하루로 줄었습니다</li></ul>
-<ol start="3"><li>공공 계약 12건</li><li>자세한 표는 <a href="https://example.com/q3">부록</a>에 있습니다</li></ol>
-<div class="card"><span>카드 안의 문장</span></div><div class="meter"><span></span></div>
-<p class="narrow">연간 물류비 4.2억원 절감 · 회수 약 4.3년</p><div class="rail"></div></section>
-<section data-slide-role="comparison"><h2>지역별 매출</h2>
-<table><tr><th>지역</th><th>3분기</th></tr><tr><td>수도권</td><td class="number">₩25억</td></tr></table>
-<div class="stamp">잠정</div><aside class="notes">표 노트</aside></section>
-</body></html>
 """
+DECK_PAGES = [
+    '<h1>샘플전자 매출은<br>3분기에 18% 늘었습니다</h1><p>박예시 · <em>전략기획팀</em></p><aside class="notes">표지 노트</aside>',
+    '<h2>성장은 두 가지에서 나왔습니다</h2>'
+    '<ul><li>프리미엄 전환이 <strong>2배</strong> 늘었습니다</li><li>설치가 하루로 줄었습니다</li></ul>'
+    '<ol start="3"><li>공공 계약 12건</li><li>자세한 표는 <a href="https://example.com/q3">부록</a>에 있습니다</li></ol>'
+    '<div class="card"><span>카드 안의 문장</span></div><div class="meter"><span></span></div>'
+    '<p class="narrow">연간 물류비 4.2억원 절감 · 회수 약 4.3년</p><div class="rail"></div>',
+    '<h2>지역별 매출</h2>'
+    '<table><tr><th>지역</th><th>3분기</th></tr><tr><td>수도권</td><td class="number">₩25억</td></tr></table>'
+    '<div class="stamp">잠정</div><aside class="notes">표 노트</aside>',
+]
 
 
 def run_properties(slide_xml: ElementTree.Element) -> list[ElementTree.Element]:
@@ -294,9 +295,8 @@ class RenderedEditablePptxTest(unittest.TestCase):
     def test_the_pptx_holds_each_slides_visible_text_in_the_deck_font_inside_the_slide(self):
         with tempfile.TemporaryDirectory() as directory:
             deck_path = Path(directory)
-            (deck_path / "DESIGN.md").write_text(design_markdown(), encoding="utf-8")
-            (deck_path / "slides.html").write_text(fill_sections(DECK_SOURCE), encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path)
+            write_staged_deck(deck_path, DECK_PAGES, DECK_STYLE, DECK_DESIGN)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "."], capture_output=True, text=True, cwd=deck_path)
             envelope = json.loads(completed.stdout)
             layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
             with zipfile.ZipFile(deck_path / "build" / f"{deck_path.name}.pptx") as archive:
@@ -305,7 +305,7 @@ class RenderedEditablePptxTest(unittest.TestCase):
                 notes = [notes_text(archive, number) for number in range(1, len(slides) + 1)]
             backgrounds = [read_png(deck_path / "build" / "review" / "pptx-layers" / f"background.{number:03}.png") for number in range(1, len(slides) + 1)]
         self.assertEqual(envelope["details"]["pptx"]["textKeptAsPicture"], ["잠정"])
-        self.assertEqual(notes, ["표지 노트", None, "표 노트"])
+        self.assertEqual(notes, ["표지 노트", "notes", "표 노트"])
         self.assertEqual(table_cell_texts(slides[2]), ["지역", "3분기", "수도권", "₩25억"])
         self.assertNotIn("수도권", "".join(text_box_texts(slides[2])))
         self.assert_boxes_are_shapes_and_left_the_picture(slides, backgrounds)

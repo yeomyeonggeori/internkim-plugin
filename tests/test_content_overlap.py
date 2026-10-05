@@ -4,7 +4,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from design_gate_fixture import issue_codes, issues_at  # noqa: E402
+from staged_deck_fixture import issue_codes, issues_at  # noqa: E402
 from design_gate_slides import BALLAST  # noqa: E402
 from staged_deck_fixture import check_deck, write_staged_deck  # noqa: E402
 from render_fixture import can_render  # noqa: E402

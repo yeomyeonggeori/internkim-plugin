@@ -6,8 +6,8 @@ import unittest
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts" / "deck"
 sys.path.insert(0, str(SCRIPTS_PATH.parent))
 
-from deck.review.content_warnings import apply_missing_speaker_notes_warning  # noqa: E402
-from deck.slide_structure import extract_notes, visible_slide_text  # noqa: E402
+from deck.review.content_warnings import content_warnings  # noqa: E402
+from deck.slide_structure import extract_notes, read_slide_texts, visible_slide_text  # noqa: E402
 
 
 FOOTNOTE_SLIDE = '<section><h2>매출이 늘었습니다</h2><p>본문</p><div class="footnotes">출처 내부 자료</div></section>'
@@ -25,10 +25,10 @@ class SpeakerNotesTest(unittest.TestCase):
         self.assertNotIn("발표 노트", visible_slide_text(NOTES_SLIDE))
 
     def test_missing_notes_warning_ignores_footnotes(self):
-        slides = [{"warnings": []}, {"warnings": []}]
-        apply_missing_speaker_notes_warning(slides, SIDEBAR_SLIDE + NOTES_SLIDE)
-        self.assertEqual(len(slides[0]["warnings"]), 1)
-        self.assertIn("slide 1 lacks", slides[0]["warnings"][0].message)
+        warnings = content_warnings([SIDEBAR_SLIDE, NOTES_SLIDE], read_slide_texts(SIDEBAR_SLIDE + NOTES_SLIDE, 2))
+        self.assertEqual([warning.kind.code for warning in warnings], ["MISSING_SPEAKER_NOTES"])
+        self.assertIn("slide 1 has no", warnings[0].message)
+        self.assertNotIn("2", warnings[0].message)
 
 
 if __name__ == "__main__":

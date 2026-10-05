@@ -123,7 +123,7 @@ class PreparedSkillTest(unittest.TestCase):
         (self.work / "실적.csv").write_text("지역,매출\n서울,1200\n", encoding="utf-8")
         (self.work / "실적.workbook.json").write_text('{"kind": "workbook", "tables": [{"name": "실적", "columns": [{"name": "지역"}, {"name": "매출", "type": "quantity"}], "csvPath": "실적.csv"}]}', encoding="utf-8")
         commands = (
-            (self.work / "deck", ["create", "build/deck.pdf", "slides.html"]),
+            (self.work / "deck", ["create", "build/deck.pdf", "."]),
             (self.work, ["create", "실적.xlsx", "실적.workbook.json"]),
             (self.work, ["create", "보고서.pdf", "보고서.md"]),
             (self.work, ["create", "보고서.docx", "보고서.md"]),

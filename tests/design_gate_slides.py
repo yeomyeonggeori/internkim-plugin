@@ -1,43 +1,4 @@
-import re
-
-
-BASE_STYLE = """
-body { margin: 0; }
-section { padding: var(--margin); box-sizing: border-box; font-family: var(--font-body); font-size: var(--size-body); background: var(--ground); color: var(--text); display: flex; flex-direction: column; gap: var(--gap); }
-h1, h2, h3 { font-family: var(--font-display); margin: 0; }
-h1, h2 { font-size: var(--size-title); }
-h3 { font-size: 30px; }
-p { margin: 0; }
-.card { padding: 28px; background: var(--surface); border-radius: var(--radius); display: flex; flex-direction: column; gap: 12px; }
-.row { display: flex; gap: 32px; }
-.row > .card { flex: 1; }
-"""
-
-
 BALLAST = '<svg aria-hidden="true" width="1400" height="560" style="flex: 0 1 560px; min-height: 0; width: 100%"></svg>'
-
-
-def fill_sections(html: str) -> str:
-    def filled(match):
-        block = match.group(0)
-        has_text = bool(re.sub(r"<[^>]*>|\s+", "", re.sub(r"<(style|script)\b.*?</\1>", "", block, flags=re.S)))
-        if "data-chart" in block or BALLAST in block or not has_text:
-            return block
-        marker = '<aside class="notes"' if '<aside class="notes"' in block else "</section>"
-        return block.replace(marker, BALLAST + marker, 1)
-
-    return re.sub(r"<section\b.*?</section>", filled, html, flags=re.S)
-
-
-def section_markup(content: str | tuple[str, str], ballast: str = "") -> str:
-    attributes, markup = ("", content) if isinstance(content, str) else content
-    return f'<section{attributes}>{markup}{ballast}<aside class="notes">notes</aside></section>'
-
-
-def deck(sections: list, style: str = "", filled: bool = False) -> str:
-    body = "\n".join(section_markup(content, BALLAST if filled and "data-chart" not in str(content) else "") for content in sections)
-    return f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Gate fixture</title><style>{BASE_STYLE}{style}</style></head><body>\n{body}\n</body></html>\n'
-
 
 HEADING = "<h2>Revenue grew 18 percent in the third quarter</h2>"
 BODY = "<p>The logistics business closed the quarter above its plan in every region.</p>"

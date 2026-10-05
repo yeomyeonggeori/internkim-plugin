@@ -123,11 +123,7 @@ class RequestedFontTest(unittest.TestCase):
         self.assertIsNone(resolve_requested_font("Sample Sans", [], self.cache, offline).font)
 
 
-DECK = """<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Font</title><style>
-section { padding: var(--margin); display: flex; flex-direction: column; gap: var(--gap); }
-h2 { font-size: var(--size-title); margin: 0; } p { margin: 0; }
-</style></head><body><section><h2>Revenue grew 18 percent in the third quarter</h2><p>The logistics business closed the quarter above its plan in every region and every line of business we run.</p><svg aria-hidden="true" width="1400" height="520" style="flex: 0 1 520px; min-height: 0; width: 100%"></svg><aside class="notes">notes</aside></section></body></html>
-"""
+DECK_PAGE = "<h2>Revenue grew 18 percent in the third quarter</h2><p>The logistics business closed the quarter above its plan in every region and every line of business we run.</p><svg aria-hidden=\"true\" width=\"1400\" height=\"520\" style=\"flex: 0 1 520px; min-height: 0; width: 100%\"></svg>"
 
 
 def context_file(directory: Path, attachments: list[Path] = (), brand_font: str | None = None) -> Path:
@@ -140,13 +136,19 @@ def context_file(directory: Path, attachments: list[Path] = (), brand_font: str 
     return context
 
 
+def style_sheet_with(selection: str) -> str:
+    from staged_deck_fixture import style_sheet_markdown
+
+    return style_sheet_markdown().removesuffix("---\n") + (f"{selection}\n" if selection else "") + "---\n"
+
+
 def read_with(selection: str, directory: Path, context: Path, cache: Path):
     import os
 
     from core.host_contract import RUNTIME_CONTEXT_VARIABLE
     from deck.design_system import read_design_system
 
-    (directory / "DESIGN.md").write_text(f"---\npalette: primary\n{selection}\n---\n", encoding="utf-8")
+    (directory / "DESIGN.md").write_text(style_sheet_with(selection), encoding="utf-8")
     previous = {name: os.environ.get(name) for name in (RUNTIME_CONTEXT_VARIABLE, "OFFICE_FONT_CACHE")}
     os.environ[RUNTIME_CONTEXT_VARIABLE], os.environ["OFFICE_FONT_CACHE"] = str(context), str(cache)
     try:
@@ -203,8 +205,8 @@ class RequestedFontEmbeddedTest(unittest.TestCase):
         import subprocess
         import zipfile
 
-        from design_gate_fixture import OFFICE_ENTRY
         from render_fixture import can_render
+        from staged_deck_fixture import OFFICE_ENTRY, write_staged_deck
 
         if not can_render():
             self.skipTest("the renderer is not available")
@@ -214,13 +216,13 @@ class RequestedFontEmbeddedTest(unittest.TestCase):
             attached[0].write_bytes(font_bytes("Sample Sans"))
             attached[1].write_bytes(font_bytes("Sample Sans", 700))
             context = context_file(path, attached)
-            (path / "slides.html").write_text(DECK, encoding="utf-8")
-            (path / "DESIGN.md").write_text('---\npalette: primary\nrequested-font: "Sample Sans"\n---\n', encoding="utf-8")
+            write_staged_deck(path, [DECK_PAGE])
+            (path / "DESIGN.md").write_text(style_sheet_with('requested-font: "Sample Sans"'), encoding="utf-8")
             environment = dict(os.environ) | {"OFFICE_RUNTIME_CONTEXT": str(context), "OFFICE_FONT_CACHE": str(path / "cache")}
             from core.host_contract import RUNTIME_CONTEXT_VARIABLE
 
             environment[RUNTIME_CONTEXT_VARIABLE] = str(context)
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/deck.pptx", "slides.html"], capture_output=True, text=True, cwd=path, env=environment)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/deck.pptx", "."], capture_output=True, text=True, cwd=path, env=environment)
             envelope = json.loads(completed.stdout)
             self.assertNotEqual(envelope["status"], "error", envelope["summary"])
             with zipfile.ZipFile(path / "build" / "deck.pptx") as archive:

@@ -4,7 +4,7 @@ import unittest
 
 
 REVIEW_DEFINITION = json.loads((Path(__file__).resolve().parents[1] / "skills" / "office" / "assets" / "deck-kit" / "visual-review.json").read_text(encoding="utf-8"))
-JUDGMENT_PATTERNS = ("hero_metric_template", "rough_illustration", "monotonous_spacing", "fake_sequence_numbering")
+JUDGMENT_PATTERNS = ("rough_illustration", "monotonous_spacing", "fake_sequence_numbering")
 ARRANGEMENT_DEFECTS = ("overlap", "weak_hierarchy", "cramped", "wasted_space", "misaligned", "unbalanced")
 DECK_DEFECTS = ("repetitive_layout", "inconsistent_style")
 DECK_QUESTION = REVIEW_DEFINITION["deck"]
@@ -69,8 +69,9 @@ class JudgmentChoiceTest(unittest.TestCase):
             with self.subTest(option=option):
                 self.assertIn(option, thresholds)
 
-    def test_the_stat_hero_template_is_flagged_below_the_score_the_one_slide_that_showed_it_earned(self):
-        self.assertLessEqual(REVIEW_DEFINITION["patternThresholds"]["hero_metric_template"], 0.27)
+    def test_a_chosen_composition_such_as_one_huge_number_is_not_a_defect(self):
+        self.assertNotIn("hero_metric_template", REVIEW_DEFINITION["question"]["options"])
+        self.assertIn("one huge number", REVIEW_DEFINITION["question"]["instructions"])
 
     def test_the_clean_option_is_none(self):
         self.assertEqual(REVIEW_DEFINITION["question"]["cleanOption"], "none")
@@ -85,11 +86,18 @@ class JudgmentChoiceTest(unittest.TestCase):
         for word in ("data-layout", "theme", "kit"):
             self.assertNotIn(word, text)
 
-    def test_the_fixer_chooses_among_edits_and_writes_no_markup(self):
+    def test_the_fixer_rewrites_the_page_section_and_keeps_a_clean_page(self):
         instructions = REVIEW_DEFINITION["fixer"]["instructions"]
-        self.assertIn("Choose from edits only", instructions)
-        self.assertIn("Do not write markup", instructions)
-        self.assertNotIn("Return the whole <section>", instructions)
+        self.assertIn("Answer with the whole corrected <section>", instructions)
+        self.assertIn("Keep the copy, the facts, the palette and the composition", instructions)
+        self.assertIn("do not redesign a page that is clean", instructions)
+        self.assertIn("add no words, numbers or claims of your own", instructions)
+
+    def test_the_fixer_recomposes_a_page_the_claim_check_emptied(self):
+        self.assertIn("When recompose is true", REVIEW_DEFINITION["fixer"]["instructions"])
+
+    def test_the_review_allows_at_most_two_fix_rounds(self):
+        self.assertEqual(REVIEW_DEFINITION["rounds"], 2)
 
 
 if __name__ == "__main__":

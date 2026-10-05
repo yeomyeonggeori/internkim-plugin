@@ -59,7 +59,7 @@ class ProvenanceTest(unittest.TestCase):
     @unittest.skipUnless(can_render(), "needs the deck renderer")
     def test_a_deck_built_as_pptx_leaves_a_snapshot_beside_the_pdf_it_also_writes(self):
         write_free_deck(self.directory, ["<h2>배송이 빨라집니다</h2><p>주문 후 하루 안에 도착합니다.</p>"])
-        result = run_office(["create", "build/deck.pptx", "slides.html"], self.directory)
+        result = run_office(["create", "build/deck.pptx", "."], self.directory)
         self.assertNotEqual(result["status"], "error", result)
         for name in ("deck.pptx", "deck.pdf"):
             self.assertEqual(source_beside(self.directory / "build" / name)["command"], "office create", name)
@@ -85,6 +85,8 @@ class HostContractTest(unittest.TestCase):
             "reviewsDeckRenders": True,
             "preparesDecks": True,
             "deckDesign": None,
+            "choosesDeckLayouts": True,
+            "deckLayouts": None,
             "images": [],
             "fonts": [],
             "judgesDraftClaims": True,

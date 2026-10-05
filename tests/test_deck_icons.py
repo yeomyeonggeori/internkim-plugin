@@ -2,7 +2,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from design_gate_fixture import run_office
+from staged_deck_fixture import run_office
 from free_deck_fixture import write_free_deck
 from render_fixture import can_render
 

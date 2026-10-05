@@ -6,8 +6,8 @@ import sys
 import tempfile
 import unittest
 
-from design_gate_fixture import design_markdown
-from design_gate_slides import BODY, HEADING, deck
+from design_gate_slides import BODY, HEADING
+from staged_deck_fixture import write_staged_deck
 from render_fixture import can_render
 
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
@@ -43,8 +43,7 @@ class DraftClaimsTest(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.path = Path(self.directory.name)
-        (self.path / "DESIGN.md").write_text(design_markdown(), encoding="utf-8")
-        (self.path / "slides.html").write_text(deck(SLIDES, filled=True), encoding="utf-8")
+        write_staged_deck(self.path, SLIDES)
         self.addCleanup(self.directory.cleanup)
 
     def flagged(self) -> list[dict]:
@@ -55,33 +54,36 @@ class DraftClaimsTest(unittest.TestCase):
 
     def test_a_check_writes_the_decks_claims_for_the_host_to_judge(self):
         context = write_context(self.path, True)
-        run_office(self.path, context, "check", "slides.html")
+        run_office(self.path, context, "check", "pages/01.html")
         request = json.loads((context.parent / REQUEST_FILE).read_text(encoding="utf-8"))
-        self.assertIn(INVENTED, [claim["text"] for claim in request["claims"]])
+        texts = {claim["path"]: claim["text"] for claim in request["claims"]}
+        self.assertIn(INVENTED, texts.values())
+        self.assertEqual(texts["outline.core_hook"], "A sample deck for the tests")
+        self.assertIn(INVENTED, texts["outline.pages[0].brief[0]"])
 
     def test_a_host_that_does_not_judge_drafts_gets_no_request(self):
         context = write_context(self.path, False)
-        run_office(self.path, context, "check", "slides.html")
+        run_office(self.path, context, "check", "pages/01.html")
         self.assertFalse((context.parent / REQUEST_FILE).exists())
 
     def test_a_unit_the_host_judged_unsupported_is_refused_once_with_its_text(self):
         context = write_context(self.path, True, self.flagged())
-        first = run_office(self.path, context, "check", "slides.html")
-        again = run_office(self.path, context, "check", "slides.html")
+        first = run_office(self.path, context, "check", "pages/01.html")
+        again = run_office(self.path, context, "check", "pages/01.html")
         refusal = next(issue for issue in first["issues"] if issue["code"] == "UNSUPPORTED_CLAIM")
         self.assertEqual(refusal["severity"], "error")
-        self.assertEqual(refusal["location"], "slide 1")
+        self.assertEqual(refusal["location"], "page 1")
         self.assertIn(INVENTED, refusal["message"])
         self.assertNotIn("UNSUPPORTED_CLAIM", self.codes(again))
         self.assertTrue((context.parent / REPORTED_FILE).exists())
 
     def test_a_unit_that_was_restated_is_not_refused(self):
         context = write_context(self.path, True, [{"path": "slides[0].units[2]", "at": "slide 1 text", "text": "A sentence no longer in the deck."}])
-        self.assertNotIn("UNSUPPORTED_CLAIM", self.codes(run_office(self.path, context, "check", "slides.html")))
+        self.assertNotIn("UNSUPPORTED_CLAIM", self.codes(run_office(self.path, context, "check", "pages/01.html")))
 
     def test_a_remake_that_blanks_values_is_not_refused_for_the_claims_it_is_blanking(self):
         context = write_context(self.path, True, self.flagged())
-        envelope = run_office(self.path, context, "create", "build/deck.pdf", "slides.html", "--blank", "slides[0].units[2]")
+        envelope = run_office(self.path, context, "create", "build/deck.pdf", ".", "--blank", "slides[0].units[2]")
         self.assertNotIn("UNSUPPORTED_CLAIM", self.codes(envelope))
 
 

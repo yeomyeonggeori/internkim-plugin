@@ -67,7 +67,8 @@ class OfficeEntryTest(unittest.TestCase):
     def test_every_verb_is_routed_or_documented_and_the_route_table_names_only_verbs(self):
         skill_text = (SKILLS_PATH / "office" / "SKILL.md").read_text(encoding="utf-8")
         route_table = skill_text.split("## Route the work")[1].split("\n## ")[0]
-        listed = {command.removeprefix("office ").split()[0] for command in re.findall(r"`([a-z][^`]*)`", route_table) if not command.startswith("references/")}
+        words = {command.removeprefix("office ").split()[0] for command in re.findall(r"`([a-z][^`]*)`", route_table)}
+        listed = {word for word in words if not re.search(r"[./]", word)}
         verb_names = {verb.name for verb in VERBS} | {"guide"}
         self.assertEqual(listed - verb_names, set())
         documents = "\n".join(path.read_text(encoding="utf-8") for path in bundled_files(SKILLS_PATH / "office", "*.md"))
@@ -88,7 +89,7 @@ QUOTE = {
 
 def prepare_deck_restore(directory):
     write_free_deck(directory, DECK_SECTIONS)
-    subprocess.run([sys.executable, str(OFFICE_SCRIPTS_PATH / "office"), "create", "build/deck.html", "slides.html"], capture_output=True, check=True, cwd=directory)
+    subprocess.run([sys.executable, str(OFFICE_SCRIPTS_PATH / "office"), "create", "build/deck.html", "."], capture_output=True, check=True, cwd=directory)
     return ["convert", "build/deck.html", "restored.html"]
 
 
