@@ -5,20 +5,7 @@ import hashlib
 import json
 import pathlib
 
-from deck.deck_definitions import (
-    CHART_UNDERFILLED,
-    DRAWING_DISTORTED,
-    EMPTY_REGION,
-    GRID_MISALIGNED,
-    IMAGE_DISTORTED,
-    OFF_PALETTE_COLOR,
-    SLIDE_BLANK,
-    TEXT_COVERED,
-    TEXT_LOW_CONTRAST,
-    TINY_TEXT,
-    TITLE_TOO_LONG,
-    VERTICAL_DEAD_ZONE,
-)
+from deck.deck_definitions import DRAWING_DISTORTED, IMAGE_DISTORTED, SLIDE_BLANK, TEXT_COVERED, TEXT_LOW_CONTRAST
 from core.design_rules import DESIGN_RULE_KINDS
 from core.office_result import Issue
 from core.text_checks import REQUIRED_TEXT_MISSING
@@ -31,25 +18,18 @@ OBJECTIVE_DEFECT_CODES = frozenset(
     kind.code
     for kind in (
         TEXT_COVERED.kind,
-        TITLE_TOO_LONG.kind,
         IMAGE_DISTORTED.kind,
         DRAWING_DISTORTED.kind,
-        CHART_UNDERFILLED.kind,
         SLIDE_BLANK.kind,
-        VERTICAL_DEAD_ZONE.kind,
-        EMPTY_REGION.kind,
-        TINY_TEXT.kind,
         TEXT_LOW_CONTRAST.kind,
-        GRID_MISALIGNED.kind,
         CHART_POINT_OUTSIDE_AXIS.kind,
         CHART_ZERO_MISALIGNED.kind,
         REQUIRED_TEXT_MISSING,
-        OFF_PALETTE_COLOR,
         *DESIGN_RULE_KINDS.values(),
     )
 )
 
-WORDS_THE_HOST_CANNOT_REPAIR = frozenset({REQUIRED_TEXT_MISSING.code, OFF_PALETTE_COLOR.code})
+WORDS_THE_HOST_CANNOT_REPAIR = frozenset({REQUIRED_TEXT_MISSING.code})
 
 
 @dataclass(frozen=True)
@@ -69,7 +49,7 @@ class Acceptance:
         listed = "; ".join(f"{issue.kind.code} on {issue.location}" for issue in self.defects)
         if self.fix_round >= FIX_ROUNDS_ALLOWED:
             return f"STOP FIXING: {FIX_ROUNDS_ALLOWED} fix rounds are used; deliver {self.deliverable} and name what remains: {listed}"
-        return f"FIX ROUND {self.fix_round + 1} OF {FIX_ROUNDS_ALLOWED}: fix only these defects in slides.html, then build again: {listed}"
+        return f"FIX ROUND {self.fix_round + 1} OF {FIX_ROUNDS_ALLOWED}: fix only these defects in their page files, keeping the copy, facts, palette and composition, then build again: {listed}"
 
     def to_json(self) -> dict:
         return {

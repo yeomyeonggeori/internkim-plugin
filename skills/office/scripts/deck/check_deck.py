@@ -168,14 +168,13 @@ def checked_page(directory: pathlib.Path, outline: Outline, number: int, system:
     return page, page_issues(page, directory, system)
 
 
-def rendered_issues(directory: pathlib.Path, outline: Outline, sections: dict[int, str], system: DesignSystem, file_name: str) -> list[Issue]:
-    path = directory / file_name
-    path.write_text(assembled_deck(outline, sections), encoding="utf-8")
+def page_render_issues(directory: pathlib.Path, outline: Outline, number: int, section: str, system: DesignSystem) -> list[Issue]:
+    path = directory / PAGE_CHECK_FILE_NAME
+    path.write_text(assembled_deck(outline, {number: section}), encoding="utf-8")
     try:
-        return render_gate_issues(path, system, [f"page {number}" for number in sorted(sections)])
+        return render_gate_issues(path, system, [f"page {number}"])
     finally:
-        if file_name == PAGE_CHECK_FILE_NAME:
-            path.unlink(missing_ok=True)
+        path.unlink(missing_ok=True)
 
 
 def check_page(path: pathlib.Path) -> Result:
@@ -192,7 +191,7 @@ def check_page(path: pathlib.Path) -> Result:
         return stage_result(path, issues, "")
     issues += draft_claim_issues(draft_claims(outline, assembled_deck(outline, existing_sections(directory, outline))))[0]
     if not has_errors(issues):
-        issues += rendered_issues(directory, outline, {number: lone_section(path.read_text(encoding="utf-8"))}, system, PAGE_CHECK_FILE_NAME)
+        issues += page_render_issues(directory, outline, number, lone_section(path.read_text(encoding="utf-8")), system)
     following = f"write pages/{number + 1:02d}.html next" if number < len(outline.pages) else "every page is written: build the deck with office create"
     return stage_result(path, issues, f"page {number} ({outline.pages[number - 1].layout}) passes: {following}")
 
@@ -214,10 +213,11 @@ def check_staged_deck(request: DeckRequest) -> DeckCheck:
     issues += [issue for _, page_issues_found in pages for issue in page_issues_found]
     issues += text_presence_issues(" ".join(page.text() for page, _ in pages if page), request.required_text, request.forbidden_text)
     sections = existing_sections(request.directory, outline)
+    request.assembled_path.write_text(assembled_deck(outline, sections), encoding="utf-8")
     if not request.is_blank_remake:
-        issues += draft_claim_issues(draft_claims(outline, assembled_deck(outline, sections)))[0]
+        issues += draft_claim_issues(draft_claims(outline, request.assembled_path.read_text(encoding="utf-8")))[0]
     if not has_errors(issues):
-        issues += rendered_issues(request.directory, outline, sections, system, ASSEMBLED_FILE_NAME)
+        issues += render_gate_issues(request.assembled_path, system, [f"page {number}" for number in sorted(sections)])
     if request.is_blank_remake:
         issues = [demoted_to_warning(issue) for issue in issues]
     return DeckCheck(stage_result(request.outline_path, issues, f"checked {len(outline.pages)} pages: ready to build", {"slideCount": len(outline.pages)}), system, outline)

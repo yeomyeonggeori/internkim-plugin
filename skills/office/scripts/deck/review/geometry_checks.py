@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
 import pathlib
 
-from deck.deck_definitions import CHART_UNDERFILLED, DRAWING_DISTORTED, GRID_MISALIGNED, IMAGE_LOW_RESOLUTION, LABEL_TOO_LONG, REPEATED_FIGURE, TEXT_COVERED, TEXT_LOW_CONTRAST, TINY_TEXT, TITLE_TOO_LONG
+from deck.deck_definitions import DRAWING_DISTORTED, IMAGE_LOW_RESOLUTION, TEXT_COVERED, TEXT_LOW_CONTRAST
 from powerpoint.definitions import IMAGE_DISTORTED
-from deck.layout_thresholds import LABEL_LINE_MAXIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
 from core.office_result import Issue
 
 
@@ -14,34 +12,11 @@ GEOMETRY_FILE_NAME = "geometry.json"
 FINDINGS_NAMED_PER_ISSUE = 3
 
 
-@dataclass(frozen=True)
-class ContentExtent:
-    body_bottom_ratio: float
-    unfilled_ratio: float
-    gap_under_title_ratio: float
-
-
 def read_geometry(review_path: pathlib.Path) -> list[dict[str, object]] | None:
     geometry_path = review_path / GEOMETRY_FILE_NAME
     if not geometry_path.exists():
         return None
     return json.loads(geometry_path.read_text(encoding="utf-8"))["slides"]
-
-
-def slide_geometry(geometry: list[dict[str, object]] | None, index: int) -> dict[str, object] | None:
-    if geometry is None or index > len(geometry):
-        return None
-    return geometry[index - 1]
-
-
-def content_extent(measured: dict[str, object] | None) -> ContentExtent | None:
-    if measured is None or not measured["contentBands"]:
-        return None
-    bands, height = measured["contentBands"], measured["height"]
-    body_bottom = bands[-1][1]
-    floor = height - bands[0][0]
-    gap_under_title = bands[1][0] - bands[0][1] if len(bands) >= 2 else 0.0
-    return ContentExtent(body_bottom / height, max(0.0, floor - body_bottom) / height, gap_under_title / height)
 
 
 def geometry_warnings(measured: dict[str, object] | None) -> list[Issue]:
@@ -72,18 +47,6 @@ def describe_covered_text(finding: dict[str, object]) -> str:
     return f"{element_label(finding['text'])} lies {finding['ratio']:.0%} under {element_label(finding['box'])}"
 
 
-def describe_long_title(finding: dict[str, object]) -> str:
-    return f"{element_label(finding)} wraps to {finding['lines']} lines; keep a title to {finding['maximum']}"
-
-
-def describe_long_label(finding: dict[str, object]) -> str:
-    return f"{element_label(finding)} wraps to {finding['lines']} lines; keep a label to {finding['maximum']}"
-
-
-def describe_repeated_figure(finding: dict[str, object]) -> str:
-    return f"{finding['figure']} is shown {finding['count']} times, in {', '.join(finding['places'])}"
-
-
 def describe_distorted_image(finding: dict[str, object]) -> str:
     return f"{element_label(finding)} renders at ratio {finding['renderedRatio']} but is {finding['naturalRatio']}"
 
@@ -92,43 +55,15 @@ def describe_soft_image(finding: dict[str, object]) -> str:
     return f"{element_label(finding)} is {finding['naturalWidth']}x{finding['naturalHeight']} pixels drawn at {finding['scale']} times that"
 
 
-def describe_underfilled_chart(finding: dict[str, object]) -> str:
-    measure = "its bars cover" if finding["kind"] == "bars" else "its ring spans"
-    room = "of the plot's category axis" if finding["kind"] == "bars" else "of its slot's longer side"
-    return f"{element_label(finding)}: {measure} {finding['share']:.0%} {room}, under the {finding['minimum']:.0%} minimum"
-
-
-def describe_small_text(finding: dict[str, object]) -> str:
-    return f"{element_label(finding)} is {finding['fontSize']}px, below the {finding['minimum']}px minimum ({SMALLEST_TEXT_SHARE_OF_WIDTH:.2%} of the slide width)"
-
-
 def describe_low_contrast(finding: dict[str, object]) -> str:
     return f"{element_label(finding)} reads at {finding['ratio']:g}:1 against what is behind it, under {finding['minimum']:g}:1"
 
 
-MISALIGNMENT_WORDING = {
-    "row": "share neither a top edge nor a middle; their tops are {offset:g}px apart",
-    "column": "share no left, center or right edge; they are {offset:g}px apart",
-    "row spacing": "are {offset:g}px further apart than the closest pair in their row",
-    "column spacing": "are {offset:g}px further apart than the closest pair in their column",
-}
-
-
-def describe_misaligned(finding: dict[str, object]) -> str:
-    return f"{element_label(finding['first'])} and {element_label(finding['second'])} {MISALIGNMENT_WORDING[finding['axis']].format(offset=finding['offset'])}"
-
-
 GEOMETRY_FINDINGS = (
     (TEXT_COVERED, "coveredText", describe_covered_text, "{count} text elements are hidden under a box drawn over them"),
-    (TITLE_TOO_LONG, "longTitles", describe_long_title, f"{{count}} titles run past {TITLE_LINE_MAXIMUM} lines"),
-    (LABEL_TOO_LONG, "longLabels", describe_long_label, f"{{count}} labels run past {LABEL_LINE_MAXIMUM} lines"),
-    (REPEATED_FIGURE, "repeatedFigures", describe_repeated_figure, "{count} figures are repeated on the slide"),
     (IMAGE_DISTORTED, "distortedImages", describe_distorted_image, "{count} images are stretched"),
     (IMAGE_LOW_RESOLUTION, "softImages", describe_soft_image, "{count} photos are drawn larger than their pixels"),
     (DRAWING_DISTORTED, "distortedDrawings", describe_distorted_image, "{count} drawings are stretched out of their own proportions"),
-    (CHART_UNDERFILLED, "underfilledCharts", describe_underfilled_chart, "{count} charts leave most of their room empty"),
-    (TINY_TEXT, "smallText", describe_small_text, "{count} text elements are smaller than the slide can show legibly"),
     (TEXT_LOW_CONTRAST, "lowContrastText", describe_low_contrast, "{count} text elements are too faint to read on their background"),
-    (GRID_MISALIGNED, "misalignedSiblings", describe_misaligned, "{count} pairs of parts are out of line with each other"),
 )
 

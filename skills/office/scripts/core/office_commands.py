@@ -95,7 +95,7 @@ KINDS = (
     Kind("pdf", ".pdf", (".pdf",), "PDF files", "pdf.pdf_definitions"),
     Kind("md", ".md", (".md", ".markdown"), "Markdown, the source a document is written in", "doc.doc_definitions"),
     Kind("csv", ".csv .tsv", (".csv", ".tsv"), "delimited rows", "sheet.sheet_definitions"),
-    Kind("slides", "slides.html", (".html", ".htm"), "a deck written with the kit, or the folder holding it", "deck.deck_definitions"),
+    Kind("slides", "pages/NN.html", (".html", ".htm"), "a deck page, the deck's DESIGN.md or outline.json, or the folder holding them", "deck.deck_definitions"),
     Kind("form", "a form", (".json",), "company forms and contracts, named <jurisdiction>/<form> such as kr/quote", "paperwork.paperwork_definitions"),
     Kind("schema", "a schema", (".schema.json",), "a document schema: the given fields a request fills, the values the runtime knows, the values merge derives, and the layout; bundled ones are named like kr/quote or report", "schemas.schema_definitions"),
 )
@@ -188,7 +188,7 @@ ROUTES = (
     Route("check", "xlsx", "sheet.check_xlsx", "formula errors, broken names, numbers stored as text, wide numbers, frozen headers, filters and required text", TEXT_FLAGS),
     Route("check", "pdf", "pdf.check_pdf", "pages, extractable text, embedded fonts and required text", TEXT_FLAGS + ("--minimum-pages", "--maximum-pages", "--minimum-text-length", "--required-font", "--password")),
     Route("check", "pptx", "powerpoint.check_pptx", "text overflowing, shapes off the slide and overlaps, slide count and required text, with slide images", ("--slide-count",) + TEXT_FLAGS + ("--pages", "--output-directory", "--no-preview")),
-    Route("check", "slides", "deck.check_deck", "layout, chart, image, placeholder, slide-count, palette and required-text defects, without drawing", ("--slide-count",) + TEXT_FLAGS),
+    Route("check", "slides", "deck.check_deck", "one stage of a deck: the style sheet, the outline, one page measured alone, or the whole deck folder", ("--slide-count",) + TEXT_FLAGS),
     Route("check", "form", "paperwork.check_form", "a form's row amounts, totals, tax and amount in words, and a contract's terms and clauses, never rewriting it", label="form values", needs_packages=False),
     Route("render", "docx", "doc.render_docx", "pages as Word lays them out, with a PDF", ("--output-directory",)),
     Route("render", "xlsx", "sheet.render_xlsx", "each sheet as printed pages, with a PDF", ("--sheet", "--output-directory")),

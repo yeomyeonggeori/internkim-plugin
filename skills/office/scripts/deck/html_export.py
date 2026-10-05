@@ -3,25 +3,26 @@ from __future__ import annotations
 from dataclasses import dataclass
 import pathlib
 
-from deck.review.acceptance import OBJECTIVE_DEFECT_CODES, judge_build
-from deck.review.visual_review import write_visual_review
-from deck.check_deck import CheckRequest, check_deck
-from deck.deck_definitions import FONT_NOT_EMBEDDED, TEXT_KEPT_AS_PICTURE
-from deck.deck_kit import KIT_MARKER, slide_size
-from deck.deck_html import EXCLUDED_STYLES, SPEAKER_NOTES_HIDDEN_STYLE, deck_html_text
-from deck.design_system import read_design_system
 from pptx import Presentation
 
-from powerpoint.chart_audit import presentation_chart_issues
-from deck.pptx_export.editable import EditablePptx, read_text_layers, text_layers_path, write_editable_pptx
-from deck.review.geometry_checks import GEOMETRY_FILE_NAME
-from deck.layout_thresholds import renderer_thresholds
 from core.office_result import Issue, OfficeFailure, Result
-from render.renderer import PIXELS_FILE_NAME, RENDER_FAILED, RENDERER_UNAVAILABLE, RenderFailed, RendererUnavailable, RenderRequest, render_html, render_issues
-from deck.review.evidence import clear_stale_render_evidence
+from deck.check_deck import DeckRequest, check_staged_deck
+from deck.deck_definitions import FONT_NOT_EMBEDDED, TEXT_KEPT_AS_PICTURE
+from deck.deck_html import EXCLUDED_STYLES, SPEAKER_NOTES_HIDDEN_STYLE, deck_html_text
+from deck.deck_kit import KIT_MARKER, slide_size
+from deck.design_system import DesignSystem
+from deck.layout_thresholds import renderer_thresholds
+from deck.outline import Outline
+from deck.pptx_export.editable import EditablePptx, read_text_layers, text_layers_path, write_editable_pptx
+from deck.review.acceptance import judge_build
 from deck.review.deck_review import review_deck
+from deck.review.evidence import clear_stale_render_evidence
+from deck.review.geometry_checks import GEOMETRY_FILE_NAME
+from deck.review.visual_review import write_visual_review
 from deck.slide_structure import extract_notes
 from deck.source_preflight import read_checked_source
+from powerpoint.chart_audit import presentation_chart_issues
+from render.renderer import PIXELS_FILE_NAME, RENDER_FAILED, RENDERER_UNAVAILABLE, RenderFailed, RendererUnavailable, RenderRequest, render_html, render_issues
 from schemas.known_values import load_runtime_context
 
 
@@ -30,11 +31,15 @@ BUILD_REVIEW_FACTS = ("slideCount", "renderedSlideCount")
 
 @dataclass(frozen=True)
 class ExportRequest:
-    source_path: pathlib.Path
+    deck: DeckRequest
     deck_name: str
     build_path: pathlib.Path
     formats: set[str]
-    check: CheckRequest
+    recomposed: tuple[int, ...] = ()
+
+    @property
+    def source_path(self) -> pathlib.Path:
+        return self.deck.assembled_path
 
     @property
     def review_path(self) -> pathlib.Path:
@@ -52,21 +57,21 @@ class DerivedOutputs:
 
 
 def export_deck(request: ExportRequest) -> Result:
+    check = check_staged_deck(request.deck)
+    if check.result.status == "error":
+        return check.result
     source_text, slide_sources = read_checked_source(request.source_path)
-    check = check_deck(request.check)
-    if check.status == "error":
-        return check
     remove_previous_outputs(request)
     html_output_path = request.output_path(".html")
-    html_output_path.write_text(deck_html_text(request.source_path, read_design_system(request.source_path.parent / "DESIGN.md")[0]), encoding="utf-8")
+    html_output_path.write_text(deck_html_text(request.source_path, check.system), encoding="utf-8")
     derived = write_derived_outputs(request, html_output_path, slide_sources)
-    issues = list(check.issues) + derived.issues
+    issues = list(check.result.issues) + derived.issues
     acceptance = judge_build(request.build_path, source_text, issues, deliverable_path(request), host_reviews_renders())
     return Result(
         summary=f"{acceptance.verdict}. {build_summary(request, derived)}",
         output_path=deliverable_path(request),
         issues=tuple(issues),
-        details=build_details(request, derived) | {"acceptance": acceptance.to_json()} | visual_review_details(request, issues),
+        details=build_details(request, derived) | {"acceptance": acceptance.to_json()} | visual_review_details(request, check.system, check.outline, issues),
     )
 
 
@@ -75,10 +80,10 @@ def host_reviews_renders() -> bool:
     return bool(context and context.reviews_deck_renders)
 
 
-def visual_review_details(request: ExportRequest, issues: list[Issue]) -> dict[str, str]:
+def visual_review_details(request: ExportRequest, system: DesignSystem, outline: Outline, issues: list[Issue]) -> dict[str, str]:
     if not host_reviews_renders():
         return {}
-    return {"visualReview": str(write_visual_review(request.source_path, request.review_path, request.deck_name, issues, OBJECTIVE_DEFECT_CODES))}
+    return {"visualReview": str(write_visual_review(request, system, outline, issues))}
 
 
 def remove_previous_outputs(request: ExportRequest) -> None:
@@ -100,7 +105,7 @@ def write_derived_outputs(request: ExportRequest, html_output_path: pathlib.Path
     if "pptx" in request.formats:
         pptx_details, pptx_issues = write_pptx(request, [extract_notes(slide_source) for slide_source in slide_sources])
         issues.extend(pptx_issues)
-    review = review_deck(request.source_path, request.deck_name, request.review_path, request.check.required_text)
+    review = review_deck(request.source_path, request.deck_name, request.review_path)
     issues.extend(review.issues)
     return DerivedOutputs(issues, pptx_details, review)
 
@@ -193,8 +198,4 @@ def output_paths(request: ExportRequest, derived: DerivedOutputs) -> dict[str, s
         "pptx": request.output_path(".pptx"),
         "review": request.review_path / "slide-review.json",
     }
-    return {
-        name: str(path) if path.exists() else None
-        for name, path in candidates.items()
-        if name in request.formats
-    }
+    return {name: str(path) if path.exists() else None for name, path in candidates.items() if name in request.formats}

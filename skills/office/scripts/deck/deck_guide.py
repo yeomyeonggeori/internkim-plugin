@@ -1,94 +1,80 @@
+# Style sheet, layout library, sizing and anti-pattern guidance adapted from GenOffice packages/pipelines/src/slides/guides/design.md and apps/slides/src/renderer/ai/AiPanel.tsx (Apache-2.0, Copyright 2026 Mainfunc, Inc.); see NOTICE.
 from __future__ import annotations
 
-from deck.deck_design import AXES, DECIDED, DESIGN, Design, Choice, palette_candidates, type_pairing, type_scale
 from deck.deck_preparation import DeckPreparation, prepare_deck, request_preparation
+from deck.outline import LAYOUTS, LIBRARY, PAGE_TYPES
+from deck.typeface import type_pairing
 
 
 DESIGN_TOPIC = "design"
-IMAGERY_WORK = {
-    "photo": "photos lead: use each listed photo that shows the subject on the cover, a divider or the slide it shows",
-    "icon": "line icons mark items; type and layout carry the rest",
-    "data": "charts, key numbers and tables lead; icons only where a list needs them",
-}
-AVOID_LIST = (
-    "text under 28px (body) or 20px (captions); an empty band over a fifth of the slide height",
-    "a part drawn outside the slide, content spilling out of the box that holds it, two parts drawn over each other (a background photo is the one overlap allowed)",
-    "eyebrows, badges or small caps labels above text; icon tiles above headings; a big number over a small label as a slide's design",
-    "one-sided accent bars including a left or right rule, nested cards, grids of identical cards",
-    "gradients, glass blur, glows, wide shadows, radius past 24px, oversized or italic serif headlines, tight letter-spacing",
-    "rough illustrations, one spacing everywhere, numbering with no real sequence",
-    "em dashes in titles, more than two on a slide",
+
+STYLE_SHEET_LINES = (
+    "Stage 1, the style sheet: DESIGN.md, one per deck, before any content. Concrete #RRGGBB values in its front matter:",
+    "  style: one sentence describing the design language",
+    "  colors: text, accent (primary), secondary (the second accent), surface (card background), line (border)",
+    "  backgrounds: cover, content, data, closing; content pages share one background",
+    "  sizes (px on the 1600x900 page): display (cover and hero numbers, 96 to 160), title (56 to 80), body (28 to 36), small (captions, 20 to 26)",
+    "Honor a tone the request names (dark, a brand color) before a light neutral; let the subject's mood pick the background, and keep a light neutral for a neutral subject. One accent system for the whole deck: never more than the two accents, and never a color per company, product or option. Text reads at 4.5:1 on its background.",
 )
 
-
-COMPOSITIONS = (
-    "field cover: the section's background is var(--accent), the title in var(--on-accent) at the display size, a subtitle under it, the block centered vertically; for the cover and the closing slide",
-    "statement: one sentence at the display size on the ground with one supporting line, for the turning point of the argument",
-    "chart with a takeaway: the chart fills two thirds of the width and the full height, the takeaway sentence fills the third beside it",
-    "table: one full-width table, rows divided by var(--line) hairlines, the row that carries the point in var(--accent)",
-    "sequence: three to five steps in one row or column, each a short label with its date or owner, divided by hairlines",
-    "photo beside text: the photo fills half the slide edge to edge with object-fit: cover, the text takes the other half",
-    "tinted panel: one var(--surface) panel fills the area under the title (flex: 1) and holds the two or three facts that belong together, centered in it",
+PAGE_LINES = (
+    "Stage 3, pages: for page N re-read DESIGN.md and outline entry N, write pages/NN.html in the layout the entry names, run office check pages/NN.html, fix it until it passes, then go to page N+1. Never write two pages in one step.",
+    "  The layout names the composition; you decide its proportions, which parts appear and how many, sizes within the scale, emphasis, background treatment and photo crop.",
+    "  Every word and figure comes from the entry's brief; the title is the entry's title.",
+    "  Type scale: titles 56 to 80px, subtitles 30 to 40px, body 28 to 36px, captions 20px or more, hero numbers up to 160px.",
+    "  Spacing: 64px or more from the page edge, 24px or more between text and a card edge, 24px or more between a title and its subtitle, 12px or more between stacked text blocks.",
+    "  Fill the page: spread the content over the whole 1600x900 page and make text, charts and photos as large as the layout allows; no content crammed into the top half above a blank field.",
+    "  Visuals: photos only from the list below; without photos, typography, color blocks and the kit's icons and charts carry the page, and never a grey box standing in for a photo. A chart's size is proportional to real values from the brief.",
 )
 
-
-def composition_lines() -> list[str]:
-    return [
-        "Compositions to choose from (use the one the content has; give two slides in a row different ones; each slide has one dominant part, the largest thing on it, and everything else supports it):",
-        *(f"  {composition}" for composition in COMPOSITIONS),
-    ]
+ANTI_PATTERNS = (
+    "a thin accent bar on one side of a card, a colored bar on top of cards, a small bar left of a title; show hierarchy with background, weight and size",
+    "rainbow cards: a different accent per item",
+    "decorative corner blocks or short lines; decoration that moves around from page to page",
+    "every page as shape + bold subtitle + description; a cover that is a flat title and subtitle with no visual anchor (a large color block, a geometric composition, a huge number or a hero photo)",
+    "a header bar with the page title repeated on every page",
+    "sibling cards whose numbers mix metrics (a share beside a price beside a count): one row, one unit, one source",
+    "two lines that say the same thing, such as a subtitle restating the chart caption",
+    "emoji, gradients, glows and glass blur",
+)
 
 
 def guide_preamble() -> list[str]:
-    preparation = prepare_deck()
-    if request_preparation(preparation):
+    if request_preparation(prepare_deck()):
         return ["", "Next, run office guide design as a command of its own: InternKim gathers the photos and logo the deck can use before the next command runs."]
-    return ["", "Next, run office guide design: it says this deck's design intent and lists the photos and logo it can use."]
+    return ["", "Next, run office guide design: it gives the style sheet, the layout library and the photos and logo the deck can use."]
 
 
 def design_text() -> str:
     preparation = prepare_deck()
     if request_preparation(preparation):
-        return "InternKim is gathering this deck's photos, logo and design intent now. Run office guide design again as a command of its own; this answer is read only by the next command."
-    return "\n".join([*intent_lines(preparation.design), "", *composition_lines(), "", *logo_lines(preparation), "", *image_lines(preparation), "", *avoid_lines()])
+        return "InternKim is gathering this deck's photos, logo and typeface now. Run office guide design again as a command of its own; this answer is read only by the next command."
+    sections = (typeface_lines(preparation), STYLE_SHEET_LINES, outline_lines(), library_lines(), PAGE_LINES, anti_pattern_lines(), logo_lines(preparation), image_lines(preparation))
+    return "\n\n".join("\n".join(section) for section in sections)
 
 
-def is_decided(design: Design) -> bool:
-    return any(choice.source == DECIDED for choice in design.choices.values())
+def typeface_lines(preparation: DeckPreparation) -> list[str]:
+    return [f"Typeface: {type_pairing(preparation.type_option)['display']}, chosen by InternKim from the request; the build sets it on every page."]
 
 
-def intent_lines(design: Design) -> list[str]:
-    if not is_decided(design):
-        return ["Design intent: none was decided for this request; the build uses the default intent. Palette candidates, each checked for contrast; write palette: <name> in DESIGN.md:", *candidate_lines(design)]
-    pairing, scale = type_pairing(design), type_scale(design)
+def outline_lines() -> list[str]:
     return [
-        "Design intent, chosen by InternKim from the request; DESIGN.md names a palette from the candidates below and nothing else is required. The build sets colors from it, and fonts, sizes and shape from the intent.",
-        f"  accent: {choice_label(design.choices['accent'])}{'; leaning toward ' + design.secondary_accent if design.secondary_accent else ''}",
-        f"  mood: {choice_label(design.choices['mood'])}; temperature: {choice_label(design.choices['temperature'])}",
-        f"  type: {choice_label(design.choices['type'])}; {pairing['display']} titles and text",
-        f"  density: {choice_label(design.choices['density'])}; display {scale['display']}, title {scale['title']}, body {scale['body']}, small {scale['small']}",
-        f"  imagery: {choice_label(design.choices['imagery'])}; {IMAGERY_WORK[design.option('imagery')]}",
-        *(["  brand color from the logo: #" + design.brand_color] if design.brand_color else []),
-        "Palette candidates, each checked for contrast; write palette: <name> in DESIGN.md:",
-        *candidate_lines(design),
+        "Stage 2, the outline: outline.json, the content of every page before any page exists:",
+        '  {"core_hook": "one sentence with tension, a number or a counter-intuitive contrast", "pages": [{"title": "...", "type": "cover", "brief": ["what goes on the page, one fact per line, with the real figures"], "photos": ["<listed path>"]}]}',
+        f"  type is {', '.join(PAGE_TYPES)}; the first page is the cover and the last the closing page. photos lists the photos the page shows, [] for none. Every figure and name comes from the request or its attachments; leave out what they do not state.",
+        "  office check outline.json checks it, and InternKim then judges its statements and chooses each page's layout from the library below; run the check again, as a command of its own, until it lists every page's layout.",
     ]
 
 
-def candidate_lines(design: Design) -> list[str]:
-    return [
-        f"  {candidate['name']}: " + ", ".join(f"{role} {value}" for role, value in candidate["colors"].items()) + f" (text {candidate['textContrast']}:1, accent {candidate['accentContrast']}:1)"
-        for candidate in palette_candidates(design)
-    ]
+def library_lines() -> list[str]:
+    lines = ["Layout library, one composition intent per page:"]
+    for page_type in PAGE_TYPES:
+        lines += [f"  {name} ({page_type}{', needs a photo' if layout.get('photo') else ''}): {layout['description']}" for name, layout in LAYOUTS.items() if layout["type"] == page_type]
+    return lines + [f"The layout follows the content's shape: {LIBRARY['criteria']}."]
 
 
-def choice_label(choice: Choice) -> str:
-    ranked = sorted(choice.probabilities.items(), key=lambda item: item[1], reverse=True)
-    odds = ", ".join(f"{name} {share:.2f}" for name, share in ranked[:2])
-    return f"{choice.option} ({odds})" if odds else choice.option
-
-
-def avoid_lines() -> list[str]:
-    return ["Never produce (office check refuses these): " + "; ".join(AVOID_LIST)]
+def anti_pattern_lines() -> list[str]:
+    return ["Avoid (a careful designer would not ship these):", *(f"  {pattern}" for pattern in ANTI_PATTERNS)]
 
 
 def logo_lines(preparation: DeckPreparation) -> list[str]:
@@ -96,15 +82,15 @@ def logo_lines(preparation: DeckPreparation) -> list[str]:
     if logo is None:
         return ["Logo: none is known for this company; the deck goes without one."]
     kind = "transparent background" if logo.has_transparency else "its own opaque background"
-    return [f"Logo: {logo.width}x{logo.height}, {kind}. The build places it on the cover and the closing slide, in a corner no text covers; write no <img data-logo> and leave that corner free."]
+    return [f"Logo: {logo.width}x{logo.height}, {kind}. The build places it on the cover and the closing page, in a corner no text covers; write no <img data-logo> and leave that corner free."]
 
 
 def image_lines(preparation: DeckPreparation) -> list[str]:
     dropped = [f"  not readable from here, so not listed: {path}" for path in preparation.unreadable_images]
     if not preparation.images:
-        return ["Images: none.", *dropped, "  Give the deck its rhythm with type, figures and charts, and never leave an empty photo frame or a placeholder box."]
+        return ["Photos: none. Plan pages that need no photo; the photo layouts are not offered.", *dropped]
     return [
-        "Images the requester can use: use them readily, where they show the deck's subject; skip one that does not. A caption or a fact about a photo comes only from its title, its summary or the request.",
+        "Photos the requester can use: use them readily where they show the deck's subject, and skip one that does not. A caption or a fact about a photo comes only from its title, its summary or the request.",
         *(image_line(image) for image in preparation.images),
         *dropped,
     ]

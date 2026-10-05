@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 import re
 
-from deck.slide_source import SPEAKER_NOTES_BLOCK_PATTERN, normalize_structure_text, remove_invisible_markup, slide_role, slide_title, split_slide_sources
+from deck.slide_source import SPEAKER_NOTES_BLOCK_PATTERN, remove_invisible_markup, split_slide_sources
 
 
 PREVIEW_CHARACTER_LIMIT = 180
@@ -19,14 +19,10 @@ def read_slide_texts(source_text: str, slide_count: int) -> list[dict[str, objec
 
 def read_slide_text(index: int, slide_source: str) -> dict[str, object]:
     visible_text = visible_slide_text(slide_source) if slide_source else ""
-    lines = [line for line in visible_text.splitlines() if line.strip()]
     return {
         "index": index,
         "expectedVisibleText": visible_text,
-        "textCharacterCount": len(visible_text),
-        "textLineCount": len(lines),
         "textPreview": preview_text(visible_text),
-        "structure": inspect_slide_structure(slide_source),
     }
 
 
@@ -59,22 +55,3 @@ def preview_text(text: str) -> str:
     if len(compact_text) <= PREVIEW_CHARACTER_LIMIT:
         return compact_text
     return compact_text[:PREVIEW_CHARACTER_LIMIT - 3].rstrip() + "..."
-
-
-def inspect_slide_structure(slide_source: str) -> dict[str, object]:
-    class_names = extract_class_names(slide_source)
-    title = slide_title(slide_source)
-    declared_role = slide_role(slide_source)
-    return {
-        "title": title,
-        "normalizedTitle": normalize_structure_text(title),
-        "slideRole": declared_role,
-        "classNames": class_names,
-    }
-
-
-def extract_class_names(slide_source: str) -> list[str]:
-    names = []
-    for match in re.finditer(r"\bclass\s*=\s*([\"'])(.*?)\1", slide_source, flags=re.IGNORECASE | re.DOTALL):
-        names.extend(value.strip().lower() for value in re.split(r"\s+", match.group(2)) if value.strip())
-    return names

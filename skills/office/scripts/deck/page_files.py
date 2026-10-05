@@ -100,13 +100,14 @@ def scoped_selector(selector: str, scope: str) -> str:
     return f"#{scope} {selector}"
 
 
-def scoped_section(section: str, number: int, page_type: str, layout: str) -> str:
+def scoped_page(section: str, number: int, page_type: str, layout: str) -> tuple[str, str]:
     scope = page_identifier(number)
     opening = OPENING_PATTERN.match(section)
     attributes = OWNED_ATTRIBUTE_PATTERN.sub("", opening.group(1))
     owned = f' id="{scope}" data-page="{number}" data-type="{html.escape(page_type)}" data-layout="{html.escape(layout)}"'
-    inner = STYLE_BLOCK_PATTERN.sub(lambda block: block.group(1) + scoped_stylesheet(block.group(2), scope) + block.group(3), section[opening.end():])
-    return f"<section{owned}{attributes}>{inner}"
+    inner = section[opening.end():]
+    styles = "\n".join(scoped_stylesheet(block.group(2), scope) for block in STYLE_BLOCK_PATTERN.finditer(inner))
+    return f"<section{owned}{attributes}>{STYLE_BLOCK_PATTERN.sub('', inner)}", styles
 
 
 def deck_language(outline: Outline) -> str:
@@ -115,6 +116,8 @@ def deck_language(outline: Outline) -> str:
 
 
 def assembled_deck(outline: Outline, sections: dict[int, str]) -> str:
-    body = "\n".join(scoped_section(section, number, outline.pages[number - 1].type, outline.pages[number - 1].layout) for number, section in sorted(sections.items()))
+    pages = [scoped_page(section, number, outline.pages[number - 1].type, outline.pages[number - 1].layout) for number, section in sorted(sections.items())]
+    styles = "\n".join(style for _, style in pages if style.strip())
+    body = "\n".join(markup for markup, _ in pages)
     title = html.escape(outline.pages[0].title if outline.pages else "")
-    return f'<!doctype html>\n<html lang="{deck_language(outline)}">\n<head>\n<meta charset="utf-8">\n<title>{title}</title>\n</head>\n<body>\n{body}\n</body>\n</html>\n'
+    return f'<!doctype html>\n<html lang="{deck_language(outline)}">\n<head>\n<meta charset="utf-8">\n<title>{title}</title>\n<style>\n{styles}\n</style>\n</head>\n<body>\n{body}\n</body>\n</html>\n'

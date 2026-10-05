@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 import pathlib
 import re
 import tempfile
 
 from core.design_rules import render_rule_issues
-from core.office_result import WARNING, Issue, IssueKind, OfficeFailure
+from core.office_result import ERROR, WARNING, Issue, IssueKind, OfficeFailure
 from deck.deck_kit import KIT_MARKER, inject_deck_kit, slide_size
 from deck.deck_photos import focus_photos
 from deck.deck_preparation import kit_additions, prepare_deck
@@ -60,7 +61,13 @@ def render_gate_issues(source_path: pathlib.Path, system: DesignSystem | None, l
         if any(issue.kind is RENDERER_UNAVAILABLE for issue in failure.issues):
             return [RENDER_GATE_SKIPPED.issue(str(failure), str(source_path))]
         raise
-    return [issue for location, slide in zip(locations, slides) for issue in render_rule_issues(slide.get("designFindings", []), location)]
+    return [issue for location, slide in zip(locations, slides) for issue in render_rule_issues(slide.get("designFindings", []), location) + measured_issues(slide, location)]
+
+
+def measured_issues(slide: dict, location: str) -> list[Issue]:
+    from deck.review.geometry_checks import geometry_warnings
+
+    return [replace(issue, kind=replace(issue.kind, severity=ERROR), location=location) for issue in geometry_warnings(slide)]
 
 
 def measure_for_gate(source_path: pathlib.Path, system: DesignSystem | None) -> list[dict]:

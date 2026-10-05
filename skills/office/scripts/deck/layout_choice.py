@@ -25,7 +25,7 @@ def page_question(index: int, page: OutlinePage, count: int) -> dict:
 
 def layout_request(outline: Outline) -> dict:
     count = len(outline.pages)
-    return {"instructions": QUESTION["instructions"], "questions": {question_name(index): page_question(index, page, count) for index, page in enumerate(outline.pages)}}
+    return {"instructions": QUESTION["instructions"].format(criteria=LIBRARY["criteria"]), "questions": {question_name(index): page_question(index, page, count) for index, page in enumerate(outline.pages)}}
 
 
 def request_bytes(outline: Outline) -> bytes:
