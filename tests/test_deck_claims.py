@@ -34,6 +34,21 @@ def claim_at(text):
     return next(claim for claim in deck_claims(DECK) if claim["text"] == text)
 
 
+class FreeMarkupClaimTest(unittest.TestCase):
+    def test_text_written_straight_into_a_div_or_span_is_a_claim(self):
+        page = """<html lang="ko"><head><title>견본</title></head><body><section>
+<h2>세 가지 문제</h2>
+<div class="row"><div class="card">여름 고온으로 착과율 저하</div><div class="card"><span class="number">18%</span><span>수확량 증가</span></div></div>
+<p>매출이 <b>4.5배</b> 늘었습니다</p>
+</section></body></html>"""
+        texts = [claim["text"] for claim in deck_claims(page)]
+        self.assertIn("여름 고온으로 착과율 저하", texts)
+        self.assertIn("18%", texts)
+        self.assertIn("수확량 증가", texts)
+        self.assertIn("매출이 4.5배 늘었습니다", texts)
+        self.assertNotIn("4.5배", texts)
+
+
 class DeckClaimTest(unittest.TestCase):
     def test_every_written_unit_is_a_claim_and_speaker_notes_are_not(self):
         texts = [claim["text"] for claim in deck_claims(DECK)]

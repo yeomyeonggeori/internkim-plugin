@@ -124,21 +124,38 @@ def deck_units(text: str) -> list[Unit]:
 
 
 def unit_role(node: Node) -> str:
-    if any(ancestor.tag == "aside" for ancestor in node.ancestors()):
+    if node.tag == "aside" or any(ancestor.tag == "aside" for ancestor in node.ancestors()):
         return ""
     if node.tag == "figure" and node.attributes.get("data-chart"):
         return "chart"
-    if node.tag not in UNIT_TAGS or any(child.tag in UNIT_TAGS for child in node.elements()):
+    if node.tag in ("section", "style", "script") or is_inside_unit(node) or any(child.tag in UNIT_TAGS for child in node.elements()):
         return ""
+    if node.tag not in UNIT_TAGS:
+        return text_role(node) if has_own_text(node) else ""
     if node.tag in ("h1", "h2", "h3", "h4"):
         return "title"
     if node.tag in ("td", "th"):
         return "cell"
     if node.tag == "figcaption":
         return "caption"
-    if "value" in node.classes:
-        return "stat"
-    return "item" if node.tag == "li" else "text"
+    return "item" if node.tag == "li" else text_role(node)
+
+
+def text_role(node: Node) -> str:
+    return "stat" if "value" in node.classes else "text"
+
+
+def has_own_text(node: Node) -> bool:
+    return any(isinstance(child, str) and child.strip() for child in node.children)
+
+
+def is_inside_unit(node: Node) -> bool:
+    for ancestor in node.ancestors():
+        if ancestor.tag == "section":
+            return False
+        if ancestor.tag in UNIT_TAGS or has_own_text(ancestor):
+            return True
+    return False
 
 
 def unit_text(node: Node) -> str:
