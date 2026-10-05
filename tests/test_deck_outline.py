@@ -160,6 +160,8 @@ class OutlineStageTest(unittest.TestCase):
         waiting = self.check()
         self.assertEqual([issue.kind.code for issue in waiting.issues], ["OUTLINE_BEING_PREPARED"])
         self.assertTrue((self.directory / "deck-layouts-request.json").is_file())
+        self.assertIn("run office check outline.json again as your next command", waiting.summary)
+        self.assertIn("nothing is asked of the person", waiting.summary)
         answer_as_host(self.context)
         ready = self.check()
         written, _ = read_outline(self.directory / "outline.json")

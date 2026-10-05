@@ -41,7 +41,7 @@ A color the request names, or the logo's own color, becomes the accent. Only whe
 
 ## 2. Outline
 
-`outline.json` holds every page's content before any page exists: a core hook, then per page its title, type, brief (one fact per line, with the real figures) and the listed photos it shows. Pass the slide count the user asked for: `office check outline.json --slide-count 10`. InternKim then judges the outline's statements against the request and chooses each page's layout; run the check again, as a command of its own, until it passes and lists every page's layout. `UNSUPPORTED_CLAIM` names a statement the request and its attachments do not support: restate it from them or drop it.
+`outline.json` holds every page's content before any page exists: a core hook, then per page its title, type, brief (one fact per line, with the real figures) and the listed photos it shows. Pass the slide count the user asked for: `office check outline.json --slide-count 10`. InternKim then judges the outline's statements against the request and chooses each page's layout on its own, without asking the person; run the check again, as a command of its own, until it passes and lists every page's layout. `UNSUPPORTED_CLAIM` names a statement the request and its attachments do not support: restate it from them or drop it.
 
 ## 3. Pages
 

@@ -28,6 +28,7 @@ LAYOUT_CHOICE_FAILED = IssueKind("LAYOUT_CHOICE_FAILED", ERROR, "InternKim could
 PAGE_NOT_ONE_SECTION = IssueKind("PAGE_NOT_ONE_SECTION", ERROR, "a page file is not exactly one <section> element", "write the page as one <section>, with its <style> inside it, and nothing outside it")
 PAGE_MISSING = IssueKind("PAGE_MISSING", ERROR, "an outline page has no page file", "write pages/NN.html for every outline page, checking each with office check")
 PAGE_NOT_IN_OUTLINE = IssueKind("PAGE_NOT_IN_OUTLINE", ERROR, "a page file has no outline entry", "add the page to outline.json and check the outline, or delete the file")
+OUTLINE_WAIT_SUMMARY = "the outline passes its checks; InternKim now chooses each page's layout and judges its statements on its own, and nothing is asked of the person: run office check outline.json again as your next command, before writing any page"
 STAGE_ISSUE_KINDS = (STAGE_NOT_READY, OUTLINE_BEING_PREPARED, LAYOUT_CHOICE_FAILED, PAGE_NOT_ONE_SECTION, PAGE_MISSING, PAGE_NOT_IN_OUTLINE)
 
 
@@ -120,9 +121,10 @@ def check_outline(outline_path: pathlib.Path, requested_slide_count: int | None)
     claim_issues, is_judged = draft_claim_issues(draft_claims(outline, assembled_deck(outline, existing_sections(directory, outline))))
     outline, layout_issues_found, is_pending = settled_layouts(outline_path, outline)
     issues += claim_issues + layout_issues_found
+    details = {"pages": [page.to_json() for page in outline.pages]}
     if not has_errors(issues) and (is_pending or not is_judged):
-        issues.append(OUTLINE_BEING_PREPARED.issue("the outline passes its checks; InternKim answers before the next command", "outline"))
-    return stage_result(outline_path, issues, outline_ready_summary(outline), {"pages": [page.to_json() for page in outline.pages]})
+        return Result(summary=OUTLINE_WAIT_SUMMARY, output_path=str(outline_path), issues=(*issues, OUTLINE_BEING_PREPARED.issue(OUTLINE_WAIT_SUMMARY, "outline")), details=details)
+    return stage_result(outline_path, issues, outline_ready_summary(outline), details)
 
 
 def settled_layouts(outline_path: pathlib.Path, outline: Outline) -> tuple[Outline, list[Issue], bool]:
