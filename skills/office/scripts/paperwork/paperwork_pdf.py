@@ -6,6 +6,7 @@ from pathlib import Path
 from string import Template
 
 from core.office_result import Issue
+from core.image_fit import sized_style
 from core.page_sizes import DEFAULT_PAPER
 from core.units import POINTS_PER_INCH, MILLIMETRES_PER_INCH, millimetres_to_pixels
 from doc.blocks.writers import file_data_uri
@@ -25,6 +26,7 @@ CSS_TEMPLATE_PATH = ASSETS_PATH / "paperwork" / "paperwork.css"
 ALIGNMENTS = {"L": "align-left", "C": "align-center", "R": "align-right"}
 UNBREAKABLE_KINDS = ("date", "amount", "quantity", "percent")
 POINTS_PER_MILLIMETRE = POINTS_PER_INCH / MILLIMETRES_PER_INCH
+IMAGE_BOXES_MILLIMETERS = {"logo": (40.0, 10.0), "stamp": (16.0, 16.0)}
 BLANK = '<span class="blank"></span>'
 
 
@@ -136,7 +138,8 @@ def image_html(path_value: object, css_class: str) -> str:
     path = Path(text_of(path_value))
     if not text_of(path_value) or not path.is_file():
         return ""
-    return f'<img class="{css_class}" src="{file_data_uri(path.read_bytes(), path.name)}">'
+    box_width, box_height = IMAGE_BOXES_MILLIMETERS[css_class]
+    return f'<img class="{css_class}" src="{file_data_uri(path.read_bytes(), path.name)}" style="{sized_style(path, box_width, box_height, "mm")}">'
 
 
 def company_display_name(profile: dict) -> str:

@@ -10,6 +10,7 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
 from balance.rhythm import Rhythm
+from core.image_fit import fitted_size
 from doc.doc_definitions import IMAGE_UNAVAILABLE
 from doc.model.defaults import CODE_FONT, DOCUMENT_FONT, HEADING_STYLE_NAMES, apply_korean_defaults, name_fonts, set_page
 from doc.operations.formats import ALIGNMENTS
@@ -260,7 +261,8 @@ def unavailable_image(document: Document, image: Image, reason: str) -> Issue:
 LETTER_LABEL_WIDTH = Pt(44)
 LETTER_DETAIL_POINTS = 8.5
 LETTER_NAME_POINTS = 13
-LETTER_LOGO_HEIGHT = Pt(28)
+LETTER_LOGO_BOX_POINTS = (120.0, 28.0)
+LETTER_SEAL_BOX_POINTS = (30.0, 30.0)
 
 
 def add_letter_part(document: Document, part: LetterPart) -> None:
@@ -269,7 +271,7 @@ def add_letter_part(document: Document, part: LetterPart) -> None:
 
 def add_letterhead(document: Document, data: dict) -> None:
     if data.get("logo"):
-        document.add_paragraph().add_run().add_picture(data["logo"], height=LETTER_LOGO_HEIGHT)
+        document.add_paragraph().add_run().add_picture(data["logo"], *fitted_extent(data["logo"], LETTER_LOGO_BOX_POINTS))
     name = document.add_paragraph()
     name.alignment = ALIGNMENTS["right"]
     name.paragraph_format.space_after = Pt(0)
@@ -329,6 +331,11 @@ def add_letter_closing(document: Document, data: dict) -> None:
     if lines:
         signer = paragraph
         if data.get("seal"):
-            signer.add_run("  ").add_picture(data["seal"], height=Pt(30))
+            signer.add_run("  ").add_picture(data["seal"], *fitted_extent(data["seal"], LETTER_SEAL_BOX_POINTS))
         elif data.get("sealMark"):
             signer.add_run(f"  {data['sealMark']}").bold = True
+
+
+def fitted_extent(path: str, box: tuple[float, float]) -> tuple[Pt, Pt]:
+    width, height = fitted_size(Path(path), *box)
+    return Pt(width), Pt(height)

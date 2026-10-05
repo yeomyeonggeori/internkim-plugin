@@ -11,6 +11,7 @@ from charts.svg import chart_svg
 from doc.model.charts import specification
 from doc.blocks.charts import FENCE, Chart
 from doc.blocks.latex_math import LatexNotReadable, latex_html
+from core.image_fit import sized_style
 from render.office_preview import data_uri
 from doc.blocks.markdown import CodeBlock, Equation, Heading, Image, LetterPart, ListItem, Quote, Table, ThematicBreak, inline_segments, link_parts, math_latex
 
@@ -133,7 +134,7 @@ def chart_html(chart: Chart, font_family: str) -> str:
 def letter_html(part: LetterPart) -> str:
     data = part.data
     if part.kind == "letterhead":
-        logo = f'<img class="logo" src="{image_data_uri(data["logo"])}">' if data.get("logo") else ""
+        logo = picture_html("logo", data["logo"], LETTER_LOGO_BOX_POINTS) if data.get("logo") else ""
         details = "".join(f'<p class="detail">{html.escape(line)}</p>' for line in data.get("details", []))
         return f'<header class="letterhead">{logo}<div class="company"><p class="name">{html.escape(data.get("name", ""))}</p>{details}</div></header>'
     if part.kind == "memo":
@@ -153,7 +154,7 @@ def address_html(data: dict) -> str:
 
 
 def closing_html(data: dict) -> str:
-    seal = f'<img class="seal" src="{image_data_uri(data["seal"])}">' if data.get("seal") else html.escape(data.get("sealMark", ""))
+    seal = picture_html("seal", data["seal"], LETTER_SEAL_BOX_POINTS) if data.get("seal") else html.escape(data.get("sealMark", ""))
     side = "left" if data.get("align") == "left" else "right"
     complimentary = f'<p>{html.escape(data["complimentary"])}</p><div class="signature-space"></div>' if data.get("complimentary") else ""
     lines = "".join(f"<p>{html.escape(line)}</p>" for line in data.get("lines", [])[:-1])
@@ -166,6 +167,14 @@ def meta_row_html(label: str, value: str, is_subject: bool) -> str:
     return f'<div class="row"><div class="label">{html.escape(label)}</div><div class="value{style}">{html.escape(value)}</div></div>'
 
 
+LETTER_LOGO_BOX_POINTS = (120.0, 30.0)
+LETTER_SEAL_BOX_POINTS = (40.0, 40.0)
+
+
+def picture_html(css_class: str, path: str, box: tuple[float, float]) -> str:
+    return f'<img class="{css_class}" src="{image_data_uri(path)}" style="{sized_style(Path(path), *box, "pt")}">'
+
+
 def image_data_uri(path: str) -> str:
     file = Path(path)
     return file_data_uri(file.read_bytes(), file.name)
@@ -175,7 +184,7 @@ def html_block(block) -> str:
     if isinstance(block, LetterPart):
         return letter_html(block)
     if isinstance(block, SizedImage):
-        return f"<img src=\"{block.source}\" alt=\"{html.escape(block.alt, quote=True)}\" style=\"width:{block.width}px;height:{block.height}px\">"
+        return f"<div class=\"figure\"><img src=\"{block.source}\" alt=\"{html.escape(block.alt, quote=True)}\" style=\"width:{block.width}px;height:{block.height}px\"></div>"
     if isinstance(block, Heading):
         return f"<h{block.level}>{inline_html(block.text)}</h{block.level}>"
     if isinstance(block, Table):
