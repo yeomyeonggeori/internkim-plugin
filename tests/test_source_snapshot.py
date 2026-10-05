@@ -87,6 +87,8 @@ class HostContractTest(unittest.TestCase):
             "deckDesign": None,
             "images": [],
             "fonts": [],
+            "judgesDraftClaims": True,
+            "draftClaims": None,
         }
 
     def test_the_sample_context_holds_exactly_the_fields_the_contract_names(self):
