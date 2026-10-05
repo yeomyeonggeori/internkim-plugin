@@ -1,0 +1,24 @@
+InternKim plugin
+
+This product includes material adapted from GenOffice
+(https://github.com/genspark-ai/genoffice), Copyright 2026 Mainfunc, Inc.,
+licensed under the Apache License, Version 2.0
+(http://www.apache.org/licenses/LICENSE-2.0):
+
+- skills/office/assets/deck-kit/layouts.json: the slide layout library
+  (names and descriptions per page type), the content-to-layout criteria,
+  adapted from apps/slides/src/renderer/ai/AiPanel.tsx and
+  packages/pipelines/src/slides/guides/design.md; proportions restated for
+  a 1600x900 HTML slide.
+- skills/office/scripts/deck/outline.py: the outline shape and its checks
+  (page types, layout per type, no layout repeated on consecutive body
+  pages, at least three variants, placeholder copy, first page a cover and
+  last a closing page), adapted from packages/pipelines/src/slides/outline.ts.
+- skills/office/scripts/deck/deck_guide.py: the style sheet stage, the
+  one-page-per-step workflow, the sizing, spacing and fill-the-page
+  guidance and the anti-pattern list, adapted from
+  packages/pipelines/src/slides/guides/design.md.
+
+These files were modified: rewritten in Python and JSON, restated for the
+kit's HTML pages, native charts, photos and logo, and the layout choice
+moved to a decision model.
