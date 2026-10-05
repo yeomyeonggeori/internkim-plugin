@@ -11,7 +11,7 @@ OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from deck.review.acceptance import FIX_ROUNDS_ALLOWED, judge_build  # noqa: E402
+from deck.review.acceptance import FIX_ROUNDS_ALLOWED, OBJECTIVE_DEFECT_CODES, judge_build  # noqa: E402
 from deck.deck_definitions import MISSING_SPEAKER_NOTES  # noqa: E402
 from core.design_rules import DESIGN_RULE_KINDS  # noqa: E402
 from design_gate_fixture import design_markdown  # noqa: E402
@@ -145,3 +145,10 @@ class WithoutRendererTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RuleDefectsTest(unittest.TestCase):
+    def test_a_render_rule_a_remake_demoted_to_a_warning_is_still_a_defect_to_report(self):
+        for code in ("CONTENT_CLUSTERED", "FLAT_HIERARCHY", "REPEATED_LAYOUT", "BROKEN_WORD", "CONTENT_OVERFLOW"):
+            with self.subTest(code=code):
+                self.assertIn(code, OBJECTIVE_DEFECT_CODES)

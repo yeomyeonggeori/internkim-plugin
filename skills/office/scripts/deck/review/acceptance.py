@@ -30,9 +30,6 @@ HISTORY_FILE_NAME = "build-history.json"
 OBJECTIVE_DEFECT_CODES = frozenset(
     kind.code
     for kind in (
-        DESIGN_RULE_KINDS["CONTENT_OVERFLOW"],
-        DESIGN_RULE_KINDS["OUT_OF_FRAME"],
-        DESIGN_RULE_KINDS["CONTENT_OVERLAP"],
         TEXT_COVERED.kind,
         TITLE_TOO_LONG.kind,
         IMAGE_DISTORTED.kind,
@@ -48,6 +45,7 @@ OBJECTIVE_DEFECT_CODES = frozenset(
         CHART_ZERO_MISALIGNED.kind,
         REQUIRED_TEXT_MISSING,
         OFF_PALETTE_COLOR,
+        *DESIGN_RULE_KINDS.values(),
     )
 )
 

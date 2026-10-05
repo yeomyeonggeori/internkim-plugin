@@ -374,6 +374,24 @@ export function measureDesignRules(page, rules, tools) {
         return lines >= minimumLines && ems < maximumEms ? [finding(element, `${lines} lines in a column ${Math.round(box.right - box.left)}px wide, ${ems.toFixed(1)} times its font size`)] : [];
       }),
 
+    brokenWord: ({ maximumCharacters }) =>
+      textElements().flatMap((element) =>
+        Array.from(element.childNodes)
+          .filter((node) => node.nodeType === Node.TEXT_NODE)
+          .flatMap((node) =>
+            Array.from(node.textContent.matchAll(/\S+/g))
+              .filter((word) => word[0].length >= 2 && word[0].length <= maximumCharacters && !/[\u3000-\u9fff\uac00-\ud7af]/.test(word[0]))
+              .filter((word) => {
+                const range = document.createRange();
+                range.setStart(node, word.index);
+                range.setEnd(node, word.index + word[0].length);
+                const lines = new Set(Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0).map((rect) => Math.round(rect.top / Math.max(fontSize(element) / 2, 1))));
+                return lines.size > 1;
+              })
+              .map((word) => finding(element, `"${word[0]}" is split across two lines`)),
+          ),
+      ),
+
     chartCollapsed: ({ minimumHeight, minimumWidth }) =>
       Array.from(page.querySelectorAll("figure[data-chart]")).flatMap((figure) => {
         const box = rectOf(figure);
