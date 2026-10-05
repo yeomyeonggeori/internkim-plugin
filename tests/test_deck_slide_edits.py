@@ -94,6 +94,11 @@ class SlideEditsTest(unittest.TestCase):
                 self.assertIn("display:flex", edit.section)
                 self.assertNotIn("font-size:var(--size-title)", edit.section.split("</h2>", 1)[1])
 
+    def test_numbered_steps_stay_a_row_so_the_number_and_its_name_do_not_run_together(self):
+        steps = '<section><h2>Three</h2><div class="step"><span class="no">01</span><span class="name">Disease model</span></div><div class="step"><span class="no">02</span><span class="name">Control link</span></div><aside class="notes">n</aside></section>'
+        for edit in slide_edits(steps):
+            self.assertIn("display:flex", edit.section, edit.id)
+
 
 if __name__ == "__main__":
     unittest.main()

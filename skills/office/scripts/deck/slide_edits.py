@@ -69,8 +69,10 @@ def holds_parts(node: Element) -> bool:
     return any(child.tag in CONTAINER_TAGS and has_text(child) for child in node.child_elements())
 
 
-def has_icon(node: Element) -> bool:
-    return any("data-icon" in child.attributes for child in node.child_elements())
+def is_row_of_parts(node: Element) -> bool:
+    parts = node.child_elements()
+    glue = [child for child in node.children if isinstance(child, str) and child.strip()]
+    return len(parts) >= 2 and not glue and any(has_text(part) for part in parts) and all(part.tag in ("span", "i", "b", "strong", "em") for part in parts)
 
 
 def without_font_size(style: str) -> str:
@@ -79,7 +81,7 @@ def without_font_size(style: str) -> str:
 
 def unit_attributes(node: Element) -> str:
     style = without_font_size(node.attributes.get("style", ""))
-    if has_icon(node) and "display" not in style:
+    if is_row_of_parts(node) and "display" not in style:
         style = ICON_ROW + style
     attributes = {"class": node.attributes.get("class", ""), "style": style}
     return "".join(f' {name}="{html.escape(value, quote=True)}"' for name, value in attributes.items() if value)
