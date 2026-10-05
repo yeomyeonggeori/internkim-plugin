@@ -72,5 +72,42 @@ class BlankRemakeTest(unittest.TestCase):
         self.assertNotEqual(envelope["status"], "error")
 
 
+RECORDED = Path(__file__).resolve().parent / "recorded"
+GEOMETRY_CODES = {"CONTENT_OVERFLOW", "OUT_OF_FRAME", "CONTENT_OVERLAP"}
+
+
+@unittest.skipUnless(can_render(), "the renderer is not available")
+class RemadeDeckKeepsItsGeometryFindingsTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import shutil
+
+        cls.directory = tempfile.TemporaryDirectory()
+        path = Path(cls.directory.name)
+        for source in (RECORDED / "ko_smartfarm_v2").iterdir():
+            shutil.copy(source, path / source.name)
+        from PIL import Image
+
+        Image.new("RGB", (1200, 800), (90, 140, 70)).save(path / "photo.jpg")
+        (path / "context.json").write_text(json.dumps({"requester": {"name": "", "email": ""}, "today": "2026-10-04", "company": {}, "registeredDocuments": [], "attachments": [], "reviewsDeckRenders": True}), encoding="utf-8")
+        environment = {**__import__("os").environ, "OFFICE_RUNTIME_CONTEXT": str(path / "context.json")}
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/deck.pdf", "slides.html", "--blank", "slides[0].units[0]"], capture_output=True, text=True, cwd=path, env=environment)
+        cls.envelope = json.loads(completed.stdout)
+        cls.review = json.loads((path / "build" / "review" / "visual-review.json").read_text(encoding="utf-8"))
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.directory.cleanup()
+
+    def test_the_spilling_card_list_is_still_reported_by_the_remake_and_never_dropped(self):
+        reported = {(issue["code"], issue["location"]) for issue in self.envelope["issues"]}
+        self.assertTrue({("CONTENT_OVERFLOW", "slide 4"), ("OUT_OF_FRAME", "slide 4")} <= reported, reported)
+
+    def test_the_review_hands_those_findings_to_the_host_with_edits_that_pass_the_gate(self):
+        slide = next(slide for slide in self.review["slides"] if slide["number"] == 4)
+        self.assertTrue(GEOMETRY_CODES & {defect["code"] for defect in slide["measured"]})
+        self.assertTrue(slide["edits"], "no verified recomposition is offered for the spilling slide")
+
+
 if __name__ == "__main__":
     unittest.main()

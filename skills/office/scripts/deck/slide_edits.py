@@ -15,6 +15,7 @@ SEQUENCE_ITEMS = (2, 6)
 COLUMN_ITEMS = (2, 3)
 STAGE = "display:flex;flex-direction:column;gap:var(--gap);box-sizing:border-box;width:1600px;height:900px;padding:var(--margin);"
 FILL = "flex:1;min-height:0;"
+ICON_ROW = "display:flex;align-items:center;gap:20px;"
 ITEM = "margin:0;font-size:var(--size-body);line-height:1.4;"
 
 
@@ -68,6 +69,26 @@ def holds_parts(node: Element) -> bool:
     return any(child.tag in CONTAINER_TAGS and has_text(child) for child in node.child_elements())
 
 
+def has_icon(node: Element) -> bool:
+    return any("data-icon" in child.attributes for child in node.child_elements())
+
+
+def without_font_size(style: str) -> str:
+    return re.sub(r"font-size\s*:[^;]*;?", "", style).strip()
+
+
+def unit_attributes(node: Element) -> str:
+    style = without_font_size(node.attributes.get("style", ""))
+    if has_icon(node) and "display" not in style:
+        style = ICON_ROW + style
+    attributes = {"class": node.attributes.get("class", ""), "style": style}
+    return "".join(f' {name}="{html.escape(value, quote=True)}"' for name, value in attributes.items() if value)
+
+
+def unit_of(node: Element) -> str:
+    return f"<div{unit_attributes(node)}>{''.join(serialized(child) for child in node.children)}</div>"
+
+
 def collect(parent: Element, content: Content) -> None:
     for node in parent.children:
         if isinstance(node, str):
@@ -90,7 +111,7 @@ def collect(parent: Element, content: Content) -> None:
         elif node.tag in CONTAINER_TAGS and holds_parts(node):
             collect(node, content)
         elif has_text(node):
-            content.texts.append(serialized(node) if node.tag in TEXT_TAGS else f"<div>{''.join(serialized(child) for child in node.children)}</div>")
+            content.texts.append(serialized(node) if node.tag in TEXT_TAGS else unit_of(node))
 
 
 def section_opening(source: str) -> str:
@@ -103,17 +124,28 @@ def content_of(source: str) -> Content | None:
     if section is None:
         return None
     content = Content(section_opening(source))
-    heading = next((child for child in section.child_elements() if child.tag in ("h1", "h2")), None)
+    heading = next((node for node in section.descendants() if node.tag in ("h1", "h2")), None)
     notes = next((child for child in section.child_elements() if child.is_notes()), None)
     content.title = serialized(heading) if heading is not None else ""
     content.notes = serialized(notes) if notes is not None else ""
     if heading is not None:
-        section.children.remove(heading)
+        detach(section, heading)
     collect(section, content)
     return content
 
 
+def detach(parent: Element, target: Element) -> None:
+    for index, child in enumerate(parent.children):
+        if child is target:
+            del parent.children[index]
+            return
+    for child in parent.child_elements():
+        detach(child, target)
+
+
 def with_style(opening: str, style: str) -> str:
+    if style in opening:
+        return opening
     existing = re.search(r"\sstyle=([\"'])(.*?)\1", opening, flags=re.IGNORECASE | re.DOTALL)
     if existing:
         merged = existing.group(2).rstrip(";") + ";" + style

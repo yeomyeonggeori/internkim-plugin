@@ -17,6 +17,8 @@ TABLE = '<section><h2>Pricing today</h2><table><tr><th>Tier</th><th>Price</th></
 CHART = '<section><h2>Growth</h2><figure data-chart="bar" data-labels="Q1, Q2" data-values="1, 2" data-unit=""></figure><p>Referrals drove it.</p><aside class="notes">n</aside></section>'
 PHOTO = '<section><h2>The depot</h2><img src="depot.jpg"><p>Opens in October.</p><aside class="notes">n</aside></section>'
 SINGLE = '<section><h2>One line</h2><p>Only this.</p><aside class="notes">n</aside></section>'
+KEYED = '<section><h2>Bet 2: payroll</h2><div class="kv"><span class="k">The bet</span><span class="v">Payroll</span></div><div class="kv"><span class="k">Risk</span><span class="v">Regions differ</span></div><aside class="notes">n</aside></section>'
+ICON_ROWS = '<section><h2>Three developments</h2><div class="col"><div class="item" style="display:flex;gap:20px;font-size:var(--size-title);"><i data-icon="search"></i><span><b>Disease model</b><br>Leaf photo diagnosis</span></div><div class="item" style="display:flex;gap:20px;"><i data-icon="settings"></i><span><b>Control link</b><br>Greenhouse</span></div></div><aside class="notes">n</aside></section>'
 
 
 def words(markup: str) -> Counter:
@@ -76,6 +78,21 @@ class SlideEditsTest(unittest.TestCase):
         self.assertIn("recompose:text-large", ids(SINGLE))
         long_text = "<section><h2>Long</h2>" + "".join(f"<p>{'word ' * 30}{index}</p>" for index in range(8)) + '<aside class="notes">n</aside></section>'
         self.assertNotIn("recompose:text-large", ids(long_text))
+
+    def test_a_title_wrapped_by_an_earlier_edit_is_still_the_title(self):
+        wrapped = TABLE.replace("<h2>Pricing today</h2>", '<div style="flex:none;"><h2>Pricing today</h2></div>')
+        edit = next(edit for edit in slide_edits(wrapped) if edit.id == "recompose:table")
+        self.assertLess(edit.section.index("<h2>"), edit.section.index("<table"))
+
+    def test_a_key_and_value_row_keeps_its_class_so_the_two_do_not_run_together(self):
+        for edit in slide_edits(KEYED):
+            self.assertIn('class="kv"', edit.section, edit.id)
+
+    def test_an_icon_row_keeps_its_row_layout_and_loses_only_its_font_size(self):
+        for edit in (edit for edit in slide_edits(ICON_ROWS) if edit.id != "recompose:text-large"):
+            with self.subTest(edit=edit.id):
+                self.assertIn("display:flex", edit.section)
+                self.assertNotIn("font-size:var(--size-title)", edit.section.split("</h2>", 1)[1])
 
 
 if __name__ == "__main__":
