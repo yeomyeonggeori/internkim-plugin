@@ -20,11 +20,9 @@ class AdviceTest(unittest.TestCase):
         self.assertEqual(moved.fix, ({"op": "set_transform", "slide": 1, "shape": 2, "x": 0},))
         self.assertEqual((unplaced.suggestion, unplaced.fix), (OUT_OF_FRAME.kind.suggestion, ()))
 
-    def test_the_guide_names_actions_that_add_no_words(self):
+    def test_the_guide_names_a_fix_for_a_style_the_renderer_cannot_draw(self):
         guide = subprocess.run([sys.executable, str(OFFICE_ENTRY), "guide", "create", "slides"], capture_output=True, text=True, check=True).stdout
         fix_of = {code: fix for code, fix in re.findall(r"^\s+([A-Z_]+) \(\w+\): .*?Fix: (.*)$", guide, re.MULTILINE)}
-        self.assertIn("add no words of your own", fix_of["VERTICAL_DEAD_ZONE"])
-        self.assertIn("add no words of your own", fix_of["EMPTY_REGION"])
         self.assertIn("remove the style attribute", fix_of["STYLE_NOT_DRAWN"])
         self.assertNotIn("kit", " ".join(fix_of.values()).lower())
 

@@ -41,7 +41,7 @@ class PdfImageTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             deck_path = write_free_deck(Path(directory), [COVER, STATEMENT], PHOTO_STYLE)
             write_photo(deck_path / "images" / "shelves.png")
-            envelope = run_office_json(["create", "build/deck.pdf", "slides.html"], deck_path)
+            envelope = run_office_json(["create", "build/deck.pdf", "."], deck_path)
             images = [image for image in embedded_images(Path(envelope["outputPath"])) if image["width"] > 100]
         self.assertTrue(images, envelope["summary"])
         self.assertTrue(all(image["jpeg"] for image in images))

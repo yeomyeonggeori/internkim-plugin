@@ -16,9 +16,9 @@ class IconCheckTest(unittest.TestCase):
     def test_an_icon_the_kit_does_not_ship_is_refused(self):
         with tempfile.TemporaryDirectory() as directory:
             path = write_free_deck(Path(directory), ['<h2>자금 사용처</h2><i data-icon="robot-arm"></i>'], STYLE)
-            envelope = run_office(["check", "slides.html"], path)
+            envelope = run_office(["check", "pages/01.html"], path)
         issue = next(issue for issue in envelope["issues"] if issue["code"] == "ICON_UNKNOWN")
-        self.assertEqual((issue["severity"], issue["location"]), ("error", "slide 1"))
+        self.assertEqual((issue["severity"], issue["location"]), ("error", "page 1"))
 
 
 @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
@@ -26,7 +26,7 @@ class IconBuildTest(unittest.TestCase):
     def test_icons_in_a_row_and_on_their_own_line_are_drawn_as_pictures_in_the_pptx(self):
         with tempfile.TemporaryDirectory() as directory:
             path = write_free_deck(Path(directory), [f'<h2>자금 사용처</h2><div class="stack">{ROW}{INLINE}</div>'], STYLE)
-            envelope = run_office(["create", "build/icons.pptx", "slides.html"], path)
+            envelope = run_office(["create", "build/icons.pptx", "."], path)
         self.assertIn(envelope["status"], ("ok", "warning"), envelope["summary"])
         self.assertEqual(envelope["details"]["pptx"]["icons"], 2)
 
