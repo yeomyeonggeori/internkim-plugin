@@ -16,9 +16,9 @@ class PageBlanks:
     recomposed: tuple[int, ...]
 
 
-def unscoped_deck(outline: Outline, sections: list[str]) -> str:
-    title = html.escape(outline.pages[0].title if outline.pages else "")
-    return f'<!doctype html><html lang="{deck_language(outline)}"><head><title>{title}</title></head><body>\n' + "\n".join(sections) + "\n</body></html>\n"
+def unscoped_deck(outline: Outline, sections: list[str], is_titled: bool = True) -> str:
+    title = f"<title>{html.escape(outline.pages[0].title)}</title>" if is_titled and outline.pages else ""
+    return f'<!doctype html><html lang="{deck_language(outline)}"><head>{title}</head><body>\n' + "\n".join(sections) + "\n</body></html>\n"
 
 
 def on_slide(path: str, index: int) -> str | None:
@@ -31,7 +31,7 @@ def blanked_section(outline: Outline, section: str, index: int, paths: list[str]
     own_replacements = {moved: text for path, text in replacements.items() if (moved := on_slide(path, index))}
     if not own_paths and not own_replacements:
         return section
-    blanked = split_slide_sources(blanked_deck(unscoped_deck(outline, [section]), own_paths, own_replacements))
+    blanked = split_slide_sources(blanked_deck(unscoped_deck(outline, [section], is_titled=index == 0), own_paths, own_replacements))
     return blanked[0] if blanked else None
 
 
@@ -40,8 +40,12 @@ def blanked_texts(document: str, paths: list[str]) -> set[str]:
     return {units[path] for path in paths if path in units}
 
 
+def names_any(line: str, texts: set[str]) -> bool:
+    return any(text.casefold() in line.casefold() for text in texts)
+
+
 def without_blanked_brief(outline: Outline, texts: set[str], removed: set[int]) -> Outline:
-    pages = tuple(replace(page, brief=tuple(line for line in page.brief if not any(text in line for text in texts))) for index, page in enumerate(outline.pages) if index not in removed)
+    pages = tuple(replace(page, brief=tuple(line for line in page.brief if not names_any(line, texts))) for index, page in enumerate(outline.pages) if index not in removed)
     return replace(outline, pages=pages)
 
 

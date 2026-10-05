@@ -64,6 +64,19 @@ class PageBlankRemakeTest(unittest.TestCase):
         review = json.loads(Path(envelope["details"]["visualReview"]).read_text(encoding="utf-8"))
         self.assertEqual([slide["number"] for slide in review["slides"] if slide.get("recompose")], [3])
 
+    def test_a_blanked_title_inside_the_deck_is_not_replaced_by_the_deck_title(self):
+        deck_title = self.units["slides[0].units[0]"]
+        envelope = self.remake(["slides[2].units[0]"])
+        self.assertNotEqual(envelope["status"], "error", envelope["summary"])
+        self.assertNotIn(deck_title, (self.directory / "pages" / "03.html").read_text(encoding="utf-8"))
+
+    def test_a_brief_line_naming_a_blanked_value_in_another_case_leaves_the_outline(self):
+        outline = self.outline()
+        outline["pages"][2]["brief"] = ["regional results: seoul, busan and daegu"]
+        (self.directory / "outline.json").write_text(json.dumps(outline), encoding="utf-8")
+        self.remake([self.path_of("Busan")])
+        self.assertEqual(self.outline()["pages"][2]["brief"], [])
+
     def test_a_remake_that_blanks_the_cover_title_builds(self):
         self.assertNotEqual(self.remake(["slides[0].units[0]"])["status"], "error")
 
