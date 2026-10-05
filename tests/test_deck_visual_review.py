@@ -78,9 +78,10 @@ class PageContrastTest(unittest.TestCase):
                 envelope = self.build([COVER, chart_page(), table(), CLOSING], design)
                 self.assertEqual(located(envelope, "TEXT_LOW_CONTRAST"), set(), envelope["summary"])
 
-    def test_an_off_palette_color_is_refused_on_the_page_that_uses_it(self):
+    def test_an_off_palette_color_is_named_on_its_page_without_stopping_the_build(self):
         envelope = self.build([COVER, cards(), table(title_style="color:#D81B60"), CLOSING])
         self.assertEqual(located(envelope, "OFF_PALETTE_COLOR"), {"page 3"})
+        self.assertNotEqual(envelope["status"], "error", envelope["summary"])
 
 
 @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")

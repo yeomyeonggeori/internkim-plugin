@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 import json
 import os
 from pathlib import Path
@@ -15,7 +16,6 @@ if str(SCRIPTS_PATH) not in sys.path:
 from core.host_contract import RUNTIME_CONTEXT_VARIABLE  # noqa: E402,F401
 from deck.layout_choice import assigned_layouts  # noqa: E402
 from deck.outline import Outline, OutlinePage, valid_layouts  # noqa: E402
-from deck.page_checks import has_parallel_blocks  # noqa: E402
 from deck.deck_source import find_all, parse_source  # noqa: E402
 from deck.outline import LAYOUTS  # noqa: E402
 
@@ -93,13 +93,26 @@ def outline_page(number: int, count: int, content, photos: list[str]) -> Outline
     return OutlinePage(page_title(markup, number), page_type(number, count, markup), (visible,), tuple(photos))
 
 
+STRUCTURE_TAGS = {"style", "script", "aside", "br"}
+LAYOUT_BLOCKS = {"three_column_cards": (3, 3), "two_column_comparison": (2, 2), "timeline_horizontal": (3, 6), "kpi_cards_row": (2, 5), "two_by_two_grid": (4, 4)}
+CHART_LAYOUTS = {"chart_with_insight"}
+
+
+def has_parallel_blocks(section, fewest: int, most: int) -> bool:
+    for element in (section, *section.descendants()):
+        kinds = Counter((child.tag, child.attributes.get("class", "").strip()) for child in element.child_elements() if child.tag not in STRUCTURE_TAGS)
+        if any(fewest <= count <= most for count in kinds.values()):
+            return True
+    return False
+
+
 def fitting_layouts(page: OutlinePage, markup: str) -> dict:
     section = find_all(parse_source(f"<section>{markup}</section>"), "section")[0]
     probabilities = {}
     for name in valid_layouts(page):
         layout = LAYOUTS[name]
-        fits = not layout.get("chart") or "data-chart" in markup
-        blocks = layout.get("parallelBlocks")
+        fits = name not in CHART_LAYOUTS or "data-chart" in markup
+        blocks = LAYOUT_BLOCKS.get(name)
         fits = fits and (not blocks or has_parallel_blocks(section, *blocks))
         probabilities[name] = 0.9 if fits and not layout.get("photo") else 0.5 if fits else 0.01
     return {"probabilities": probabilities}

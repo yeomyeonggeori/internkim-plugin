@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections import Counter
 from dataclasses import dataclass
 import pathlib
 import re
@@ -14,7 +13,7 @@ from core.text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
 from deck.deck_kit import chart_types, icon_names
 from deck.deck_source import Element, find_all, normalized_text, visible_text
 from deck.design_system import DesignSystem, palette_of
-from deck.outline import LAYOUTS, OutlinePage
+from deck.outline import OutlinePage
 from deck.resource_inlining import resolve_resource_path
 
 
@@ -24,16 +23,14 @@ COLOR_LITERAL_PATTERN = re.compile(r"#[0-9A-Fa-f]{3,8}\b|(?:rgba?|hsla?)\([^)]*\
 DECLARATION_PATTERN = re.compile(r"([-\w]+)\s*:\s*([^;{}]+)")
 LOOSE_PATTERN = re.compile(r"[\W_]+")
 CONTENT_TAGS = {"img", "figure", "svg", "table"}
-STRUCTURE_TAGS = {"style", "script", "aside", "br"}
 
 SLIDE_WITHOUT_CONTENT = IssueKind("SLIDE_WITHOUT_CONTENT", ERROR, "a page has no visible text, image or chart", "give the page the content its outline entry names")
 CHART_DATA_INVALID = IssueKind("CHART_DATA_INVALID", ERROR, "a chart's data attributes do not parse or do not line up", "give data-labels and data-values (or data-series) the same number of plain numbers")
 IMAGE_NOT_FOUND = IssueKind("IMAGE_NOT_FOUND", ERROR, "an image is remote or its file does not exist, so the page would show an empty box", "point src at an image office guide design lists, or remove the image")
 ICON_UNKNOWN = IssueKind("ICON_UNKNOWN", ERROR, "a data-icon names an icon the kit does not ship", "use a name office guide slides lists under Icons, or drop the data-icon")
-OFF_PALETTE_COLOR = IssueKind("OFF_PALETTE_COLOR", ERROR, "the page paints with a color the style sheet does not name", "use the style sheet's colors through var(--accent), var(--text) and the other tokens, or add the color to DESIGN.md")
-LAYOUT_NOT_MET = IssueKind("LAYOUT_NOT_MET", ERROR, "the page lacks a part its layout is made of: the photo of a photo layout or the chart of chart_with_insight", "give the page that part from its outline entry")
-PAGE_DIFFERS_FROM_OUTLINE = IssueKind("PAGE_DIFFERS_FROM_OUTLINE", WARNING, "the page does not show what its outline entry plans: its title, its planned photo or the blocks its layout is made of", "compose the page from its outline entry in its layout")
-PAGE_CHECK_ISSUE_KINDS = (SLIDE_WITHOUT_CONTENT, CHART_DATA_INVALID, IMAGE_NOT_FOUND, ICON_UNKNOWN, OFF_PALETTE_COLOR, LAYOUT_NOT_MET, PAGE_DIFFERS_FROM_OUTLINE)
+OFF_PALETTE_COLOR = IssueKind("OFF_PALETTE_COLOR", WARNING, "the page paints with a color the style sheet does not name", "use the style sheet's colors through var(--accent), var(--text) and the other tokens, or add the color to DESIGN.md")
+PAGE_DIFFERS_FROM_OUTLINE = IssueKind("PAGE_DIFFERS_FROM_OUTLINE", WARNING, "the page does not show what its outline entry plans: its title or its planned photo", "compose the page from its outline entry in its layout")
+PAGE_CHECK_ISSUE_KINDS = (SLIDE_WITHOUT_CONTENT, CHART_DATA_INVALID, IMAGE_NOT_FOUND, ICON_UNKNOWN, OFF_PALETTE_COLOR, PAGE_DIFFERS_FROM_OUTLINE)
 
 
 @dataclass(frozen=True)
@@ -64,7 +61,7 @@ def page_issues(page: Page, directory: pathlib.Path, system: DesignSystem) -> li
         + image_issues(page, directory)
         + placeholder_issues(page)
         + palette_issues(page, system)
-        + layout_issues(page)
+        + agreement_warnings(page)
     )
 
 
@@ -218,31 +215,10 @@ def loose(text: str) -> str:
     return LOOSE_PATTERN.sub("", text).casefold()
 
 
-def layout_issues(page: Page) -> list[Issue]:
-    layout = LAYOUTS.get(page.entry.layout, {})
-    issues = []
-    if layout.get("photo") and not page.images():
-        issues.append(LAYOUT_NOT_MET.issue(f"{page.location} is {page.entry.layout}, a photo layout, and shows no photo", page.location, suggestion=f"put {', '.join(page.entry.photos) or 'the planned photo'} in it"))
-    if layout.get("chart") and not page.charts():
-        issues.append(LAYOUT_NOT_MET.issue(f"{page.location} is {page.entry.layout} and shows no chart", page.location, suggestion="draw the brief's figures as a <figure data-chart>"))
-    return issues + agreement_warnings(page, layout)
-
-
-def agreement_warnings(page: Page, layout: dict) -> list[Issue]:
+def agreement_warnings(page: Page) -> list[Issue]:
     differences = []
     if page.entry.title and loose(page.entry.title) not in loose(page.text()):
         differences.append(f'the outline title "{page.entry.title}" is not on the page')
     if page.entry.photos and not page.images():
         differences.append(f"the outline plans {len(page.entry.photos)} photo(s) and the page shows none")
-    blocks = layout.get("parallelBlocks")
-    if blocks and not has_parallel_blocks(page.element, *blocks):
-        differences.append(f"{page.entry.layout} is made of {blocks[0]}{'' if blocks[0] == blocks[1] else ' to ' + str(blocks[1])} parallel blocks of one kind, and the page has no such group")
     return [PAGE_DIFFERS_FROM_OUTLINE.issue(f"{page.location}: {difference}", page.location) for difference in differences]
-
-
-def has_parallel_blocks(section: Element, fewest: int, most: int) -> bool:
-    for element in (section, *section.descendants()):
-        kinds = Counter((child.tag, child.attributes.get("class", "").strip()) for child in element.child_elements() if child.tag not in STRUCTURE_TAGS)
-        if any(fewest <= count <= most for count in kinds.values()):
-            return True
-    return False

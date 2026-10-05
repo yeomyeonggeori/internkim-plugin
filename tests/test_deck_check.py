@@ -105,11 +105,11 @@ class StagedDeckCheckTest(unittest.TestCase):
         self.assertIn(("IMAGE_NOT_FOUND", "page 3"), codes)
         self.assertNotIn(("IMAGE_NOT_FOUND", "page 4"), codes)
 
-    def test_colors_outside_the_style_sheet_are_refused_and_its_own_colors_are_not(self):
+    def test_colors_outside_the_style_sheet_are_a_warning_and_its_own_colors_are_not_named(self):
         style = ".note { color: #1A56DB; border-color: rgba(12, 26, 48, 0.2); background: #FF00AA; } .x { color: hsl(120, 100%, 25%); } .own { color: #0E7C66; background: #EEF5F2; }"
         result = self.check([COVER, STATEMENT], style=style)
         issue = next(issue for issue in result.issues if issue.kind.code == "OFF_PALETTE_COLOR")
-        self.assertEqual(issue.kind.severity, "error")
+        self.assertEqual(issue.kind.severity, "warning")
         self.assertIn("#008000, #0C1A30, #1A56DB, #FF00AA", issue.message)
         self.assertNotIn("#0E7C66", issue.message.split("outside")[0])
 
@@ -153,22 +153,18 @@ class PageCheckTest(unittest.TestCase):
             result = check_page(deck_path / "pages" / "03.html")
         self.assertEqual([issue.kind.code for issue in result.issues], ["PAGE_NOT_IN_OUTLINE"])
 
-    def test_a_photo_layout_without_a_photo_is_refused(self):
+    def test_a_planned_photo_missing_from_its_page_is_a_warning_and_no_refusal(self):
         result = self.check_page([COVER, STATEMENT, CLOSING], 2, layouts=["cover_typography_hero", "left_text_right_image", "closing_cta"], photos={2: ["photo.jpg"]})
-        self.assertIn(("LAYOUT_NOT_MET", "page 2"), codes_of(result))
+        self.assertEqual([issue.kind.severity for issue in result.issues if issue.kind.code == "PAGE_DIFFERS_FROM_OUTLINE"], ["warning"])
+        self.assertEqual([issue.kind.code for issue in result.issues if issue.kind.severity == "error"], [])
 
-    def test_chart_with_insight_without_a_chart_is_refused(self):
+    def test_a_page_composed_without_the_chart_its_layout_suggests_is_not_refused(self):
         result = self.check_page([COVER, KPI, CLOSING], 2, layouts=["cover_typography_hero", "chart_with_insight", "closing_cta"])
-        self.assertIn(("LAYOUT_NOT_MET", "page 2"), codes_of(result))
+        self.assertEqual([issue.kind.code for issue in result.issues if issue.kind.severity == "error"], [])
 
-    def test_a_layout_of_parallel_blocks_without_such_a_group_is_a_warning(self):
+    def test_the_page_check_does_not_count_the_blocks_a_layout_is_drawn_with(self):
         result = self.check_page([COVER, STATEMENT, CLOSING], 2, layouts=["cover_typography_hero", "three_column_cards", "closing_cta"])
-        issue = next(issue for issue in result.issues if issue.kind.code == "PAGE_DIFFERS_FROM_OUTLINE")
-        self.assertEqual(issue.kind.severity, "warning")
-        self.assertIn("3 parallel blocks", issue.message)
-        three = '<h2>배송이 빨라지면 재구매가 늘어납니다</h2><div class="row"><div class="card">하루</div><div class="card">이틀</div><div class="card">사흘</div></div>'
-        fitting = self.check_page([COVER, three, CLOSING], 2, layouts=["cover_typography_hero", "three_column_cards", "closing_cta"])
-        self.assertNotIn("PAGE_DIFFERS_FROM_OUTLINE", [code for code, _ in codes_of(fitting)])
+        self.assertNotIn("PAGE_DIFFERS_FROM_OUTLINE", [code for code, _ in codes_of(result)])
 
     @unittest.skipUnless(can_render(), "needs the renderer")
     def test_the_page_check_measures_the_page_alone(self):

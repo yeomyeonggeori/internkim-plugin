@@ -42,10 +42,6 @@
     },
     "three_column_cards": {
       "type": "content",
-      "parallelBlocks": [
-        3,
-        3
-      ],
       "description": "Three parallel points: three blocks of equal weight side by side across the full width, each a short heading and one or two lines."
     },
     "hero_big_number": {
@@ -54,18 +50,10 @@
     },
     "two_column_comparison": {
       "type": "content",
-      "parallelBlocks": [
-        2,
-        2
-      ],
       "description": "Comparison: two columns side by side, the same kind of rows in each, for two options, before and after, or two groups."
     },
     "timeline_horizontal": {
       "type": "content",
-      "parallelBlocks": [
-        3,
-        6
-      ],
       "description": "Sequence: three to six steps along one horizontal line across the slide, each a date or phase with a short label."
     },
     "full_image_text_overlay": {
@@ -75,23 +63,14 @@
     },
     "kpi_cards_row": {
       "type": "data",
-      "parallelBlocks": [
-        2,
-        5
-      ],
       "description": "Metrics: a horizontal row of two to four KPI cards, each a number with its unit and what it measures; one row, one unit, one source."
     },
     "chart_with_insight": {
       "type": "data",
-      "chart": true,
       "description": "A trend, ranking or share: a native chart on the left (about 60% of the width, the full height under the title), the insight on the right: the sentence the chart proves and one or two supporting figures."
     },
     "two_by_two_grid": {
       "type": "data",
-      "parallelBlocks": [
-        4,
-        4
-      ],
       "description": "Comparison or categories: four quadrants of equal size in a 2x2 grid, each a heading and a line, or a 2x2 matrix."
     },
     "closing_cta": {

@@ -18,16 +18,6 @@ def parse_front_matter(design_document_text: str) -> dict[str, str | dict[str, s
     return document
 
 
-def read_design_tokens(design_document_text: str) -> dict[str, str]:
-    tokens = {}
-    for key, value in parse_front_matter(design_document_text).items():
-        if isinstance(value, dict):
-            tokens.update({f"{key}.{name}": entry for name, entry in value.items()})
-        elif value:
-            tokens[key] = value
-    return tokens
-
-
 def unquoted(value: str) -> str:
     return value.strip().strip('"').strip("'").strip()
 

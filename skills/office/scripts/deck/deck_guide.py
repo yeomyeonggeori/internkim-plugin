@@ -24,6 +24,7 @@ PAGE_LINES = (
     "  Type scale: titles 56 to 80px, subtitles 30 to 40px, body 28 to 36px, captions 20px or more, hero numbers up to 160px.",
     "  Spacing: 64px or more from the page edge, 24px or more between text and a card edge, 24px or more between a title and its subtitle, 12px or more between stacked text blocks.",
     "  Fill the page: spread the content over the whole 1600x900 page and make text, charts and photos as large as the layout allows; no content crammed into the top half above a blank field.",
+    "  The parts the layout names are drawn: a photo layout shows its photo, chart_with_insight its chart. Colors come only from the style sheet; add a color to DESIGN.md before a page uses it.",
     "  Visuals: photos only from the list below; without photos, typography, color blocks and the kit's icons and charts carry the page, and never a grey box standing in for a photo. A chart's size is proportional to real values from the brief.",
 )
 

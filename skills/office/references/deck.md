@@ -45,7 +45,7 @@ A color the request names, or the logo's own color, becomes the accent. Only whe
 
 ## 3. Pages
 
-One page per step: re-read `DESIGN.md` and the page's outline entry, write `pages/NN.html` as one `<section>` with its own `<style>`, run `office check pages/NN.html`, and fix it until it passes before writing the next. The check measures that page alone: parts outside the page, content spilling out of its box, parts drawn over each other, text below the size floors, colors the style sheet does not name, and the outline entry's title, photo and layout. Speaker notes go in `<aside class="notes">`. A trend, ranking or share is a `<figure data-chart>` from the brief's numbers, a native editable chart in the PPTX.
+One page per step: re-read `DESIGN.md` and the page's outline entry, write `pages/NN.html` as one `<section>` with its own `<style>`, run `office check pages/NN.html`, and fix it until it passes before writing the next. The check measures that page alone: parts outside the page, content spilling out of its box, parts drawn over each other and text below the size floors. It warns when the page paints a color the style sheet does not name, or lacks the outline entry's title or photo. Speaker notes go in `<aside class="notes">`. A trend, ranking or share is a `<figure data-chart>` from the brief's numbers, a native editable chart in the PPTX.
 
 ## 4. Build and deliver
 
