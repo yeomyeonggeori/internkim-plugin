@@ -1,43 +1,33 @@
 {
     "question": {
-        "instructions": "Which visual defect does this rendered slide show? Judge only what the image shows, using the deck facts beside it. A slide is poorly designed when its visual arrangement makes its message harder to find or read than the content requires; choose the option that names how. Do not invent defects: wording, facts, taste, colour preference, consistently applied style choices and the composition the designer chose, such as one huge number or a row of key figures, are not defects, a slide does not need more images, icons or text than it has, and an option applies only when the image plainly shows it. Choose none for a slide a careful designer would deliver as it is.",
+        "instructions": "Which visual defect does this rendered slide show? Judge only what the image shows, using the deck facts beside it. Choose a defect only when the image plainly shows it: parts drawn over each other, text squeezed or too small, a large area left empty while the parts sit small, edges that should line up and do not, a chart that cannot be read, a stretched, blurry or unrelated picture. Do not invent defects: wording, facts, taste, colour preference, hierarchy, balance and the composition the designer chose, such as one huge number or a row of key figures, are not defects, and a slide does not need more images, icons or text than it has. Choose none for a slide a careful designer would deliver as it is.",
         "options": {
             "none": "The slide is clean: none of the other options applies.",
             "overlap": "The drawn areas of elements cover each other: text over text, text over a picture or a shape, a logo over a title, parts drawn on top of parts.",
-            "weak_hierarchy": "The eye cannot tell what matters first: the title is not the most prominent text on the slide, being smaller, lighter or fainter than the body, or emphasis is spread so evenly that nothing leads the eye.",
             "cramped": "Content is squeezed or too small for its space: long paragraphs filling their boxes, lines pressed together, parts touching, text too small to read comfortably.",
             "wasted_space": "A large empty area serves no purpose: the parts fill a small part of the slide, or a block of the slide is blank while other content is squeezed.",
             "misaligned": "Edges or baselines that should line up do not: parts of one row or grid sit at different heights or offsets, or columns start at different positions.",
-            "unbalanced": "Visual weight sits to one side with no reason: heavy content on one side and a large empty or faint area on the other.",
             "unreadable_chart": "A chart is squashed or too small to read, or its bars, points, labels or axis overlap, are cut off or cannot be read.",
-            "poor_image_or_icon_use": "An image or icon is stretched, blurry, or plainly unrelated to the text it stands beside.",
-            "off_design_system": "A background, text color or title style breaks from the deck's design system in the facts: a color outside its palette, or a title whose size, weight or alignment differs from the deck's other titles.",
-            "rough_illustration": "A drawn illustration or diagram that looks crude: uneven shapes, clumsy proportions, hand-made vector art that a designer would not ship.",
-            "monotonous_spacing": "Every gap, padding and margin on the slide is the same, so nothing groups or separates: parts that belong together sit as far apart as parts that do not.",
-            "fake_sequence_numbering": "Items carry numbers or step labels although their content has no order, so the numbering invents a sequence.",
-            "other_visual": "Another visual defect you can point to in the image. Not wording, facts, layout choice or taste."
+            "poor_image_or_icon_use": "An image or icon is stretched, blurry, or plainly unrelated to the text it stands beside."
         },
         "cleanOption": "none"
     },
     "deck": {
-        "instructions": "Does this slide's arrangement show a pattern across the deck? The image shows every slide of the deck at reduced size, each under its number. Do not invent defects: a title slide or a closing slide that differs from the rest, one palette and one typeface on every slide, and a header or footer that recurs are not defects. Choose none for a slide a careful designer would deliver as it is.",
+        "instructions": "Does this slide arrange its parts the way another content slide of the deck does? The image shows every slide of the deck at reduced size, each under its number. Choose repetitive_layout only when this slide and another content slide plainly share one arrangement. Do not invent defects: a title slide or a closing slide that differs from the rest, one palette and one typeface on every slide, a recurring header or footer, and slides that share a style but arrange their parts differently are not repetition. Choose none for a slide a careful designer would deliver as it is.",
         "options": {
             "none": "The slide shows no such pattern.",
-            "repetitive_layout": "This slide arranges its parts the way at least one other content slide does, the same grid of cards, the same split, the same list, so the deck reads as one slide repeated.",
-            "inconsistent_style": "This slide's colours, typefaces, shapes or title treatment differ from the rest of the deck without a reason."
+            "repetitive_layout": "This slide arranges its parts the way at least one other content slide does, the same grid of cards, the same split, the same list, so the deck reads as one slide repeated."
         },
         "cleanOption": "none"
     },
     "threshold": 0.3,
     "patternThresholds": {
         "overlap": 0.15,
-        "fake_sequence_numbering": 0.2,
-        "unbalanced": 0.4,
         "wasted_space": 0.45,
         "repetitive_layout": 0.84
     },
     "rounds": 2,
     "fixer": {
-        "instructions": "You repair one page of a slide deck. You get the image of how it renders, what a visual reviewer saw in it (defect kinds with the reviewer's probability for each), the defects the build measured, the page's outline entry (title, type, layout and brief), the deck's style sheet, and the page's source: one <section> with its own <style>. Answer with the whole corrected <section> and one sentence saying what it changes.\n\nRules:\n- Fix only the objective defects named and restrained polish: overflow, overlap, clipping, cramped or wasted space, misalignment, weak hierarchy. Keep the copy, the facts, the palette and the composition of the layout the outline names; do not redesign a page that is clean.\n- When recompose is true, the claim check took text out of this page: compose the page again in its layout from what remains, so it reads as finished and nothing stands empty.\n- Keep every word, number, table, chart, photo and the speaker notes the section has; add no words, numbers or claims of your own.\n- Use only the style sheet's colors, through var(--accent), var(--text), var(--surface), var(--line), var(--secondary) or their hex values; set text at 28px or more and captions at 20px or more; keep everything inside the 1600x900 page.\n- repetitive_layout and inconsistent_style come from a contact sheet of the whole deck, the second image: for repetitive_layout vary the arrangement within the page's layout, for inconsistent_style bring it closer to the deck's other pages.\n- When refusedLastTime is present the build refused your last section for that reason: fix that."
+        "instructions": "You repair one page of a slide deck. You get the image of how it renders, what a visual reviewer saw in it (defect kinds with the reviewer's probability for each), the defects the build measured, the page's outline entry (title, type, layout and brief), the deck's style sheet, and the page's source: one <section> with its own <style>. Answer with the whole corrected <section> and one sentence saying what it changes.\n\nRules:\n- Fix only the defects named: overlap, overflow, clipping, cramped or wasted space, misalignment, an unreadable chart, a stretched picture. Keep the copy, the facts, the palette and the composition of the layout the outline names; do not redesign a page that is clean, and change nothing the named defects do not touch.\n- When recompose is true, the claim check took text out of this page: compose the page again in its layout from what remains, so it reads as finished and nothing stands empty; never put the removed text back, even where the speaker notes or the brief still hold it.\n- Keep every word, number, table, chart, photo and the speaker notes the section has; add no words, numbers or claims of your own.\n- Use only the style sheet's colors, through var(--accent), var(--text), var(--surface), var(--line), var(--secondary) or their hex values; set text at 28px or more and captions at 20px or more; keep everything inside the 1600x900 page.\n- repetitive_layout comes from a contact sheet of the whole deck, the second image: vary the arrangement within the page's layout so it no longer repeats another page.\n- When refusedLastTime is present the build refused your last section for that reason: fix that."
     }
 }

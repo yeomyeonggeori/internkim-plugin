@@ -4,35 +4,25 @@ import unittest
 
 
 REVIEW_DEFINITION = json.loads((Path(__file__).resolve().parents[1] / "skills" / "office" / "assets" / "deck-kit" / "visual-review.json").read_text(encoding="utf-8"))
-JUDGMENT_PATTERNS = ("rough_illustration", "monotonous_spacing", "fake_sequence_numbering")
-ARRANGEMENT_DEFECTS = ("overlap", "weak_hierarchy", "cramped", "wasted_space", "misaligned", "unbalanced")
-DECK_DEFECTS = ("repetitive_layout", "inconsistent_style")
+OBJECTIVE_DEFECTS = {"overlap", "cramped", "wasted_space", "misaligned", "unreadable_chart", "poor_image_or_icon_use"}
+DECK_DEFECTS = ("repetitive_layout",)
 DECK_QUESTION = REVIEW_DEFINITION["deck"]
 
 
 class JudgmentChoiceTest(unittest.TestCase):
-    def test_the_visual_choice_carries_each_judgment_pattern_and_none(self):
+    def test_each_slide_is_asked_only_about_defects_a_render_shows_plainly(self):
         options = REVIEW_DEFINITION["question"]["options"]
-        self.assertIn("none", options)
-        for pattern in JUDGMENT_PATTERNS:
-            with self.subTest(pattern=pattern):
-                self.assertTrue(options[pattern].strip())
-
-    def test_the_slide_question_names_each_way_an_arrangement_hides_its_message(self):
-        options = REVIEW_DEFINITION["question"]["options"]
-        for defect in ARRANGEMENT_DEFECTS:
+        self.assertEqual(set(options), {"none", *OBJECTIVE_DEFECTS})
+        for defect in OBJECTIVE_DEFECTS:
             with self.subTest(defect=defect):
                 self.assertTrue(options[defect].strip())
-        for merged in ("crowded", "imbalanced_layout"):
-            self.assertNotIn(merged, options)
 
-    def test_the_slide_question_defines_poor_design_once_and_leaves_taste_alone(self):
+    def test_the_slide_question_leaves_taste_hierarchy_and_balance_alone(self):
         instructions = REVIEW_DEFINITION["question"]["instructions"]
-        self.assertIn("harder to find or read than the content requires", instructions)
-        self.assertIn("taste", instructions)
-        self.assertIn("consistently applied", instructions)
+        for judgment in ("taste", "hierarchy", "balance"):
+            self.assertIn(judgment, instructions.split("Do not invent defects")[1])
 
-    def test_the_deck_question_names_repetition_and_inconsistency_and_none(self):
+    def test_the_deck_question_names_only_repetition_and_none(self):
         options = DECK_QUESTION["options"]
         self.assertEqual(set(options), {"none", *DECK_DEFECTS})
         self.assertEqual(DECK_QUESTION["cleanOption"], "none")
@@ -65,7 +55,7 @@ class JudgmentChoiceTest(unittest.TestCase):
 
     def test_each_option_calibrated_on_recorded_renders_has_its_own_threshold(self):
         thresholds = REVIEW_DEFINITION["patternThresholds"]
-        for option in ("overlap", "wasted_space", "unbalanced", "fake_sequence_numbering", "repetitive_layout"):
+        for option in ("overlap", "wasted_space", "repetitive_layout"):
             with self.subTest(option=option):
                 self.assertIn(option, thresholds)
 
