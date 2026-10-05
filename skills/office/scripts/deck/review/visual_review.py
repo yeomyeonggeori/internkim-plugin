@@ -7,7 +7,6 @@ import re
 from core.design_rules import render_rule_issues
 from core.office_result import Issue, OfficeFailure
 from core.skill_paths import ASSETS_PATH
-from deck.deck_definitions import GUIDE_SECTIONS
 from deck.design_system import DESIGN_FILE_NAME, DesignSystem, design_tokens, read_design_system
 from deck.deck_source import Element, find_all, normalized_text, parse_source, visible_text
 from deck.review.slide_images import rendered_slide_image_paths
@@ -18,7 +17,6 @@ from deck.slide_source import split_slide_sources
 
 VISUAL_REVIEW_FILE_NAME = "visual-review.json"
 REVIEW_DEFINITION = json.loads((ASSETS_PATH / "deck-kit" / "visual-review.json").read_text(encoding="utf-8"))
-FIXER_GUIDE_SECTIONS = ("Canvas", "Charts", "Icons", "Photos")
 SHOWN_TOKENS = ("ground", "text", "muted", "accent", "secondary", "surface", "line")
 ICON_NEIGHBOR_LENGTH = 60
 EDITS_OFFERED_PER_SLIDE = 6
@@ -48,14 +46,6 @@ def slide_title(section: Element) -> str:
 def slide_state(deck_title: str, design: dict, section: Element, number: int, count: int) -> dict:
     icons = slide_icons(section)
     return {"deck": deck_title, "slide": f"{number} of {count}", "design": design, **({"icons": icons} if icons else {})}
-
-
-def fixer_guide() -> str:
-    return "\n".join(
-        f"{heading}\n" + "\n".join(lines())
-        for _, heading, lines in GUIDE_SECTIONS
-        if heading.startswith(FIXER_GUIDE_SECTIONS)
-    )
 
 
 def measured_defects(issues: list[Issue], defect_codes: frozenset[str], number: int) -> list[dict[str, str]]:
@@ -128,7 +118,7 @@ def visual_review(source_path: pathlib.Path, review_path: pathlib.Path, deck_nam
         for number, section in enumerate(sections, start=1)
         if number <= len(images) and number <= len(sources)
     ]
-    return {**REVIEW_DEFINITION, "fixer": {**REVIEW_DEFINITION["fixer"], "kitGuide": fixer_guide()}, "source": str(source_path.resolve()), "slides": slides}
+    return {**REVIEW_DEFINITION, "source": str(source_path.resolve()), "slides": slides}
 
 
 def write_visual_review(source_path: pathlib.Path, review_path: pathlib.Path, deck_name: str, issues: list[Issue], defect_codes: frozenset[str]) -> pathlib.Path:

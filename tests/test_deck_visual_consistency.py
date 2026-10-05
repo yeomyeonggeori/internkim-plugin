@@ -163,7 +163,7 @@ class VisualConsistencyTest(unittest.TestCase):
         self.assertEqual(second["state"]["design"]["colors"]["ground"], dark_ground())
         self.assertTrue(second["section"].startswith("<section>"))
         self.assertEqual([icon["icon"] for icon in review["slides"][2]["state"]["icons"]], ["lightbulb", "megaphone"])
-        self.assertIn("Canvas", review["fixer"]["kitGuide"])
+        self.assertNotIn("kitGuide", review["fixer"])
 
     def test_a_build_offers_each_slide_only_edits_that_pass_the_render_gate(self):
         with tempfile.TemporaryDirectory() as directory:
