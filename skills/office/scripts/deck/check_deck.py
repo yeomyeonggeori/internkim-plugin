@@ -18,6 +18,7 @@ from deck.deck_definitions import (
 )
 from charts.kinds import KIT_STACKED_CHARTS, is_round_kind
 from charts.numbers import chart_number, split_chart_list
+from deck.draft_claims import draft_claim_issues
 from deck.deck_html import render_gate_issues
 from deck.deck_kit import chart_types, icon_names
 from deck.deck_preparation import prepare_deck
@@ -77,6 +78,8 @@ def check_deck(request: CheckRequest) -> Result:
     if has_errors(design_issues):
         return Result(summary=check_summary(slides, design_issues), output_path=str(request.source_path), issues=tuple(design_issues), details=check_details(slides))
     issues = design_issues + deck_issues(request, root, slides, system)
+    if not request.is_blank_remake:
+        issues += draft_claim_issues(source_text)
     if not has_errors(issues):
         issues += render_gate_issues(request.source_path, system)
     if request.is_blank_remake:

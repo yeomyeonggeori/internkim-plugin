@@ -10,6 +10,7 @@ from core.office_result import ERROR, WARNING, IssueKind
 from powerpoint.definitions import CHART_POINT_OUTSIDE_AXIS, CHART_ZERO_MISALIGNED, IMAGE_DISTORTED, SLIDE_COUNT_MISMATCH, review_check
 from core.design_rules import DESIGN_RULE_KINDS
 from deck.design_system import DESIGN_ISSUE_KINDS
+from deck.draft_claims import UNSUPPORTED_CLAIM
 from deck.deck_html import RENDER_GATE_SKIPPED
 from render.renderer import RENDER_ISSUE_KINDS
 from core.text_checks import PLACEHOLDER_LEFT, TEXT_CHECK_ISSUE_KINDS
@@ -70,6 +71,7 @@ SOURCE_CHECK_ISSUE_KINDS = (
     PLACEHOLDER_LEFT,
     *TEXT_CHECK_ISSUE_KINDS,
     OFF_PALETTE_COLOR,
+    UNSUPPORTED_CLAIM,
     *DESIGN_ISSUE_KINDS,
     *DESIGN_RULE_KINDS.values(),
     RENDER_GATE_SKIPPED,

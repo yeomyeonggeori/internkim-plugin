@@ -26,6 +26,8 @@ class RuntimeContext:
     deck_design: dict | None = None
     images: tuple = ()
     fonts: tuple = ()
+    judges_draft_claims: bool = False
+    draft_claims: dict | None = None
 
     def company(self, language: str) -> dict:
         if not self.companies:
@@ -110,4 +112,6 @@ def load_runtime_context() -> RuntimeContext | None:
         deck_design=document.get("deckDesign") if isinstance(document.get("deckDesign"), dict) else None,
         images=tuple(image for image in document.get("images") or () if isinstance(image, dict) and image.get("path")),
         fonts=tuple(font for font in document.get("fonts") or () if isinstance(font, dict) and font.get("path")),
+        judges_draft_claims=document.get("judgesDraftClaims") is True,
+        draft_claims=document.get("draftClaims") if isinstance(document.get("draftClaims"), dict) else None,
     )

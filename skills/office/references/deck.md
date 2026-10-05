@@ -23,7 +23,7 @@ A color the request names, or the logo's own color, becomes the accent. Run `<sk
 
 One `<style>` in `<head>` styles everything with the tokens the build puts on `:root` (`var(--accent)`, `var(--size-body)` and the rest `guide slides` lists; the build sets every font, and `font-family` in your CSS is dropped), and one `<section>` per slide of exactly 1600x900 px. Lay each slide out from the shape of its content, and give two slides in a row different compositions. Slide 1 is the cover; the last is the decision or next steps. Every title states the slide's conclusion in the request's language. A trend, ranking or share is a `<figure data-chart>` from the request's numbers, a native editable chart in the PPTX. Speaker notes go in `<aside class="notes">`.
 
-`<skill>/scripts/office check slides.html` renders the slides and measures each against the same rule table as `DESIGN.md`. It refuses with the code, the slide and the selector; fix only that.
+`<skill>/scripts/office check slides.html` renders the slides and measures each against the same rule table as `DESIGN.md`. It refuses with the code, the slide and the selector; fix only that. UNSUPPORTED_CLAIM names a statement the request and its attachments do not support: restate it from them or drop it before building.
 
 ## Build and deliver
 
