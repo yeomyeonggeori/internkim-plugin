@@ -19,6 +19,8 @@ from pdf.pdf_definitions import (
     TOO_FEW_PAGES,
     TOO_MANY_PAGES,
 )
+from balance.issues import balance_details, balance_issues, is_schema_document
+from balance.measure import measure_pdf
 from core.text_checks import text_presence_issues
 from core.text_script import has_hangul
 
@@ -34,11 +36,13 @@ def main() -> Result:
     korean_fonts: list = []
     extracted_text = "\n".join(page_text(page, korean_fonts) for page in reader.pages)
     font_summary = summarize_fonts(reader)
+    pages = measure_pdf(source_path, password=arguments.password)
     issues = (
         layer_issues(reader, extracted_text, arguments)
         + text_presence_issues(extracted_text, arguments.required_text, arguments.forbidden_text)
         + korean_font_issues(korean_fonts)
         + font_issues(font_summary, arguments.required_font)
+        + (balance_issues(pages) if is_schema_document(source_path) else [])
     )
     details = {
         "isPDF": source_path.read_bytes()[:4] == b"%PDF",
@@ -47,6 +51,7 @@ def main() -> Result:
         "isEncrypted": bool(reader.is_encrypted),
         "extractedTextLength": len(extracted_text),
         "fonts": font_summary,
+        **balance_details(pages),
     }
     return Result(summary=f"checked {source_path}: {len(issues)} issues", output_path=str(source_path), issues=tuple(issues), details=details)
 

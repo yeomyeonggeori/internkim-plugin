@@ -5,6 +5,7 @@ from doc.doc_definitions import GLYPH_NOT_COVERED
 from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE
 from core.office_schema import Boolean, CellValue, Choice, Field, ListOf, Number, Record, Text, Variant
 from fonts.font_files import FONT_NAME_MEANING, FONT_PATH_MEANING
+from balance.issues import BALANCE_ISSUE_KINDS
 from core.text_checks import TEXT_CHECK_ISSUE_KINDS
 from core.office_operations import OPERATION_ISSUE_KINDS
 from core.page_selection import PAGE_NOT_IN_DOCUMENT
@@ -69,6 +70,7 @@ CHECK_ISSUE_KINDS = (
     TOO_FEW_PAGES,
     TOO_MANY_PAGES,
     *TEXT_CHECK_ISSUE_KINDS,
+    *BALANCE_ISSUE_KINDS,
     REQUIRED_FONT_MISSING,
     NO_FONT_RESOURCES,
     KOREAN_FONT_MISSING,

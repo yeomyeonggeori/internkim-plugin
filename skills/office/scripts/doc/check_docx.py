@@ -12,7 +12,7 @@ from doc.model.defaults import KOREAN_LANGUAGE
 from doc.model.language import east_asia_font_issues, effective_east_asia_language
 from doc.model.package import open_document
 from doc.checks.quality import quality_findings
-from doc.checks.pages import stranded_heading_issues
+from doc.checks.pages import page_balance, stranded_heading_issues
 from doc.operations.references import bookmark_names
 from doc.model.revisions import collect_revisions, describe_pending
 from doc.model.body import PARAGRAPH_TAG, body_block_elements, element_text, heading_level
@@ -32,8 +32,9 @@ def main() -> Result:
     arguments = route_arguments("check", "docx")
     document = open_document(arguments.file)
     quality_issues, details = quality_findings(document, arguments.required_text, arguments.forbidden_text)
-    issues = distinct(content_issues(document, arguments.file) + quality_issues)
-    return Result(summary=f"checked {arguments.file}: {len(issues)} issues", output_path=arguments.file, issues=tuple(issues), details=details)
+    balance_issues, balance_details = page_balance(arguments.file)
+    issues = distinct(content_issues(document, arguments.file) + quality_issues + balance_issues)
+    return Result(summary=f"checked {arguments.file}: {len(issues)} issues", output_path=arguments.file, issues=tuple(issues), details={**details, **balance_details})
 
 
 def content_issues(document, document_path: str) -> list[Issue]:

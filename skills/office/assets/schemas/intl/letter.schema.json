@@ -1,8 +1,8 @@
 {
-  "name": "letter",
+  "name": "intl/letter",
   "kind": "document",
   "language": "ko",
-  "summary": "a letter or notice from the company on its letterhead; the runtime writes the letterhead, date and signer",
+  "summary": "a letter or notice on the company letterhead, in Korean 공문 form or the international business form by language; the runtime writes the letterhead, date and signature block",
   "guidance": "Choose the sections and block kinds the request's content needs. Every item, row and field comes from the request or its attachments; a section, item or paragraph the request gives no content for is left out, never filled in. A letter may open or close with a short courtesy line, such as a greeting, thanks or good wishes, that states no date, number, name, promise, condition or cause.",
   "fields": [
     {
@@ -17,11 +17,27 @@
     {
       "name": "recipient",
       "label": "수신",
-      "type": "text"
+      "type": "text",
+      "description": "who the letter is addressed to; in English the inside address with the organization and attention line"
+    },
+    {
+      "name": "reference",
+      "label": "참조",
+      "type": "text",
+      "optional": true,
+      "description": "Korean letters: the 참조 line; leave out when none"
     },
     {
       "name": "title",
-      "type": "text"
+      "label": "제목",
+      "type": "text",
+      "description": "the subject line"
+    },
+    {
+      "name": "salutation",
+      "type": "text",
+      "optional": true,
+      "description": "English letters: the greeting line such as Dear Ms. Park,; leave out for Korean"
     },
     {
       "name": "sections",
@@ -241,6 +257,14 @@
           ]
         }
       ]
+    },
+    {
+      "name": "enclosures",
+      "label": "붙임",
+      "type": "list",
+      "item": "text",
+      "optional": true,
+      "description": "names of the attached files, as the request gives them; leave out when none"
     }
   ],
   "known": {
@@ -250,47 +274,87 @@
   "layout": {
     "parts": [
       {
-        "type": "lines",
-        "lines": [
-          "**{company.name}**",
-          "{company.address} · {company.phone} · {company.email}"
+        "type": "letterhead",
+        "name": "{company.name}",
+        "details": [
+          "{company.address}",
+          "{company.phone} · {company.email}"
         ]
       },
       {
-        "type": "labeled",
+        "type": "memo",
         "rows": [
           {
-            "label": {
-              "ko": "일자",
-              "en": "Date"
-            },
+            "label": "일자",
             "value": "{date}"
           },
           {
-            "label": {
-              "ko": "수신",
-              "en": "To"
-            },
+            "label": "수신",
             "value": "{recipient}"
+          },
+          {
+            "label": "참조",
+            "value": "{reference}"
+          },
+          {
+            "label": "제목",
+            "value": "{title}",
+            "emphasis": true
           }
-        ]
+        ],
+        "for": "ko"
       },
       {
-        "type": "heading",
-        "text": "{title}",
-        "level": 1
+        "type": "address",
+        "date": "{date}",
+        "lines": [
+          "{recipient}"
+        ],
+        "subject": "{title}",
+        "subjectLabel": "Subject:",
+        "salutation": "{salutation}",
+        "for": "en"
       },
       {
         "type": "sections",
         "field": "sections"
       },
       {
-        "type": "lines",
+        "type": "enclosures",
+        "field": "enclosures",
+        "label": "붙임",
+        "for": "ko"
+      },
+      {
+        "type": "enclosures",
+        "field": "enclosures",
+        "label": "Enclosures:",
+        "for": "en"
+      },
+      {
+        "type": "endmark",
+        "text": "끝.",
+        "for": "ko"
+      },
+      {
+        "type": "closing",
         "lines": [
           "{company.name}",
           "{company.representativeTitle} {company.representative}"
-        ]
+        ],
+        "for": "ko"
+      },
+      {
+        "type": "closing",
+        "complimentary": "Sincerely,",
+        "align": "left",
+        "lines": [
+          "{company.representative}",
+          "{company.representativeTitle}, {company.name}"
+        ],
+        "for": "en"
       }
     ]
-  }
+  },
+  "jurisdiction": "intl"
 }

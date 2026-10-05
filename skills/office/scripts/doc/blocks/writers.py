@@ -12,7 +12,7 @@ from doc.model.charts import specification
 from doc.blocks.charts import FENCE, Chart
 from doc.blocks.latex_math import LatexNotReadable, latex_html
 from render.office_preview import data_uri
-from doc.blocks.markdown import CodeBlock, Equation, Heading, Image, ListItem, Quote, Table, ThematicBreak, inline_segments, link_parts, math_latex
+from doc.blocks.markdown import CodeBlock, Equation, Heading, Image, LetterPart, ListItem, Quote, Table, ThematicBreak, inline_segments, link_parts, math_latex
 
 
 LIST_INDENT = "   "
@@ -35,7 +35,7 @@ class SizedImage:
     def source(self) -> str:
         return file_data_uri(self.data, f"image{self.suffix}")
 HTML_STYLE = f'body{{font-family:"{BODY_FONT_FAMILY}",sans-serif;line-height:1.6;max-width:46rem;margin:2rem auto;padding:0 1rem;color:#1a1a1a}}code{{font-family:"{CODE_FONT_FAMILY}",monospace}}\n' + """pre{background:#f2f4f7;padding:.6rem .8rem;white-space:pre-wrap}table{border-collapse:collapse;margin:1rem 0}th,td{border:1px solid #999;padding:.3rem .6rem;text-align:left;vertical-align:top}th{background:#eef2f7}
-img{max-width:100%}hr{border:0;border-top:1px solid #8c959f;margin:1rem 0}.equation{text-align:center;margin:1rem 0}blockquote{margin:1rem 0;padding-left:1rem;border-left:3px solid #ccc;color:#444}"""
+img{max-width:100%}hr{border:0;border-top:1px solid #8c959f;margin:1rem 0}.equation{text-align:center;margin:1rem 0}blockquote{margin:1rem 0;border:1px solid #d0d7de;background:#f6f8fa;padding:.5rem 1rem;color:#444}"""
 
 
 def markdown_text(blocks: list) -> str:
@@ -130,7 +130,50 @@ def chart_html(chart: Chart, font_family: str) -> str:
     return f'<figure class="chart" style="margin:12px 0">{svg}</figure>'
 
 
+def letter_html(part: LetterPart) -> str:
+    data = part.data
+    if part.kind == "letterhead":
+        logo = f'<img class="logo" src="{image_data_uri(data["logo"])}">' if data.get("logo") else ""
+        details = "".join(f'<p class="detail">{html.escape(line)}</p>' for line in data.get("details", []))
+        return f'<header class="letterhead">{logo}<div class="company"><p class="name">{html.escape(data.get("name", ""))}</p>{details}</div></header>'
+    if part.kind == "memo":
+        rows = "".join(meta_row_html(label, value, bool(flags and flags[0])) for label, value, *flags in data.get("rows", []))
+        return f'<div class="memo">{rows}</div>'
+    if part.kind == "letter-address":
+        return address_html(data)
+    return closing_html(data)
+
+
+def address_html(data: dict) -> str:
+    inside = "".join(f"<p>{html.escape(line)}</p>" for line in data.get("lines", []))
+    subject = f'<p class="subject-line">{html.escape(data["subject"])}</p>' if data.get("subject") else ""
+    salutation = f'<p class="salutation">{html.escape(data["salutation"])}</p>' if data.get("salutation") else ""
+    date = f'<p class="dateline">{html.escape(data["date"])}</p>' if data.get("date") else ""
+    return f'<div class="address">{date}<div class="inside">{inside}</div>{subject}{salutation}</div>'
+
+
+def closing_html(data: dict) -> str:
+    seal = f'<img class="seal" src="{image_data_uri(data["seal"])}">' if data.get("seal") else html.escape(data.get("sealMark", ""))
+    side = "left" if data.get("align") == "left" else "right"
+    complimentary = f'<p>{html.escape(data["complimentary"])}</p><div class="signature-space"></div>' if data.get("complimentary") else ""
+    lines = "".join(f"<p>{html.escape(line)}</p>" for line in data.get("lines", [])[:-1])
+    signer = f'<p class="signer"><span>{html.escape(data["lines"][-1]) if data.get("lines") else ""}</span><span class="seal-mark">{seal}</span></p>'
+    return f'<div class="letter-closing {side}">{complimentary}{lines}{signer}</div>'
+
+
+def meta_row_html(label: str, value: str, is_subject: bool) -> str:
+    style = " subject" if is_subject else ""
+    return f'<div class="row"><div class="label">{html.escape(label)}</div><div class="value{style}">{html.escape(value)}</div></div>'
+
+
+def image_data_uri(path: str) -> str:
+    file = Path(path)
+    return file_data_uri(file.read_bytes(), file.name)
+
+
 def html_block(block) -> str:
+    if isinstance(block, LetterPart):
+        return letter_html(block)
     if isinstance(block, SizedImage):
         return f"<img src=\"{block.source}\" alt=\"{html.escape(block.alt, quote=True)}\" style=\"width:{block.width}px;height:{block.height}px\">"
     if isinstance(block, Heading):

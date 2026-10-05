@@ -14,7 +14,7 @@ One command, `<skill>/scripts/office <verb> <file> [options]`, makes and checks 
 
 | Work | Command | Reference |
 | --- | --- | --- |
-| Report, weekly report, status update, memo, postmortem, letter or notice, as .docx or .pdf | `merge report` or `merge letter` with the given values | `references/schemas.md` |
+| Report, weekly report, status update, memo, postmortem, letter or notice, as .docx or .pdf | `merge intl/report` or `merge intl/letter` with the given values; its language value picks the Korean or English form | `references/schemas.md` |
 | Quotation, invoice or meeting minutes, as a file: PDF unless another format is named | `merge kr/quote`, `merge intl/invoice`, `merge kr/meeting-minutes` with the given values | `references/schemas.md` |
 | Other long-form document, as .docx or .pdf | `create <title>.docx <title>.md` | `references/doc.md` |
 | Change an existing .docx, .xlsx, .pptx or .pdf | `read`, then `apply` | the format's reference |

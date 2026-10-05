@@ -19,21 +19,35 @@ from core.office_result import BOLD_FONT_UNAVAILABLE, Issue, OfficeFailure
 from fonts.font_files import bold_sibling
 from render.renderer import PAGE_NUMBER_FOOTER, RENDER_FAILED, RENDERER_UNAVAILABLE, DocumentPdfRequest, FontFile, RenderFailed, RendererUnavailable, render_document_pdf as render_pdf
 from core.page_sizes import DEFAULT_PAPER, Paper
-from core.units import CSS_PIXELS_PER_INCH
+from core.units import CSS_PIXELS_PER_INCH, PIXELS_PER_POINT, millimetres_to_pixels
+from balance.fit import fit_rhythm
+from balance.measure import Body, measure_pdf
+from balance.rhythm import Rhythm
+from balance.tokens import BODY_BOTTOM_MARGIN_MILLIMETERS, BODY_SIDE_MARGIN_MILLIMETERS, BODY_TOP_MARGIN_MILLIMETERS
 from core.skill_paths import ASSETS_PATH
 
 
 CHOSEN_FAMILY = "Document"
 CSS_PATH = ASSETS_PATH / "document-pdf" / "document-pdf.css"
-SIDE_MARGIN_PIXELS = 64
 DEFAULT_DOTS_PER_INCH = 96
+
+
+def skill_margin() -> dict:
+    millimetres = {"top": BODY_TOP_MARGIN_MILLIMETERS, "right": BODY_SIDE_MARGIN_MILLIMETERS, "bottom": BODY_BOTTOM_MARGIN_MILLIMETERS, "left": BODY_SIDE_MARGIN_MILLIMETERS}
+    return {side: millimetres_to_pixels(value) for side, value in millimetres.items()}
 
 
 @dataclass(frozen=True)
 class PageLayout:
     paper: Paper = DEFAULT_PAPER
-    margin: dict = field(default_factory=lambda: {"left": SIDE_MARGIN_PIXELS, "right": SIDE_MARGIN_PIXELS})
+    margin: dict = field(default_factory=lambda: skill_margin())
     page_numbers: bool = True
+    is_balanced: bool = True
+
+    @property
+    def body(self) -> Body:
+        page_height_points = self.paper.exact_pixels["height"] / PIXELS_PER_POINT
+        return Body(self.margin["top"] / PIXELS_PER_POINT, page_height_points - self.margin["bottom"] / PIXELS_PER_POINT)
 
     @property
     def text_width_pixels(self) -> float:
@@ -50,7 +64,7 @@ def render_document_pdf(blocks: list, output_path: Path, source_directory: Path,
     issues: list[Issue] = []
     sized = [sized_image(block, source_directory, layout, issues) if isinstance(block, Image) else block for block in blocks]
     fonts = covering_fonts(chosen, markdown_source_text(blocks), issues)
-    draw(output_path, lambda drawn_path: render_keeping_headings_with_their_text(sized, drawn_path, title, fonts, layout))
+    draw(output_path, lambda drawn_path: render_fitted(sized, drawn_path, title, fonts, layout))
     return issues
 
 
@@ -71,20 +85,28 @@ def draw(output_path: Path, render: Callable[[Path], None]) -> None:
         raise OfficeFailure(RENDER_FAILED.issue(f"{output_path.name} was not drawn: {reason}", str(output_path)))
 
 
-def render_keeping_headings_with_their_text(blocks: list, output_path: Path, title: str, fonts: list[FontFile], layout: PageLayout) -> None:
+def render_fitted(blocks: list, output_path: Path, title: str, fonts: list[FontFile], layout: PageLayout) -> None:
+    def draw_at(rhythm: Rhythm):
+        render_keeping_headings_with_their_text(blocks, output_path, title, fonts, layout, rhythm)
+        return measure_pdf(output_path, layout.body)
+
+    draw_at(fit_rhythm(draw_at) if layout.is_balanced else Rhythm())
+
+
+def render_keeping_headings_with_their_text(blocks: list, output_path: Path, title: str, fonts: list[FontFile], layout: PageLayout, rhythm: Rhythm) -> None:
     headings_on_new_page: frozenset[int] = frozenset()
     for _ in range(MAXIMUM_PAGINATION_PASSES):
-        render_pdf(render_request(blocks, output_path, title, fonts, layout, headings_on_new_page))
+        render_pdf(render_request(blocks, output_path, title, fonts, layout, rhythm, headings_on_new_page))
         stranded = stranded_heading(output_path, blocks, headings_on_new_page)
         if stranded is None:
             return
         headings_on_new_page |= {stranded}
 
 
-def render_request(blocks: list, output_path: Path, title: str, fonts: list[FontFile], layout: PageLayout, headings_on_new_page: frozenset[int] = frozenset()) -> DocumentPdfRequest:
+def render_request(blocks: list, output_path: Path, title: str, fonts: list[FontFile], layout: PageLayout, rhythm: Rhythm, headings_on_new_page: frozenset[int] = frozenset()) -> DocumentPdfRequest:
     return DocumentPdfRequest(
-        html="\n".join(html_blocks(blocks, fonts[0].family, headings_on_new_page)),
-        css=CSS_PATH.read_text(encoding="utf-8"),
+        html="\n".join(rhythm.lifted(html_blocks(blocks, fonts[0].family, headings_on_new_page))),
+        css=rhythm.css(CSS_PATH.read_text(encoding="utf-8")),
         output_path=output_path,
         title=title,
         fonts=tuple(fonts),

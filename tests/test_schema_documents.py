@@ -124,8 +124,8 @@ class GuideTest(unittest.TestCase):
         return subprocess.run([sys.executable, str(OFFICE_ENTRY), *arguments], capture_output=True, text=True).stdout
 
     def test_a_schema_guide_answers_however_it_is_asked_for(self):
-        for arguments in (["guide", "report"], ["guide", "merge", "report"], ["merge", "report", "--help"]):
-            self.assertIn("office merge report <values.json> <output>", self.guide(arguments), arguments)
+        for arguments in (["guide", "intl/report"], ["guide", "merge", "intl/report"], ["merge", "intl/report", "--help"]):
+            self.assertIn("office merge intl/report <values.json> <output>", self.guide(arguments), arguments)
 
 
 class InputSchemaTest(unittest.TestCase):
@@ -337,7 +337,7 @@ class ReportMergeTest(unittest.TestCase):
     def merge_report(self, directory, values):
         write_json(Path(directory, "values.json"), values)
         write_json(Path(directory, "context.json"), runtime_context())
-        return run_office_with_context(["merge", "report", "values.json", "status.pdf"], directory, Path(directory, "context.json"))
+        return run_office_with_context(["merge", "intl/report", "values.json", "status.pdf"], directory, Path(directory, "context.json"))
 
     def test_a_period_of_one_day_is_written_once(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -352,7 +352,7 @@ class ReportMergeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             write_json(Path(directory, "values.json"), values)
             write_json(Path(directory, "context.json"), runtime_context())
-            result = run_office_with_context(["merge", "report", "values.json", "status.docx"], directory, Path(directory, "context.json"))
+            result = run_office_with_context(["merge", "intl/report", "values.json", "status.docx"], directory, Path(directory, "context.json"))
             self.assertEqual(result["status"], "ok", result)
             self.assertEqual([blank["label"] for blank in result["details"]["blanks"]], ["B Cost"])
 

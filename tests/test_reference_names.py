@@ -11,6 +11,7 @@ from deck.deck_definitions import KIT_LAYOUT_NAMES  # noqa: E402
 from deck.deck_kit import theme_names  # noqa: E402
 from office_guide import guide_for  # noqa: E402
 from paperwork.forms import form_names  # noqa: E402
+from schemas.schema_document import bundled_schema_names  # noqa: E402
 
 
 DOCUMENTS = (OFFICE_PATH / "SKILL.md", *sorted((OFFICE_PATH / "references").rglob("*.md")))
@@ -66,7 +67,7 @@ class ReferenceNamesTest(unittest.TestCase):
 
     def test_every_form_a_document_names_exists_and_every_form_has_its_spec(self):
         named = set(FORM_PATTERN.findall(documents_text()))
-        self.assertEqual(named - set(form_names()), set())
+        self.assertEqual(named - set(form_names()) - set(bundled_schema_names()), set())
         for name in form_names():
             self.assertTrue((OFFICE_PATH / "references" / "paperwork" / f"{name}.md").exists(), name)
 

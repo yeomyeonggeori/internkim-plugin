@@ -1,5 +1,5 @@
 {
-  "name": "report",
+  "name": "intl/report",
   "kind": "document",
   "language": "ko",
   "summary": "a report, status update, memo or minutes-like note; the runtime writes its author and date",
@@ -300,5 +300,6 @@
         "field": "sections"
       }
     ]
-  }
+  },
+  "jurisdiction": "intl"
 }

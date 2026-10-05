@@ -25,7 +25,7 @@ Every document the skill generates from a request is drawn from a schema. A sche
 - **derived** fields, expressions over the others (`money(items.quantity * items.unitPrice)`, `sum(items.amount)`, `words(grandTotal)`);
 - the **layout**, which places fields by name (`{recipient}`, `{validDays:number}`) and is never written by the model.
 
-The bundled schemas are `kr/quote`, `intl/invoice`, `kr/meeting-minutes`, `report` and `letter`, under `assets/schemas/`. A company's own form becomes a schema too: `office convert form.docx form.schema.json` reads each empty cell beside or under a label as a field and each table of empty numbered rows as a list. A person then types each field once (`known`, `expression`, `handwritten` or `ignore` where it is not a given value), and the same file fills that form every time.
+The bundled schemas are `kr/quote`, `intl/invoice`, `kr/meeting-minutes`, `intl/report` and `intl/letter`, under `assets/schemas/`. A company's own form becomes a schema too: `office convert form.docx form.schema.json` reads each empty cell beside or under a label as a field and each table of empty numbered rows as a list. A person then types each field once (`known`, `expression`, `handwritten` or `ignore` where it is not a given value), and the same file fills that form every time.
 
 The model's whole job on this path is one JSON object of given values:
 
@@ -95,9 +95,28 @@ One small expression language serves schema `derived` fields and workbook views,
 
 ## Reports and letters
 
-`report` and `letter` are schemas whose given fields are sections of typed blocks: `paragraph`, `items`, `table`, `fields` and `chart`. An item carries its own typed `date`, `owner`, `due`, `quantity`, `amount`, `percent` and `status`. A table declares typed columns and can add a total row, and a chart names labels and series. Author and date are known fields, so the model has nowhere to type them.
+`intl/report` and `intl/letter` are schemas whose given fields are sections of typed blocks: `paragraph`, `items`, `table`, `fields` and `chart`. An item carries its own typed `date`, `owner`, `due`, `quantity`, `amount`, `percent` and `status`. A table declares typed columns and can add a total row, and a chart names labels and series. Author and date are known fields, so the model has nowhere to type them.
 
 A paragraph is still free prose. It is the one place on this path where a fact the request does not state can still enter a document, as the failure modes below record.
+
+## Page balance
+
+A document is balanced by how it is drawn, not by what the model is told. The PDF layouts (`document-pdf.css`, `paperwork.css`) and the Word writer take their vertical spacing, type size and line height from one `Rhythm` (`scripts/balance/`), and every document is drawn until its page measurements fit:
+
+- A single page filled under 70% grows: spacing up to 2.5 times, type up to 1.35 times (Word: 12.5 pt and 1.25 line spacing, the bounds `office check` already holds), and the remaining free space is split 40/60 above and below the content.
+- A last page filled under 30% is pulled back by tightening spacing, line height and type within bounds, in the smallest step that removes the page. When no step does, the document is left as drawn and `office check` reports it.
+- A form's closing line (`footer` in the schema) is drawn under the signature, not in the page footer, and only the last lines of the final section are kept with the signature, so a long closing section no longer moves to the next page whole.
+
+`office check` reports `details` for every PDF and Word file, and raises the codes below for a file `merge` wrote from a schema (the file has its `.source.json`). It measures the rendered geometry of a PDF, or the laid-out pages of a Word file, against the body area set by the skill's margins (16 mm sides and top, 20 mm bottom):
+
+| Code | Fires when | Thresholds |
+| --- | --- | --- |
+| `PAGE_SPARSE` | the only page ends above this share of the body | 45% |
+| `LAST_PAGE_SPARSE` | the last page is nearly empty, or holds a few lines | under 15%, or under 30% with 3 lines or fewer (Word: under 15%) |
+| `PAGE_ENDS_EARLY` | a page followed by another ends above this share | 70% |
+| `LARGE_EMPTY_BAND` | two blocks of one page are this far apart | 25% of the body |
+
+`details` carries `pageFill`, `lastPageFill` and `largestEmptyBand`. The thresholds sit below what the layout rules reach, so a warning means the rules could not balance that document.
 
 ## Workbooks
 
@@ -231,7 +250,7 @@ The schema path replaces the model's longest output (a whole document in Markdow
 | Path today | Becomes | What is deleted |
 | --- | --- | --- |
 | `merge <jurisdiction>/<form>` with content JSON per spec (`references/paperwork/*/*.md`) | a schema per form; the three bundled schemas are the pattern | each form's Markdown spec once its schema exists, `paperwork/template_context.py` field mapping, the hand-written company and number fields in content JSON |
-| `create <title>.docx <title>.md` for reports, memos, letters | `merge report` / `merge letter` | the free-Markdown step for those kinds; `--required-text` and `--forbidden-text` in `references/doc.md` |
+| `create <title>.docx <title>.md` for reports, memos, letters | `merge intl/report`, `merge intl/letter` | the free-Markdown step for those kinds; `--required-text` and `--forbidden-text` in `references/doc.md` |
 | `create <title>.xlsx <data>.csv`, then `apply` formulas | `create <title>.xlsx <title>.workbook.json` | formula writing in `references/sheet.md` for new workbooks |
 | a company's own .docx or .xlsx form filled with `merge` placeholders | `convert form.docx form.schema.json` once, then `merge form.schema.json` | nothing until the placeholder path has no users |
 | deck `slides.html` | unchanged in this step | nothing yet |

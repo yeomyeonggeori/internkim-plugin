@@ -9,15 +9,16 @@ from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
+from balance.rhythm import Rhythm
 from doc.doc_definitions import IMAGE_UNAVAILABLE
-from doc.model.defaults import CODE_FONT, DOCUMENT_FONT, apply_korean_defaults, name_fonts, set_page
+from doc.model.defaults import CODE_FONT, DOCUMENT_FONT, HEADING_STYLE_NAMES, apply_korean_defaults, name_fonts, set_page
 from doc.operations.formats import ALIGNMENTS
 from doc.model.tables import add_space_after_table, format_table
 from doc.model.lists import add_list_paragraph, start_list
 from doc.model.charts import add_chart_part, drawing_run, next_drawing_id, specification
 from doc.blocks.charts import Chart
 from doc.blocks.latex_math import OMML_NAMESPACE, LatexNotReadable, latex_omml
-from doc.blocks.markdown import CodeBlock, Equation, Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, inline_segments, link_parts, local_image_problem, math_latex
+from doc.blocks.markdown import CodeBlock, Equation, Heading, Image, LetterPart, ListItem, Paragraph, Quote, Table, ThematicBreak, inline_segments, link_parts, local_image_problem, math_latex
 from core.office_result import Issue
 from core.office_theme import HYPERLINK_COLOR
 
@@ -29,19 +30,57 @@ RULE_COLOR = "8C959F"
 RULE_EIGHTHS_OF_A_POINT = "6"
 CODE_SIZE_POINTS = 9.5
 CODE_BACKGROUND = "F2F4F7"
+HEADING_COLOR = "111418"
+NORMAL_SPACE_AFTER_POINTS = 10
+NORMAL_LINE_SPACING = 1.15
+MAXIMUM_LINE_SPACING = 1.25
+MAXIMUM_BODY_POINTS = 12.5
 
 
-def markdown_document(blocks: list, font_name: str, font_size: float, source_directory: Path) -> tuple[Document, list[Issue]]:
+def markdown_document(blocks: list, font_name: str, font_size: float, source_directory: Path, rhythm: Rhythm = Rhythm()) -> tuple[Document, list[Issue]]:
     document = Document()
     set_page(document.sections[0])
     set_base_font(document, font_name, font_size)
+    apply_rhythm(document, rhythm)
     issues = []
     list_ids: dict[bool, int] = {}
+    lift_index = 0
     for block in blocks:
         if not isinstance(block, ListItem):
             list_ids.clear()
-        issues.extend(add_block(document, block, source_directory, list_ids))
+        issues.extend(add_block(document, block, source_directory, list_ids, rhythm))
+        if isinstance(block, LetterPart) and block.kind == "letterhead":
+            lift_index = len(document.paragraphs)
+    lift_paragraph(document, rhythm, lift_index)
     return document, issues
+
+
+def apply_rhythm(document: Document, rhythm: Rhythm) -> None:
+    for name in HEADING_STYLE_NAMES:
+        if name in document.styles:
+            scale_heading_style(document.styles[name], rhythm)
+    if rhythm.airiness:
+        normal = document.styles["Normal"].paragraph_format
+        normal.space_after = Pt(NORMAL_SPACE_AFTER_POINTS * rhythm.space)
+        normal.line_spacing = min(NORMAL_LINE_SPACING * rhythm.leading, MAXIMUM_LINE_SPACING)
+        document.styles["Normal"].font.size = Pt(min(document.styles["Normal"].font.size.pt * rhythm.type, MAXIMUM_BODY_POINTS))
+
+
+def scale_heading_style(style, rhythm: Rhythm) -> None:
+    style.font.color.rgb = RGBColor.from_string(HEADING_COLOR)
+    spacing = style.paragraph_format
+    spacing.space_before = Pt((spacing.space_before.pt if spacing.space_before is not None else 0) * rhythm.space)
+    spacing.space_after = Pt((spacing.space_after.pt if spacing.space_after is not None else 0) * rhythm.space)
+    if style.font.size is not None:
+        style.font.size = Pt(style.font.size.pt * rhythm.type)
+
+
+def lift_paragraph(document: Document, rhythm: Rhythm, index: int) -> None:
+    if not rhythm.lift_points or index >= len(document.paragraphs):
+        return
+    first = document.paragraphs[index]
+    inherited = first.style.paragraph_format.space_before
+    first.paragraph_format.space_before = Pt((inherited.pt if inherited is not None else 0) + rhythm.lift_points)
 
 
 def set_base_font(document: Document, font_name: str, font_size: float) -> None:
@@ -50,11 +89,13 @@ def set_base_font(document: Document, font_name: str, font_size: float) -> None:
     apply_korean_defaults(document, font_name)
 
 
-def add_block(document: Document, block, source_directory: Path, list_ids: dict[bool, int]) -> list[Issue]:
-    if isinstance(block, Heading):
+def add_block(document: Document, block, source_directory: Path, list_ids: dict[bool, int], rhythm: Rhythm = Rhythm()) -> list[Issue]:
+    if isinstance(block, LetterPart):
+        add_letter_part(document, block)
+    elif isinstance(block, Heading):
         document.add_heading(block.text, level=block.level)
     elif isinstance(block, Table):
-        add_table(document, block.rows, block.alignments)
+        add_table(document, block.rows, block.alignments, rhythm.space)
     elif isinstance(block, ListItem):
         add_inline_runs(add_list_item(document, block, list_ids), block.text)
     elif isinstance(block, Quote):
@@ -132,7 +173,7 @@ def add_list_item(document: Document, item: ListItem, list_ids: dict[bool, int])
     return add_list_paragraph(document, list_ids[item.is_numbered], item.level)
 
 
-def add_table(document: Document, rows: list[list[str]], alignments: tuple[str, ...] = ()) -> None:
+def add_table(document: Document, rows: list[list[str]], alignments: tuple[str, ...] = (), space: float = 1.0) -> None:
     if not rows:
         return
     column_count = max(len(row) for row in rows)
@@ -145,7 +186,7 @@ def add_table(document: Document, rows: list[list[str]], alignments: tuple[str, 
             alignment = alignments[column_index] if column_index < len(alignments) else ""
             if alignment:
                 paragraph.alignment = ALIGNMENTS[alignment]
-    format_table(table)
+    format_table(table, space)
     add_space_after_table(document)
 
 
@@ -214,3 +255,80 @@ def add_image(document: Document, image: Image, source_directory: Path) -> list[
 def unavailable_image(document: Document, image: Image, reason: str) -> Issue:
     document.add_paragraph().add_run(image.alt or image.source).italic = True
     return IMAGE_UNAVAILABLE.issue(f"image {image.source} {reason}; wrote its alt text instead", image.source)
+
+
+LETTER_LABEL_WIDTH = Pt(44)
+LETTER_DETAIL_POINTS = 8.5
+LETTER_NAME_POINTS = 13
+LETTER_LOGO_HEIGHT = Pt(28)
+
+
+def add_letter_part(document: Document, part: LetterPart) -> None:
+    {"letterhead": add_letterhead, "memo": add_letter_meta, "letter-address": add_letter_address, "letter-closing": add_letter_closing}[part.kind](document, part.data)
+
+
+def add_letterhead(document: Document, data: dict) -> None:
+    if data.get("logo"):
+        document.add_paragraph().add_run().add_picture(data["logo"], height=LETTER_LOGO_HEIGHT)
+    name = document.add_paragraph()
+    name.alignment = ALIGNMENTS["right"]
+    name.paragraph_format.space_after = Pt(0)
+    run = name.add_run(data.get("name", ""))
+    run.bold = True
+    run.font.size = Pt(LETTER_NAME_POINTS)
+    last = name
+    for line in data.get("details", []):
+        last = document.add_paragraph()
+        last.alignment = ALIGNMENTS["right"]
+        last.paragraph_format.space_after = Pt(0)
+        last.add_run(line).font.size = Pt(LETTER_DETAIL_POINTS)
+    underline(last)
+
+
+def underline(paragraph) -> None:
+    border = OxmlElement("w:bottom")
+    for name, value in (("w:val", "single"), ("w:sz", "8"), ("w:space", "4"), ("w:color", RULE_COLOR)):
+        border.set(qn(name), value)
+    borders = OxmlElement("w:pBdr")
+    borders.append(border)
+    paragraph._p.get_or_add_pPr().append(borders)
+    paragraph.paragraph_format.space_after = Pt(14)
+
+
+def add_letter_meta(document: Document, data: dict) -> None:
+    for label, value, *flags in data.get("rows", []):
+        paragraph = document.add_paragraph()
+        paragraph.paragraph_format.left_indent = LETTER_LABEL_WIDTH
+        paragraph.paragraph_format.first_line_indent = -LETTER_LABEL_WIDTH
+        paragraph.paragraph_format.tab_stops.add_tab_stop(LETTER_LABEL_WIDTH)
+        paragraph.paragraph_format.space_after = Pt(3)
+        paragraph.add_run(f"{label}\t").bold = True
+        paragraph.add_run(value).bold = bool(flags and flags[0])
+    underline(paragraph)
+
+
+def add_letter_address(document: Document, data: dict) -> None:
+    for line in (data.get("date"), *data.get("lines", []), data.get("subject"), data.get("salutation")):
+        if line:
+            paragraph = document.add_paragraph(line)
+            paragraph.paragraph_format.space_after = Pt(4)
+            paragraph.runs[0].bold = line == data.get("subject")
+
+
+def add_letter_closing(document: Document, data: dict) -> None:
+    lines = [data["complimentary"], "", *data.get("lines", [])] if data.get("complimentary") else data.get("lines", [])
+    alignment = ALIGNMENTS["left" if data.get("align") == "left" else "right"]
+    for position, line in enumerate(lines):
+        paragraph = document.add_paragraph()
+        paragraph.alignment = alignment
+        paragraph.paragraph_format.keep_with_next = position < len(lines) - 1
+        if position == 0:
+            paragraph.paragraph_format.space_before = Pt(24)
+        run = paragraph.add_run(line)
+        run.bold = position == len(lines) - 1
+    if lines:
+        signer = paragraph
+        if data.get("seal"):
+            signer.add_run("  ").add_picture(data["seal"], height=Pt(30))
+        elif data.get("sealMark"):
+            signer.add_run(f"  {data['sealMark']}").bold = True
