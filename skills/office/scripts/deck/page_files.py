@@ -17,6 +17,7 @@ DOCUMENT_SELECTOR_PATTERN = re.compile(r"(?::root|html|body)(?![-\w])")
 SECTION_SELECTOR_PATTERN = re.compile(r"section(?![-\w])", re.IGNORECASE)
 HANGUL_PATTERN = re.compile(r"[가-힣]")
 NESTED_AT_RULES = ("@media", "@supports")
+SELF_SELECTOR_STARTS = ".[:#"
 
 
 def page_path(deck_directory: pathlib.Path, number: int) -> pathlib.Path:
@@ -97,6 +98,8 @@ def scoped_selector(selector: str, scope: str) -> str:
     section = SECTION_SELECTOR_PATTERN.match(selector)
     if section:
         return f"section#{scope}{selector[section.end():]}"
+    if selector[0] in SELF_SELECTOR_STARTS:
+        return f"#{scope} {selector}, section#{scope}{selector}"
     return f"#{scope} {selector}"
 
 

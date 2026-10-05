@@ -233,7 +233,10 @@ export function createStyleEngine({ styleTexts, viewport, version, percentBaseOf
     for (const declaration of declarations) {
       if (declaration.property.startsWith("--")) continue;
       const value = substituteVariables(declaration.value, customProperties);
-      for (const [longhand, longhandValue] of expandDeclaration(declaration.property, value)) specified.set(longhand, longhandValue.trim());
+      if (!value.trim()) continue;
+      for (const [longhand, longhandValue] of expandDeclaration(declaration.property, value)) {
+        if (typeof longhandValue === "string") specified.set(longhand, longhandValue.trim());
+      }
     }
     return specified;
   }

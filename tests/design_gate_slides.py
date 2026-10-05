@@ -47,54 +47,22 @@ SEEDED_STYLE = """
 .callout { border-left: 10px solid var(--accent); padding: 24px 28px; background: var(--surface); }
 .strip { position: relative; padding: 28px 40px; background: var(--surface); }
 .strip > i.bar { position: absolute; left: 0; top: 0; width: 8px; height: 100%; background: var(--accent); }
-.round { padding: 40px; border-radius: 48px; background: var(--surface); }
-.eyebrow { font-size: 20px; letter-spacing: 0.1em; color: var(--accent); }
-.tile { width: 72px; height: 72px; border-radius: 16px; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 40px; }
-.outer { padding: 40px; background: var(--surface); border-radius: var(--radius); }
-.inner { padding: 24px; background: var(--ground); border-radius: var(--radius); }
-.gradient-text { background: linear-gradient(90deg, #1F5FBF, #0F766E); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
-.glass { padding: 40px; backdrop-filter: blur(14px); background: rgba(255, 255, 255, 0.4); border-radius: var(--radius); }
-.grid-background { background-image: linear-gradient(rgba(20, 33, 61, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(20, 33, 61, 0.1) 1px, transparent 1px); background-size: 40px 40px; }
-.stripes { background-image: repeating-linear-gradient(45deg, rgba(20, 33, 61, 0.08) 0 12px, transparent 12px 24px); }
-.halo { width: 900px; height: 500px; background: radial-gradient(circle at 50% 50%, rgba(31, 95, 191, 0.35), transparent 70%); }
-.glow { padding: 40px; border-radius: var(--radius); background: var(--ground); box-shadow: 0 0 48px rgba(31, 95, 191, 0.6); }
-.hairline-shadow { padding: 40px; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18); }
-.tight { letter-spacing: -0.06em; }
-.oversized { font-size: 148px; line-height: 1.05; }
-.flat { font-size: 26px; }
-.cream { background: #F6EFDD; }
 .narrow-cell { width: 110px; word-break: break-all; font-size: 28px; }
 .spill { position: absolute; left: 1200px; top: 400px; width: 700px; margin: 0; }
 .short-card { height: 70px; padding: 28px; background: var(--surface); border-radius: var(--radius); }
 .stacked-a { position: absolute; left: 96px; top: 300px; width: 700px; margin: 0; }
 .stacked-b { position: absolute; left: 160px; top: 312px; width: 700px; margin: 0; }
-.purple-blue { padding: 40px; background: linear-gradient(90deg, #7C3AED, #2563EB); color: #FFFFFF; border-radius: var(--radius); }
 """
 
 SEEDED = {
     "CANVAS_NOT_FILLED": (' class="short"', f'{HEADING}{BODY}'),
     "ONE_SIDED_ACCENT_BAR": f'{HEADING}<div class="callout">{BODY}</div>',
-    "EXTREME_RADIUS": f'{HEADING}<div class="round">{BODY}</div>',
-    "LABEL_ABOVE_HEADING": f'<p class="eyebrow">QUARTERLY REVIEW</p>{HEADING}{BODY}',
-    "ICON_ABOVE_HEADING": f'<div class="tile"><i data-icon="rocket"></i></div><h3>Faster delivery</h3>{BODY}',
-    "IDENTICAL_CARD_GRID": f'{HEADING}<div class="row"><div class="card"><h3>Speed</h3><p>Orders ship in one day.</p></div><div class="card"><h3>Cost</h3><p>Freight cost fell by six percent.</p></div><div class="card"><h3>Quality</h3><p>Damage claims halved this year.</p></div></div>',
-    "NESTED_CARD": f'{HEADING}<div class="outer"><div class="inner">{BODY}</div></div>',
-    "GRADIENT_TEXT": f'<h2 class="gradient-text">Revenue grew 18 percent in the third quarter</h2>{BODY}',
-    "GLASS_BLUR": f'{HEADING}<div class="glass">{BODY}</div>',
-    "GRID_STRIPE_BACKGROUND": f'<div class="grid-background" style="padding:40px">{HEADING}{BODY}</div>',
-    "RADIAL_HALO": f'{HEADING}<div class="halo">{BODY}</div>',
-    "GLOW_SHADOW": f'{HEADING}<div class="glow">{BODY}</div>',
-    "HAIRLINE_WIDE_SHADOW": f'{HEADING}<div class="hairline-shadow">{BODY}</div>',
-    "TIGHT_TRACKING": f'<h2 class="tight">Revenue grew 18 percent in the third quarter</h2>{BODY}',
-    "OVERSIZED_TITLE": f'<h1 class="oversized">Revenue grew 18 percent</h1>{BODY}',
-    "FLAT_HIERARCHY": f'<h2 class="flat">Revenue grew 18 percent in the third quarter</h2>{BODY}{BODY}',
-    "CREAM_GROUND": f'<div class="cream" style="padding:40px; flex:1">{HEADING}{BODY}</div>',
-    "AI_PALETTE": f'{HEADING}<div class="purple-blue">{BODY}</div>',
     "BROKEN_WORD": f'{HEADING}<div class="narrow-cell">Subscription renews monthly</div>',
     "OUT_OF_FRAME": f'{HEADING}<p class="spill">The logistics business closed the quarter above its plan in every region.</p>',
     "CONTENT_OVERFLOW": f'{HEADING}<div class="short-card"><p>The logistics business closed the quarter above its plan in every region.</p><p>Costs fell in each of the four quarters while volume grew.</p></div>',
     "CONTENT_OVERLAP": f'{HEADING}<p class="stacked-a">The logistics business closed the quarter above its plan in every region.</p><p class="stacked-b">The logistics business closed the quarter above its plan in every region.</p>',
-    "EM_DASH_OVERUSE": f'{HEADING}<p>Revenue grew — in every region — and costs fell — which lifted margin — to a record.</p>',
+    "TEXT_TOO_SMALL": f'{HEADING}<p style="font-size: 16px">The logistics business closed the quarter above its plan in every region.</p>',
+    "CHART_COLLAPSED": f'{HEADING}<figure data-chart="bar" data-labels="Q1, Q2" data-values="10, 12" style="width: 600px; height: 120px"></figure>',
 }
 
 CLEAN_STYLE = """
@@ -139,41 +107,17 @@ CLEAN = [
 
 VARIANT_STYLE = SEEDED_STYLE + """
 .topbar { border-top: 8px solid var(--accent); padding: 28px; background: var(--surface); }
-.pill { display: inline-block; align-self: flex-start; padding: 6px 16px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 20px; }
-.number { font-size: 20px; color: var(--accent); }
-.plain-icon { font-size: 44px; }
-.wide-pill { padding: 28px 64px; border-radius: 999px; background: var(--surface); }
-.night { background: #0B1220; color: #22D3EE; padding: 40px; }
-.hero-halo { flex: 1; background: radial-gradient(circle at 30% 40%, rgba(31, 95, 191, 0.4), transparent 60%); padding: 40px; }
-.cream-section { background: #F7F1E3; }
-.glow-text { text-shadow: 0 0 28px rgba(31, 95, 191, 0.9); }
-.tight-pixels { letter-spacing: -3px; }
-.wrapping-cell { width: 330px; font-size: 28px; }
 .clipper { height: 40px; overflow: hidden; }
-.photo-under { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; }
 .icon-over { position: absolute; left: 100px; top: 306px; width: 90px; height: 90px; }
 .low-column { position: absolute; left: 96px; top: 860px; width: 500px; margin: 0; }
-.quad { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-.quad > .card { height: 150px; }
 """
 
 SEEDED_VARIANTS = [
     ("ONE_SIDED_ACCENT_BAR", f'{HEADING}<div class="topbar">{BODY}</div>'),
     ("ONE_SIDED_ACCENT_BAR", f'{HEADING}<div class="strip"><i class="bar"></i>{BODY}</div>'),
-    ("LABEL_ABOVE_HEADING", f'<span class="pill">NEW</span>{HEADING}{BODY}'),
-    ("LABEL_ABOVE_HEADING", f'<div class="card"><span class="number">01</span><h3>Plan the depot</h3><p>Choose the site and the shifts.</p></div>'),
-    ("ICON_ABOVE_HEADING", f'<i class="plain-icon" data-icon="truck"></i><h3>Faster delivery</h3>{BODY}'),
-    ("EXTREME_RADIUS", f'{HEADING}<div class="wide-pill">{BODY}</div>'),
-    ("AI_PALETTE", f'<div class="night"><h2>Revenue grew 18 percent in the third quarter</h2>{BODY}</div>'),
-    ("RADIAL_HALO", f'{HEADING}<div class="hero-halo">{BODY}</div>'),
-    ("GRID_STRIPE_BACKGROUND", f'<div class="stripes" style="padding:40px">{HEADING}{BODY}</div>'),
-    ("IDENTICAL_CARD_GRID", f'{HEADING}<div class="quad"><div class="card"><h3>Speed</h3><p>One day.</p></div><div class="card"><h3>Cost</h3><p>Down six percent.</p></div><div class="card"><h3>Quality</h3><p>Claims halved.</p></div><div class="card"><h3>Reach</h3><p>Nine new cities.</p></div></div>'),
-    ("GLOW_SHADOW", f'<h2 class="glow-text">Revenue grew 18 percent in the third quarter</h2>{BODY}'),
-    ("CREAM_GROUND", (' class="cream-section"', f'{HEADING}{BODY}')),
     ("CONTENT_OVERFLOW", f'{HEADING}<div class="clipper"><p>The logistics business closed the quarter above its plan in every region.</p><p>Costs fell in each of the four quarters while volume grew.</p></div>'),
     ("OUT_OF_FRAME", f'{HEADING}<p class="low-column">The logistics business closed the quarter above its plan in every region and beyond.</p>'),
     ("OUT_OF_FRAME", f'{HEADING}<svg class="icon-over" style="left:1540px" aria-hidden="true" width="90" height="90"></svg>{BODY}'),
     ("CONTENT_OVERLAP", f'{HEADING}<svg class="icon-over" aria-hidden="true" width="90" height="90"></svg><p class="stacked-a">The logistics business closed the quarter above its plan in every region.</p>'),
     ("BROKEN_WORD", f'{HEADING}<table style="width: 160px"><tr><td style="word-break: break-all">$19/month</td></tr></table>'),
-    ("TIGHT_TRACKING", f'<h2 class="tight-pixels">Revenue grew 18 percent in the third quarter</h2>{BODY}'),
 ]

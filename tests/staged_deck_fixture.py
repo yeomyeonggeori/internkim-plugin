@@ -142,5 +142,5 @@ def issue_codes(envelope: dict) -> set[str]:
     return {issue["code"] for issue in envelope.get("issues", [])}
 
 
-def issues_at(envelope: dict, location: str) -> set[str]:
+def codes_at(envelope: dict, location: str) -> set[str]:
     return {issue["code"] for issue in envelope.get("issues", []) if issue.get("location") == location}

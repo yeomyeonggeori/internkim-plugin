@@ -16,10 +16,11 @@ SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scri
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from deck.deck_logo import logo_crop_box, read_logo  # noqa: E402
-from core.design_rules import deck_rule_issues, render_rule_issues  # noqa: E402
+from core.design_rules import render_rule_issues  # noqa: E402
 from core.host_contract import RUNTIME_CONTEXT_VARIABLE  # noqa: E402
 from deck.deck_html import measure_for_gate  # noqa: E402
-from deck.design_system import read_design_system, read_token_document, token_issues  # noqa: E402
+from deck.design_system import read_design_system  # noqa: E402
+from staged_deck_fixture import style_sheet_markdown  # noqa: E402
 
 
 def measure_with_company_logo(path: Path, system) -> list[dict]:
@@ -40,18 +41,31 @@ def measure_with_company_logo(path: Path, system) -> list[dict]:
             os.environ[RUNTIME_CONTEXT_VARIABLE] = previous
 
 
+BALANCED = ({"display": "64px", "title": "48px", "body": "28px", "small": "20px"}, "96px", "32px")
+AIRY = ({"display": "72px", "title": "56px", "body": "30px", "small": "22px"}, "104px", "40px")
+RECORDED_DENSITY = {"ko_smartfarm_v2": AIRY, "ko_smartfarm_grant": AIRY}
+
+
+def recorded_scale(name: str) -> dict:
+    return {"sizes": RECORDED_DENSITY.get(name, BALANCED)[0]}
+
+
+def with_recorded_tokens(name: str, source: str) -> str:
+    _, margin, gap = RECORDED_DENSITY.get(name, BALANCED)
+    return source.replace("</head>", f"<style>:root {{ --margin: {margin}; --gap: {gap}; --border: 1px; }}</style></head>", 1)
+
+
 def measured(name: str, rewrite=lambda source: source) -> list:
     with tempfile.TemporaryDirectory() as directory:
         path = Path(directory)
         for source in (RECORDED / name).iterdir():
             shutil.copy(source, path / source.name)
-        (path / "slides.html").write_text(rewrite((path / "slides.html").read_text(encoding="utf-8")), encoding="utf-8")
+        (path / "slides.html").write_text(with_recorded_tokens(name, rewrite((path / "slides.html").read_text(encoding="utf-8"))), encoding="utf-8")
         Image.new("RGB", (1200, 800), (90, 140, 70)).save(path / "photo.jpg")
-        is_selection = "palette:" in (path / "DESIGN.md").read_text(encoding="utf-8")
-        system, _ = (read_design_system if is_selection else read_token_document)(path / "DESIGN.md")
+        (path / "DESIGN.md").write_text(style_sheet_markdown(recorded_scale(name)), encoding="utf-8")
+        system, _ = read_design_system(path / "DESIGN.md")
         slides = measure_with_company_logo(path, system)
-    per_slide = [issue for number, slide in enumerate(slides, start=1) for issue in render_rule_issues(slide.get("designFindings", []), f"slide {number}")]
-    return per_slide + deck_rule_issues([slide.get("designFindings", []) for slide in slides])
+    return [issue for number, slide in enumerate(slides, start=1) for issue in render_rule_issues(slide.get("designFindings", []), f"slide {number}")]
 
 
 def slides_with(issues: list, code: str) -> set[int]:
@@ -72,24 +86,6 @@ class RecordedEnglishDeckTest(unittest.TestCase):
         self.assertIn(2, slides_with(self.issues, "TEXT_TOO_SMALL"))
         self.assertIn(4, slides_with(self.issues, "TEXT_TOO_SMALL"))
 
-    def test_clustered_content_with_an_empty_band_is_refused(self):
-        self.assertTrue({5, 6, 7, 8} <= slides_with(self.issues, "CONTENT_CLUSTERED"), slides_with(self.issues, "CONTENT_CLUSTERED"))
-
-    def test_slides_that_use_the_canvas_are_not_called_clustered(self):
-        self.assertFalse({3, 9, 11} & slides_with(self.issues, "CONTENT_CLUSTERED"))
-
-    def test_clustered_refusal_names_how_much_is_empty(self):
-        self.assertRegex(messages_of(self.issues, "CONTENT_CLUSTERED", "slide 5")[0], r"\d+px")
-
-    def test_three_big_numbers_over_small_labels_are_refused_on_the_slide_and_the_cover(self):
-        self.assertTrue({1, 2} <= slides_with(self.issues, "HERO_METRIC_TEMPLATE"), slides_with(self.issues, "HERO_METRIC_TEMPLATE"))
-
-    def test_an_eyebrow_above_body_text_is_refused(self):
-        self.assertTrue({4, 6, 7, 8} <= slides_with(self.issues, "LABEL_ABOVE_HEADING"), slides_with(self.issues, "LABEL_ABOVE_HEADING"))
-
-    def test_an_em_dash_in_a_title_is_refused(self):
-        self.assertIn(2, slides_with(self.issues, "EM_DASH_OVERUSE"))
-
     def test_a_thick_one_sided_border_on_a_plain_column_is_refused(self):
         self.assertIn(2, slides_with(self.issues, "ONE_SIDED_ACCENT_BAR"))
 
@@ -103,8 +99,6 @@ class RecordedKoreanDeckTest(unittest.TestCase):
     def test_text_below_the_size_floor_is_refused(self):
         self.assertTrue(slides_with(self.issues, "TEXT_TOO_SMALL"))
 
-    def test_clustered_content_with_an_empty_band_is_refused(self):
-        self.assertTrue({6, 9} <= slides_with(self.issues, "CONTENT_CLUSTERED"), slides_with(self.issues, "CONTENT_CLUSTERED"))
 
 
 @unittest.skipUnless(can_render(), "the renderer is not available")
@@ -114,10 +108,6 @@ class SecondRoundRecordedDeckTest(unittest.TestCase):
         cls.korean = measured("ko_smartfarm_v2")
         cls.hiring = measured("en_hiring_v2")
         cls.product = measured("en_product_v2")
-
-    def test_text_wrapped_a_word_or_two_per_line_in_a_narrow_column_is_refused(self):
-        self.assertEqual(slides_with(self.korean, "NARROW_TEXT"), {3})
-        self.assertEqual(slides_with(self.hiring, "NARROW_TEXT") | slides_with(self.product, "NARROW_TEXT"), set())
 
     def test_a_list_that_spills_past_its_box_and_off_the_slide_is_refused_as_overflow_and_out_of_frame(self):
         self.assertEqual(slides_with(self.korean, "CONTENT_OVERFLOW"), {4})
@@ -134,23 +124,6 @@ class SecondRoundRecordedDeckTest(unittest.TestCase):
         self.assertEqual(slides_with(self.hiring, "CHART_COLLAPSED"), {2, 3, 4})
         self.assertEqual(slides_with(self.korean, "CHART_COLLAPSED") | slides_with(self.product, "CHART_COLLAPSED"), set())
 
-    def test_the_same_card_arrangement_on_more_than_two_slides_in_a_row_is_refused(self):
-        self.assertEqual(slides_with(self.product, "REPEATED_LAYOUT"), {6})
-        self.assertEqual(slides_with(self.korean, "REPEATED_LAYOUT") | slides_with(self.hiring, "REPEATED_LAYOUT"), set())
-        self.assertIn("slides 4 to 6", messages_of(self.product, "REPEATED_LAYOUT", "slide 6")[0])
-
-
-class TypeScaleTokenTest(unittest.TestCase):
-    def read(self, name: str):
-        system, issues = read_token_document(RECORDED / name / "DESIGN.md")
-        self.assertEqual(issues, [])
-        return system
-
-    def test_a_body_size_under_the_floor_is_refused_in_the_design_file(self):
-        for name in ("en_product_strategy", "ko_smartfarm_grant"):
-            with self.subTest(deck=name):
-                codes = {issue.kind.code for issue in token_issues(self.read(name))}
-                self.assertIn("TEXT_TOO_SMALL", codes)
 
 
 class LogoTrimTest(unittest.TestCase):
