@@ -46,14 +46,14 @@ class WrittenClaimsTest(unittest.TestCase):
         ])
 
     def test_a_paragraph_is_one_claim_per_sentence(self):
-        claims = written_claims(load_schema("report"), POSTMORTEM)
+        claims = written_claims(load_schema("intl/report"), POSTMORTEM)
         paragraph = [claim for claim in claims if claim["path"].startswith("sections[0].blocks[0].text")]
         self.assertEqual([claim["path"] for claim in paragraph], ["sections[0].blocks[0].text#0", "sections[0].blocks[0].text#1"])
         self.assertEqual(paragraph[1]["text"], "The pool ran out at 14:12.")
         self.assertIn("Root Cause", paragraph[1]["at"])
 
     def test_a_cell_is_a_claim_only_when_its_column_or_field_is_text(self):
-        texts = claim_texts(written_claims(load_schema("report"), POSTMORTEM))
+        texts = claim_texts(written_claims(load_schema("intl/report"), POSTMORTEM))
         self.assertIn("Alert fired", texts)
         self.assertIn("checkout", texts)
         self.assertNotIn("2026-09-30 14:02", texts)
@@ -61,12 +61,12 @@ class WrittenClaimsTest(unittest.TestCase):
         self.assertIn("Failed checkouts", texts)
 
     def test_a_choice_such_as_a_block_kind_is_not_a_claim(self):
-        texts = claim_texts(written_claims(load_schema("report"), POSTMORTEM))
+        texts = claim_texts(written_claims(load_schema("intl/report"), POSTMORTEM))
         self.assertNotIn("paragraph", texts)
         self.assertNotIn("en", texts)
 
     def test_an_item_carries_its_text_and_owner(self):
-        texts = claim_texts(written_claims(load_schema("report"), POSTMORTEM))
+        texts = claim_texts(written_claims(load_schema("intl/report"), POSTMORTEM))
         self.assertIn("Add a connection-pool alert", texts)
         self.assertIn("Jordan Example", texts)
 

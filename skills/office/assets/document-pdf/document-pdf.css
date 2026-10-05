@@ -19,3 +19,26 @@ blockquote { margin: space(6pt) 0 space(10pt); padding: 6pt 10pt; border: 1px so
 img { margin: space(4pt) 0 space(8pt); }
 hr { border: 0; border-top: 1px solid #8c959f; margin: space(10pt) 0; }
 .equation { text-align: center; margin: space(6pt) 0 space(10pt); }
+.letterhead { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: space(6pt); border-bottom: 1.2pt solid #374151; margin-bottom: space(18pt); }
+.letterhead .logo { height: 30pt; }
+.letterhead .company { display: flex; flex-direction: column; align-items: flex-end; text-align: right; margin-left: auto; }
+.letterhead .name { font-size: type(13pt); font-weight: 700; margin: 0; color: #111418; }
+.letterhead .detail { font-size: type(8.5pt); color: #6a7280; line-height: 1.45; margin: 0; }
+.lift-letter { height: calc(var(--lift) * 0.5); }
+.memo { border-top: 0.6pt solid #9ca3af; margin: 0 0 space(16pt); }
+.memo .row { display: flex; border-bottom: 0.6pt solid #9ca3af; }
+.memo .label { width: 54pt; flex-shrink: 0; padding: space(6pt) 6pt; background: #f3f4f6; font-weight: 700; text-align: center; }
+.memo .value { flex-grow: 1; padding: space(6pt) 8pt; }
+.memo .subject { font-weight: 700; }
+.letter-closing { margin-top: calc(space(28pt) + var(--lift) * 0.5); display: flex; flex-direction: column; align-items: flex-end; text-align: right; break-inside: avoid; }
+.letter-closing p { margin: 0 0 space(2pt); }
+.letter-closing .signer { display: flex; align-items: center; font-size: type(12pt); font-weight: 700; }
+.letter-closing .seal-mark { margin-left: 6pt; }
+.letter-closing .seal { width: 40pt; height: 40pt; }
+.address { margin: 0 0 space(14pt); }
+.address p { margin: 0 0 space(2pt); }
+.address .dateline { margin-bottom: space(14pt); }
+.address .inside { margin-bottom: space(14pt); }
+.address .subject-line { font-weight: 700; margin-bottom: space(10pt); }
+.letter-closing.left { align-items: flex-start; text-align: left; }
+.letter-closing .signature-space { height: space(30pt); }

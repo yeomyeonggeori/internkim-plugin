@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from decimal import Decimal
+import json
+from pathlib import Path
 
 from core.office_result import INVALID_VALUE, OfficeFailure
 from schemas.resolution import Instance, render_template
@@ -8,8 +10,8 @@ from schemas.typed_values import BLANK, NUMBER_TYPES, format_value, grouped, num
 
 
 WORDS = {
-    "ko": {"total": "합계", "item": "항목", "detail": "내용", "owner": "담당", "due": "기한", "recipient": "수신", "sender": "발신", "date": "일자"},
-    "en": {"total": "Total", "item": "Item", "detail": "Detail", "owner": "Owner", "due": "Due", "recipient": "To", "sender": "From", "date": "Date"},
+    "ko": {"total": "합계", "item": "항목", "detail": "내용", "owner": "담당", "due": "기한", "recipient": "수신", "sender": "발신", "date": "일자", "sealMark": "(인)"},
+    "en": {"total": "Total", "item": "Item", "detail": "Detail", "owner": "Owner", "due": "Due", "recipient": "To", "sender": "From", "date": "Date", "sealMark": ""},
 }
 ITEM_DETAILS = ("date", "owner", "due", "quantity", "amount", "percent", "status")
 BLANK_WHEN_NULL = ("owner", "due")
@@ -36,7 +38,8 @@ class MarkdownDocument:
     def render(self) -> "MarkdownDocument":
         layout = self.instance.schema.layout
         for part in layout.get("parts", []):
-            getattr(self, f"part_{part['type']}")(part)
+            if part.get("for", self.language) == self.language:
+                getattr(self, f"part_{part['type']}")(part)
         return self
 
     def template(self, template, row: dict | None = None) -> str | None:
@@ -45,6 +48,46 @@ class MarkdownDocument:
     def part_lines(self, part: dict) -> None:
         rendered = [self.template(line) for line in part["lines"]]
         self.add(*[f"{line}  " for line in rendered if line is not None], "")
+
+    def fence(self, kind: str, data: dict) -> None:
+        self.add(f"```{kind}", json.dumps(data, ensure_ascii=False), "```", "")
+
+    def company_image(self, field: str) -> str | None:
+        path = (self.instance.known.get("company") or {}).get(field)
+        return str(path) if path and Path(str(path)).is_file() else None
+
+    def part_letterhead(self, part: dict) -> None:
+        details = [self.template(line) for line in part["details"]]
+        self.fence("letterhead", {"name": self.template(part["name"]) or "", "details": [line for line in details if line is not None], "logo": self.company_image("logoPath")})
+
+    def part_memo(self, part: dict) -> None:
+        rows = [[localized(row["label"], self.language), self.template(row["value"]), bool(row.get("emphasis"))] for row in part["rows"]]
+        self.fence("memo", {"rows": [row for row in rows if row[1] is not None]})
+
+    def part_address(self, part: dict) -> None:
+        lines = [self.template(line) for line in part["lines"]]
+        subject = self.template(part["subject"])
+        self.fence("letter-address", {
+            "date": self.template(part["date"]),
+            "lines": [line for line in lines if line is not None],
+            "subject": f"{part['subjectLabel']} {subject}" if subject is not None else None,
+            "salutation": self.template(part["salutation"]),
+        })
+
+    def part_closing(self, part: dict) -> None:
+        lines = [self.template(line) for line in part["lines"]]
+        self.fence("letter-closing", {"complimentary": part.get("complimentary", ""), "align": part.get("align", "right"), "lines": [line for line in lines if line is not None],
+                                      "seal": self.company_image("stampPath"), "sealMark": self.words["sealMark"] if part.get("align", "right") == "right" else ""})
+
+    def part_enclosures(self, part: dict) -> None:
+        names = [name for name in self.instance.given.get(part["field"]) or [] if name]
+        if not names:
+            return
+        label = localized(part["label"], self.language)
+        self.add(f"**{label}** " + "  ".join(f"{number}. {name}" for number, name in enumerate(names, start=1)) if self.language == "ko" else f"**{label}** " + "; ".join(names), "")
+
+    def part_endmark(self, part: dict) -> None:
+        self.add(localized(part["text"], self.language), "")
 
     def part_heading(self, part: dict) -> None:
         heading = self.template(part["text"])

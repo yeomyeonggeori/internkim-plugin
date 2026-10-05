@@ -42,10 +42,10 @@ def skill_body(page_height: float) -> Body:
     return Body(BODY_TOP_MARGIN_MILLIMETERS * POINTS_PER_MILLIMETRE, page_height - BODY_BOTTOM_MARGIN_MILLIMETERS * POINTS_PER_MILLIMETRE)
 
 
-def measure_pdf(path: Path, body: Body | None = None) -> list[PageMeasure]:
+def measure_pdf(path: Path, body: Body | None = None, password: str | None = None) -> list[PageMeasure]:
     import pypdfium2
 
-    document = pypdfium2.PdfDocument(str(path))
+    document = pypdfium2.PdfDocument(str(path), password=password)
     try:
         return [measure_page(page, number, body) for number, page in enumerate(document, start=1)]
     finally:

@@ -31,8 +31,12 @@ class Rhythm:
     def inset_millimeters(self) -> float:
         return GROW_INSET_MILLIMETERS * max(self.airiness, 0.0)
 
-    def lifted(self, html: str) -> str:
-        return f'<div class="lift"></div>{html}' if self.lift_points else html
+    def lifted(self, parts: list[str]) -> list[str]:
+        if not self.lift_points:
+            return parts
+        anchor = 1 if parts and parts[0].startswith('<header class="letterhead"') else 0
+        spacer = '<div class="lift lift-letter"></div>' if anchor else '<div class="lift"></div>'
+        return [*parts[:anchor], spacer, *parts[anchor:]]
 
     def css(self, stylesheet: str) -> str:
         scaled = LEADING_FUNCTION.sub(r"calc(\1 * var(--leading))", TYPE_FUNCTION.sub(r"calc(\1 * var(--type))", SPACE_FUNCTION.sub(r"calc(\1 * var(--space))", stylesheet)))

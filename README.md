@@ -115,7 +115,14 @@ as the directory holding that `SKILL.md`. Nothing here names a host layout.
 ```bash
 skills-ref validate skills/<name>
 python3 -m unittest discover -s tests
+skills/office/scripts/.venv/bin/python tests/run_parallel.py   # one process per test module
 ```
+
+`tests/run_parallel.py` runs each `tests/test_*.py` module in its own process,
+three at a time by default (a quarter of the cores; `--jobs N` overrides, and
+module names select a subset), prints one line per module and the tail of each
+failing module, and exits non-zero if any module failed. Every test renders, so
+keep `--jobs` low on a shared machine.
 
 Every skill passes the [Agent Skills](https://agentskills.io/specification)
 reference validator. The unit tests hold the bundle to what it promises above:

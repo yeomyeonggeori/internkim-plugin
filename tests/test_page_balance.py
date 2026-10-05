@@ -55,7 +55,7 @@ def report_values(language: str, paragraph_count: int, item_count: int = 0) -> d
 
 def letter_values(language: str, paragraph_count: int) -> dict:
     sentence = "당사는 11월 2일부터 새 사무실에서 업무를 시작합니다." if language == "ko" else "We open our new office on November 2."
-    return {"language": language, "recipient": "예시유통 주식회사" if language == "ko" else "Example Imports LLC", "title": "안내" if language == "ko" else "Notice", "sections": [{"heading": None, "blocks": [{"type": "paragraph", "text": sentence} for _ in range(paragraph_count)]}]}
+    return {"language": language, "recipient": "예시유통 주식회사" if language == "ko" else "Example Imports LLC", "title": "안내" if language == "ko" else "Notice", **({} if language == "ko" else {"salutation": "Dear Sir or Madam,"}), "sections": [{"heading": None, "blocks": [{"type": "paragraph", "text": sentence} for _ in range(paragraph_count)]}]}
 
 
 def quote_values(row_count: int) -> dict:
@@ -138,10 +138,10 @@ class RenderedBalanceTest(unittest.TestCase):
 
     def test_short_documents_are_set_in_the_page(self):
         cases = {
-            "korean report, one paragraph": ("report", report_values("ko", 1)),
-            "english report, two paragraphs and items": ("report", report_values("en", 2, 3)),
-            "korean notice letter": ("letter", letter_values("ko", 1)),
-            "english letter, two paragraphs": ("letter", letter_values("en", 2)),
+            "korean report, one paragraph": ("intl/report", report_values("ko", 1)),
+            "english report, two paragraphs and items": ("intl/report", report_values("en", 2, 3)),
+            "korean notice letter": ("intl/letter", letter_values("ko", 1)),
+            "english letter, two paragraphs": ("intl/letter", letter_values("en", 2)),
             "quote, one row": ("kr/quote", quote_values(1)),
             "quote, three rows": ("kr/quote", quote_values(3)),
             "minutes, one action": ("kr/meeting-minutes", minutes_values(1)),
@@ -152,11 +152,39 @@ class RenderedBalanceTest(unittest.TestCase):
                 self.assertEqual(len(details["pageFill"]), 1)
                 self.assertGreaterEqual(details["pageFill"][0], 0.55, details["pageFill"])
 
+    def test_letters_of_every_length_look_finished(self):
+        for language in ("ko", "en"):
+            sentence = "당사는 11월 2일부터 새 사무실에서 업무를 시작하며 자세한 안내는 별도로 드립니다. " if language == "ko" else "We open our new office on November 2 and will send the details separately. "
+            for label, paragraphs, repeat in (("one line", 1, 0), ("one paragraph", 1, 2), ("three paragraphs", 3, 3), ("two pages", 12, 6)):
+                with self.subTest(language=language, length=label):
+                    text = "이사 안내입니다." if (language == "ko" and repeat == 0) else sentence * max(repeat, 1)
+                    values = letter_values(language, 0) | {"sections": [{"heading": None, "blocks": [{"type": "paragraph", "text": text} for _ in range(paragraphs)]}]}
+                    details = self.checked("intl/letter", values)["details"]
+                    if len(details["pageFill"]) == 1:
+                        self.assertGreaterEqual(details["pageFill"][0], 0.55, details["pageFill"])
+                    else:
+                        self.assertGreater(details["lastPageFill"], 0.15, details["pageFill"])
+
+    def test_a_korean_letter_ends_with_the_end_mark_and_the_sender_seal_mark(self):
+        self.checked("intl/letter", letter_values("ko", 1))
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "read", "out.pdf"], cwd=self.directory, capture_output=True, text=True, check=True)
+        text = json.loads(completed.stdout)["details"]["pages"][0]["text"]
+        self.assertIn("끝.", text)
+        self.assertIn("(인)", text)
+
+    def test_an_english_letter_has_a_salutation_and_a_complimentary_close(self):
+        self.checked("intl/letter", letter_values("en", 1))
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "read", "out.pdf"], cwd=self.directory, capture_output=True, text=True, check=True)
+        text = json.loads(completed.stdout)["details"]["pages"][0]["text"]
+        self.assertIn("Dear Sir or Madam,", text)
+        self.assertIn("Sincerely,", text)
+        self.assertNotIn("(인)", text)
+
     def test_a_small_overflow_never_leaves_a_near_empty_last_page(self):
         for language, counts in (("ko", range(12, 21)), ("en", range(12, 21))):
             for paragraph_count in counts:
                 with self.subTest(language=language, paragraphs=paragraph_count):
-                    details = self.checked("report", report_values(language, paragraph_count, 3))["details"]
+                    details = self.checked("intl/report", report_values(language, paragraph_count, 3))["details"]
                     self.assertGreaterEqual(details["lastPageFill"], 0.3 if len(details["pageFill"]) > 1 else 0.0)
                     self.assertGreater(details["lastPageFill"], 0.15)
 
@@ -176,7 +204,7 @@ class RenderedBalanceTest(unittest.TestCase):
 
     def test_the_check_reports_a_last_page_the_layout_did_not_balance(self):
         subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", FORCED_ORPHAN, "orphan.pdf", "34"], cwd=self.directory, check=True)
-        (self.directory / "orphan.pdf.source.json").write_text(json.dumps({"schema": "report"}), encoding="utf-8")
+        (self.directory / "orphan.pdf.source.json").write_text(json.dumps({"schema": "intl/report"}), encoding="utf-8")
         checked = run_office(["check", "orphan.pdf"], self.directory)
         pages = checked["details"]["pageFill"]
         if len(pages) > 1 and pages[-1] < 0.15:
@@ -190,12 +218,27 @@ class RenderedBalanceTest(unittest.TestCase):
         self.assertNotIn("LAST_PAGE_SPARSE", [issue["code"] for issue in checked["issues"]])
 
     def test_word_documents_are_balanced_by_the_same_rules(self):
-        short = self.checked("report", report_values("ko", 1), "short.docx")
+        short = self.checked("intl/report", report_values("ko", 1), "short.docx")
         self.assertGreaterEqual(short["details"]["pageFill"][0], 0.55)
         for paragraph_count in (14, 15, 16, 17):
             with self.subTest(paragraphs=paragraph_count):
-                details = self.checked("report", report_values("en", paragraph_count, 3), "long.docx")["details"]
+                details = self.checked("intl/report", report_values("en", paragraph_count, 3), "long.docx")["details"]
                 self.assertGreater(details["lastPageFill"], 0.15)
+
+
+class SchemaLocationTest(unittest.TestCase):
+    def test_every_bundled_schema_sits_in_a_country_folder_or_intl(self):
+        schemas = Path(__file__).resolve().parents[1] / "skills" / "office" / "assets" / "schemas"
+        misplaced = [str(path.relative_to(schemas)) for path in schemas.rglob("*.schema.json") if path.parent == schemas or not (path.parent.name == "intl" or (len(path.parent.name) == 2 and path.parent.name.isalpha() and path.parent.name.islower()))]
+        self.assertEqual(misplaced, [])
+
+    def test_the_universal_letter_and_report_choose_their_form_by_a_language_field(self):
+        schemas = Path(__file__).resolve().parents[1] / "skills" / "office" / "assets" / "schemas"
+        for kind in ("letter", "report"):
+            with self.subTest(kind):
+                document = json.loads((schemas / "intl" / f"{kind}.schema.json").read_text(encoding="utf-8"))
+                self.assertEqual(document["name"], f"intl/{kind}")
+                self.assertIn("language", [field["name"] for field in document["fields"]])
 
 
 class StylingTest(unittest.TestCase):

@@ -36,7 +36,7 @@ def main() -> Result:
     korean_fonts: list = []
     extracted_text = "\n".join(page_text(page, korean_fonts) for page in reader.pages)
     font_summary = summarize_fonts(reader)
-    pages = measure_pdf(source_path)
+    pages = measure_pdf(source_path, password=arguments.password)
     issues = (
         layer_issues(reader, extracted_text, arguments)
         + text_presence_issues(extracted_text, arguments.required_text, arguments.forbidden_text)

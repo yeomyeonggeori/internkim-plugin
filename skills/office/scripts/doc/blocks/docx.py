@@ -18,7 +18,7 @@ from doc.model.lists import add_list_paragraph, start_list
 from doc.model.charts import add_chart_part, drawing_run, next_drawing_id, specification
 from doc.blocks.charts import Chart
 from doc.blocks.latex_math import OMML_NAMESPACE, LatexNotReadable, latex_omml
-from doc.blocks.markdown import CodeBlock, Equation, Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, inline_segments, link_parts, local_image_problem, math_latex
+from doc.blocks.markdown import CodeBlock, Equation, Heading, Image, LetterPart, ListItem, Paragraph, Quote, Table, ThematicBreak, inline_segments, link_parts, local_image_problem, math_latex
 from core.office_result import Issue
 from core.office_theme import HYPERLINK_COLOR
 
@@ -44,11 +44,14 @@ def markdown_document(blocks: list, font_name: str, font_size: float, source_dir
     apply_rhythm(document, rhythm)
     issues = []
     list_ids: dict[bool, int] = {}
+    lift_index = 0
     for block in blocks:
         if not isinstance(block, ListItem):
             list_ids.clear()
         issues.extend(add_block(document, block, source_directory, list_ids, rhythm))
-    lift_first_paragraph(document, rhythm)
+        if isinstance(block, LetterPart) and block.kind == "letterhead":
+            lift_index = len(document.paragraphs)
+    lift_paragraph(document, rhythm, lift_index)
     return document, issues
 
 
@@ -72,10 +75,10 @@ def scale_heading_style(style, rhythm: Rhythm) -> None:
         style.font.size = Pt(style.font.size.pt * rhythm.type)
 
 
-def lift_first_paragraph(document: Document, rhythm: Rhythm) -> None:
-    if not rhythm.lift_points or not document.paragraphs:
+def lift_paragraph(document: Document, rhythm: Rhythm, index: int) -> None:
+    if not rhythm.lift_points or index >= len(document.paragraphs):
         return
-    first = document.paragraphs[0]
+    first = document.paragraphs[index]
     inherited = first.style.paragraph_format.space_before
     first.paragraph_format.space_before = Pt((inherited.pt if inherited is not None else 0) + rhythm.lift_points)
 
@@ -87,7 +90,9 @@ def set_base_font(document: Document, font_name: str, font_size: float) -> None:
 
 
 def add_block(document: Document, block, source_directory: Path, list_ids: dict[bool, int], rhythm: Rhythm = Rhythm()) -> list[Issue]:
-    if isinstance(block, Heading):
+    if isinstance(block, LetterPart):
+        add_letter_part(document, block)
+    elif isinstance(block, Heading):
         document.add_heading(block.text, level=block.level)
     elif isinstance(block, Table):
         add_table(document, block.rows, block.alignments, rhythm.space)
@@ -250,3 +255,80 @@ def add_image(document: Document, image: Image, source_directory: Path) -> list[
 def unavailable_image(document: Document, image: Image, reason: str) -> Issue:
     document.add_paragraph().add_run(image.alt or image.source).italic = True
     return IMAGE_UNAVAILABLE.issue(f"image {image.source} {reason}; wrote its alt text instead", image.source)
+
+
+LETTER_LABEL_WIDTH = Pt(44)
+LETTER_DETAIL_POINTS = 8.5
+LETTER_NAME_POINTS = 13
+LETTER_LOGO_HEIGHT = Pt(28)
+
+
+def add_letter_part(document: Document, part: LetterPart) -> None:
+    {"letterhead": add_letterhead, "memo": add_letter_meta, "letter-address": add_letter_address, "letter-closing": add_letter_closing}[part.kind](document, part.data)
+
+
+def add_letterhead(document: Document, data: dict) -> None:
+    if data.get("logo"):
+        document.add_paragraph().add_run().add_picture(data["logo"], height=LETTER_LOGO_HEIGHT)
+    name = document.add_paragraph()
+    name.alignment = ALIGNMENTS["right"]
+    name.paragraph_format.space_after = Pt(0)
+    run = name.add_run(data.get("name", ""))
+    run.bold = True
+    run.font.size = Pt(LETTER_NAME_POINTS)
+    last = name
+    for line in data.get("details", []):
+        last = document.add_paragraph()
+        last.alignment = ALIGNMENTS["right"]
+        last.paragraph_format.space_after = Pt(0)
+        last.add_run(line).font.size = Pt(LETTER_DETAIL_POINTS)
+    underline(last)
+
+
+def underline(paragraph) -> None:
+    border = OxmlElement("w:bottom")
+    for name, value in (("w:val", "single"), ("w:sz", "8"), ("w:space", "4"), ("w:color", RULE_COLOR)):
+        border.set(qn(name), value)
+    borders = OxmlElement("w:pBdr")
+    borders.append(border)
+    paragraph._p.get_or_add_pPr().append(borders)
+    paragraph.paragraph_format.space_after = Pt(14)
+
+
+def add_letter_meta(document: Document, data: dict) -> None:
+    for label, value, *flags in data.get("rows", []):
+        paragraph = document.add_paragraph()
+        paragraph.paragraph_format.left_indent = LETTER_LABEL_WIDTH
+        paragraph.paragraph_format.first_line_indent = -LETTER_LABEL_WIDTH
+        paragraph.paragraph_format.tab_stops.add_tab_stop(LETTER_LABEL_WIDTH)
+        paragraph.paragraph_format.space_after = Pt(3)
+        paragraph.add_run(f"{label}\t").bold = True
+        paragraph.add_run(value).bold = bool(flags and flags[0])
+    underline(paragraph)
+
+
+def add_letter_address(document: Document, data: dict) -> None:
+    for line in (data.get("date"), *data.get("lines", []), data.get("subject"), data.get("salutation")):
+        if line:
+            paragraph = document.add_paragraph(line)
+            paragraph.paragraph_format.space_after = Pt(4)
+            paragraph.runs[0].bold = line == data.get("subject")
+
+
+def add_letter_closing(document: Document, data: dict) -> None:
+    lines = [data["complimentary"], "", *data.get("lines", [])] if data.get("complimentary") else data.get("lines", [])
+    alignment = ALIGNMENTS["left" if data.get("align") == "left" else "right"]
+    for position, line in enumerate(lines):
+        paragraph = document.add_paragraph()
+        paragraph.alignment = alignment
+        paragraph.paragraph_format.keep_with_next = position < len(lines) - 1
+        if position == 0:
+            paragraph.paragraph_format.space_before = Pt(24)
+        run = paragraph.add_run(line)
+        run.bold = position == len(lines) - 1
+    if lines:
+        signer = paragraph
+        if data.get("seal"):
+            signer.add_run("  ").add_picture(data["seal"], height=Pt(30))
+        elif data.get("sealMark"):
+            signer.add_run(f"  {data['sealMark']}").bold = True

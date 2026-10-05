@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import json
 import re
 
 from doc.blocks.charts import FENCE, parse_chart_fence
@@ -13,6 +14,7 @@ THEMATIC_BREAK_PATTERN = re.compile(r"^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$")
 IMAGE_LINE_PATTERN = re.compile(r"^\s*!\[([^\]]*)\]\(([^)\s]+)\)\s*$")
 LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
 CHART_FENCE_OPENING = f"{FENCE}chart"
+LETTER_PART_KINDS = ("letterhead", "memo", "letter-address", "letter-closing")
 INLINE_MATH = r"\$(?=[^\s$])(?:\\.|[^$\\\n])+?(?<=[^\s\\])\$(?!\d)"
 INLINE_PATTERN = re.compile(rf"({INLINE_MATH}|\[[^\]]+\]\([^)\s]+\)|\*\*.+?\*\*|\*.+?\*|`.+?`)")
 INLINE_MATH_PATTERN = re.compile(INLINE_MATH)
@@ -71,6 +73,17 @@ class CodeBlock:
 
 
 @dataclass(frozen=True)
+class LetterPart:
+    kind: str
+    data: dict
+
+    @property
+    def text(self) -> str:
+        values = [self.data.get("name", ""), *self.data.get("details", []), *(f"{row[0]} {row[1]}" for row in self.data.get("rows", [])), self.data.get("date"), *self.data.get("lines", []), self.data.get("subject"), self.data.get("salutation"), self.data.get("complimentary")]
+        return "\n".join(value for value in values if value)
+
+
+@dataclass(frozen=True)
 class Equation:
     latex: str
 
@@ -92,6 +105,10 @@ def parse_markdown(markdown_text: str) -> list:
             continue
         if stripped.lower() == CHART_FENCE_OPENING:
             block, index = chart_block(lines, index)
+            blocks.append(block)
+            continue
+        if stripped.lower() in tuple(f"{FENCE}{kind}" for kind in LETTER_PART_KINDS):
+            block, index = letter_part(lines, index)
             blocks.append(block)
             continue
         if stripped.startswith(FENCE):
@@ -122,6 +139,11 @@ def equation_block(lines: list[str], index: int):
     end = next((position for position in range(index + 1, len(lines)) if lines[position].strip().endswith(DISPLAY_MATH_FENCE)), len(lines) - 1)
     body = [stripped[len(DISPLAY_MATH_FENCE):], *(line.strip() for line in lines[index + 1:end]), lines[end].strip().removesuffix(DISPLAY_MATH_FENCE) if end > index else ""]
     return Equation(" ".join(part for part in body if part).strip()), end + 1
+
+
+def letter_part(lines: list[str], index: int):
+    end = next((position for position in range(index + 1, len(lines)) if lines[position].strip() == FENCE), len(lines))
+    return LetterPart(lines[index].strip()[len(FENCE):].lower(), json.loads("".join(lines[index + 1:end]) or "{}")), end + 1
 
 
 def chart_block(lines: list[str], index: int):

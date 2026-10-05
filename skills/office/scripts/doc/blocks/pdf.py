@@ -105,7 +105,7 @@ def render_keeping_headings_with_their_text(blocks: list, output_path: Path, tit
 
 def render_request(blocks: list, output_path: Path, title: str, fonts: list[FontFile], layout: PageLayout, rhythm: Rhythm, headings_on_new_page: frozenset[int] = frozenset()) -> DocumentPdfRequest:
     return DocumentPdfRequest(
-        html=rhythm.lifted("\n".join(html_blocks(blocks, fonts[0].family, headings_on_new_page))),
+        html="\n".join(rhythm.lifted(html_blocks(blocks, fonts[0].family, headings_on_new_page))),
         css=rhythm.css(CSS_PATH.read_text(encoding="utf-8")),
         output_path=output_path,
         title=title,
