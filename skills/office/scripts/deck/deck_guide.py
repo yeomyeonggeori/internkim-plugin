@@ -12,6 +12,7 @@ IMAGERY_WORK = {
 }
 AVOID_LIST = (
     "text under 28px (body) or 20px (captions); an empty band over a fifth of the slide height",
+    "a part drawn outside the slide, content spilling out of the box that holds it, two parts drawn over each other (a background photo is the one overlap allowed)",
     "eyebrows, badges or small caps labels above text; icon tiles above headings; a big number over a small label as a slide's design",
     "one-sided accent bars including a left or right rule, nested cards, grids of identical cards",
     "gradients, glass blur, glows, wide shadows, radius past 24px, oversized or italic serif headlines, tight letter-spacing",

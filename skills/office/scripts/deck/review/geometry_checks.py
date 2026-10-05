@@ -5,7 +5,7 @@ import json
 import pathlib
 
 from deck.deck_definitions import CHART_UNDERFILLED, DRAWING_DISTORTED, GRID_MISALIGNED, IMAGE_LOW_RESOLUTION, LABEL_TOO_LONG, REPEATED_FIGURE, TEXT_COVERED, TEXT_LOW_CONTRAST, TINY_TEXT, TITLE_TOO_LONG
-from powerpoint.definitions import CONTENT_OVERFLOW, IMAGE_DISTORTED, OUT_OF_FRAME, TEXT_OVERLAP
+from powerpoint.definitions import IMAGE_DISTORTED
 from deck.layout_thresholds import LABEL_LINE_MAXIMUM, SMALLEST_TEXT_SHARE_OF_WIDTH, TITLE_LINE_MAXIMUM
 from core.office_result import Issue
 
@@ -68,22 +68,6 @@ def element_label(element: dict[str, object]) -> str:
     return f"{element['selector']} \"{text}\"" if text else str(element["selector"])
 
 
-def describe_overflow(finding: dict[str, object]) -> str:
-    return (
-        f"{element_label(finding)} needs {finding['scrollWidth']}x{finding['scrollHeight']}px "
-        f"in a {finding['clientWidth']}x{finding['clientHeight']}px box"
-    )
-
-
-def describe_out_of_frame(finding: dict[str, object]) -> str:
-    rect = finding["rect"]
-    return f"{element_label(finding)} spans x {rect['left']}-{rect['right']}, y {rect['top']}-{rect['bottom']} on the page"
-
-
-def describe_overlap(finding: dict[str, object]) -> str:
-    return f"{element_label(finding['first'])} and {element_label(finding['second'])} overlap by {finding['ratio']:.0%} of the smaller text"
-
-
 def describe_covered_text(finding: dict[str, object]) -> str:
     return f"{element_label(finding['text'])} lies {finding['ratio']:.0%} under {element_label(finding['box'])}"
 
@@ -135,9 +119,6 @@ def describe_misaligned(finding: dict[str, object]) -> str:
 
 
 GEOMETRY_FINDINGS = (
-    (CONTENT_OVERFLOW, "overflow", describe_overflow, "{count} elements hold more than their box shows"),
-    (OUT_OF_FRAME, "outOfFrame", describe_out_of_frame, "{count} elements lie outside the slide"),
-    (TEXT_OVERLAP, "overlaps", describe_overlap, "{count} pairs of text overlap"),
     (TEXT_COVERED, "coveredText", describe_covered_text, "{count} text elements are hidden under a box drawn over them"),
     (TITLE_TOO_LONG, "longTitles", describe_long_title, f"{{count}} titles run past {TITLE_LINE_MAXIMUM} lines"),
     (LABEL_TOO_LONG, "longLabels", describe_long_label, f"{{count}} labels run past {LABEL_LINE_MAXIMUM} lines"),

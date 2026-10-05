@@ -13,12 +13,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from deck.review.acceptance import FIX_ROUNDS_ALLOWED, judge_build  # noqa: E402
 from deck.deck_definitions import MISSING_SPEAKER_NOTES  # noqa: E402
-from powerpoint.definitions import TEXT_OVERLAP  # noqa: E402
+from core.design_rules import DESIGN_RULE_KINDS  # noqa: E402
 from design_gate_fixture import design_markdown  # noqa: E402
 from render_fixture import bare_environment, can_render  # noqa: E402
 
 
-OVERLAP = TEXT_OVERLAP.issue("two text blocks cover each other", "slide 3")
+OVERLAP = DESIGN_RULE_KINDS["CONTENT_OVERLAP"].issue("two text blocks cover each other", "slide 3")
 NO_NOTES = MISSING_SPEAKER_NOTES.issue("slide 8 has no speaker notes", "slide 8")
 
 
@@ -38,7 +38,7 @@ class AcceptanceTest(unittest.TestCase):
             acceptance = self.judge(Path(directory), "<section>a</section>", [OVERLAP, NO_NOTES])
         self.assertFalse(acceptance.acceptable)
         self.assertTrue(acceptance.verdict.startswith(f"FIX ROUND 1 OF {FIX_ROUNDS_ALLOWED}"))
-        self.assertIn("TEXT_OVERLAP on slide 3", acceptance.verdict)
+        self.assertIn("CONTENT_OVERLAP on slide 3", acceptance.verdict)
         self.assertNotIn("MISSING_SPEAKER_NOTES", acceptance.verdict)
 
     def test_fixing_stops_after_the_allowed_rounds_and_a_rebuild_of_one_source_is_not_a_round(self):
@@ -82,15 +82,14 @@ class MeasuredBarTest(unittest.TestCase):
             (Path(directory) / "slides.html").write_text(SLIDE_HTML_DECK, encoding="utf-8")
             (Path(directory) / "DESIGN.md").write_text(design_markdown(), encoding="utf-8")
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.pdf", "slides.html"], capture_output=True, text=True, cwd=directory)
-            acceptance = json.loads(completed.stdout)["details"]["acceptance"]
-        self.assertFalse(acceptance["acceptable"])
-        self.assertTrue(acceptance["verdict"].startswith("FIX ROUND 1"))
-        self.assertIn("TEXT_OVERLAP", {defect["code"] for defect in acceptance["defects"]})
+            envelope = json.loads(completed.stdout)
+        self.assertEqual(envelope["status"], "error")
+        self.assertIn(("CONTENT_OVERLAP", "slide 1"), {(issue["code"], issue["location"]) for issue in envelope["issues"]})
 
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_a_build_with_its_streams_merged_still_prints_one_json_document(self):
         with tempfile.TemporaryDirectory() as directory:
-            (Path(directory) / "slides.html").write_text(SLIDE_HTML_DECK, encoding="utf-8")
+            (Path(directory) / "slides.html").write_text(SLIDE_HTML_DECK.replace('<p class="under">영남 매출은 31억으로 그 뒤를 이었습니다</p>', ""), encoding="utf-8")
             (Path(directory) / "DESIGN.md").write_text(design_markdown(), encoding="utf-8")
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.pdf", "slides.html"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, cwd=directory)
         self.assertIn("acceptance", json.loads(completed.stdout)["details"])

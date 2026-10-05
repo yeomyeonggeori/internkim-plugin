@@ -7,21 +7,19 @@ import pathlib
 
 from deck.deck_definitions import (
     CHART_UNDERFILLED,
-    CONTENT_OVERFLOW,
     DRAWING_DISTORTED,
     EMPTY_REGION,
     GRID_MISALIGNED,
     IMAGE_DISTORTED,
     OFF_PALETTE_COLOR,
-    OUT_OF_FRAME,
     SLIDE_BLANK,
     TEXT_COVERED,
     TEXT_LOW_CONTRAST,
-    TEXT_OVERLAP,
     TINY_TEXT,
     TITLE_TOO_LONG,
     VERTICAL_DEAD_ZONE,
 )
+from core.design_rules import DESIGN_RULE_KINDS
 from core.office_result import Issue
 from core.text_checks import REQUIRED_TEXT_MISSING
 from powerpoint.definitions import CHART_POINT_OUTSIDE_AXIS, CHART_ZERO_MISALIGNED
@@ -32,9 +30,9 @@ HISTORY_FILE_NAME = "build-history.json"
 OBJECTIVE_DEFECT_CODES = frozenset(
     kind.code
     for kind in (
-        CONTENT_OVERFLOW.kind,
-        OUT_OF_FRAME.kind,
-        TEXT_OVERLAP.kind,
+        DESIGN_RULE_KINDS["CONTENT_OVERFLOW"],
+        DESIGN_RULE_KINDS["OUT_OF_FRAME"],
+        DESIGN_RULE_KINDS["CONTENT_OVERLAP"],
         TEXT_COVERED.kind,
         TITLE_TOO_LONG.kind,
         IMAGE_DISTORTED.kind,

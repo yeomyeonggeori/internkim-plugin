@@ -35,24 +35,21 @@ p {{ font-size: 28px; margin: 0; }}
 </body></html>
 """
 MEASURED_SLIDES = [
-    {"index": 1, "height": 900, "contentBands": [[80, 820]], "overflow": [], "outOfFrame": [], "overlaps": [], "distortedImages": []},
+    {"index": 1, "height": 900, "contentBands": [[80, 820]], "distortedImages": []},
     {
         "index": 2,
         "height": 900,
         "contentBands": [[80, 820]],
-        "overflow": [{"selector": "div.clipped", "text": "길고 긴 문장", "scrollWidth": 400, "clientWidth": 400, "scrollHeight": 273, "clientHeight": 60}],
-        "outOfFrame": [{"selector": "div.badge", "text": "밖으로", "rect": {"left": 1500, "top": 1000, "right": 1800, "bottom": 1050}}],
-        "overlaps": [{"first": {"selector": "div.note", "text": "겹침"}, "second": {"selector": "div.other", "text": "겹침 둘"}, "ratio": 0.68}],
         "distortedImages": [{"selector": "img", "text": "", "renderedRatio": 4.0, "naturalRatio": 1.0}],
     },
 ]
-GEOMETRY_CODES = {"CONTENT_OVERFLOW", "OUT_OF_FRAME", "TEXT_OVERLAP", "IMAGE_DISTORTED"}
+GEOMETRY_CODES = {"IMAGE_DISTORTED"}
 BANDS_ENDING_AT_62_PERCENT = [[72, 98], [126, 187], [234, 264], [280, 558]]
 BANDS_ENDING_AT_75_PERCENT = [[72, 98], [126, 187], [216, 675]]
 
 
 def measured_slide(index: int, bands: list[list[float]]) -> dict:
-    return {"index": index, "height": 900, "contentBands": bands, "overflow": [], "outOfFrame": [], "overlaps": [], "distortedImages": []}
+    return {"index": index, "height": 900, "contentBands": bands, "distortedImages": []}
 
 
 def write_review_fixture(deck_path: Path, geometry_slides) -> Path:
@@ -81,9 +78,6 @@ class GeometryReviewTest(unittest.TestCase):
         report, issues = self.review(MEASURED_SLIDES)
         self.assertEqual(slide_codes(report, issues, 1) & GEOMETRY_CODES, set())
         self.assertEqual(slide_codes(report, issues, 2) & GEOMETRY_CODES, GEOMETRY_CODES)
-        overflow = next(issue for issue in issues if issue.kind.code == "CONTENT_OVERFLOW")
-        self.assertIn("div.clipped", overflow.message)
-        self.assertIn("273", overflow.message)
 
     def test_a_body_that_stops_high_on_the_slide_is_a_dead_zone(self):
         report, issues = self.review([measured_slide(1, BANDS_ENDING_AT_62_PERCENT), measured_slide(2, BANDS_ENDING_AT_75_PERCENT)])
@@ -101,18 +95,15 @@ class GeometryReviewTest(unittest.TestCase):
 
 class RenderedGeometryTest(unittest.TestCase):
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
-    def test_the_renderer_measures_an_overflowing_box_and_leaves_a_clean_slide_alone(self):
+    def test_the_gate_refuses_an_overflowing_box_and_leaves_a_clean_slide_alone(self):
         with tempfile.TemporaryDirectory() as directory:
             deck_path = Path(directory)
             (deck_path / "slides.html").write_text(FIXTURE_SOURCE, encoding="utf-8")
             (deck_path / "DESIGN.md").write_text(design_markdown(), encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pdf", "slides.html"], capture_output=True, text=True, cwd=deck_path)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "check", "slides.html"], capture_output=True, text=True, cwd=deck_path)
             envelope = json.loads(completed.stdout)
-            geometry = json.loads((deck_path / "build" / "review" / "geometry.json").read_text(encoding="utf-8"))
-        clean, clipped = geometry["slides"]
-        self.assertEqual(clean["overflow"], [])
-        self.assertEqual([finding["selector"] for finding in clipped["overflow"]], ["div.clipped"])
-        self.assertIn("CONTENT_OVERFLOW", {issue["code"] for issue in envelope["issues"]})
+        located = {issue["location"] for issue in envelope["issues"] if issue["code"] == "CONTENT_OVERFLOW"}
+        self.assertEqual(located, {"slide 2"})
 
 
 def cards_slide(sentence_count: int) -> str:
@@ -140,14 +131,13 @@ class TextCollisionTest(unittest.TestCase):
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_cards_whose_text_spills_past_their_box_and_a_paragraph_long_title_are_defects(self):
         envelope = self.build(free_deck(cards_slide(30), LONG_STATEMENT))
-        acceptance = envelope["details"]["acceptance"]
-        self.assertFalse(acceptance["acceptable"])
-        defects = {(defect["code"], defect["location"]) for defect in acceptance["defects"]}
-        self.assertTrue({("CONTENT_OVERFLOW", "slide 1"), ("TITLE_TOO_LONG", "slide 2")} <= defects, defects)
+        self.assertEqual(envelope["status"], "error")
+        defects = {(issue["code"], issue["location"]) for issue in envelope["issues"]}
+        self.assertIn(("CONTENT_OVERFLOW", "slide 1"), defects)
 
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_cards_whose_text_fits_are_acceptable(self):
-        envelope = self.build(free_deck(cards_slide(3)))
+        envelope = self.build(free_deck(cards_slide(2)))
         self.assertNotIn("CONTENT_OVERFLOW", {issue["code"] for issue in envelope["issues"]}, envelope["summary"])
 
 

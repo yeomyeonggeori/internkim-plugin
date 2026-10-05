@@ -40,11 +40,12 @@ def measure_with_company_logo(path: Path, system) -> list[dict]:
             os.environ[RUNTIME_CONTEXT_VARIABLE] = previous
 
 
-def measured(name: str) -> list:
+def measured(name: str, rewrite=lambda source: source) -> list:
     with tempfile.TemporaryDirectory() as directory:
         path = Path(directory)
         for source in (RECORDED / name).iterdir():
             shutil.copy(source, path / source.name)
+        (path / "slides.html").write_text(rewrite((path / "slides.html").read_text(encoding="utf-8")), encoding="utf-8")
         Image.new("RGB", (1200, 800), (90, 140, 70)).save(path / "photo.jpg")
         is_selection = "palette:" in (path / "DESIGN.md").read_text(encoding="utf-8")
         system, _ = (read_design_system if is_selection else read_token_document)(path / "DESIGN.md")
@@ -118,9 +119,16 @@ class SecondRoundRecordedDeckTest(unittest.TestCase):
         self.assertEqual(slides_with(self.korean, "NARROW_TEXT"), {3})
         self.assertEqual(slides_with(self.hiring, "NARROW_TEXT") | slides_with(self.product, "NARROW_TEXT"), set())
 
-    def test_text_clipped_by_its_box_or_the_slide_is_refused(self):
-        self.assertEqual(slides_with(self.korean, "TEXT_CLIPPED"), {4})
-        self.assertEqual(slides_with(self.hiring, "TEXT_CLIPPED") | slides_with(self.product, "TEXT_CLIPPED"), set())
+    def test_a_list_that_spills_past_its_box_and_off_the_slide_is_refused_as_overflow_and_out_of_frame(self):
+        self.assertEqual(slides_with(self.korean, "CONTENT_OVERFLOW"), {4})
+        self.assertEqual(slides_with(self.korean, "OUT_OF_FRAME"), {4})
+        for clean in (self.hiring, self.product):
+            self.assertEqual(slides_with(clean, "CONTENT_OVERFLOW") | slides_with(clean, "OUT_OF_FRAME"), set())
+
+    def test_a_logo_drawn_over_a_title_is_refused_as_overlap(self):
+        placed_by_the_model = measured("en_product_v2", lambda source: source.replace(" data-logo>", ' src="logo.png">'))
+        self.assertTrue({6, 7} <= slides_with(placed_by_the_model, "CONTENT_OVERLAP"), slides_with(placed_by_the_model, "CONTENT_OVERLAP"))
+        self.assertEqual(slides_with(self.product, "CONTENT_OVERLAP"), set())
 
     def test_a_chart_that_collapsed_to_its_labels_is_refused_and_a_drawn_one_is_not(self):
         self.assertEqual(slides_with(self.hiring, "CHART_COLLAPSED"), {2, 3, 4})

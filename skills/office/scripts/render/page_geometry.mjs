@@ -21,38 +21,7 @@ export function measurePageGeometry(pages, thresholds) {
 
   const roundRatio = (value) => Math.round(value * 1000) / 1000;
 
-  const describeRect = (rect) => ({ left: round(rect.left), top: round(rect.top), right: round(rect.right), bottom: round(rect.bottom) });
-
   const elementsOf = (page) => [page, ...Array.from(page.querySelectorAll("*")).filter(isMeasurable)];
-
-  const overflowingElements = (page) => {
-    const overflowing = elementsOf(page).filter((element) => {
-      if (element.clientWidth === 0 || element.clientHeight === 0) return false;
-      return element.scrollHeight > element.clientHeight + pixelTolerance || element.scrollWidth > element.clientWidth + pixelTolerance;
-    });
-    return overflowing.filter((element) => !overflowing.some((other) => other !== element && element.contains(other)));
-  };
-
-  const describeOverflow = (element) => ({
-    ...describe(element),
-    scrollWidth: element.scrollWidth,
-    clientWidth: element.clientWidth,
-    scrollHeight: element.scrollHeight,
-    clientHeight: element.clientHeight,
-  });
-
-  const isOutsideFrame = (rect, frame) =>
-    rect.width > 0 && rect.height > 0 &&
-    (rect.left < frame.left - pixelTolerance || rect.top < frame.top - pixelTolerance ||
-      rect.right > frame.right + pixelTolerance || rect.bottom > frame.bottom + pixelTolerance);
-
-  const elementsOutsideFrame = (page) => {
-    const frame = page.getBoundingClientRect();
-    const isOutside = (element) => isOutsideFrame(element.getBoundingClientRect(), frame);
-    return elementsOf(page)
-      .slice(1)
-      .filter((element) => isOutside(element) && !(element.parentElement !== page && isOutside(element.parentElement)));
-  };
 
   const ownTextRects = (element) =>
     Array.from(element.childNodes)
@@ -71,34 +40,6 @@ export function measurePageGeometry(pages, thresholds) {
   });
 
   const area = (rect) => Math.max(0, rect.right - rect.left) * Math.max(0, rect.bottom - rect.top);
-
-  const overlapRatio = (first, second) => {
-    const shared = area({
-      left: Math.max(first.left, second.left),
-      top: Math.max(first.top, second.top),
-      right: Math.min(first.right, second.right),
-      bottom: Math.min(first.bottom, second.bottom),
-    });
-    return shared / Math.min(area(first), area(second));
-  };
-
-  const overlappingText = (page) => {
-    const boxes = elementsOf(page)
-      .map((element) => ({ element, rects: ownTextRects(element) }))
-      .filter((box) => box.rects.length > 0)
-      .map((box) => ({ element: box.element, rect: unionRect(box.rects) }));
-    const overlaps = [];
-    boxes.forEach((first, index) => {
-      boxes.slice(index + 1).forEach((second) => {
-        if (first.element.contains(second.element) || second.element.contains(first.element)) return;
-        const ratio = overlapRatio(first.rect, second.rect);
-        if (ratio >= overlapRatioMinimum) {
-          overlaps.push({ first: describe(first.element), second: describe(second.element), ratio: roundRatio(ratio) });
-        }
-      });
-    });
-    return overlaps;
-  };
 
   const distortedImages = (page) =>
     Array.from(page.querySelectorAll("img"))
@@ -741,9 +682,6 @@ export function measurePageGeometry(pages, thresholds) {
     contentBands: contentBands(page),
     emptyRegion: emptyRegion(page),
     hollowBoxes: hollowBoxes(page),
-    overflow: overflowingElements(page).map(describeOverflow),
-    outOfFrame: elementsOutsideFrame(page).map((element) => ({ ...describe(element), rect: describeRect(element.getBoundingClientRect()) })),
-    overlaps: overlappingText(page),
     distortedImages: distortedImages(page),
     softImages: softImages(page),
     distortedDrawings: distortedDrawings(page),

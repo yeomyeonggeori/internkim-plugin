@@ -37,7 +37,8 @@ EMU_PER_PIXEL = 7620
 DECK_SOURCE = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>Fixture</title>
 <style>
 body { margin: 0; font-family: "Paperlogy", system-ui; }
-section { width: 1600px; height: 900px; position: relative; overflow: hidden; box-sizing: border-box; padding: 96px 120px; background: #f8fafc; word-break: keep-all; }
+section { width: 1600px; height: 900px; position: relative; overflow: hidden; box-sizing: border-box; padding: 96px 120px; display: flex; flex-direction: column; background: #f8fafc; word-break: keep-all; }
+section > * { flex-shrink: 0; }
 h1 { font-size: 80px; font-weight: 800; margin: 0; }
 h2 { font-size: 52px; font-weight: 700; margin: 0 0 40px; }
 p, li, td, th { font-size: 30px; line-height: 1.5; }

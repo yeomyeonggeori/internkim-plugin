@@ -69,17 +69,20 @@
     {"code": "NARROW_TEXT", "stages": ["render"], "measure": "narrowText", "threshold": {"minimumLines": 3, "maximumEms": 5},
      "meaning": "text wraps over three or more lines in a column under five times its font size, a word or two per line",
      "suggestion": "give the text a wider column, or put it on one or two lines; move the icon or number beside it out of its way"},
-    {"code": "TEXT_CLIPPED", "stages": ["render"], "measure": "textClipped", "threshold": {"tolerance": 2},
-     "meaning": "text runs past the box or the slide that clips it, so part of it is cut off",
-     "suggestion": "shorten the text, widen or lengthen its box, or drop the fixed height that clips it"},
     {"code": "CHART_COLLAPSED", "stages": ["render"], "measure": "chartCollapsed", "threshold": {"minimumHeight": 240, "minimumWidth": 320},
      "meaning": "a chart is drawn so small that its marks vanish and only its labels show",
      "suggestion": "give the chart a width and a height of its own, at least 320 by 240 px, instead of letting it shrink inside a flex box"},
     {"code": "REPEATED_LAYOUT", "stages": ["render"], "deck": true, "measure": "layoutSignature", "threshold": {"gridUnit": 150, "minimumCards": 2, "maximumRun": 2},
      "meaning": "the same card arrangement repeats on more than two slides in a row",
      "suggestion": "give each of these slides the form its own content has, a table, a chart, a sequence, a photo with text or plain text, so no more than two in a row share one arrangement"},
-    {"code": "CONTENT_OVERLAP", "stages": ["render"], "measure": "contentOverlap", "threshold": {"minimumArea": 64, "largeImageShare": 0.4},
-     "meaning": "two pieces of content cover each other: text over text, or text over a logo, icon or small picture",
-     "suggestion": "move one of them apart from the other, or shorten the text, so no two content boxes overlap; a photo under text is the one overlap allowed"}
+    {"code": "OUT_OF_FRAME", "stages": ["render"], "measure": "inkBoxes", "threshold": {"relation": "frame", "tolerance": 2, "minimumArea": 64, "backdropShare": 0.4},
+     "meaning": "a part of the slide is drawn partly or wholly outside the slide, so it is cut off at the edge",
+     "suggestion": "keep every part inside the slide: move or resize it, shorten the text that runs past, or split the slide"},
+    {"code": "CONTENT_OVERFLOW", "stages": ["render"], "measure": "inkBoxes", "threshold": {"relation": "container", "tolerance": 2, "minimumArea": 64, "backdropShare": 0.4},
+     "meaning": "content is drawn outside the box that should hold it, a card, a filled or bordered area or a clipping frame, so it spills out or is cut off",
+     "suggestion": "give the box room for its content or take the overflowing part out: shorten the text, drop a fixed height, or move the part into a box of its own"},
+    {"code": "CONTENT_OVERLAP", "stages": ["render"], "measure": "inkBoxes", "threshold": {"relation": "sibling", "tolerance": 2, "minimumArea": 64, "backdropShare": 0.4},
+     "meaning": "two parts of the slide are drawn over each other: text over text, text over a logo, icon, picture or box",
+     "suggestion": "move one of them apart from the other, or shorten the text, so no two parts overlap; a part that fills most of the slide is a background and is the one overlap allowed"}
   ]
 }

@@ -63,6 +63,10 @@ SEEDED_STYLE = """
 .oversized { font-size: 148px; line-height: 1.05; }
 .flat { font-size: 26px; }
 .cream { background: #F6EFDD; }
+.spill { position: absolute; left: 1200px; top: 400px; width: 700px; margin: 0; }
+.short-card { height: 70px; padding: 28px; background: var(--surface); border-radius: var(--radius); }
+.stacked-a { position: absolute; left: 96px; top: 300px; width: 700px; margin: 0; }
+.stacked-b { position: absolute; left: 160px; top: 312px; width: 700px; margin: 0; }
 .purple-blue { padding: 40px; background: linear-gradient(90deg, #7C3AED, #2563EB); color: #FFFFFF; border-radius: var(--radius); }
 """
 
@@ -85,6 +89,9 @@ SEEDED = {
     "FLAT_HIERARCHY": f'<h2 class="flat">Revenue grew 18 percent in the third quarter</h2>{BODY}{BODY}',
     "CREAM_GROUND": f'<div class="cream" style="padding:40px; flex:1">{HEADING}{BODY}</div>',
     "AI_PALETTE": f'{HEADING}<div class="purple-blue">{BODY}</div>',
+    "OUT_OF_FRAME": f'{HEADING}<p class="spill">The logistics business closed the quarter above its plan in every region.</p>',
+    "CONTENT_OVERFLOW": f'{HEADING}<div class="short-card"><p>The logistics business closed the quarter above its plan in every region.</p><p>Costs fell in each of the four quarters while volume grew.</p></div>',
+    "CONTENT_OVERLAP": f'{HEADING}<p class="stacked-a">The logistics business closed the quarter above its plan in every region.</p><p class="stacked-b">The logistics business closed the quarter above its plan in every region.</p>',
     "EM_DASH_OVERUSE": f'{HEADING}<p>Revenue grew — in every region — and costs fell — which lifted margin — to a record.</p>',
 }
 
@@ -139,6 +146,10 @@ VARIANT_STYLE = SEEDED_STYLE + """
 .cream-section { background: #F7F1E3; }
 .glow-text { text-shadow: 0 0 28px rgba(31, 95, 191, 0.9); }
 .tight-pixels { letter-spacing: -3px; }
+.clipper { height: 40px; overflow: hidden; }
+.photo-under { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; }
+.icon-over { position: absolute; left: 100px; top: 306px; width: 90px; height: 90px; }
+.low-column { position: absolute; left: 96px; top: 860px; width: 500px; margin: 0; }
 .quad { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 .quad > .card { height: 150px; }
 """
@@ -156,5 +167,9 @@ SEEDED_VARIANTS = [
     ("IDENTICAL_CARD_GRID", f'{HEADING}<div class="quad"><div class="card"><h3>Speed</h3><p>One day.</p></div><div class="card"><h3>Cost</h3><p>Down six percent.</p></div><div class="card"><h3>Quality</h3><p>Claims halved.</p></div><div class="card"><h3>Reach</h3><p>Nine new cities.</p></div></div>'),
     ("GLOW_SHADOW", f'<h2 class="glow-text">Revenue grew 18 percent in the third quarter</h2>{BODY}'),
     ("CREAM_GROUND", (' class="cream-section"', f'{HEADING}{BODY}')),
+    ("CONTENT_OVERFLOW", f'{HEADING}<div class="clipper"><p>The logistics business closed the quarter above its plan in every region.</p><p>Costs fell in each of the four quarters while volume grew.</p></div>'),
+    ("OUT_OF_FRAME", f'{HEADING}<p class="low-column">The logistics business closed the quarter above its plan in every region and beyond.</p>'),
+    ("OUT_OF_FRAME", f'{HEADING}<svg class="icon-over" style="left:1540px" aria-hidden="true" width="90" height="90"></svg>{BODY}'),
+    ("CONTENT_OVERLAP", f'{HEADING}<svg class="icon-over" aria-hidden="true" width="90" height="90"></svg><p class="stacked-a">The logistics business closed the quarter above its plan in every region.</p>'),
     ("TIGHT_TRACKING", f'<h2 class="tight-pixels">Revenue grew 18 percent in the third quarter</h2>{BODY}'),
 ]

@@ -64,6 +64,8 @@ const backdropShare = 0.85;
 
 const tableParts = new Set(["TABLE", "THEAD", "TBODY", "TFOOT", "TR", "TD", "TH", "CAPTION", "COLGROUP", "COL"]);
 
+import { measureInkBoxes } from "./ink_boxes.mjs";
+
 export function measureDesignRules(page, rules, tools) {
   const { describe, isMeasurable, elementsOf, ownTextRects, descendantTextRects, unionRect, slideSize } = tools;
   const styleOf = (element) => getComputedStyle(element);
@@ -80,6 +82,13 @@ export function measureDesignRules(page, rules, tools) {
       if (isVisibleColor(color)) return color;
     }
     return { red: 255, green: 255, blue: 255, alpha: 1 };
+  };
+
+  const isPainted = (element) => {
+    const style = styleOf(element);
+    const fill = backgroundOf(element);
+    const isFilled = isVisibleColor(fill) && !sameColor(fill, groundBehind(element));
+    return isFilled || (style.backgroundImage && style.backgroundImage !== "none") || borderWidths(style).some((width) => width >= 0.5);
   };
 
   const sameColor = (first, second) => ["red", "green", "blue"].every((channel) => Math.abs(first[channel] - second[channel]) < 2);
@@ -365,22 +374,6 @@ export function measureDesignRules(page, rules, tools) {
         return lines >= minimumLines && ems < maximumEms ? [finding(element, `${lines} lines in a column ${Math.round(box.right - box.left)}px wide, ${ems.toFixed(1)} times its font size`)] : [];
       }),
 
-    textClipped: ({ tolerance }) => {
-      const clips = (style) => [style.overflowX, style.overflowY, style.overflow].some((value) => value && value !== "visible");
-      return textElements().flatMap((element) => {
-        const rects = ownTextRects(element);
-        for (let ancestor = element; ancestor; ancestor = ancestor.parentElement) {
-          if (ancestor !== page && ancestor === element && !clips(styleOf(ancestor))) continue;
-          if (ancestor !== page && !clips(styleOf(ancestor))) continue;
-          const box = rectOf(ancestor);
-          const spill = rects.find((rect) => rect.bottom > box.bottom + tolerance || rect.right > box.right + tolerance || rect.top < box.top - tolerance || rect.left < box.left - tolerance);
-          if (spill) return [finding(element, `text runs ${Math.round(Math.max(spill.bottom - box.bottom, spill.right - box.right, box.top - spill.top, box.left - spill.left))}px past ${describe(ancestor).selector}, which clips it`)];
-          if (ancestor === page) break;
-        }
-        return [];
-      });
-    },
-
     chartCollapsed: ({ minimumHeight, minimumWidth }) =>
       Array.from(page.querySelectorAll("figure[data-chart]")).flatMap((figure) => {
         const box = rectOf(figure);
@@ -396,26 +389,7 @@ export function measureDesignRules(page, rules, tools) {
       return [finding(page, `${columns}x${rows}`)];
     },
 
-    contentOverlap: ({ minimumArea, largeImageShare }) => {
-      const pageRect = rectOf(page);
-      const pageArea = pageRect.width * pageRect.height;
-      const boxes = [];
-      textElements().filter((element) => !element.closest("svg, figure[data-chart]")).forEach((element) => {
-        const rects = ownTextRects(element);
-        if (rects.length) boxes.push({ element, rect: unionRect(rects), kind: "text" });
-      });
-      elementsOf(page).slice(1).filter((element) => ["IMG", "SVG"].includes(element.tagName.toUpperCase()) && !element.parentElement.closest("svg") && !element.closest("figure[data-chart]")).forEach((element) => {
-        const rect = rectOf(element);
-        if (rect.width > 0 && rect.height > 0 && rect.width * rect.height < pageArea * largeImageShare) boxes.push({ element, rect, kind: "image" });
-      });
-      const intersection = (first, second) => Math.max(0, Math.min(first.right, second.right) - Math.max(first.left, second.left)) * Math.max(0, Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top));
-      const found = [];
-      boxes.forEach((first, index) => boxes.slice(index + 1).forEach((second) => {
-        if (first.element.contains(second.element) || second.element.contains(first.element)) return;
-        if (intersection(first.rect, second.rect) >= minimumArea) found.push(finding(first.element, `covers or is covered by ${describe(second.element).selector}${second.element.textContent.trim() ? ` "${second.element.textContent.trim().slice(0, 24)}"` : ""}`));
-      }));
-      return found;
-    },
+    inkBoxes: (threshold) => measureInkBoxes(page, { describe, elementsOf, ownTextRects, isPainted }, threshold),
 
     textSize: ({ bodyMinimum, captionMinimum, bodyCharacters, bodyWords }) => {
       const isChartText = (element) => element.closest("svg, figure[data-chart], [data-native-chart]");
