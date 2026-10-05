@@ -50,7 +50,7 @@ def plan_append_section(editing: PdfEditing, operation: dict, location: str) -> 
 
 
 def save_editing(editing: PdfEditing, output_path: str) -> list[Issue]:
-    layout = PageLayout(paper=last_page_paper(editing.reader), page_numbers=False)
+    layout = PageLayout(paper=last_page_paper(editing.reader), page_numbers=False, is_balanced=False)
     writer = PdfWriter()
     for page in editing.reader.pages:
         writer.add_page(page)

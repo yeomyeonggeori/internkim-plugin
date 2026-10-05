@@ -9,8 +9,9 @@ from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
+from balance.rhythm import Rhythm
 from doc.doc_definitions import IMAGE_UNAVAILABLE
-from doc.model.defaults import CODE_FONT, DOCUMENT_FONT, apply_korean_defaults, name_fonts, set_page
+from doc.model.defaults import CODE_FONT, DOCUMENT_FONT, HEADING_STYLE_NAMES, apply_korean_defaults, name_fonts, set_page
 from doc.operations.formats import ALIGNMENTS
 from doc.model.tables import add_space_after_table, format_table
 from doc.model.lists import add_list_paragraph, start_list
@@ -29,19 +30,54 @@ RULE_COLOR = "8C959F"
 RULE_EIGHTHS_OF_A_POINT = "6"
 CODE_SIZE_POINTS = 9.5
 CODE_BACKGROUND = "F2F4F7"
+HEADING_COLOR = "111418"
+NORMAL_SPACE_AFTER_POINTS = 10
+NORMAL_LINE_SPACING = 1.15
+MAXIMUM_LINE_SPACING = 1.25
+MAXIMUM_BODY_POINTS = 12.5
 
 
-def markdown_document(blocks: list, font_name: str, font_size: float, source_directory: Path) -> tuple[Document, list[Issue]]:
+def markdown_document(blocks: list, font_name: str, font_size: float, source_directory: Path, rhythm: Rhythm = Rhythm()) -> tuple[Document, list[Issue]]:
     document = Document()
     set_page(document.sections[0])
     set_base_font(document, font_name, font_size)
+    apply_rhythm(document, rhythm)
     issues = []
     list_ids: dict[bool, int] = {}
     for block in blocks:
         if not isinstance(block, ListItem):
             list_ids.clear()
-        issues.extend(add_block(document, block, source_directory, list_ids))
+        issues.extend(add_block(document, block, source_directory, list_ids, rhythm))
+    lift_first_paragraph(document, rhythm)
     return document, issues
+
+
+def apply_rhythm(document: Document, rhythm: Rhythm) -> None:
+    for name in HEADING_STYLE_NAMES:
+        if name in document.styles:
+            scale_heading_style(document.styles[name], rhythm)
+    if rhythm.airiness:
+        normal = document.styles["Normal"].paragraph_format
+        normal.space_after = Pt(NORMAL_SPACE_AFTER_POINTS * rhythm.space)
+        normal.line_spacing = min(NORMAL_LINE_SPACING * rhythm.leading, MAXIMUM_LINE_SPACING)
+        document.styles["Normal"].font.size = Pt(min(document.styles["Normal"].font.size.pt * rhythm.type, MAXIMUM_BODY_POINTS))
+
+
+def scale_heading_style(style, rhythm: Rhythm) -> None:
+    style.font.color.rgb = RGBColor.from_string(HEADING_COLOR)
+    spacing = style.paragraph_format
+    spacing.space_before = Pt((spacing.space_before.pt if spacing.space_before is not None else 0) * rhythm.space)
+    spacing.space_after = Pt((spacing.space_after.pt if spacing.space_after is not None else 0) * rhythm.space)
+    if style.font.size is not None:
+        style.font.size = Pt(style.font.size.pt * rhythm.type)
+
+
+def lift_first_paragraph(document: Document, rhythm: Rhythm) -> None:
+    if not rhythm.lift_points or not document.paragraphs:
+        return
+    first = document.paragraphs[0]
+    inherited = first.style.paragraph_format.space_before
+    first.paragraph_format.space_before = Pt((inherited.pt if inherited is not None else 0) + rhythm.lift_points)
 
 
 def set_base_font(document: Document, font_name: str, font_size: float) -> None:
@@ -50,11 +86,11 @@ def set_base_font(document: Document, font_name: str, font_size: float) -> None:
     apply_korean_defaults(document, font_name)
 
 
-def add_block(document: Document, block, source_directory: Path, list_ids: dict[bool, int]) -> list[Issue]:
+def add_block(document: Document, block, source_directory: Path, list_ids: dict[bool, int], rhythm: Rhythm = Rhythm()) -> list[Issue]:
     if isinstance(block, Heading):
         document.add_heading(block.text, level=block.level)
     elif isinstance(block, Table):
-        add_table(document, block.rows, block.alignments)
+        add_table(document, block.rows, block.alignments, rhythm.space)
     elif isinstance(block, ListItem):
         add_inline_runs(add_list_item(document, block, list_ids), block.text)
     elif isinstance(block, Quote):
@@ -132,7 +168,7 @@ def add_list_item(document: Document, item: ListItem, list_ids: dict[bool, int])
     return add_list_paragraph(document, list_ids[item.is_numbered], item.level)
 
 
-def add_table(document: Document, rows: list[list[str]], alignments: tuple[str, ...] = ()) -> None:
+def add_table(document: Document, rows: list[list[str]], alignments: tuple[str, ...] = (), space: float = 1.0) -> None:
     if not rows:
         return
     column_count = max(len(row) for row in rows)
@@ -145,7 +181,7 @@ def add_table(document: Document, rows: list[list[str]], alignments: tuple[str, 
             alignment = alignments[column_index] if column_index < len(alignments) else ""
             if alignment:
                 paragraph.alignment = ALIGNMENTS[alignment]
-    format_table(table)
+    format_table(table, space)
     add_space_after_table(document)
 
 

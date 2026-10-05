@@ -99,6 +99,25 @@ One small expression language serves schema `derived` fields and workbook views,
 
 A paragraph is still free prose. It is the one place on this path where a fact the request does not state can still enter a document, as the failure modes below record.
 
+## Page balance
+
+A document is balanced by how it is drawn, not by what the model is told. The PDF layouts (`document-pdf.css`, `paperwork.css`) and the Word writer take their vertical spacing, type size and line height from one `Rhythm` (`scripts/balance/`), and every document is drawn until its page measurements fit:
+
+- A single page filled under 70% grows: spacing up to 2.5 times, type up to 1.35 times (Word: 12.5 pt and 1.25 line spacing, the bounds `office check` already holds), and the remaining free space is split 40/60 above and below the content.
+- A last page filled under 30% is pulled back by tightening spacing, line height and type within bounds, in the smallest step that removes the page. When no step does, the document is left as drawn and `office check` reports it.
+- A form's closing line (`footer` in the schema) is drawn under the signature, not in the page footer, and only the last lines of the final section are kept with the signature, so a long closing section no longer moves to the next page whole.
+
+`office check` reports `details` for every PDF and Word file, and raises the codes below for a file `merge` wrote from a schema (the file has its `.source.json`). It measures the rendered geometry of a PDF, or the laid-out pages of a Word file, against the body area set by the skill's margins (16 mm sides and top, 20 mm bottom):
+
+| Code | Fires when | Thresholds |
+| --- | --- | --- |
+| `PAGE_SPARSE` | the only page ends above this share of the body | 45% |
+| `LAST_PAGE_SPARSE` | the last page is nearly empty, or holds a few lines | under 15%, or under 30% with 3 lines or fewer (Word: under 15%) |
+| `PAGE_ENDS_EARLY` | a page followed by another ends above this share | 70% |
+| `LARGE_EMPTY_BAND` | two blocks of one page are this far apart | 25% of the body |
+
+`details` carries `pageFill`, `lastPageFill` and `largestEmptyBand`. The thresholds sit below what the layout rules reach, so a warning means the rules could not balance that document.
+
 ## Workbooks
 
 A new workbook is declared, never hand-written. The model writes `<title>.workbook.json`:

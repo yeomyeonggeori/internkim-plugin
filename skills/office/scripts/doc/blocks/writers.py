@@ -35,7 +35,7 @@ class SizedImage:
     def source(self) -> str:
         return file_data_uri(self.data, f"image{self.suffix}")
 HTML_STYLE = f'body{{font-family:"{BODY_FONT_FAMILY}",sans-serif;line-height:1.6;max-width:46rem;margin:2rem auto;padding:0 1rem;color:#1a1a1a}}code{{font-family:"{CODE_FONT_FAMILY}",monospace}}\n' + """pre{background:#f2f4f7;padding:.6rem .8rem;white-space:pre-wrap}table{border-collapse:collapse;margin:1rem 0}th,td{border:1px solid #999;padding:.3rem .6rem;text-align:left;vertical-align:top}th{background:#eef2f7}
-img{max-width:100%}hr{border:0;border-top:1px solid #8c959f;margin:1rem 0}.equation{text-align:center;margin:1rem 0}blockquote{margin:1rem 0;padding-left:1rem;border-left:3px solid #ccc;color:#444}"""
+img{max-width:100%}hr{border:0;border-top:1px solid #8c959f;margin:1rem 0}.equation{text-align:center;margin:1rem 0}blockquote{margin:1rem 0;border:1px solid #d0d7de;background:#f6f8fa;padding:.5rem 1rem;color:#444}"""
 
 
 def markdown_text(blocks: list) -> str:
