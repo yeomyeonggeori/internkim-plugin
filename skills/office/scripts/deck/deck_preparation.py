@@ -7,10 +7,10 @@ import os
 import pathlib
 
 from core.host_contract import HOST_CONTRACT, RUNTIME_CONTEXT_VARIABLE
-from deck.deck_design import DESIGN_PATH, Design, resolve_design
 from deck.deck_kit import KIT_MARKER
 from deck.deck_logo import Logo, cropped_logo_bytes, read_logo
 from deck.design_system import DesignSystem, design_style
+from deck.typeface import TYPEFACE_PATH, decided_type
 from schemas.known_values import RuntimeContext, load_runtime_context
 
 
@@ -20,14 +20,14 @@ IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp")
 
 @dataclass(frozen=True)
 class DeckPreparation:
-    design: Design
+    type_option: str
     logo: Logo | None
     images: tuple[dict, ...]
     unreadable_images: tuple[str, ...]
     is_requested: bool
 
     def to_json(self) -> dict:
-        record = {"design": self.design.to_json(), "images": [image["path"] for image in self.images]}
+        record = {"type": self.type_option, "images": [image["path"] for image in self.images]}
         return record | ({"logo": str(self.logo.path)} if self.logo else {})
 
 
@@ -36,8 +36,7 @@ def prepare_deck(context: RuntimeContext | None = None) -> DeckPreparation:
     logo_path = context.logo_path()
     logo = read_logo(logo_path) if logo_path else None
     images, unreadable = image_candidates(context)
-    design = resolve_design(context.deck_design, logo.brand_color if logo else None)
-    return DeckPreparation(design, logo, images, unreadable, context.prepares_decks and context.deck_design is None)
+    return DeckPreparation(decided_type(context.deck_design), logo, images, unreadable, context.prepares_decks and context.deck_design is None)
 
 
 def image_candidates(context: RuntimeContext) -> tuple[tuple[dict, ...], tuple[str, ...]]:
@@ -85,5 +84,5 @@ def request_preparation(preparation: DeckPreparation) -> pathlib.Path | None:
     if not preparation.is_requested or not context_path:
         return None
     request_path = pathlib.Path(context_path).parent / PREPARATION_REQUEST_FILE
-    request_path.write_text(json.dumps({"design": str(DESIGN_PATH)}), encoding="utf-8")
+    request_path.write_text(json.dumps({"design": str(TYPEFACE_PATH)}), encoding="utf-8")
     return request_path

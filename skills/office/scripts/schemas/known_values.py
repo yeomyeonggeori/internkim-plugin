@@ -28,6 +28,8 @@ class RuntimeContext:
     fonts: tuple = ()
     judges_draft_claims: bool = False
     draft_claims: dict | None = None
+    chooses_deck_layouts: bool = False
+    deck_layouts: dict | None = None
 
     def company(self, language: str) -> dict:
         if not self.companies:
@@ -114,4 +116,6 @@ def load_runtime_context() -> RuntimeContext | None:
         fonts=tuple(font for font in document.get("fonts") or () if isinstance(font, dict) and font.get("path")),
         judges_draft_claims=document.get("judgesDraftClaims") is True,
         draft_claims=document.get("draftClaims") if isinstance(document.get("draftClaims"), dict) else None,
+        chooses_deck_layouts=document.get("choosesDeckLayouts") is True,
+        deck_layouts=document.get("deckLayouts") if isinstance(document.get("deckLayouts"), dict) else None,
     )

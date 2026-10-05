@@ -5,7 +5,7 @@ import pathlib
 import re
 import tempfile
 
-from core.design_rules import deck_rule_issues, render_rule_issues
+from core.design_rules import render_rule_issues
 from core.office_result import WARNING, Issue, IssueKind, OfficeFailure
 from deck.deck_kit import KIT_MARKER, inject_deck_kit, slide_size
 from deck.deck_photos import focus_photos
@@ -53,15 +53,14 @@ def deck_html_text(source_path: pathlib.Path, system: DesignSystem | None) -> st
     return inject_screen_slide_viewer(kit_html_text(source_path, system))
 
 
-def render_gate_issues(source_path: pathlib.Path, system: DesignSystem | None) -> list[Issue]:
+def render_gate_issues(source_path: pathlib.Path, system: DesignSystem | None, locations: list[str]) -> list[Issue]:
     try:
         slides = measure_for_gate(source_path, system)
     except OfficeFailure as failure:
         if any(issue.kind is RENDERER_UNAVAILABLE for issue in failure.issues):
             return [RENDER_GATE_SKIPPED.issue(str(failure), str(source_path))]
         raise
-    per_slide = [issue for number, slide in enumerate(slides, start=1) for issue in render_rule_issues(slide.get("designFindings", []), f"slide {number}")]
-    return per_slide + deck_rule_issues([slide.get("designFindings", []) for slide in slides])
+    return [issue for location, slide in zip(locations, slides) for issue in render_rule_issues(slide.get("designFindings", []), location)]
 
 
 def measure_for_gate(source_path: pathlib.Path, system: DesignSystem | None) -> list[dict]:

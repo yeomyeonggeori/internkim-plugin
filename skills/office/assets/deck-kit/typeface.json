@@ -1,0 +1,44 @@
+{
+  "instructions": "Choose the typeface of a slide deck from what the request says: its subject, its audience and its purpose. Judge from the request only. Do not invent a subject, audience or voice the request does not state.",
+  "questions": {
+    "type": {
+      "instructions": "Which typeface carries the deck's voice? Choose paperlogy unless the request clearly asks for the voice of another face; do not choose for a voice the request does not suggest.",
+      "options": {
+        "paperlogy": "Paperlogy for titles and text: confident and contemporary. The face for most decks: pitches, strategy, launches, reports.",
+        "freesentation": "Freesentation for titles and text: neutral and precise; research, operations, reviews, plain internal reports.",
+        "a2z": "A2Z for titles and text: distinctive and graphic; creative, cultural or campaign subjects."
+      },
+      "fallback": "paperlogy"
+    }
+  },
+  "confidence": 0.4,
+  "types": {
+    "paperlogy": {
+      "display": "Paperlogy",
+      "body": "Paperlogy",
+      "weights": [
+        600,
+        700,
+        800
+      ]
+    },
+    "freesentation": {
+      "display": "Freesentation",
+      "body": "Freesentation",
+      "weights": [
+        700
+      ]
+    },
+    "a2z": {
+      "display": "A2Z",
+      "body": "A2Z",
+      "weights": [
+        700
+      ]
+    }
+  },
+  "weights": {
+    "display": 700,
+    "body": 400
+  }
+}

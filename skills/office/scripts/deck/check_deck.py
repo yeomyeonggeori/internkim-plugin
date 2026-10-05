@@ -3,318 +3,248 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 import pathlib
-import re
 
-from core.css_color import parse_css_color
-from deck.deck_definitions import (
-    CHART_DATA_INVALID,
-    ICON_UNKNOWN,
-    IMAGE_NOT_FOUND,
-    NO_SLIDE_SECTIONS,
-    OFF_PALETTE_COLOR,
-    SLIDE_COUNT_MISMATCH,
-    SLIDE_WITHOUT_CONTENT,
-    SOURCE_NOT_HTML,
-)
-from charts.kinds import KIT_STACKED_CHARTS, is_round_kind
-from charts.numbers import chart_number, split_chart_list
-from deck.draft_claims import draft_claim_issues
-from deck.deck_html import render_gate_issues
-from deck.deck_kit import chart_types, icon_names
-from deck.deck_preparation import prepare_deck
-from deck.deck_source import Element, find_all, normalized_text, parse_source, style_texts, visible_text
-from deck.design_system import DESIGN_FILE_NAME, DesignSystem, palette_of, read_design_system, token_issues
 from core.office_arguments import route_arguments
-from core.office_result import ERROR, WARNING, Issue, OfficeFailure, Result, run_command
-from core.office_schema import closest_name, names_suggestion
-from deck.resource_inlining import resolve_resource_path
-from core.text_checks import PLACEHOLDER_PATTERN, PLACEHOLDER_LEFT, text_presence_issues
+from core.office_result import ERROR, WARNING, Issue, IssueKind, Result, run_command
+from core.text_checks import text_presence_issues
+from deck.deck_html import render_gate_issues
+from deck.deck_preparation import prepare_deck
+from deck.deck_source import find_all, parse_source
+from deck.design_system import DESIGN_FILE_NAME, DesignSystem, read_design_system
+from deck.draft_claims import draft_claim_issues, draft_claims
+from deck.layout_choice import assigned_layouts, decided_choices, is_decision_pending, write_layout_request
+from deck.outline import OUTLINE_FILE_NAME, PAGES_DIRECTORY_NAME, Outline, layout_issues, outline_issues, read_outline, write_outline
+from deck.page_checks import Page, page_issues
+from deck.page_files import assembled_deck, lone_section, page_number, page_path
+from schemas.known_values import load_runtime_context
 
 
-DONUT_SLICE_MAXIMUM = 8
-ALWAYS_ALLOWED_COLORS = {"FFFFFF", "000000"}
-COLOR_LITERAL_PATTERN = re.compile(r"#[0-9A-Fa-f]{3,8}\b|(?:rgba?|hsla?)\([^)]*\)")
-DECLARATION_PATTERN = re.compile(r"([-\w]+)\s*:\s*([^;{}]+)")
-HEX_PATTERN = re.compile(r"#[0-9A-Fa-f]{6}\b")
-CONTENT_TAGS = {"img", "figure", "svg", "table"}
+ASSEMBLED_FILE_NAME = "slides.html"
+PAGE_CHECK_FILE_NAME = ".page-check.html"
+
+STAGE_NOT_READY = IssueKind("STAGE_NOT_READY", ERROR, "an earlier stage of the deck is missing or does not pass its check", "run office check on the file the message names and fix it before this one")
+OUTLINE_BEING_PREPARED = IssueKind("OUTLINE_BEING_PREPARED", ERROR, "InternKim is choosing each page's layout and judging the outline's statements", "run office check outline.json again, as a command of its own, before writing any page")
+LAYOUT_CHOICE_FAILED = IssueKind("LAYOUT_CHOICE_FAILED", ERROR, "InternKim could not choose the pages' layouts, so the outline must name them", 'add "layout" to every page from the library office guide design lists, then check the outline again')
+PAGE_NOT_ONE_SECTION = IssueKind("PAGE_NOT_ONE_SECTION", ERROR, "a page file is not exactly one <section> element", "write the page as one <section>, with its <style> inside it, and nothing outside it")
+PAGE_MISSING = IssueKind("PAGE_MISSING", ERROR, "an outline page has no page file", "write pages/NN.html for every outline page, checking each with office check")
+PAGE_NOT_IN_OUTLINE = IssueKind("PAGE_NOT_IN_OUTLINE", ERROR, "a page file has no outline entry", "add the page to outline.json and check the outline, or delete the file")
+STAGE_ISSUE_KINDS = (STAGE_NOT_READY, OUTLINE_BEING_PREPARED, LAYOUT_CHOICE_FAILED, PAGE_NOT_ONE_SECTION, PAGE_MISSING, PAGE_NOT_IN_OUTLINE)
 
 
 @dataclass(frozen=True)
-class CheckRequest:
-    source_path: pathlib.Path
+class DeckRequest:
+    directory: pathlib.Path
     requested_slide_count: int | None = None
     required_text: tuple[str, ...] = ()
     forbidden_text: tuple[str, ...] = ()
     is_blank_remake: bool = False
 
+    @property
+    def outline_path(self) -> pathlib.Path:
+        return self.directory / OUTLINE_FILE_NAME
+
+    @property
+    def assembled_path(self) -> pathlib.Path:
+        return self.directory / ASSEMBLED_FILE_NAME
+
 
 @dataclass(frozen=True)
-class Slide:
-    index: int
-    element: Element
-
-    @property
-    def location(self) -> str:
-        return f"slide {self.index}"
-
-    @property
-    def title(self) -> str:
-        headings = [child for child in self.element.child_elements() if child.tag in ("h1", "h2")]
-        return normalized_text(visible_text(headings[0])) if headings else ""
-
-    def text(self) -> str:
-        return normalized_text(visible_text(self.element))
-
-
-def check_deck(request: CheckRequest) -> Result:
-    if request.source_path.suffix.casefold() != ".html":
-        raise OfficeFailure(SOURCE_NOT_HTML.issue(f"{request.source_path.name} is not HTML; write slides.html", str(request.source_path)))
-    source_text = request.source_path.read_text(encoding="utf-8")
-    root = parse_source(source_text)
-    slides = [Slide(index, section) for index, section in enumerate(find_all(root, "section"), start=1)]
-    if not slides:
-        raise OfficeFailure(NO_SLIDE_SECTIONS.issue(f"{request.source_path.name} has no <section> slides", str(request.source_path)))
-    system, design_issues = design_gate(request.source_path.parent)
-    if has_errors(design_issues):
-        return Result(summary=check_summary(slides, design_issues), output_path=str(request.source_path), issues=tuple(design_issues), details=check_details(slides))
-    issues = design_issues + deck_issues(request, root, slides, system)
-    if not request.is_blank_remake:
-        issues += draft_claim_issues(source_text)
-    if not has_errors(issues):
-        issues += render_gate_issues(request.source_path, system)
-    if request.is_blank_remake:
-        issues = [demoted_to_warning(issue) for issue in issues]
-    return Result(summary=check_summary(slides, issues), output_path=str(request.source_path), issues=tuple(issues), details=check_details(slides))
-
-
-def demoted_to_warning(issue: Issue) -> Issue:
-    return replace(issue, kind=replace(issue.kind, severity=WARNING)) if issue.kind.severity == ERROR else issue
-
-
-def check_design(design_path: pathlib.Path) -> Result:
-    system, issues = design_gate(design_path.parent, design_path.name)
-    summary = check_summary([], issues) if has_errors(issues) else f"{design_path.name} passes the design gate: write slides.html within it, then run office check slides.html"
-    return Result(summary=summary, output_path=str(design_path), issues=tuple(issues), details={"slideCount": 0})
-
-
-def design_gate(directory: pathlib.Path, file_name: str = DESIGN_FILE_NAME) -> tuple[DesignSystem | None, list[Issue]]:
-    system, issues = read_design_system(directory / file_name)
-    return system, issues + (token_issues(system) if system else [])
+class DeckCheck:
+    result: Result
+    system: DesignSystem | None = None
+    outline: Outline | None = None
 
 
 def has_errors(issues: list[Issue]) -> bool:
     return any(issue.kind.severity == ERROR for issue in issues)
 
 
-def deck_issues(request: CheckRequest, root: Element, slides: list[Slide], system: DesignSystem) -> list[Issue]:
-    issues = slide_count_issues(request.requested_slide_count, slides)
-    for slide in slides:
-        issues += empty_slide_issues(slide) + chart_issues(slide) + icon_issues(slide) + image_issues(slide, request.source_path.parent) + placeholder_issues(slide)
-    issues += text_presence_issues(" ".join(slide.text() for slide in slides), request.required_text, request.forbidden_text)
-    return issues + palette_issues(root, slides, system)
+def demoted_to_warning(issue: Issue) -> Issue:
+    return replace(issue, kind=replace(issue.kind, severity=WARNING)) if issue.kind.severity == ERROR else issue
 
 
-def slide_count_issues(requested_slide_count: int | None, slides: list[Slide]) -> list[Issue]:
-    if requested_slide_count is None or requested_slide_count == len(slides):
-        return []
-    return [SLIDE_COUNT_MISMATCH.issue(f"slides.html has {len(slides)} slides, but {requested_slide_count} were requested", "deck")]
-
-
-def icon_issues(slide: Slide) -> list[Issue]:
-    names = [element.attributes["data-icon"].strip() for element in slide.element.descendants() if "data-icon" in element.attributes]
-    return [ICON_UNKNOWN.issue(f'{slide.location}: data-icon="{name}" is not an icon the kit ships', slide.location, suggestion=names_suggestion(name, icon_names())) for name in names if name not in icon_names()]
-
-
-def empty_slide_issues(slide: Slide) -> list[Issue]:
-    if slide.text() or any(element.tag in CONTENT_TAGS for element in slide.element.descendants()):
-        return []
-    return [SLIDE_WITHOUT_CONTENT.issue(f"{slide.location} shows nothing", slide.location)]
-
-
-def chart_issues(slide: Slide) -> list[Issue]:
-    issues = []
-    for figure in find_all(slide.element, "figure"):
-        if "data-chart" in figure.attributes:
-            chart_type = figure.attributes["data-chart"].strip()
-            if chart_type not in chart_types():
-                issues.append(CHART_DATA_INVALID.issue(f'{slide.location}: data-chart="{chart_type}" is not one of {", ".join(chart_types())}', slide.location, suggestion=names_suggestion(chart_type, chart_types())))
-                chart_type = closest_name(chart_type, chart_types()) or ""
-            issues += [CHART_DATA_INVALID.issue(f"{slide.location}: {problem}", slide.location) for problem in chart_problems(chart_type, figure.attributes)]
-    return issues
-
-
-def chart_problems(chart_type: str, attributes: dict[str, str]) -> list[str]:
-    labels = split_chart_list(attributes.get("data-labels", ""))
-    if not labels:
-        return ["data-labels is empty"]
-    series = chart_series(attributes)
-    if isinstance(series, str):
-        return [series]
-    problems = [series_problem(name, values, len(labels)) for name, values in series]
-    problems += shape_problems(chart_type, labels, series, attributes.get("data-highlight"))
-    return [problem for problem in problems if problem]
-
-
-def chart_series(attributes: dict[str, str]) -> list[tuple[str, list[str]]] | str:
-    if attributes.get("data-series", "").strip():
-        series = []
-        for part in [part.strip() for part in attributes["data-series"].split(";") if part.strip()]:
-            name, separator, values = part.partition(":")
-            if not separator:
-                return f'data-series part "{part}" has no "name:" before its numbers'
-            series.append((name.strip(), split_chart_list(values)))
-        return series
-    if attributes.get("data-values", "").strip():
-        return [("data-values", split_chart_list(attributes["data-values"]))]
-    return "the chart has neither data-values nor data-series"
-
-
-def series_problem(name: str, values: list[str], label_count: int) -> str:
-    not_numbers = [value for value in values if not is_number(value)]
-    if not_numbers:
-        return f"{name} holds {', '.join(not_numbers[:3])}, which are not plain numbers; put the unit in data-unit"
-    if len(values) != label_count:
-        return f"{name} has {len(values)} numbers for {label_count} labels{thousands_hint(values)}"
-    return ""
-
-
-def thousands_hint(values: list[str]) -> str:
-    if not any(len(value) == 3 and value.isdigit() for value in values[1:]):
-        return ""
-    return '; if a comma groups thousands, separate the values with a comma and a space ("1,200, 1,350") or write them without the grouping comma ("1200, 1350")'
-
-
-def shape_problems(chart_type: str, labels: list[str], series: list[tuple[str, list[str]]], highlight: str | None) -> list[str]:
-    problems = []
-    if highlight is not None and highlight.strip() not in labels:
-        problems.append(f'data-highlight="{highlight}" is not one of the labels')
-    if chart_type == "combo" and len(series) < 2:
-        problems.append("a combo chart takes data-series with the column series first and the line series last")
-    if chart_type == "scatter" and len(series) != 2:
-        problems.append('a scatter chart takes exactly two series in data-series: the horizontal axis first, then the vertical, such as "Revenue: 12, 30; Margin: 8, 11"')
-    if chart_type in KIT_STACKED_CHARTS and any(value < 0 for _, values in series for value in numbers_in(values)):
-        problems.append(f"a {chart_type} chart stacks its series, so every value must be zero or more")
-    if not is_round_kind(chart_type):
-        return problems
-    values = numbers_in(series[0][1])
-    if len(series) > 1:
-        problems.append(f"a {chart_type} chart takes one series in data-values")
-    if any(value < 0 for value in values) or sum(values) <= 0:
-        problems.append(f"a {chart_type} chart needs positive shares")
-    if len(labels) > DONUT_SLICE_MAXIMUM:
-        problems.append(f"{len(labels)} slices are too many to read; group the smallest into one")
-    return problems
-
-
-def numbers_in(values: list[str]) -> list[float]:
-    return [chart_number(value) for value in values if is_number(value)]
-
-
-def is_number(text: str) -> bool:
-    return chart_number(text) is not None
-
-
-def image_issues(slide: Slide, base_path: pathlib.Path) -> list[Issue]:
-    issues = []
-    for image in [image for image in find_all(slide.element, "img") if "data-logo" not in image.attributes]:
-        source = image.attributes.get("src", "").strip()
-        problem = image_problem(source, base_path)
-        if problem:
-            issues.append(IMAGE_NOT_FOUND.issue(f"{slide.location}: {problem}", slide.location))
-    return issues
-
-
-def image_problem(source: str, base_path: pathlib.Path) -> str:
-    if not source:
-        return "an <img> has no src"
-    if source.startswith("data:"):
-        return ""
-    if source.startswith(("http:", "https:")):
-        return f"{source} is remote and the build does not fetch it"
-    resolved = resolve_resource_path(source, base_path)
-    return "" if resolved is not None and resolved.exists() else f"{source} does not exist beside slides.html"
-
-
-def placeholder_issues(slide: Slide) -> list[Issue]:
-    found = PLACEHOLDER_PATTERN.findall(slide.text())
-    if not found:
-        return []
-    return [PLACEHOLDER_LEFT.issue(f"{slide.location} still shows {', '.join(sorted(set(found)))}", slide.location, suggestion="replace it with the real value from the source, or write \"Not provided\" in the deck's language")]
-
-
-def palette_issues(root: Element, slides: list[Slide], system: DesignSystem) -> list[Issue]:
-    palette = allowed_colors(system)
-    places = [("slides.html", shared_style_texts(root, slides))] + [(slide.location, slide_style_texts(slide.element)) for slide in slides]
-    palette_listed = ", ".join(sorted(f"#{color}" for color in palette))
-    return [issue for location, texts in places for issue in off_palette_issues(colors_in(texts) - palette - ALWAYS_ALLOWED_COLORS, location, palette_listed)]
-
-
-def off_palette_issues(off_palette: set[str], location: str, palette_listed: str) -> list[Issue]:
-    if not off_palette:
-        return []
-    listed = ", ".join(f"#{color}" for color in sorted(off_palette))
-    return [OFF_PALETTE_COLOR.issue(f"{len(off_palette)} colors are outside the palette: {listed}", location, suggestion=f"{OFF_PALETTE_COLOR.default_suggestion()}; the palette is {palette_listed}")]
-
-
-def slide_style_texts(section: Element) -> list[str]:
-    return [element.attributes["style"] for element in (section, *section.descendants()) if "style" in element.attributes]
-
-
-def shared_style_texts(root: Element, slides: list[Slide]) -> list[str]:
-    in_slides = {id(element) for slide in slides for element in (slide.element, *slide.element.descendants())}
-    blocks = ["".join(child for child in style.children if isinstance(child, str)) for style in find_all(root, "style")]
-    return blocks + [element.attributes["style"] for element in root.descendants() if "style" in element.attributes and id(element) not in in_slides]
-
-
-def allowed_colors(system: DesignSystem) -> set[str]:
-    return {normalized_color(f"#{value}") for value in palette_of(system).values()} - {""}
-
-
-def colors_in(style_texts_found: list[str]) -> set[str]:
-    colors = set()
-    for style_text in style_texts_found:
-        for name, value in DECLARATION_PATTERN.findall(style_text):
-            colors |= {normalized_color(literal) for literal in COLOR_LITERAL_PATTERN.findall(value) if parse_css_color(literal).alpha > 0}
-    return colors - {""}
-
-
-def normalized_color(literal: str) -> str:
-    try:
-        return parse_css_color(literal).hex_value
-    except (ValueError, IndexError):
-        return ""
-
-
-
-
-def check_summary(slides: list[Slide], issues: list[Issue]) -> str:
+def refusal_summary(issues: list[Issue]) -> str:
     errors = [issue for issue in issues if issue.kind.severity == ERROR]
-    if errors:
-        listed = "; ".join(f"{number}. {issue.kind.code}{' on ' + issue.location if issue.location else ''}: {issue.message}" for number, issue in enumerate(errors, start=1))
-        return f"{len(errors)} problems to fix before the deck can be built, all listed here: {listed}"
-    warnings = f", {len(issues)} warnings" if issues else ""
-    return f"checked {len(slides)} slides: ready to build{warnings}"
+    listed = "; ".join(f"{number}. {issue.kind.code}{' on ' + issue.location if issue.location else ''}: {issue.message}" for number, issue in enumerate(errors, start=1))
+    return f"{len(errors)} problems to fix, all listed here: {listed}"
 
 
-def check_details(slides: list[Slide]) -> dict:
-    return {"slideCount": len(slides), "outline": [{"slide": slide.index, "title": slide.title} for slide in slides]}
+def stage_result(path: pathlib.Path, issues: list[Issue], ready: str, details: dict | None = None) -> Result:
+    summary = refusal_summary(issues) if has_errors(issues) else ready
+    return Result(summary=summary, output_path=str(path), issues=tuple(issues), details=details or {})
 
 
-def check_request(source_path: pathlib.Path, parsed, holds_blanks: bool = False) -> CheckRequest:
-    return CheckRequest(source_path.resolve(), parsed.slide_count, tuple(parsed.required_text), tuple(parsed.forbidden_text), bool(holds_blanks or getattr(parsed, "blank", None) or getattr(parsed, "replace", None)))
+def check_design(design_path: pathlib.Path) -> Result:
+    system, issues = read_design_system(design_path)
+    return stage_result(design_path, issues, f"{design_path.name} passes: write outline.json next, then run office check outline.json")
 
 
-def deck_source_path(target: str) -> pathlib.Path:
-    path = pathlib.Path(target).expanduser()
-    return path / "slides.html" if path.is_dir() else path
+def listed_photos() -> set[str]:
+    return {image["path"] for image in prepare_deck().images}
+
+
+def chooses_layouts() -> bool:
+    context = load_runtime_context()
+    return bool(context and context.chooses_deck_layouts)
+
+
+def design_or_refusal(directory: pathlib.Path) -> tuple[DesignSystem | None, list[Issue]]:
+    system, issues = read_design_system(directory / DESIGN_FILE_NAME)
+    if system is None:
+        return None, issues + [STAGE_NOT_READY.issue(f"{DESIGN_FILE_NAME} does not pass: run office check {DESIGN_FILE_NAME}", DESIGN_FILE_NAME)]
+    return system, issues
+
+
+def existing_sections(directory: pathlib.Path, outline: Outline) -> dict[int, str]:
+    sections = {}
+    for number in range(1, len(outline.pages) + 1):
+        path = page_path(directory, number)
+        section = lone_section(path.read_text(encoding="utf-8")) if path.is_file() else None
+        if section is not None:
+            sections[number] = section
+    return sections
+
+
+def check_outline(outline_path: pathlib.Path, requested_slide_count: int | None) -> Result:
+    directory = outline_path.parent
+    system, issues = design_or_refusal(directory)
+    if system is None:
+        return stage_result(outline_path, issues, "")
+    outline, read_issues = read_outline(outline_path)
+    if outline is None:
+        return stage_result(outline_path, issues + read_issues, "")
+    issues += outline_issues(outline, listed_photos(), requested_slide_count)
+    issues += [] if chooses_layouts() else layout_issues(outline)
+    if has_errors(issues):
+        return stage_result(outline_path, issues, "")
+    claim_issues, is_judged = draft_claim_issues(draft_claims(outline, assembled_deck(outline, existing_sections(directory, outline))))
+    outline, layout_issues_found, is_pending = settled_layouts(outline_path, outline)
+    issues += claim_issues + layout_issues_found
+    if not has_errors(issues) and (is_pending or not is_judged):
+        issues.append(OUTLINE_BEING_PREPARED.issue("the outline passes its checks; InternKim answers before the next command", "outline"))
+    return stage_result(outline_path, issues, outline_ready_summary(outline), {"pages": [page.to_json() for page in outline.pages]})
+
+
+def settled_layouts(outline_path: pathlib.Path, outline: Outline) -> tuple[Outline, list[Issue], bool]:
+    context = load_runtime_context()
+    if not (context and context.chooses_deck_layouts):
+        return outline, [], False
+    write_layout_request(outline)
+    if is_decision_pending(outline, context.deck_layouts):
+        return outline, [], True
+    choices = decided_choices(outline, context.deck_layouts)
+    if choices is None:
+        return outline, fallback_layout_issues(outline, context.deck_layouts), False
+    settled = outline.with_layouts(assigned_layouts(outline, choices))
+    write_outline(outline_path, settled)
+    return settled, [], False
+
+
+def fallback_layout_issues(outline: Outline, decision: dict) -> list[Issue]:
+    own = layout_issues(outline)
+    if not own:
+        return []
+    return [LAYOUT_CHOICE_FAILED.issue(f"the layout choice failed: {decision.get('failure') or 'no answer'}", "outline"), *own]
+
+
+def outline_ready_summary(outline: Outline) -> str:
+    listed = "; ".join(f"page {number} {page.layout}" for number, page in enumerate(outline.pages, start=1))
+    return f"outline passes: {listed}. Write pages/01.html in its layout, run office check pages/01.html, and go on one page at a time"
+
+
+def outline_for_pages(directory: pathlib.Path) -> tuple[Outline | None, list[Issue]]:
+    outline, issues = read_outline(directory / OUTLINE_FILE_NAME)
+    if outline is None or any(not page.layout for page in outline.pages):
+        return None, issues + [STAGE_NOT_READY.issue(f"{OUTLINE_FILE_NAME} has no layout for every page yet: run office check {OUTLINE_FILE_NAME}", OUTLINE_FILE_NAME)]
+    return outline, []
+
+
+def checked_page(directory: pathlib.Path, outline: Outline, number: int, system: DesignSystem) -> tuple[Page | None, list[Issue]]:
+    path = page_path(directory, number)
+    section = lone_section(path.read_text(encoding="utf-8")) if path.is_file() else None
+    if section is None:
+        return None, [PAGE_NOT_ONE_SECTION.issue(f"{path.relative_to(directory)} is not one <section>", f"page {number}")]
+    page = Page(number, find_all(parse_source(section), "section")[0], outline.pages[number - 1])
+    return page, page_issues(page, directory, system)
+
+
+def rendered_issues(directory: pathlib.Path, outline: Outline, sections: dict[int, str], system: DesignSystem, file_name: str) -> list[Issue]:
+    path = directory / file_name
+    path.write_text(assembled_deck(outline, sections), encoding="utf-8")
+    try:
+        return render_gate_issues(path, system, [f"page {number}" for number in sorted(sections)])
+    finally:
+        if file_name == PAGE_CHECK_FILE_NAME:
+            path.unlink(missing_ok=True)
+
+
+def check_page(path: pathlib.Path) -> Result:
+    directory = path.parent.parent
+    number = page_number(path)
+    system, issues = design_or_refusal(directory)
+    outline, outline_problems = outline_for_pages(directory) if system else (None, [])
+    if system is None or outline is None:
+        return stage_result(path, issues + outline_problems, "")
+    if number > len(outline.pages):
+        return stage_result(path, [PAGE_NOT_IN_OUTLINE.issue(f"outline.json has {len(outline.pages)} pages, so page {number} has no entry", f"page {number}")], "")
+    page, issues = checked_page(directory, outline, number, system)
+    if page is None:
+        return stage_result(path, issues, "")
+    issues += draft_claim_issues(draft_claims(outline, assembled_deck(outline, existing_sections(directory, outline))))[0]
+    if not has_errors(issues):
+        issues += rendered_issues(directory, outline, {number: lone_section(path.read_text(encoding="utf-8"))}, system, PAGE_CHECK_FILE_NAME)
+    following = f"write pages/{number + 1:02d}.html next" if number < len(outline.pages) else "every page is written: build the deck with office create"
+    return stage_result(path, issues, f"page {number} ({outline.pages[number - 1].layout}) passes: {following}")
+
+
+def deck_file_issues(directory: pathlib.Path, outline: Outline) -> list[Issue]:
+    missing = [PAGE_MISSING.issue(f"pages/{number:02d}.html is missing for outline page {number}", f"page {number}") for number in range(1, len(outline.pages) + 1) if not page_path(directory, number).is_file()]
+    extra = [PAGE_NOT_IN_OUTLINE.issue(f"{path.relative_to(directory)} has no outline entry", path.name) for path in sorted((directory / PAGES_DIRECTORY_NAME).glob("*.htm*")) if (page_number(path) or 0) > len(outline.pages)]
+    return missing + extra
+
+
+def check_staged_deck(request: DeckRequest) -> DeckCheck:
+    system, issues = design_or_refusal(request.directory)
+    outline, outline_problems = outline_for_pages(request.directory) if system else (None, [])
+    if system is None or outline is None:
+        return DeckCheck(stage_result(request.outline_path, issues + outline_problems, ""))
+    issues += outline_issues(outline, listed_photos(), request.requested_slide_count) + ([] if chooses_layouts() else layout_issues(outline))
+    issues += deck_file_issues(request.directory, outline)
+    pages = [checked_page(request.directory, outline, number, system) for number in range(1, len(outline.pages) + 1) if page_path(request.directory, number).is_file()]
+    issues += [issue for _, page_issues_found in pages for issue in page_issues_found]
+    issues += text_presence_issues(" ".join(page.text() for page, _ in pages if page), request.required_text, request.forbidden_text)
+    sections = existing_sections(request.directory, outline)
+    if not request.is_blank_remake:
+        issues += draft_claim_issues(draft_claims(outline, assembled_deck(outline, sections)))[0]
+    if not has_errors(issues):
+        issues += rendered_issues(request.directory, outline, sections, system, ASSEMBLED_FILE_NAME)
+    if request.is_blank_remake:
+        issues = [demoted_to_warning(issue) for issue in issues]
+    return DeckCheck(stage_result(request.outline_path, issues, f"checked {len(outline.pages)} pages: ready to build", {"slideCount": len(outline.pages)}), system, outline)
+
+
+def deck_directory(target: str) -> pathlib.Path:
+    path = pathlib.Path(target).expanduser().resolve()
+    return path if path.is_dir() else path.parent
+
+
+def stage_refusal(path: pathlib.Path) -> Result:
+    issue = STAGE_NOT_READY.issue(f"office check takes {DESIGN_FILE_NAME}, {OUTLINE_FILE_NAME}, a page file pages/NN.html or the deck's folder, not {path.name}", str(path))
+    return stage_result(path, [issue], "")
 
 
 def main() -> Result:
     parsed = route_arguments("check", "slides")
-    path = pathlib.Path(parsed.file).expanduser()
+    path = pathlib.Path(parsed.file).expanduser().resolve()
     if path.name == DESIGN_FILE_NAME:
-        return check_design(path.resolve())
-    return check_deck(check_request(deck_source_path(parsed.file), parsed))
+        return check_design(path)
+    if path.name == OUTLINE_FILE_NAME:
+        return check_outline(path, parsed.slide_count)
+    if page_number(path) is not None:
+        return check_page(path)
+    if path.is_dir():
+        return check_staged_deck(DeckRequest(path, parsed.slide_count, tuple(parsed.required_text), tuple(parsed.forbidden_text))).result
+    return stage_refusal(path)
 
 
 if __name__ == "__main__":
