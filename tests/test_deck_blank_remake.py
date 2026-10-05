@@ -50,6 +50,22 @@ class BlankRemakeTest(unittest.TestCase):
         code, envelope = remake([], {"slides[3].units[1]": "Open it"})
         self.assertEqual(code, 0, envelope["summary"])
 
+    def test_a_deck_made_again_from_its_blanked_source_is_still_a_remake_and_keeps_its_blanks(self):
+        from design_gate_slides import BODY, HEADING
+
+        clustered = deck([f"{HEADING}{BODY}<p>A second line of the same slide.</p>"], CLEAN_STYLE)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            (path / "DESIGN.md").write_text(design_markdown(), encoding="utf-8")
+            (path / "slides.html").write_text(clustered, encoding="utf-8")
+            unit_paths = [unit.path for unit in deck_units(clustered)]
+            first = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/deck.pdf", "slides.html", "--blank", unit_paths[-1]], capture_output=True, text=True, cwd=path)
+            again = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/deck.pdf", "slides.html"], capture_output=True, text=True, cwd=path)
+            snapshot = json.loads((path / "build" / "deck.pdf.source.json").read_text(encoding="utf-8"))
+        self.assertNotEqual(json.loads(first.stdout)["status"], "error", first.stdout[:400])
+        self.assertNotEqual(json.loads(again.stdout)["status"], "error", again.stdout[:400])
+        self.assertEqual(len(snapshot["blanks"]), 1)
+
     def test_a_remake_that_blanks_every_value_builds(self):
         code, envelope = remake(every_path())
         self.assertEqual(code, 0, envelope["summary"])

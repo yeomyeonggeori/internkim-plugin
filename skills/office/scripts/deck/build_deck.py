@@ -9,11 +9,20 @@ from deck.html_export import ExportRequest, export_deck, output_formats
 from core.office_arguments import route_arguments
 from core.host_contract import DELIVERABLE_EXTENSIONS
 from core.office_result import Result, run_command
-from core.source_snapshot import write_source
+from core.source_snapshot import read_source, write_source
 from deck.deck_claims import blank_labels, blanked_deck, deck_claims
 from schemas.blank_paths import replacement_map
 from deck.deck_holds import deck_slides
 from deck.deck_preparation import prepare_deck
+
+
+def held_blanks(output_path: pathlib.Path) -> list[dict]:
+    blanks = read_source(output_path).get("blanks")
+    return blanks if isinstance(blanks, list) else []
+
+
+def with_held_blanks(blanks: list[dict], held: list[dict]) -> list[dict]:
+    return blanks + [blank for blank in held if blank.get("field") not in {made.get("field") for made in blanks}]
 
 
 def export_request(parsed) -> ExportRequest:
@@ -24,7 +33,7 @@ def export_request(parsed) -> ExportRequest:
         deck_name=output_path.stem,
         build_path=output_path.parent,
         formats=output_formats(output_path.suffix.lower().lstrip(".")),
-        check=check_request(source_path, parsed),
+        check=check_request(source_path, parsed, bool(held_blanks(output_path))),
     )
 
 
@@ -51,7 +60,8 @@ def blank_source(request: ExportRequest, paths: list[str], replacements: dict[st
 def main() -> Result:
     parsed = route_arguments("create", "slides")
     request = export_request(parsed)
-    blanks = blank_source(request, parsed.blank or [], replacement_map(parsed.replace or []))
+    held = held_blanks(pathlib.Path(parsed.output).expanduser().resolve())
+    blanks = with_held_blanks(blank_source(request, parsed.blank or [], replacement_map(parsed.replace or [])), held)
     result = export_deck(request)
     if result.status == "error":
         return result
