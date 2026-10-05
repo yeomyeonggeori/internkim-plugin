@@ -101,10 +101,15 @@
     return 0;
   }
 
+  function spacedUnit(unit) {
+    const trimmed = unit.trim();
+    return /^\p{Script=Latin}{2,}/u.test(trimmed) ? " " + trimmed : trimmed;
+  }
+
   function axisUnits(figure, type) {
     const text = figure.getAttribute("data-unit") || "";
-    if (!twoAxisTypes.has(type)) return [text, text];
-    const units = text.split(",").map((unit) => unit.trim());
+    if (!twoAxisTypes.has(type)) return [spacedUnit(text), spacedUnit(text)];
+    const units = text.split(",").map(spacedUnit);
     return [units[0], units.length > 1 ? units[1] : units[0]];
   }
 
