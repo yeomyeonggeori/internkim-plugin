@@ -21,6 +21,24 @@ AVOID_LIST = (
 )
 
 
+COMPOSITIONS = (
+    "field cover: the section's background is var(--accent), the title in var(--on-accent) at the display size, a subtitle under it, the block centered vertically; for the cover and the closing slide",
+    "statement: one sentence at the display size on the ground with one supporting line, for the turning point of the argument",
+    "chart with a takeaway: the chart fills two thirds of the width and the full height, the takeaway sentence fills the third beside it",
+    "table: one full-width table, rows divided by var(--line) hairlines, the row that carries the point in var(--accent)",
+    "sequence: three to five steps in one row or column, each a short label with its date or owner, divided by hairlines",
+    "photo beside text: the photo fills half the slide edge to edge with object-fit: cover, the text takes the other half",
+    "tinted panel: one var(--surface) panel fills the area under the title (flex: 1) and holds the two or three facts that belong together, centered in it",
+)
+
+
+def composition_lines() -> list[str]:
+    return [
+        "Compositions to choose from (use the one the content has; give two slides in a row different ones; each slide has one dominant part, the largest thing on it, and everything else supports it):",
+        *(f"  {composition}" for composition in COMPOSITIONS),
+    ]
+
+
 def guide_preamble() -> list[str]:
     preparation = prepare_deck()
     if request_preparation(preparation):
@@ -32,7 +50,7 @@ def design_text() -> str:
     preparation = prepare_deck()
     if request_preparation(preparation):
         return "InternKim is gathering this deck's photos, logo and design intent now. Run office guide design again as a command of its own; this answer is read only by the next command."
-    return "\n".join([*intent_lines(preparation.design), "", *logo_lines(preparation), "", *image_lines(preparation), "", *avoid_lines()])
+    return "\n".join([*intent_lines(preparation.design), "", *composition_lines(), "", *logo_lines(preparation), "", *image_lines(preparation), "", *avoid_lines()])
 
 
 def is_decided(design: Design) -> bool:

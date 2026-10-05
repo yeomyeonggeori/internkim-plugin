@@ -306,6 +306,9 @@ def contrast_issues(system: DesignSystem) -> list[Issue]:
     ]
 
 
+SURFACE_ACCENT_SHARE = 0.07
+
+
 def blend(first: str, second: str, share: float) -> str:
     (first_lightness, first_chroma, first_hue), (second_lightness, second_chroma, second_hue) = hex_oklch(first), hex_oklch(second)
     hue = first_hue if first_chroma >= second_chroma else second_hue
@@ -327,7 +330,7 @@ def derived_colors(system: DesignSystem) -> dict[str, str]:
     is_dark = hex_oklch(ground)[0] < 0.5
     colors.setdefault("text-soft", blend(text, ground, 0.22))
     colors.setdefault("muted", readable_shade(blend(text, ground, 0.45), ground, TEXT_CONTRAST, is_dark))
-    colors.setdefault("surface", blend(ground, text, 0.05))
+    colors.setdefault("surface", blend(ground, colors["accent"], SURFACE_ACCENT_SHARE))
     colors.setdefault("line", blend(ground, text, 0.16))
     colors.setdefault("chart-muted", blend(ground, text, 0.22))
     accent = colors["accent"]
