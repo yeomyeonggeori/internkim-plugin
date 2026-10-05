@@ -30,7 +30,7 @@ RUNTIME_MISSING = f"neither bun nor node {NODE_MAJOR_VERSION_MINIMUM} or newer i
 RENDERER_UNAVAILABLE = IssueKind("RENDERER_UNAVAILABLE", ERROR, f"{RUNTIME_MISSING}, or the renderer's packages are not prepared, so nothing was drawn or written", SETUP_SUGGESTION)
 RENDER_FAILED = IssueKind("RENDER_FAILED", ERROR, "the renderer stopped before drawing every page", "read the message for the page or element that stopped it")
 LAYOUT_NOT_MAPPED = IssueKind("LAYOUT_NOT_MAPPED", WARNING, "part of a page's layout could not be matched to its HTML, so its boxes were not measured", "report the element the message names; the page images are still drawn")
-STYLE_NOT_DRAWN = IssueKind("STYLE_NOT_DRAWN", WARNING, "an inline style declaration the renderer cannot read was left out, as a browser leaves out an invalid one", "remove the style attribute: the kit styles every part, data-accent on <body> sets a brand color, and theme tokens go in a <style> on :root")
+STYLE_NOT_DRAWN = IssueKind("STYLE_NOT_DRAWN", WARNING, "an inline style declaration the renderer cannot read was left out, as a browser leaves out an invalid one", "remove the style attribute or write the declaration in a <style> rule with a value a browser reads")
 RENDER_ISSUE_KINDS = (RENDERER_UNAVAILABLE, RENDER_FAILED, LAYOUT_NOT_MAPPED, STYLE_NOT_DRAWN)
 
 

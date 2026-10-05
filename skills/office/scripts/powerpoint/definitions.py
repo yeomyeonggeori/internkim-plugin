@@ -5,6 +5,7 @@ import re
 
 from charts.kinds import DECK_CHART_KINDS
 from charts.look import LABEL_FLAGS
+from core.design_rules import DESIGN_RULE_KINDS
 from core.office_operations import OPERATION_ISSUE_KINDS
 from core.office_result import ERROR, SETUP_COMMAND, WARNING, Issue, IssueKind
 from core.template_merge import MERGE_VALUES, PACKAGE_MERGE_ISSUE_KINDS
@@ -40,8 +41,13 @@ def review_check(code: str, meaning: str, suggestion: str) -> ReviewCheck:
     return ReviewCheck(IssueKind(code, WARNING, meaning, suggestion))
 
 
-CONTENT_OVERFLOW = review_check("CONTENT_OVERFLOW", "an element's content is larger than its box, so it is clipped or spills out", "cut or split what the message names, or give it a larger box; a build suggestion says how many rows, items or characters fit at full type size")
-OUT_OF_FRAME = review_check("OUT_OF_FRAME", "an element lies partly or wholly outside its slide", "keep every part on the slide: split or cut what pushes it off, as a build suggestion counts, or move or resize it inside the slide's edges")
+def review_check_of_rule(code: str) -> ReviewCheck:
+    rule = DESIGN_RULE_KINDS[code]
+    return review_check(rule.code, rule.meaning, rule.suggestion)
+
+
+CONTENT_OVERFLOW = review_check_of_rule("CONTENT_OVERFLOW")
+OUT_OF_FRAME = review_check_of_rule("OUT_OF_FRAME")
 TEXT_OVERLAP = review_check("TEXT_OVERLAP", "two pieces of text cover each other", "separate the two text blocks or shorten the one that spills")
 IMAGE_DISTORTED = review_check("IMAGE_DISTORTED", "an image is stretched away from its own aspect ratio", "put the photo in a cover or image slide, which crops it to its frame, or give its box the image's own ratio")
 CHART_POINT_OUTSIDE_AXIS = review_check("CHART_POINT_OUTSIDE_AXIS", "a chart value lies outside the limits of the axis it is drawn on, so PowerPoint and Keynote leave that bar or point out or cut it off", "widen the axis limits to hold every value, or remove the limits so the application sets them")

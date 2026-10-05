@@ -22,6 +22,8 @@ from core.office_schema import closest_name, guess_text
 from schemas.schema_document import is_schema_reference
 
 
+DESIGN_FILE_NAME = "DESIGN.md"
+OUTLINE_FILE_NAME = "outline.json"
 FORM_NAME = re.compile(r"[a-z]+/[a-z0-9]+(?:-[a-z0-9]+)*")
 SNIFFED_KINDS = {kind.name for kind in (DOCX, XLSX, PPTX, PDF)}
 SPEC_OUTPUT_KINDS = ("docx", "xlsx", "pdf")
@@ -95,7 +97,7 @@ def named_kind(verb_name: str, subject: str, output: str | None) -> str | None:
         return "schema"
     if verb_name == "merge" and FORM_NAME.fullmatch(subject) and not path.exists():
         return "form"
-    if path.is_dir():
+    if path.is_dir() or (verb_name == "check" and path.name in (DESIGN_FILE_NAME, OUTLINE_FILE_NAME)):
         return "slides"
     extension = path.suffix.lower()
     if extension == ".json":

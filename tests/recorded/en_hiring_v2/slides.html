@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>2027 Engineering Hiring Plan</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--ground); color: var(--text); }
+  section { width: 1600px; height: 900px; position: relative; overflow: hidden; display: flex; flex-direction: column; padding: var(--margin); background: var(--ground); }
+  h1 { font-size: var(--size-display); font-weight: 700; line-height: 1.08; }
+  h2 { font-size: var(--size-title); font-weight: 700; line-height: 1.12; margin-bottom: var(--gap); }
+  p, li { font-size: var(--size-body); line-height: 1.5; }
+  .small { font-size: 28px; color: var(--text-soft); }
+  .muted { color: var(--muted); }
+  .row { display: flex; gap: var(--gap); align-items: center; }
+  .col { display: flex; flex-direction: column; gap: var(--gap); }
+  figure { display: block; }
+  figcaption { font-size: 28px; color: var(--text-soft); margin-top: 12px; }
+  .iconline { display: flex; align-items: center; gap: 16px; font-size: var(--size-body); }
+  .iconline i { font-size: 34px; color: var(--accent); }
+  .card { background: var(--surface); border: var(--border); border-radius: var(--radius); padding: 28px; }
+  .notes { display: none; }
+  table { width: 100%; border-collapse: collapse; font-size: 28px; }
+  td { padding: 26px 0; }
+  tr.line { border-bottom: var(--border); }
+</style>
+</head>
+<body>
+
+<!-- 1 Cover -->
+<section>
+  <div style="display:flex; height:100%;">
+    <div style="flex:1.1; display:flex; flex-direction:column; padding-right: 48px;">
+      <div style="margin-top:48px;">
+        <h1>2027 Engineering Hiring Plan</h1>
+        <p style="margin-top:24px; font-size:32px; color:var(--text-soft);">Approval request for the leadership team</p>
+      </div>
+      <div class="col" style="margin-top:48px;">
+        <div class="iconline"><i data-icon="users"></i><span><strong>64 engineers</strong> on the team today</span></div>
+        <div class="iconline"><i data-icon="user-plus"></i><span><strong>22 new hires</strong> planned for 2027</span></div>
+        <div class="iconline"><i data-icon="banknote"></i><span><strong>$4.32M</strong> total 2027 investment</span></div>
+      </div>
+      <div style="flex:1;"></div>
+      <div class="col">
+        <div class="row">
+          <img data-logo style="height:56px; width:auto;">
+          <div class="iconline"><i data-icon="user"></i><span><strong>Jordan Sample</strong>, VP Engineering</span></div>
+        </div>
+        <p class="small">October 2026</p>
+      </div>
+    </div>
+    <div style="flex:1; border-radius: var(--radius); overflow:hidden;">
+      <img src="photo.jpg" alt="Engineers working at a monitor" style="width:100%; height:100%; object-fit:cover;">
+    </div>
+  </div>
+  <aside class="notes">Opening: this deck asks leadership to approve the 2027 engineering hiring plan. I am Jordan Sample, VP Engineering. The plan covers headcount, timing, cost, funnel performance and risks.</aside>
+</section>
+
+<!-- 2 Where we are and where we land -->
+<section>
+  <h2>64 engineers today; the plan takes us to 86 by the end of 2027</h2>
+  <div style="display:flex; gap: var(--gap); flex:1; min-height:0;">
+    <figure style="flex:1.2; display:flex; flex-direction:column;">
+      <div style="flex:1;">
+        <figure data-chart="column" data-labels="Today, End of 2027" data-values="64, 86" data-unit="engineers" data-highlight="End of 2027">
+        </figure>
+      </div>
+      <figcaption>Engineering headcount, 2026 to end of 2027. Source: 2027 engineering hiring plan.</figcaption>
+    </figure>
+    <div style="flex:1;" >
+      <p>Headcount today, the 2027 plan and the landing point:</p>
+      <table style="margin-top:20px;">
+        <tr class="line"><td style="color:var(--text-soft);">Today</td><td style="text-align:right;">64 engineers</td></tr>
+        <tr class="line"><td style="color:var(--text-soft);">2027 hires (net of separate backfill)</td><td style="text-align:right;">+22</td></tr>
+        <tr><td style="color:var(--text-soft);">End of 2027</td><td style="text-align:right;"><strong>86 engineers</strong></td></tr>
+      </table>
+      <p style="margin-top:28px; color:var(--text-soft);">The 6% expected attrition is backfilled separately and is not part of these 22 hires.</p>
+    </div>
+  </div>
+  <aside class="notes">Headcount today is 64. The 2027 plan adds 22 hires to reach 86. Attrition of about 6% is backfilled separately, so these 22 are net growth, not replacement.</aside>
+</section>
+
+<!-- 3 Hires by team -->
+<section>
+  <h2>The 22 hires are spread across all four teams</h2>
+  <div style="display:flex; gap: var(--gap); flex:1; min-height:0;">
+    <div style="flex:1;" class="col">
+      <p>Every team gets new capacity in 2027, sized to its roadmap:</p>
+      <div class="iconline"><i data-icon="server"></i><span><strong>Platform</strong> 7 hires</span></div>
+      <div class="iconline"><i data-icon="smartphone"></i><span><strong>Mobile</strong> 5 hires</span></div>
+      <div class="iconline"><i data-icon="database"></i><span><strong>Data</strong> 6 hires</span></div>
+      <div class="iconline"><i data-icon="shield"></i><span><strong>Security</strong> 4 hires</span></div>
+      
+    </div>
+    <figure style="flex:1.4; display:flex; flex-direction:column;">
+      <div style="flex:1;">
+        <figure data-chart="column" data-labels="Platform, Data, Mobile, Security" data-values="7, 6, 5, 4" data-unit="hires">
+        </figure>
+      </div>
+      <figcaption>Planned 2027 hires by team, 22 total. Source: 2027 engineering hiring plan.</figcaption>
+    </figure>
+  </div>
+  <aside class="notes">Platform gets 7, Data 6, Mobile 5 and Security 4, adding to 22. The split follows each team's 2027 roadmap weight.</aside>
+</section>
+
+<!-- 4 By quarter -->
+<section>
+  <h2>Hiring is front-loaded: 8 in Q1, tapering to 3 by Q4</h2>
+  <div style="display:flex; gap: var(--gap); flex:1; min-height:0;">
+    <figure style="flex:1.4; display:flex; flex-direction:column;">
+      <div style="flex:1;">
+        <figure data-chart="column" data-labels="Q1, Q2, Q3, Q4" data-values="8, 6, 5, 3" data-unit="hires" data-highlight="Q1">
+        </figure>
+      </div>
+      <figcaption>Planned hires per quarter, 2027. Source: 2027 engineering hiring plan.</figcaption>
+    </figure>
+    <div style="flex:1;" class="col">
+      <div class="iconline"><i data-icon="calendar"></i><span><strong>Q1: 8 hires</strong></span></div>
+      <div class="iconline"><i data-icon="calendar"></i><span><strong>Q2: 6 hires</strong></span></div>
+      <div class="iconline"><i data-icon="calendar"></i><span><strong>Q3: 5 hires</strong></span></div>
+      <div class="iconline"><i data-icon="calendar"></i><span><strong>Q4: 3 hires</strong></span></div>
+      <p style="color:var(--text-soft);">14 of the 22 hires (64%) start in the first half, so the new capacity contributes to 2027 delivery for most of the year. Salary cost is prorated by start date.</p>
+    </div>
+  </div>
+  <aside class="notes">Quarterly pacing: Q1 8, Q2 6, Q3 5, Q4 3. Front-loading means most of the capacity lands in the first half. Q1 and Q2 offers lean on the 2026 funnel results shown later.</aside>
+</section>
+
+<!-- 5 Budget -->
+<section>
+  <h2>$4.32M total 2027 cost: $3.9M salary plus $420K recruiting</h2>
+  <div style="display:flex; gap: var(--gap); flex:1; min-height:0; align-items:stretch;">
+    <div class="card" style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+      <div class="iconline"><i data-icon="banknote"></i><span><strong>$3.9M</strong> new salary cost for 2027</span></div>
+      <p style="margin-top:16px; color:var(--text-soft);">Prorated by start date, so the front-loaded schedule keeps first-year cost below full-year run rate.</p>
+    </div>
+    <div class="card" style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+      <div class="iconline"><i data-icon="megaphone"></i><span><strong>$420K</strong> for recruiting agencies and events</span></div>
+      <p style="margin-top:16px; color:var(--text-soft);">Agency fees for hard-to-fill roles and the engineering hiring events.</p>
+    </div>
+  </div>
+  <div class="card" style="margin-top: var(--gap); display:flex; align-items:center; gap:16px;">
+    <i data-icon="wallet" style="font-size:34px; color:var(--accent);"></i>
+    <span style="font-size: var(--size-body);"><strong>Total 2027 investment: $4.32M</strong> ($3.9M salary + $420K agencies and events)</span>
+  </div>
+  <aside class="notes">The 2027 investment is $3.9M in new salary cost, prorated by start date, plus $420K for agencies and events: $4.32M in total.</aside>
+</section>
+
+<!-- 6 Funnel -->
+<section>
+  <h2>The 2026 funnel converts reliably: 24 accepted at 77%</h2>
+  <div style="flex:1; min-height:0; justify-content:space-evenly;" class="col">
+    <table>
+      <tr class="line"><td style="color:var(--text-soft);">Applicants</td><td style="text-align:right;">2,850</td></tr>
+      <tr class="line"><td style="color:var(--text-soft);">Phone screens</td><td style="text-align:right;">410 <span style="color:var(--text-soft);">(14.4% of applicants)</span></td></tr>
+      <tr class="line"><td style="color:var(--text-soft);">Onsite interviews</td><td style="text-align:right;">96 <span style="color:var(--text-soft);">(23.4% of screens)</span></td></tr>
+      <tr class="line"><td style="color:var(--text-soft);">Offers</td><td style="text-align:right;">31 <span style="color:var(--text-soft);">(32.3% of onsites)</span></td></tr>
+      <tr><td style="color:var(--text-soft);">Accepted</td><td style="text-align:right;"><strong>24 accepted, a 77% acceptance rate</strong></td></tr>
+    </table>
+    <p style="margin-top:24px; color:var(--text-soft);">A 77% acceptance rate is competitive.</p>
+  </div>
+  <aside class="notes">2026 funnel: 2,850 applicants, 410 phone screens, 96 onsites, 31 offers, 24 accepted. Acceptance held at 77%. At that rate, 22 hires need about 29 offers, which is why the agency and events budget matters.</aside>
+</section>
+
+<!-- 7 Risks -->
+<section>
+  <h2>Two risks need active management in 2027</h2>
+  <div class="col" style="flex:1; justify-content:space-evenly; height:100%;">
+    <div class="card">
+      <div class="iconline"><i data-icon="hourglass"></i><span><strong>Security roles take 94 days to fill</strong> versus 52 days overall</span></div>
+      <p style="margin-top:14px; color:var(--text-soft);">Security hires take nearly twice the average time to fill.</p>
+    </div>
+    <div class="card">
+      <div class="iconline"><i data-icon="smartphone"></i><span><strong>Mobile competes with big-tech offers</strong></span></div>
+      <p style="margin-top:14px; color:var(--text-soft);">Mobile candidates regularly field competing big-tech offers.</p>
+    </div>
+  </div>
+  <aside class="notes">Two flagged risks. Security: 94-day average time to fill versus 52 overall, so we start Security sourcing in Q1 and route those roles through agencies. Mobile: big-tech competition, so we move quickly on offers.</aside>
+</section>
+
+<!-- 8 The ask -->
+<section>
+  <div style="display:flex; gap: var(--gap); height:100%;">
+    <div style="flex:1.2;" class="col">
+      <h2>The ask: approve 22 hires and the $420K budget</h2>
+      <div class="card">
+        <div class="iconline"><i data-icon="user-plus"></i><span><strong>Approve 22 hires</strong> for 2027, reaching 86 engineers</span></div>
+        <p style="margin-top:12px; color:var(--text-soft);">Platform 7, Mobile 5, Data 6, Security 4; Q1 8, Q2 6, Q3 5, Q4 3.</p>
+      </div>
+      <div class="card">
+        <div class="iconline"><i data-icon="wallet"></i><span><strong>Approve the $420K</strong> agency and events budget</span></div>
+        <p style="margin-top:12px; color:var(--text-soft);">Protects the schedule given Security's 94-day time to fill.</p>
+      </div>
+      
+    </div>
+    <div style="flex:1; border-radius: var(--radius); overflow:hidden;">
+      <img src="photo.jpg" alt="Open-plan engineering office" style="width:100%; height:100%; object-fit:cover;">
+    </div>
+  </div>
+  <aside class="notes">Decision slide: approve the 22-headcount plan and the $420K agency and events budget. On approval, recruiting for the 8 Q1 hires starts in November 2026.</aside>
+</section>
+
+</body>
+</html>

@@ -112,3 +112,30 @@ def contrast_ratio(first: str, second: str) -> float:
 
 def most_contrasting(candidates: list[str], backdrop: str) -> str:
     return max(candidates, key=lambda candidate: contrast_ratio(parse_css_color(candidate).hex_value, parse_css_color(backdrop).hex_value))
+
+
+def oklch_hex(lightness: float, chroma: float, hue: float) -> str:
+    while chroma > 0 and not is_in_gamut(oklch_channels(lightness, chroma, hue)):
+        chroma = max(0.0, chroma - 0.005)
+    return hex_of(oklch_channels(lightness, chroma, hue))
+
+
+def oklch_channels(lightness: float, chroma: float, hue: float) -> tuple[float, float, float]:
+    radians = math.radians(hue)
+    return oklab_to_srgb(lightness, chroma * math.cos(radians), chroma * math.sin(radians))
+
+
+def is_in_gamut(channels: tuple[float, float, float]) -> bool:
+    return all(-0.0005 <= channel <= 1.0005 for channel in channels)
+
+
+def hex_oklch(hex_value: str) -> tuple[float, float, float]:
+    channels = [int(hex_value.lstrip("#")[index:index + 2], 16) / 255 for index in (0, 2, 4)]
+    red, green, blue = (channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4 for channel in channels)
+    long_cone = (0.4122214708 * red + 0.5363325363 * green + 0.0514459929 * blue) ** (1 / 3)
+    medium_cone = (0.2119034982 * red + 0.6806995451 * green + 0.1073969566 * blue) ** (1 / 3)
+    short_cone = (0.0883024619 * red + 0.2817188376 * green + 0.6299787005 * blue) ** (1 / 3)
+    lightness = 0.2104542553 * long_cone + 0.7936177850 * medium_cone - 0.0040720468 * short_cone
+    a = 1.9779984951 * long_cone - 2.4285922050 * medium_cone + 0.4505937099 * short_cone
+    b = 0.0259040371 * long_cone + 0.7827717662 * medium_cone - 0.8086757660 * short_cone
+    return lightness, math.hypot(a, b), math.degrees(math.atan2(b, a)) % 360

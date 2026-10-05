@@ -9,14 +9,20 @@ import unittest
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from deck.review.acceptance import FIX_ROUNDS_ALLOWED, judge_build  # noqa: E402
-from deck.deck_definitions import MISSING_SPEAKER_NOTES  # noqa: E402
-from powerpoint.definitions import TEXT_OVERLAP  # noqa: E402
+from deck.review.acceptance import FIX_ROUNDS_ALLOWED, OBJECTIVE_DEFECT_CODES, judge_build  # noqa: E402
+from deck.deck_definitions import MISSING_SPEAKER_NOTES, TEXT_LOW_CONTRAST
+from core.office_result import Issue
+from core.text_checks import REQUIRED_TEXT_MISSING  # noqa: E402
+from core.design_rules import DESIGN_RULE_KINDS  # noqa: E402
+from staged_deck_fixture import write_staged_deck  # noqa: E402
 from render_fixture import bare_environment, can_render  # noqa: E402
 
 
-OVERLAP = TEXT_OVERLAP.issue("two text blocks cover each other", "slide 3")
+OVERLAP = DESIGN_RULE_KINDS["CONTENT_OVERLAP"].issue("two text blocks cover each other", "slide 3")
+FAINT = TEXT_LOW_CONTRAST.issue("a caption is faint", "slide 4")
+REQUIRED_TEXT_MISSING_ISSUE = REQUIRED_TEXT_MISSING.issue("the required sentence is absent", "slide 2")
 NO_NOTES = MISSING_SPEAKER_NOTES.issue("slide 8 has no speaker notes", "slide 8")
 
 
@@ -36,8 +42,19 @@ class AcceptanceTest(unittest.TestCase):
             acceptance = self.judge(Path(directory), "<section>a</section>", [OVERLAP, NO_NOTES])
         self.assertFalse(acceptance.acceptable)
         self.assertTrue(acceptance.verdict.startswith(f"FIX ROUND 1 OF {FIX_ROUNDS_ALLOWED}"))
-        self.assertIn("TEXT_OVERLAP on slide 3", acceptance.verdict)
+        self.assertIn("CONTENT_OVERLAP on slide 3", acceptance.verdict)
         self.assertNotIn("MISSING_SPEAKER_NOTES", acceptance.verdict)
+
+    def test_layout_defects_are_left_to_the_host_that_repairs_renders_but_missing_words_are_not(self):
+        missing = REQUIRED_TEXT_MISSING_ISSUE
+        with tempfile.TemporaryDirectory() as directory:
+            left = judge_build(Path(directory), "<section>a</section>", [OVERLAP, FAINT], "deck.pdf", repaired_by_host=True)
+            owned = judge_build(Path(directory), "<section>b</section>", [OVERLAP, missing], "deck.pdf", repaired_by_host=True)
+        self.assertTrue(left.acceptable)
+        self.assertIn("host", left.verdict)
+        self.assertFalse(owned.acceptable)
+        self.assertIn("REQUIRED_TEXT_MISSING", owned.verdict)
+        self.assertNotIn("CONTENT_OVERLAP", owned.verdict)
 
     def test_fixing_stops_after_the_allowed_rounds_and_a_rebuild_of_one_source_is_not_a_round(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -66,35 +83,35 @@ class AcceptanceTest(unittest.TestCase):
         self.assertEqual(next_request.fix_round, 0)
 
 
-KIT_DECK = '<body data-theme="editorial"><section data-layout="statement"><h2>배송이 빨라집니다</h2><aside class="notes">배송 기간이 줄었습니다</aside></section></body>'
-FREE_HTML_DECK = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>자유 형식</title>
-<style>section{width:1600px;height:900px;padding:80px;box-sizing:border-box;font-family:sans-serif;background:#fff} h1{font-size:64px} td{font-size:12px}</style></head><body>
-<section><h1>지역별 매출이 늘었습니다</h1><table><tr><td>수도권</td><td>58억</td></tr><tr><td>영남</td><td>31억</td></tr></table></section>
-</body></html>"""
+SMALL_PAGE = "<h2>배송이 빨라집니다</h2>"
+OVERLAPPING_PAGE = (
+    "<h1>지역별 매출이 늘었습니다</h1>"
+    '<p style="position:absolute;left:100px;top:300px;width:800px">수도권 매출은 58억으로 가장 크게 늘었습니다</p>'
+    '<p style="position:absolute;left:140px;top:312px;width:800px">영남 매출은 31억으로 그 뒤를 이었습니다</p>'
+)
 
 
-class FreeHtmlGateTest(unittest.TestCase):
+class MeasuredBarTest(unittest.TestCase):
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
-    def test_a_deck_without_the_kit_is_held_to_the_measured_bar(self):
+    def test_a_deck_is_held_to_the_measured_bar(self):
         with tempfile.TemporaryDirectory() as directory:
-            (Path(directory) / "slides.html").write_text(FREE_HTML_DECK, encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.pdf", "slides.html"], capture_output=True, text=True, cwd=directory)
-            acceptance = json.loads(completed.stdout)["details"]["acceptance"]
-        self.assertFalse(acceptance["acceptable"])
-        self.assertTrue(acceptance["verdict"].startswith("FIX ROUND 1"))
-        self.assertTrue({"TINY_TEXT", "VERTICAL_DEAD_ZONE"} <= {defect["code"] for defect in acceptance["defects"]})
+            write_staged_deck(Path(directory), [OVERLAPPING_PAGE])
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.pdf", "."], capture_output=True, text=True, cwd=directory)
+            envelope = json.loads(completed.stdout)
+        self.assertEqual(envelope["status"], "error")
+        self.assertIn(("CONTENT_OVERLAP", "page 1"), {(issue["code"], issue["location"]) for issue in envelope["issues"]})
 
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_a_build_with_its_streams_merged_still_prints_one_json_document(self):
         with tempfile.TemporaryDirectory() as directory:
-            (Path(directory) / "slides.html").write_text(FREE_HTML_DECK, encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.pdf", "slides.html"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, cwd=directory)
+            write_staged_deck(Path(directory), [SMALL_PAGE])
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.pdf", "."], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, cwd=directory)
         self.assertIn("acceptance", json.loads(completed.stdout)["details"])
 
 
 class BuildHelpTest(unittest.TestCase):
     def test_help_prints_usage_and_never_builds(self):
-        for arguments in (["create", "--help"], ["create", "build/deck.pdf", "slides.html", "--help"], ["image", "--help"]):
+        for arguments in (["create", "--help"], ["create", "build/deck.pdf", ".", "--help"], ["image", "--help"]):
             with self.subTest(arguments), tempfile.TemporaryDirectory() as directory:
                 completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *arguments], capture_output=True, text=True, cwd=directory)
                 self.assertEqual(completed.returncode, 0, completed.stderr)
@@ -102,14 +119,14 @@ class BuildHelpTest(unittest.TestCase):
                 self.assertEqual(list(Path(directory).iterdir()), [])
 
     def test_build_help_names_only_its_flags(self):
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/deck.pdf", "slides.html", "--help"], capture_output=True, text=True)
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/deck.pdf", ".", "--help"], capture_output=True, text=True)
         self.assertNotIn("FORMATS", completed.stdout)
         self.assertIn("--slide-count", completed.stdout)
 
     def test_an_output_the_deck_cannot_be_is_refused_before_anything_renders(self):
         with tempfile.TemporaryDirectory() as directory:
-            (Path(directory) / "slides.html").write_text('<body data-theme="editorial"><section data-layout="statement"><h2>배송이 빨라집니다</h2></section></body>', encoding="utf-8")
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.keynote", "slides.html"], capture_output=True, text=True, cwd=directory)
+            write_staged_deck(Path(directory), [SMALL_PAGE])
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(directory).name}.keynote", "."], capture_output=True, text=True, cwd=directory)
             envelope = json.loads(completed.stdout)
             self.assertEqual(completed.returncode, 1)
             self.assertEqual([issue["code"] for issue in envelope["issues"]], ["WRONG_OUTPUT_FORMAT"])
@@ -122,10 +139,10 @@ class WithoutRendererTest(unittest.TestCase):
 
     def test_the_build_refuses_and_names_what_to_install_while_the_check_still_runs(self):
         with tempfile.TemporaryDirectory() as directory:
-            (Path(directory) / "slides.html").write_text(KIT_DECK, encoding="utf-8")
-            built = self.run_without_renderer(directory, "create", "build/deck.pptx", "slides.html")
-            checked = self.run_without_renderer(directory, "check", "slides.html")
-            written = sorted(path.name for path in Path(directory).rglob("*") if path.suffix in {".pdf", ".pptx", ".html"} and path.name != "slides.html")
+            write_staged_deck(Path(directory), [SMALL_PAGE])
+            built = self.run_without_renderer(directory, "create", "build/deck.pptx", ".")
+            checked = self.run_without_renderer(directory, "check", "pages/01.html")
+            written = sorted(path.name for path in Path(directory).rglob("*") if path.suffix in {".pdf", ".pptx"} or path.parent.name == "build")
         envelope = json.loads(built.stdout)
         self.assertEqual(built.returncode, 1)
         self.assertEqual(built.stderr, "")
@@ -134,7 +151,16 @@ class WithoutRendererTest(unittest.TestCase):
         self.assertIn("node 18 or newer", envelope["summary"])
         self.assertIn("office setup", envelope["issues"][0]["suggestion"])
         self.assertEqual(written, [])
-        self.assertNotEqual(json.loads(checked.stdout)["status"], "error", checked.stdout)
+        checked_envelope = json.loads(checked.stdout)
+        self.assertNotEqual(checked_envelope["status"], "error", checked.stdout)
+        self.assertEqual([issue["code"] for issue in checked_envelope["issues"]], ["RENDER_GATE_SKIPPED"])
+
+
+class RuleDefectsTest(unittest.TestCase):
+    def test_a_render_rule_a_remake_demoted_to_a_warning_is_still_a_defect_to_report(self):
+        for code in ("ONE_SIDED_ACCENT_BAR", "TEXT_TOO_SMALL", "BROKEN_WORD", "CONTENT_OVERFLOW", "TEXT_LOW_CONTRAST"):
+            with self.subTest(code=code):
+                self.assertIn(code, OBJECTIVE_DEFECT_CODES)
 
 
 if __name__ == "__main__":

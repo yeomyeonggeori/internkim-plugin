@@ -1,72 +1,80 @@
 # Decks
 
-A deck is one file, `slides.html`, written with the built-in kit and built into `build/<deck-slug>.pdf`. The kit supplies type, spacing, colors, footer, page numbers and charts, so you write short HTML and no CSS. SKILL.md's rules for source truth apply: a deck never invents dates, people, values or claims.
+A deck is designed top-down in stages, one file per stage, each checked before the next starts. There are no templates: you compose every page. The skill supplies the fonts, line icons, native charts, the company logo, photos and the checks. SKILL.md's rules for source truth apply: a deck never invents dates, people, values or claims, and design adds no text.
 
-## Write slides.html
+Work in `artifacts/<deck-slug>/`. Run `<skill>/scripts/office guide slides`, then, as a command of its own, `<skill>/scripts/office guide design`. The host gathers photos and the typeface between the two commands, so never chain them; if `guide design` says InternKim is still gathering, run it again. Write every file with your file tool, never a heredoc.
 
-Work in `artifacts/<deck-slug>/`. First run `<skill>/scripts/office guide slides`: it gives the slide order rules, the themes, every layout with its purpose and parts, and the chart attributes. Then write the whole file in one step with your file tool, never through a heredoc. To change an existing deck, edit its `slides.html` in place; `office convert build/<deck-slug>.html slides.html` recovers it from a delivered `.html`.
+| Stage | File | Check |
+| --- | --- | --- |
+| 1 style sheet | `DESIGN.md` | `office check DESIGN.md` |
+| 2 outline | `outline.json` | `office check outline.json` |
+| 3 pages | `pages/01.html`, `pages/02.html`, … one per outline page | `office check pages/NN.html` after writing each |
+| 4 build | `build/<deck-slug>.pptx` | the build's verdict |
 
-```html
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><title>Sample Electronics Q3 2026 Business Review</title></head>
-<body data-theme="corporate">
-<section data-layout="cover">
-  <p class="eyebrow">Q3 2026 business review</p>
-  <h1>Q3 revenue reached $128M, 6% above target</h1>
-  <p class="lead">The premium line and B2B contracts drove the growth.</p>
-  <p class="meta">Strategy team, Alex Sample · October 6, 2026</p>
-  <aside class="notes">Q3 revenue was $128M, 6% above target.</aside>
-</section>
-<section data-layout="chart">
-  <h2>Revenue grew for four quarters in a row</h2>
-  <figure data-chart="column" data-labels="4Q25, 1Q26, 2Q26, 3Q26" data-values="96, 104, 113, 128" data-unit="M" data-highlight="3Q26"><figcaption>Quarterly revenue in $M. Source: Finance</figcaption></figure>
-  <div class="insight"><p class="value">+33%</p><p>growth in one year</p></div>
-  <aside class="notes">Revenue rose 33% in a year, from $96M to $128M.</aside>
-</section>
-<section data-layout="closing">
-  <h2>Three approvals today let us launch in November</h2>
-  <ol><li>A $6M budget</li><li>Contracts with two partners</li><li>Launch on November 3</li></ol>
-  <aside class="notes">With these three decisions today, we launch in November.</aside>
-</section>
-</body>
-</html>
+## 1. Style sheet
+
+`guide design` gives the shape. The front matter holds concrete colors and sizes:
+
+```markdown
+---
+style: "one sentence: the design language and why it fits this subject and audience"
+colors:
+  text: "#1B2430"
+  accent: "#0E7C66"
+  secondary: "#E0A526"
+  surface: "#EEF5F2"
+  line: "#D5E2DC"
+backgrounds:
+  cover: "#0E3B33"
+  content: "#FFFFFF"
+  data: "#FFFFFF"
+  closing: "#0E3B33"
+sizes:
+  display: "128px"
+  title: "64px"
+  body: "30px"
+  small: "22px"
+---
 ```
 
-- Every part is a direct child of its `<section>`.
-- A title states the slide's conclusion as a sentence in the request's language. `<em>` colors key words.
-- Choose each slide's layout from its content. `office guide slides` lists every layout with its purpose and parts, and every chart attribute; write the other slides from it rather than from this example.
-- Without photos, a `data-icon` on cards, metrics, steps and agenda or closing items gives the deck a visual rhythm; `office guide slides` lists the icon names.
+A color the request names, or the logo's own color, becomes the accent. Only when the person asks for a font by name, add `requested-font: "Exact Family Name"`: the build looks for it among the attachments, the data room, its cache and Google Fonts, embeds it, and when it finds none sets the deck in Paperlogy and reports `REQUESTED_FONT_UNAVAILABLE`, which your reply says, offering to rebuild when the person attaches the file.
 
-## Build and deliver
+## 2. Outline
 
-Run from `artifacts/<deck-slug>`, passing the slide count the user asked for and the source facts that must appear:
+`outline.json` holds every page's content before any page exists: a core hook, then per page its title, type, brief (one fact per line, with the real figures) and the listed photos it shows. Pass the slide count the user asked for: `office check outline.json --slide-count 10`. InternKim then judges the outline's statements against the request and chooses each page's layout on its own, without asking the person; run the check again, as a command of its own, until it passes and lists every page's layout. `UNSUPPORTED_CLAIM` names a statement the request and its attachments do not support: restate it from them or drop it.
+
+## 3. Pages
+
+One page per step: re-read `DESIGN.md` and the page's outline entry, write `pages/NN.html` as one `<section>` with its own `<style>`, run `office check pages/NN.html`, and fix it until it passes before writing the next. The check measures that page alone: parts outside the page, content spilling out of its box, parts drawn over each other and text below the size floors. It warns when the page paints a color the style sheet does not name, or lacks the outline entry's title or photo. Speaker notes go in `<aside class="notes">`. A trend, ranking or share is a `<figure data-chart>` from the brief's numbers, a native editable chart in the PPTX.
+
+## 4. Build and deliver
+
+Run from `artifacts/<deck-slug>`, passing the source facts that must appear:
 
 ```json
-{"command": "<skill>/scripts/office create build/<deck-slug>.pdf slides.html --slide-count 10 --required-text \"128M\" --required-text \"Q3 2026\"", "workingDirectoryPath": "artifacts/<deck-slug>"}
+{"command": "<skill>/scripts/office create build/<deck-slug>.pptx . --slide-count 10 --required-text \"128M\" --required-text \"Q3 2026\"", "workingDirectoryPath": "artifacts/<deck-slug>"}
 ```
 
-The output's extension picks the format: `build/<deck-slug>.pptx` writes the PowerPoint and the PDF beside it. `<skill>/scripts/office check slides.html` runs the first stage alone.
+The output's extension picks the format: `.pptx` writes the PowerPoint and the PDF beside it. The build checks every stage again, then renders and measures every page. The summary starts with the verdict:
 
-1. The build first checks the markup of `slides.html` and stops on any problem it finds, listing them all at once, each naming the slide and the fix.
-2. It then renders and measures every slide. The summary starts with the verdict:
-   - `ACCEPTABLE`: deliver the file it names. Other issues are advice; do not redesign a slide that is clean.
-   - `FIX ROUND 1 OF 2` or `2 OF 2`: fix only the listed defects by shortening, splitting or filling, then build again.
-   - `STOP FIXING`: deliver and name the defects that remain.
-3. When the build result names `visualReview`, deliver the file without opening the renders: the host asks a reviewer about every slide's render at delivery, repairs the slides it flags and reports what remains, which the reply then names. When it does not, open `build/review/contact-sheet-01.png` once before attaching and confirm the slides read as intended.
+- `ACCEPTABLE`: deliver the file it names. When the build result names `visualReview`, deliver without opening the renders: the host reviews every page's render, repairs the pages it flags and reports what remains, which the reply then names.
+- `FIX ROUND 1 OF 2` or `2 OF 2`: fix only the listed defects in their page files, keep the copy, facts, palette and composition, and build again.
+- `STOP FIXING`: deliver and name the defects that remain.
 
-## Images
+When the result names no `visualReview`, open `build/review/contact-sheet-01.png` once before attaching and confirm the pages read as intended.
 
-Use a photo only when it shows what the slide is about, in a `cover` or `image` slide. `<skill>/scripts/office image "warehouse shelves" images/warehouse.jpg` saves up to three public-domain candidates for an English query, with each one's ratio and source page; look at them, keep the one that shows the subject, and delete the rest. The kit crops it to fill its frame. Never put a grey box or a placeholder where a photo would go; without a fitting photo, use another layout. Name the photo's source in `.source`. No emoji.
+## Photos and logo
 
-## Custom design
+The photos a deck can use are the ones `guide design` lists: the request's attachments and the data room images the requester can read. A page that shows one names it in its outline entry's `photos`; crop it with `object-fit: cover` in a frame of your own, and the build sets each photo's focal point. A caption or a fact about a photo comes only from its title, its summary or the request. Never put a grey box or a placeholder where a photo would go.
 
-A brand that needs more than `data-accent` adds a `<style>` that sets the theme tokens (`--accent`, `--accent-2`, `--ink`, `--bg`, `--surface`) on `:root`; they replace those of the `data-theme` it names. A `DESIGN.md` beside `slides.html` is optional; the colors in its front matter join the palette. The check reports any other color as `OFF_PALETTE_COLOR`.
+When the company has a logo, the build places it on the cover and the closing page, in a corner no text covers, with a plate behind it when its background needs one; do not write `<img data-logo>` and keep a corner free. No emoji.
+
+Only when the person asks for photos to be found, `<skill>/scripts/office image "warehouse shelves" images/warehouse.jpg` saves up to three public-domain candidates for an English query, with each one's ratio and source page; keep the one that shows the subject, delete the rest, and name its source in `.source`.
 
 ## PPTX
 
-The PPTX is built from the rendered slides: every word is an editable text box, boxes are native shapes, diagram arrows are connectors attached to their boxes, each kit chart is a native chart with its data, each table is a native table, and the shipped fonts the slides use are embedded.
+The PPTX is built from the rendered pages: every word is an editable text box, boxes are native shapes, each table is a native table, each chart a native chart, and the shipped fonts the pages use are embedded.
 
 ## Editing a delivered .pptx
 
-When the user hands over a .pptx, or asks for a change to one with no `slides.html` beside it, run `<skill>/scripts/office read <file.pptx>`: each shape's index, kind, box and text style, with tables, charts and notes. Write the change as one batch for `office apply <file.pptx> <ops.json>` with every number taken from that read; `<skill>/scripts/office guide apply pptx` lists the operations. The batch applies whole or not at all; pass `--dry-run` to preview and `--output` to keep the original. Each layout problem the result reports carries a `fix`: the operation to apply as it is, or, when no single operation fits the text, an empty list and a `suggestion` to shorten or split it. Before delivering, run `office check <file.pptx>` and look at its contact sheet; if it reports `PPTX_NOT_RENDERED`, say the slides were not seen. Text a built deck kept as a picture cannot be edited this way; for a larger change to a built deck, edit `slides.html` and rebuild, or recover it with `office convert`.
+When the user hands over a .pptx, or asks for a change to one with no deck folder beside it, run `<skill>/scripts/office read <file.pptx>`: each shape's index, kind, box and text style, with tables, charts and notes. Write the change as one batch for `office apply <file.pptx> <ops.json>` with every number taken from that read; `<skill>/scripts/office guide apply pptx` lists the operations. The batch applies whole or not at all; pass `--dry-run` to preview and `--output` to keep the original. Each layout problem the result reports carries a `fix`: the operation to apply as it is, or, when no single operation fits the text, an empty list and a `suggestion` to shorten or split it. Before delivering, run `office check <file.pptx>` and look at its contact sheet; if it reports `PPTX_NOT_RENDERED`, say the slides were not seen. Text a built deck kept as a picture cannot be edited this way; for a larger change to a built deck, edit its page files and rebuild, or recover it with `office convert`.

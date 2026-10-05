@@ -1,0 +1,28 @@
+{
+  "rules": [
+    {"code": "CANVAS_NOT_FILLED", "measure": "canvasFill", "threshold": {"tolerance": 1},
+     "meaning": "a slide is drawn smaller or larger than the canvas, so its page shows an empty band or loses an edge",
+     "suggestion": "make each <section> exactly the canvas size and let its content fill it"},
+    {"code": "ONE_SIDED_ACCENT_BAR", "measure": "oneSidedAccentBar", "threshold": {"minimumWidth": 3, "ratio": 2, "stripMaximum": 12, "stripShareOfEdge": 0.5},
+     "meaning": "a box carries a thick colored stripe along one side only, the side-tab or top-bar accent",
+     "suggestion": "remove the stripe; mark the box with a tinted fill, an even hairline border on every side, type weight or an icon"},
+    {"code": "TEXT_TOO_SMALL", "measure": "textSize", "threshold": {"bodyMinimum": 28, "captionMinimum": 20, "bodyCharacters": 40, "bodyWords": 4},
+     "meaning": "text is set below presentation size at the 1600px canvas: body text under 28px or a caption or label under 20px",
+     "suggestion": "raise body text to 28px and captions to 20px or more, and cut words until it fits; a slide holds less text rather than smaller text"},
+    {"code": "BROKEN_WORD", "measure": "brokenWord", "threshold": {"maximumCharacters": 16},
+     "meaning": "a short word, number or price is split across two lines inside itself",
+     "suggestion": "widen the column or the cell until the word fits on one line, or set the text smaller within the type scale; a word is never broken"},
+    {"code": "CHART_COLLAPSED", "measure": "chartCollapsed", "threshold": {"minimumHeight": 240, "minimumWidth": 320},
+     "meaning": "a chart is drawn so small that its marks vanish and only its labels show",
+     "suggestion": "give the chart a width and a height of its own, at least 320 by 240 px, instead of letting it shrink inside a flex box"},
+    {"code": "OUT_OF_FRAME", "measure": "inkBoxes", "threshold": {"relation": "frame", "tolerance": 2, "minimumArea": 64, "backdropShare": 0.4},
+     "meaning": "a part of the slide is drawn partly or wholly outside the slide, so it is cut off at the edge",
+     "suggestion": "keep every part inside the slide: move or resize it, shorten the text that runs past, or split the slide"},
+    {"code": "CONTENT_OVERFLOW", "measure": "inkBoxes", "threshold": {"relation": "container", "tolerance": 2, "minimumArea": 64, "backdropShare": 0.4},
+     "meaning": "content is drawn outside the box that should hold it, a card, a filled or bordered area or a clipping frame, so it spills out or is cut off",
+     "suggestion": "give the box room for its content or take the overflowing part out: shorten the text, drop a fixed height, or move the part into a box of its own"},
+    {"code": "CONTENT_OVERLAP", "measure": "inkBoxes", "threshold": {"relation": "sibling", "tolerance": 2, "minimumArea": 64, "backdropShare": 0.4},
+     "meaning": "two parts of the slide are drawn over each other: text over text, text over a logo, icon, picture or box",
+     "suggestion": "move one of them apart from the other, or shorten the text, so no two parts overlap; a part that fills most of the slide is a background and is the one overlap allowed"}
+  ]
+}

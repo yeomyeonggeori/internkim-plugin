@@ -8,11 +8,13 @@ import sys
 import tempfile
 import unittest
 
+from free_deck_fixture import write_free_deck
+
 from render_fixture import can_render
 from skill_copy_fixture import PREPARED_LOCATIONS, copy_skill
 
 
-DECK_SOURCE = Path(__file__).resolve().parent / "fixtures" / "deck-kit" / "quarterly-review"
+DECK_SECTIONS = ["<h1>매출이 6% 늘었습니다</h1><p>이샘플</p>", "<h2>서울이 성장을 이끌었습니다</h2><p>수도권 매출이 58억 원입니다.</p>"]
 REPORT = "# 분기 보고서\n\n3분기 매출은 **128억 원**입니다.\n\n| 지점 | 매출 |\n| --- | --- |\n| 서울 | 1,200 |\n"
 
 
@@ -116,12 +118,12 @@ class PreparedSkillTest(unittest.TestCase):
         self.assertEqual(tree_state(self.skill), self.before)
 
     def test_a_requester_builds_a_deck_a_sheet_and_a_document_from_the_read_only_skill_offline(self):
-        shutil.copytree(DECK_SOURCE, self.work / "deck")
+        write_free_deck(self.work / "deck", DECK_SECTIONS)
         (self.work / "보고서.md").write_text(REPORT, encoding="utf-8")
         (self.work / "실적.csv").write_text("지역,매출\n서울,1200\n", encoding="utf-8")
         (self.work / "실적.workbook.json").write_text('{"kind": "workbook", "tables": [{"name": "실적", "columns": [{"name": "지역"}, {"name": "매출", "type": "quantity"}], "csvPath": "실적.csv"}]}', encoding="utf-8")
         commands = (
-            (self.work / "deck", ["create", "build/deck.pdf", "slides.html"]),
+            (self.work / "deck", ["create", "build/deck.pdf", "."]),
             (self.work, ["create", "실적.xlsx", "실적.workbook.json"]),
             (self.work, ["create", "보고서.pdf", "보고서.md"]),
             (self.work, ["create", "보고서.docx", "보고서.md"]),

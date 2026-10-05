@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import html
 import html.parser
+import itertools
 import re
 
 from charts.numbers import split_chart_list
@@ -123,21 +124,38 @@ def deck_units(text: str) -> list[Unit]:
 
 
 def unit_role(node: Node) -> str:
-    if any(ancestor.tag == "aside" for ancestor in node.ancestors()):
+    if node.tag == "aside" or any(ancestor.tag == "aside" for ancestor in node.ancestors()):
         return ""
     if node.tag == "figure" and node.attributes.get("data-chart"):
         return "chart"
-    if node.tag not in UNIT_TAGS or any(child.tag in UNIT_TAGS for child in node.elements()):
+    if node.tag in ("section", "style", "script") or is_inside_unit(node) or any(child.tag in UNIT_TAGS for child in node.elements()):
         return ""
+    if node.tag not in UNIT_TAGS:
+        return text_role(node) if has_own_text(node) else ""
     if node.tag in ("h1", "h2", "h3", "h4"):
         return "title"
     if node.tag in ("td", "th"):
         return "cell"
     if node.tag == "figcaption":
         return "caption"
-    if "value" in node.classes:
-        return "stat"
-    return "item" if node.tag == "li" else "text"
+    return "item" if node.tag == "li" else text_role(node)
+
+
+def text_role(node: Node) -> str:
+    return "stat" if "value" in node.classes else "text"
+
+
+def has_own_text(node: Node) -> bool:
+    return any(isinstance(child, str) and child.strip() for child in node.children)
+
+
+def is_inside_unit(node: Node) -> bool:
+    for ancestor in node.ancestors():
+        if ancestor.tag == "section":
+            return False
+        if ancestor.tag in UNIT_TAGS or has_own_text(ancestor):
+            return True
+    return False
 
 
 def unit_text(node: Node) -> str:
@@ -200,27 +218,80 @@ def blanked_deck(text: str, paths: list[str], replacements: dict[str, str] | Non
         edits.setdefault(unit.node.start, (unit, set(), {}))[2][int(match.group(3)) if match and match.group(3) else -1] = new_text
     deck_title = units.get(DECK_TITLE_PATH)
     cover_fallback = deck_title.text if deck_title and DECK_TITLE_PATH not in paths else ""
-    result = text
+    emptied = {unit.node.start for unit, removed, replaced in edits.values() if not kept_pieces(unit, removed, replaced, cover_fallback)} | {unit.node.start for unit in units.values() if slide_of(unit.node).start in removed_slides}
+    dropped = hollow_containers(list(units.values()), emptied, set(removed_slides))
     spans = [(slide.start, slide.end, "") for slide in removed_slides.values()]
+    spans += [(node.start, node.end, "") for node in dropped]
     spans += [blank_span(unit, removed, replaced, cover_fallback) for unit, removed, replaced in edits.values()]
-    for start, end, replacement in sorted(spans, reverse=True):
+    result = text
+    for start, end, replacement in sorted(without_nested(spans), reverse=True):
         result = result[:start] + replacement + result[end:]
     return result
+
+
+BODYLESS_ROLES = ("title", "caption")
+MEDIA_TAGS = ("img", "svg", "figure", "table", "canvas", "video")
+
+
+def hollow_containers(units: list[Unit], emptied: set[int], removed_slides: set[int]) -> list[Node]:
+    slides = {id(slide): slide for slide in (slide_of(unit.node) for unit in units if unit.node.start in emptied) if slide.tag == "section"}
+    dropped: list[Node] = []
+    for slide in slides.values():
+        if slide.start in removed_slides:
+            continue
+        if is_hollow(slide, units, emptied) and not is_first_slide(slide, units):
+            dropped.append(slide)
+        else:
+            dropped += outermost_hollow(slide, units, emptied)
+    return dropped
+
+
+def outermost_hollow(slide: Node, units: list[Unit], emptied: set[int]) -> list[Node]:
+    found: dict[int, Node] = {}
+    for unit in units:
+        if unit.node.start not in emptied or slide_of(unit.node) is not slide:
+            continue
+        inside = list(itertools.takewhile(lambda ancestor: ancestor is not slide, unit.node.ancestors()))
+        hollow = [ancestor for ancestor in inside if is_hollow(ancestor, units, emptied)]
+        if hollow:
+            found[hollow[-1].start] = hollow[-1]
+    return list(found.values())
+
+
+def is_hollow(container: Node, units: list[Unit], emptied: set[int]) -> bool:
+    inside = {id(descendant) for descendant in container.elements()}
+    has_survivor = any(id(unit.node) in inside and unit.role not in BODYLESS_ROLES and unit.node.start not in emptied for unit in units)
+    has_media = any(descendant.tag in MEDIA_TAGS and descendant.tag != "table" for descendant in container.elements())
+    return not has_survivor and not has_media
+
+
+def is_first_slide(slide: Node, units: list[Unit]) -> bool:
+    first = next((unit for unit in units if unit.path != DECK_TITLE_PATH), None)
+    return first is not None and slide_of(first.node) is slide
+
+
+def without_nested(spans: list[tuple[int, int, str]]) -> list[tuple[int, int, str]]:
+    return [span for span in spans if not any(other is not span and other[0] <= span[0] and span[1] <= other[1] and (other[0], other[1]) != (span[0], span[1]) and other[2] == "" for other in spans)]
 
 
 def slide_of(node: Node) -> Node:
     return next((ancestor for ancestor in node.ancestors() if ancestor.tag == "section"), node)
 
 
-def blank_span(unit: Unit, removed: set[int], replaced: dict[int, str], cover_fallback: str) -> tuple[int, int, str]:
-    node = unit.node
-    pieces = split_unit(unit.role, unit_text(node))
+def kept_pieces(unit: Unit, removed: set[int], replaced: dict[int, str], cover_fallback: str) -> list[str]:
+    pieces = split_unit(unit.role, unit_text(unit.node))
     if -1 in replaced:
         pieces = [replaced[-1]]
     pieces = [replaced.get(index, piece) for index, piece in enumerate(pieces)]
     kept = [] if -1 in removed else [piece for index, piece in enumerate(pieces) if index not in removed]
     if not kept and unit.role == "title" and unit.path.startswith("slides[0].") and cover_fallback:
         kept = [cover_fallback]
+    return kept
+
+
+def blank_span(unit: Unit, removed: set[int], replaced: dict[int, str], cover_fallback: str) -> tuple[int, int, str]:
+    node = unit.node
+    kept = kept_pieces(unit, removed, replaced, cover_fallback)
     if not kept and unit.role not in FRAMED_ROLES:
         return node.start, node.end, ""
     return node.inner_start, node.inner_end, html.escape(" ".join(kept), quote=False)

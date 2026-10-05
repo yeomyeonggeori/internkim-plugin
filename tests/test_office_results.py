@@ -92,7 +92,7 @@ class ResultEnvelopeTest(unittest.TestCase):
 
     def test_a_retired_command_names_the_command_that_replaced_it(self):
         cases = {
-            ("deck", "build", "--format", "pptx", "--name", "review"): "office create build/review.pptx slides.html",
+            ("deck", "build", "--format", "pptx", "--name", "review"): "office create build/review.pptx .",
             ("sheet", "validate", "book.xlsx"): "office check book.xlsx",
             ("paperwork", "fill", "nda", "values.json", "nda.docx"): "office merge kr/nda values.json nda.docx",
             ("doc", "export", "report.md", "--output", "report.pdf"): "office create report.pdf report.md",
@@ -407,7 +407,7 @@ class DeckReviewResultTest(unittest.TestCase):
             result = review_deck(deck_path / "slides.html", "deck", review_path)
             report = json.loads((review_path / "slide-review.json").read_text(encoding="utf-8"))
         codes = {issue.kind.code for issue in result.issues}
-        self.assertEqual({issue.message for issue in result.issues}, {warning for slide in report["slides"] for warning in slide["warnings"]})
+        self.assertEqual({issue.message for issue in result.issues}, {warning for slide in report["slides"] for warning in slide["warnings"]} | set(report["warnings"]))
         self.assertIn("MISSING_SPEAKER_NOTES", codes)
         self.assertEqual(codes & {"MISSING_SLIDE_ROLE", "WEAK_VISUAL_IDENTITY", "RAW_TABLE", "BARE_LIST", "MISSING_REQUIRED_TEXT"}, set())
         self.assertFalse(any(re.match(r"^[a-z]+[A-Z]\w*: ", issue.message) for issue in result.issues))

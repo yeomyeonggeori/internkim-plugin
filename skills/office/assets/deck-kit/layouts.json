@@ -1,0 +1,89 @@
+{
+  "attribution": "Layout names, their descriptions, the content-to-layout criteria, the per-type library and the outline rules are adapted from GenOffice (Apache-2.0, Copyright 2026 Mainfunc, Inc.): apps/slides/src/renderer/ai/AiPanel.tsx, packages/pipelines/src/slides/outline.ts and packages/pipelines/src/slides/guides/design.md. Proportions are restated for a 1600x900 HTML slide.",
+  "types": {
+    "cover": "the first page: the deck's title, its subtitle and who presents it",
+    "content": "a page that makes one point in words, photos or a sequence",
+    "data": "a page whose point is figures: metrics, a chart or a matrix",
+    "closing": "the last page: the decision, the ask or the next step"
+  },
+  "criteria": "three parallel points call for three_column_cards, one key number for hero_big_number, a comparison or categories for two_column_comparison or two_by_two_grid, a sequence for timeline_horizontal, an image with text for left_text_right_image or full_image_text_overlay, metrics for kpi_cards_row, a series of numbers for chart_with_insight",
+  "layouts": {
+    "cover_typography_hero": {
+      "type": "cover",
+      "description": "Pure typography, no photo: the title alone carries the slide at 128px or larger across most of the width, the subtitle and presenter line small beneath it."
+    },
+    "cover_dark_minimal": {
+      "type": "cover",
+      "description": "Dark background, a large title centered, a little accent color and nothing else."
+    },
+    "cover_split_color": {
+      "type": "cover",
+      "description": "Two color blocks side by side, 60/40 (about 960px and 640px): the title on the larger block, the subtitle, date or presenter on the other."
+    },
+    "cover_full_image_overlay": {
+      "type": "cover",
+      "photo": true,
+      "description": "Full-bleed photo background under a dark overlay, the title centered in white, a metadata bar along the bottom."
+    },
+    "cover_magazine": {
+      "type": "cover",
+      "photo": true,
+      "description": "Magazine-style title taking 60% of the slide, a photo cropped into the rest."
+    },
+    "cover_split_image": {
+      "type": "cover",
+      "photo": true,
+      "description": "The title on the left half, the hero photo filling the right half edge to edge."
+    },
+    "left_text_right_image": {
+      "type": "content",
+      "photo": true,
+      "description": "Image beside text: the text column on the left (about 45% of the width), the photo filling the right part edge to edge, top to bottom."
+    },
+    "three_column_cards": {
+      "type": "content",
+      "description": "Three parallel points: three blocks of equal weight side by side across the full width, each a short heading and one or two lines."
+    },
+    "hero_big_number": {
+      "type": "content",
+      "description": "A key number: the one figure that carries the page set huge (up to 160px) with what it measures, beside or under the sentence that says why it matters."
+    },
+    "two_column_comparison": {
+      "type": "content",
+      "description": "Comparison: two columns side by side, the same kind of rows in each, for two options, before and after, or two groups."
+    },
+    "timeline_horizontal": {
+      "type": "content",
+      "description": "Sequence: three to six steps along one horizontal line across the slide, each a date or phase with a short label."
+    },
+    "full_image_text_overlay": {
+      "type": "content",
+      "photo": true,
+      "description": "Image with text: the photo fills the slide, a solid or translucent panel carries the title and two or three lines."
+    },
+    "kpi_cards_row": {
+      "type": "data",
+      "description": "Metrics: a horizontal row of two to four KPI cards, each a number with its unit and what it measures; one row, one unit, one source."
+    },
+    "chart_with_insight": {
+      "type": "data",
+      "description": "A trend, ranking or share: a native chart on the left (about 60% of the width, the full height under the title), the insight on the right: the sentence the chart proves and one or two supporting figures."
+    },
+    "two_by_two_grid": {
+      "type": "data",
+      "description": "Comparison or categories: four quadrants of equal size in a 2x2 grid, each a heading and a line, or a 2x2 matrix."
+    },
+    "closing_cta": {
+      "type": "closing",
+      "description": "The closing title centered, the ask or next step under it, and a contact line taken only from the company profile."
+    },
+    "closing_thank_you": {
+      "type": "closing",
+      "description": "A full-bleed closing page on the closing background: one short closing line and the presenter."
+    }
+  },
+  "question": {
+    "instructions": "Choose the layout of each page of a slide deck from what that page holds: its title, its brief and its photos. Match the layout to the shape of the content: {criteria}. Judge only from the page's title, brief and photos. Do not count points, figures, steps or comparisons the brief does not state, do not choose a layout for variety, and do not choose by the deck's subject alone.",
+    "page": "Page {number} of {count}, a {type} page. Title: {title}. Brief: {brief}. Photos: {photos}."
+  }
+}

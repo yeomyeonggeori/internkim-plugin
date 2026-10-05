@@ -5,26 +5,16 @@ import pathlib
 
 from core.office_result import Issue
 from core.skill_paths import ASSETS_PATH
-from deck.check_deck import body_theme, token_overrides
-from deck.deck_definitions import GUIDE_SECTIONS
-from deck.deck_kit import DEFAULT_THEME, theme_palettes
+from deck.design_system import DesignSystem, style_summary
 from deck.deck_source import Element, find_all, normalized_text, parse_source, visible_text
+from deck.outline import Outline
+from deck.page_files import lone_section, page_path
 from deck.review.slide_images import rendered_slide_image_paths
-from deck.slide_source import split_slide_sources
 
 
 VISUAL_REVIEW_FILE_NAME = "visual-review.json"
 REVIEW_DEFINITION = json.loads((ASSETS_PATH / "deck-kit" / "visual-review.json").read_text(encoding="utf-8"))
-FEATURE_LAYOUTS = frozenset({"section", "closing"})
-FIXER_GUIDE_SECTIONS = ("Layouts", "Diagrams", "Charts", "Icons")
 ICON_NEIGHBOR_LENGTH = 60
-
-
-def deck_colors(root: Element) -> dict[str, str]:
-    theme = body_theme(root) or DEFAULT_THEME
-    palette = dict(theme_palettes().get(theme, {}))
-    overrides = token_overrides(root, set(palette))
-    return palette | ({"custom": ", ".join(f"#{color}" for color in sorted(overrides))} if overrides else {})
 
 
 def slide_icons(section: Element) -> list[dict[str, str]]:
@@ -35,67 +25,35 @@ def slide_icons(section: Element) -> list[dict[str, str]]:
     ]
 
 
-def slide_title(section: Element) -> str:
-    headings = [child for child in section.child_elements() if child.tag in ("h1", "h2")]
-    return normalized_text(visible_text(headings[0])) if headings else ""
-
-
-def slide_state(deck_title: str, theme: str, colors: dict[str, str], section: Element, number: int, count: int) -> dict:
-    layout = section.attributes.get("data-layout", "").strip()
-    icons = slide_icons(section)
-    return {
-        "deck": deck_title,
-        "slide": f"{number} of {count}",
-        "layout": layout,
-        "theme": {"name": theme, "colors": colors},
-        "background": "--feature-bg with --feature-ink text" if layout in FEATURE_LAYOUTS else "--bg with --ink text",
-        "titles": "large, bold, left-aligned; cover, section and closing slides set their own size",
-        **({"icons": icons} if icons else {}),
-    }
-
-
-def fixer_guide() -> str:
-    return "\n".join(
-        f"{heading}\n" + "\n".join(lines())
-        for _, heading, lines in GUIDE_SECTIONS
-        if heading.startswith(FIXER_GUIDE_SECTIONS)
-    )
-
-
 def measured_defects(issues: list[Issue], defect_codes: frozenset[str], number: int) -> list[dict[str, str]]:
-    location = f"slide {number}"
-    return [{"code": issue.kind.code, "message": issue.message, "suggestion": issue.suggestion or ""} for issue in issues if issue.location == location and issue.kind.code in defect_codes]
+    locations = {f"slide {number}", f"page {number}"}
+    return [{"code": issue.kind.code, "message": issue.message, "suggestion": issue.suggestion or ""} for issue in issues if issue.location in locations and issue.kind.code in defect_codes]
 
 
-def deck_title(root: Element) -> str:
-    titles = find_all(root, "title")
-    return normalized_text("".join(child for child in titles[0].children if isinstance(child, str))) if titles else ""
+def slide_state(outline: Outline, style: dict, number: int, section: str) -> dict:
+    entry = outline.pages[number - 1]
+    icons = slide_icons(find_all(parse_source(section), "section")[0])
+    page = {"title": entry.title, "type": entry.type, "layout": entry.layout, "brief": list(entry.brief)}
+    return {"deck": outline.pages[0].title, "slide": f"{number} of {len(outline.pages)}", "design": style, "page": page, **({"icons": icons} if icons else {})}
 
 
-def visual_review(source_path: pathlib.Path, review_path: pathlib.Path, deck_name: str, issues: list[Issue], defect_codes: frozenset[str]) -> dict:
-    source_text = source_path.read_text(encoding="utf-8")
-    root = parse_source(source_text)
-    sections = find_all(root, "section")
-    sources = split_slide_sources(source_text)
-    images = rendered_slide_image_paths(review_path, deck_name)
-    theme = body_theme(root) or DEFAULT_THEME
-    colors = deck_colors(root)
-    title = deck_title(root)
-    slides = [
-        {
-            "number": number,
-            "image": str(images[number - 1].resolve()),
-            "state": slide_state(title, theme, colors, section, number, len(sections)),
-            "section": sources[number - 1],
-            "measured": measured_defects(issues, defect_codes, number),
-        }
-        for number, section in enumerate(sections, start=1)
-        if number <= len(images) and number <= len(sources)
-    ]
-    return {**REVIEW_DEFINITION, "fixer": {**REVIEW_DEFINITION["fixer"], "kitGuide": fixer_guide()}, "source": str(source_path.resolve()), "slides": slides}
+def slide_record(request, outline: Outline, style: dict, issues: list[Issue], defect_codes: frozenset[str], number: int, image: pathlib.Path) -> dict:
+    path = page_path(request.deck.directory, number)
+    section = lone_section(path.read_text(encoding="utf-8")) or ""
+    record = {"number": number, "image": str(image.resolve()), "state": slide_state(outline, style, number, section), "section": section, "source": str(path.resolve()), "measured": measured_defects(issues, defect_codes, number)}
+    return record | ({"recompose": True} if number in request.recomposed else {})
 
 
-def write_visual_review(source_path: pathlib.Path, review_path: pathlib.Path, deck_name: str, issues: list[Issue], defect_codes: frozenset[str]) -> pathlib.Path:
-    path = review_path / VISUAL_REVIEW_FILE_NAME
-    path.write_text(json.dumps(visual_review(source_path, review_path, deck_name, issues, defect_codes), ensure_ascii=False, indent=1), encoding="utf-8")
+def visual_review(request, system: DesignSystem, outline: Outline, issues: list[Issue]) -> dict:
+    from deck.review.acceptance import OBJECTIVE_DEFECT_CODES
+
+    images = rendered_slide_image_paths(request.review_path, request.deck_name)
+    style = style_summary(system)
+    slides = [slide_record(request, outline, style, issues, OBJECTIVE_DEFECT_CODES, number, image) for number, image in enumerate(images[:len(outline.pages)], start=1)]
+    return {**REVIEW_DEFINITION, "source": str(request.deck.directory), "slides": slides}
+
+
+def write_visual_review(request, system: DesignSystem, outline: Outline, issues: list[Issue]) -> pathlib.Path:
+    path = request.review_path / VISUAL_REVIEW_FILE_NAME
+    path.write_text(json.dumps(visual_review(request, system, outline, issues), ensure_ascii=False, indent=1), encoding="utf-8")
     return path

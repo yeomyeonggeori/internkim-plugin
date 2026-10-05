@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ledgerline Product Strategy 2027</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--ground); color: var(--text); font-family: var(--font-body); font-size: var(--size-body); }
+  section { width: 1600px; height: 900px; padding: var(--margin); display: flex; flex-direction: column; gap: var(--gap); overflow: hidden; position: relative; background: var(--ground); }
+  h1 { font-family: var(--font-display); font-size: var(--size-display); line-height: 1.1; font-weight: 700; }
+  h2 { font-family: var(--font-display); font-size: var(--size-title); line-height: 1.15; font-weight: 700; }
+  h3 { font-family: var(--font-display); font-size: 30px; line-height: 1.25; font-weight: 600; }
+  p, li { font-size: var(--size-body); line-height: 1.45; }
+  .small { font-size: var(--size-small); color: var(--text-soft); }
+  .muted { color: var(--muted); }
+  .accent { color: var(--accent); }
+  .logo { height: 56px; }
+  ul { list-style: none; }
+  li { display: flex; gap: 16px; align-items: flex-start; }
+  li i { font-size: 28px; color: var(--accent); flex: 0 0 auto; margin-top: 2px; }
+  .kicker { font-size: var(--size-small); color: var(--secondary); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+  .notes { display: none; }
+  .metric { font-family: var(--font-display); font-size: 72px; font-weight: 700; color: var(--accent); line-height: 1.2; }
+  .rule { height: var(--border); background: var(--line); border: none; width: 100%; }
+  .badge { border: var(--border) solid var(--line); border-radius: var(--radius); padding: 8px 20px; font-size: var(--size-small); color: var(--text-soft); }
+</style>
+</head>
+<body>
+
+<!-- 1. Cover -->
+<section>
+  <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:28px;">
+    <h1 style="font-size:76px;">2027: three bets to turn Ledgerline into the operating system for independent cafés</h1>
+    <div style="display:flex; align-items:center; gap:24px;">
+      <span class="badge">Leadership Offsite · October 2026</span>
+      <p class="small">Bookkeeping built for café owners who run everything themselves.</p>
+    </div>
+  </div>
+  <div style="display:flex; gap:64px;">
+    <div><p class="small muted">Owner</p><p>Gyeonbon Choi · Head of Product</p></div>
+    <div><p class="small muted">Presenter</p><p>Yesi Park</p></div>
+    <div><p class="small muted">As of</p><p>Q3 2026 close</p></div>
+  </div>
+  <div style="display:flex; gap:64px; border-top: var(--border) solid var(--line); padding-top: 24px; align-items:flex-end;">
+    <img data-logo src="logo" alt="Ledgerline" class="logo">
+    <div><p class="small muted">Paying cafés</p><p style="font-family: var(--font-display); font-size:32px; font-weight:700;">4,200</p></div>
+    <div><p class="small muted">Monthly churn</p><p style="font-family: var(--font-display); font-size:32px; font-weight:700;">3.1%</p></div>
+    <div><p class="small muted">NPS</p><p style="font-family: var(--font-display); font-size:32px; font-weight:700;">41</p></div>
+  </div>
+  <aside class="notes">Welcome. Today we lay out where Ledgerline stands after nine months of 2026 and the three product bets we propose for 2027. Deck owned by Gyeonbon Choi, presented by Yesi Park.</aside>
+</section>
+
+<!-- 2. Where we are -->
+<section>
+  <h2>2026 was a year of solid, profitable growth — now we choose the next frontier</h2>
+  <div style="display:flex; gap:var(--gap); align-items:stretch; flex:1;">
+    <div style="flex:1; display:flex; flex-direction:column; gap:12px; justify-content:center; border-left: 4px solid var(--accent); padding-left: 32px;">
+      <p class="small muted">Paying cafés, end of Q3 2026</p>
+      <p class="metric">4,200</p>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:12px; justify-content:center; border-left: 4px solid var(--line); padding-left: 32px;">
+      <p class="small muted">Monthly churn</p>
+      <p class="metric" style="color: var(--text);">3.1%</p>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:12px; justify-content:center; border-left: 4px solid var(--line); padding-left: 32px;">
+      <p class="small muted">Net Promoter Score</p>
+      <p class="metric" style="color: var(--text);">41</p>
+    </div>
+  </div>
+  <div style="display:flex; gap:var(--gap); align-items:flex-start;">
+    <i data-icon="trending-up"></i>
+    <p>Base grew <strong>1,100 cafés (+35%)</strong> from Q1 to Q3 2026. Churn of 3.1% monthly and NPS 41 say the core bookkeeping product works — the question is how far beyond bookkeeping we go.</p>
+  </div>
+  <aside class="notes">Context slide: 4,200 paying cafés at the end of Q3 2026, up from 3,100 in Q1. Monthly churn 3.1% and NPS 41. Core is healthy; the strategy question is expansion beyond bookkeeping.</aside>
+</section>
+
+<!-- 3. Growth chart -->
+<section>
+  <h2>We added 1,100 paying cafés in nine months, accelerating every quarter</h2>
+  <div style="display:flex; gap:var(--gap); flex:1; align-items:center;">
+    <figure data-chart="column"
+      data-labels="Q1 2026, Q2 2026, Q3 2026"
+      data-values="3,100, 3,500, 4,200"
+      data-highlight="Q3 2026"
+      style="flex: 1.6; height: 540px;">
+      <figcaption>Paying cafés at quarter end. Source: Ledgerline billing data, Q3 2026.</figcaption>
+    </figure>
+    <div style="flex:1; display:flex; flex-direction:column; gap:24px;">
+      <div style="display:flex; gap:16px; align-items:flex-start;">
+        <i data-icon="store"></i>
+        <p><strong>+400</strong> in Q2 (3,100 to 3,500), <strong>+700</strong> in Q3 (3,500 to 4,200): net additions accelerated even as the base grew.</p>
+      </div>
+      <div style="display:flex; gap:16px; align-items:flex-start;">
+        <i data-icon="target"></i>
+        <p>Independent cafés remain a <strong>large, underserved market</strong>; 4,200 is a foothold, not saturation.</p>
+      </div>
+      <div style="display:flex; gap:16px; align-items:flex-start;">
+        <i data-icon="lightbulb"></i>
+        <p>Growth so far came from the core bookkeeping product alone — none of the 2027 bets are in these numbers yet.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Chart of paying cafés by quarter: 3,100 in Q1 2026, 3,500 in Q2, 4,200 in Q3. Net adds accelerated from +400 to +700. Emphasize that none of the proposed 2027 bets contribute to these figures yet.</aside>
+</section>
+
+<!-- 4. Positioning -->
+<section>
+  <h2>We win by being the one app a café owner actually keeps open all day</h2>
+  <div style="display:flex; gap:var(--gap); flex:1; align-items:center;">
+    <div style="flex:1.1; display:flex; flex-direction:column; gap:20px;">
+      <p class="kicker">Positioning</p>
+      <p style="font-size:34px; line-height:1.4;">Ledgerline is the <strong>bookkeeping app for independent cafés</strong>: simple enough to use between customers, sharp enough to run the whole shop on.</p>
+      <p class="small">General accounting tools treat a café like any small business. We treat it like a café: daily sales, part-time staff, suppliers, and one owner doing everything.</p>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:20px; border-left: var(--border) solid var(--line); padding-left: var(--gap);">
+      <div style="display:flex; gap:16px; align-items:flex-start;">
+        <i data-icon="circle-check"></i>
+        <p><strong>In:</strong> daily sales and bookkeeping, cash-flow visibility, tax-ready records.</p>
+      </div>
+      <div style="display:flex; gap:16px; align-items:flex-start;">
+        <i data-icon="circle-check"></i>
+        <p><strong>Becoming in (2027):</strong> inventory, payroll, and banking, the rest of the owner's day.</p>
+      </div>
+      <div style="display:flex; gap:16px; align-items:flex-start;">
+        <i data-icon="triangle-alert"></i>
+        <p><strong>Out:</strong> enterprise chains, franchises with central finance teams.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Positioning: bookkeeping app purpose-built for independent cafés. Expansion path is the owner's whole day — inventory, payroll, banking — while staying out of chains and franchises.</aside>
+</section>
+
+<!-- 5. Three bets overview -->
+<section>
+  <h2>Three bets for 2027, each pulling the same owner deeper into Ledgerline</h2>
+  <div style="display:flex; flex-direction:column; gap:24px; flex:1; justify-content:center;">
+    <div style="display:flex; gap:var(--gap); align-items:center; border-left: 4px solid var(--accent); padding-left: 32px;">
+      <span style="font-family: var(--font-display); font-size:48px; font-weight:700; color: var(--accent); width:80px;">1</span>
+      <i data-icon="package"></i>
+      <div>
+        <h3>Inventory sync with POS systems</h3>
+        <p class="small">Stock and sales flow in automatically from the register. Attacks the biggest manual-entry chore after bookkeeping itself.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:var(--gap); align-items:center; border-left: 4px solid var(--accent); padding-left: 32px;">
+      <span style="font-family: var(--font-display); font-size:48px; font-weight:700; color: var(--accent); width:80px;">2</span>
+      <i data-icon="users"></i>
+      <div>
+        <h3>Payroll for part-time staff</h3>
+        <p class="small">Every café runs on part-timers. Payroll inside the ledger keeps us in the app after the books close.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:var(--gap); align-items:center; border-left: 4px solid var(--accent); padding-left: 32px;">
+      <span style="font-family: var(--font-display); font-size:48px; font-weight:700; color: var(--accent); width:80px;">3</span>
+      <i data-icon="wallet"></i>
+      <div>
+        <h3>Automatic bank feeds</h3>
+        <p class="small">Transactions reconcile themselves. Removes the last reason to leave Ledgerline for a spreadsheet.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Overview of the three 2027 bets: POS inventory sync, part-time payroll, automatic bank feeds. All three deepen the same daily relationship with the café owner.</aside>
+</section>
+
+<!-- 6. Bet 1: inventory sync -->
+<section>
+  <h2>Bet 1: inventory sync makes the register and the books agree without the owner typing</h2>
+  <div style="display:flex; gap:var(--gap); flex:1; align-items:center;">
+    <div style="flex:1; display:flex; flex-direction:column; gap:20px;">
+      <p class="kicker">Bet 1 · POS inventory sync</p>
+      <p>Today, café owners re-key sales and stock from their POS into Ledgerline. Syncing <strong>inventory and sales data directly from POS systems</strong> deletes that work — and makes Ledgerline the place the numbers are trusted.</p>
+      <p class="small">This is the bet most tied to our positioning: the moment the register feeds the books, leaving Ledgerline means leaving clean data behind.</p>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:20px; background: var(--surface); border-radius: var(--radius); padding: 40px;">
+      <h3 style="display:flex; gap:14px; align-items:center;"><i data-icon="flag"></i>2027 plan</h3>
+      <ul style="display:flex; flex-direction:column; gap:16px;">
+        <li><i data-icon="calendar"></i><p><strong>Q1 2027:</strong> inventory sync beta with launch POS partners.</p></li>
+        <li><i data-icon="users"></i><p><strong>Beta cohort:</strong> existing cafés already on integrated POS systems.</p></li>
+        <li><i data-icon="chart-line"></i><p><strong>Success signal:</strong> synced cafés show lower churn and higher engagement.</p></li>
+      </ul>
+    </div>
+  </div>
+  <aside class="notes">Bet 1: POS inventory sync. Owners re-key data today; sync removes that. Beta ships Q1 2027 with existing POS-integrated cafés; success measured on churn and engagement.</aside>
+</section>
+
+<!-- 7. Bet 2: payroll -->
+<section>
+  <h2>Bet 2: payroll turns us into the app owners use every week, not just at month-end</h2>
+  <div style="display:flex; gap:var(--gap); flex:1; align-items:center;">
+    <div style="flex:1.1; display:flex; flex-direction:column; gap:20px; background: var(--surface); border-radius: var(--radius); padding: 40px;">
+      <h3 style="display:flex; gap:14px; align-items:center;"><i data-icon="flag"></i>2027 plan</h3>
+      <ul style="display:flex; flex-direction:column; gap:16px;">
+        <li><i data-icon="calendar"></i><p><strong>Q2 2027:</strong> payroll pilot with <strong>50 cafés</strong>.</p></li>
+        <li><i data-icon="list-checks"></i><p><strong>Scope:</strong> schedules, hours, and pay runs for part-time staff.</p></li>
+        <li><i data-icon="scale"></i><p><strong>Constraint:</strong> payroll rules differ by region — pilot starts where rules are simplest.</p></li>
+      </ul>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:20px;">
+      <p class="kicker">Bet 2 · Part-time payroll</p>
+      <p>Independent cafés live on part-time staff, and payroll is the chore owners fear most. Doing it <strong>inside the ledger</strong> means hours, sales, and pay live in one place.</p>
+      <p class="small">Payroll is the widest moat of the three bets: switching cost jumps once we hold pay history. It is also the most regulated — hence the 50-café pilot before any broad launch.</p>
+    </div>
+  </div>
+  <aside class="notes">Bet 2: payroll for part-time staff. Q2 2027 pilot with 50 cafés, starting in regions with the simplest rules. Highest switching cost of the three bets, but the most regulated.</aside>
+</section>
+
+<!-- 8. Bet 3: bank feeds -->
+<section>
+  <h2>Bet 3: automatic bank feeds make reconciliation disappear</h2>
+  <div style="display:flex; gap:var(--gap); flex:1; align-items:center;">
+    <div style="flex:1; display:flex; flex-direction:column; gap:20px;">
+      <p class="kicker">Bet 3 · Automatic bank feeds</p>
+      <p>Importing bank statements is the last manual step in the books. <strong>Automatic bank feeds</strong> pull transactions straight in, match them to sales, and reconcile in the background.</p>
+      <p class="small">Closest to GA of the three bets: the plumbing exists, so 2027 is about integration quality and coverage of the banks our cafés actually use.</p>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:20px; border-left: var(--border) solid var(--line); padding-left: var(--gap);">
+      <div style="display:flex; gap:16px; align-items:flex-start;">
+        <i data-icon="refresh-cw"></i>
+        <p><strong>What changes:</strong> statements stop being exported and uploaded; the ledger updates itself daily.</p>
+      </div>
+      <div style="display:flex; gap:16px; align-items:flex-start;">
+        <i data-icon="shield-check"></i>
+        <p><strong>Trust matters most:</strong> bank data demands the highest security bar in the product.</p>
+      </div>
+      <div style="display:flex; gap:16px; align-items:flex-start;">
+        <i data-icon="rocket"></i>
+        <p><strong>GA in Q3 2027</strong>, following the inventory sync beta in Q1 and the payroll pilot in Q2.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Bet 3: automatic bank feeds. Removes the last manual step in bookkeeping. Targets GA in Q3 2027; security bar is the highest of the three bets.</aside>
+</section>
+
+<!-- 9. Roadmap -->
+<section>
+  <h2>2027 roadmap: one bet moves forward each quarter, with pricing reviewed at year end</h2>
+  <div style="display:flex; gap:var(--gap); flex:1; align-items:center;">
+    <div style="flex:1.5; display:flex; flex-direction:column; gap:36px; justify-content:center;">
+    <div style="display:flex; gap:32px; align-items:flex-start;">
+      <p style="font-family: var(--font-display); font-size:36px; font-weight:700; color: var(--accent); width:190px; flex:0 0 auto;">Q1 2027</p>
+      <div style="border-left: 4px solid var(--accent); padding-left: 32px;">
+        <h3>Inventory sync beta</h3>
+        <p class="small">Beta with POS partners; cafés already on integrated registers join first.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:32px; align-items:flex-start;">
+      <p style="font-family: var(--font-display); font-size:36px; font-weight:700; color: var(--accent); width:190px; flex:0 0 auto;">Q2 2027</p>
+      <div style="border-left: 4px solid var(--accent); padding-left: 32px;">
+        <h3>Payroll pilot, 50 cafés</h3>
+        <p class="small">Part-time payroll piloted with 50 cafés in regions with the simplest rules.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:32px; align-items:flex-start;">
+      <p style="font-family: var(--font-display); font-size:36px; font-weight:700; color: var(--accent); width:190px; flex:0 0 auto;">Q3 2027</p>
+      <div style="border-left: 4px solid var(--accent); padding-left: 32px;">
+        <h3>Bank feeds GA</h3>
+        <p class="muted">Automatic bank feeds reach general availability.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:32px; align-items:flex-start;">
+      <p style="font-family: var(--font-display); font-size:36px; font-weight:700; color: var(--secondary); width:190px; flex:0 0 auto;">Q4 2027</p>
+      <div style="border-left: 4px solid var(--secondary); padding-left: 32px;">
+        <h3>Pricing review</h3>
+        <p class="small">Revisit Basic and Plus once the new capabilities have adoption data.</p>
+      </div>
+    </div>
+    </div>
+    <div style="flex:1; align-self:stretch; display:flex; align-items:center; border-left: var(--border) solid var(--line); padding-left: var(--gap);">
+      <div style="display:flex; gap:16px; align-items:flex-start;">
+        <i data-icon="calendar-check"></i>
+        <p style="font-size:28px; line-height:1.5;">Each bet reaches a decision point in its quarter; the year is sequenced so no two launches compete for the same attention.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Roadmap: inventory sync beta Q1 2027, payroll pilot with 50 cafés Q2, bank feeds GA Q3, pricing review Q4. One bet per quarter keeps launches from competing.</aside>
+</section>
+
+<!-- 10. Pricing -->
+<section>
+  <h2>Pricing stays two-tier through the pilots; Q4 2027 decides what the new tiers look like</h2>
+  <div style="display:flex; gap:var(--gap); flex:1; align-items:center;">
+    <div style="flex:1; display:flex; flex-direction:column; gap:12px; padding: 40px; border: var(--border) solid var(--line); border-radius: var(--radius);">
+      <h3>Basic</h3>
+      <p style="font-family: var(--font-display); font-size: 64px; font-weight: 700;">$19<span class="small" style="font-family: var(--font-body); font-weight: 400;"> /month</span></p>
+      <p class="small">Core bookkeeping for a single café — daily sales, records, tax-ready exports.</p>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:12px; padding: 40px; border: var(--border) solid var(--accent); border-radius: var(--radius);">
+      <h3>Plus</h3>
+      <p style="font-family: var(--font-display); font-size: 64px; font-weight: 700; color: var(--accent);">$39<span class="small" style="font-family: var(--font-body); font-weight: 400;"> /month</span></p>
+      <p class="small">Everything in Basic, plus the advanced workflows growing cafés need.</p>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:16px;">
+      <div style="display:flex; gap:16px; align-items:flex-start;">
+        <i data-icon="calendar-check"></i>
+        <p><strong>Q4 2027 pricing review:</strong> once inventory, payroll, and bank feeds have adoption data, we decide which sit in Plus and what new tiers cost.</p>
+      </div>
+      <div style="display:flex; gap:16px; align-items:flex-start;">
+        <i data-icon="handshake"></i>
+        <p><strong>Commitment now:</strong> no price changes during the 2027 pilots — pilots run on today's Basic $19 and Plus $39.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Pricing today: Basic $19/month, Plus $39/month. No changes during the 2027 pilots; the Q4 pricing review decides how the new capabilities are packaged.</aside>
+</section>
+
+<!-- 11. Risks and asks -->
+<section>
+  <h2>Two risks we already know, and the decisions we need from this room</h2>
+  <div style="display:flex; gap:var(--gap); flex:1; align-items:center;">
+    <div style="flex:1; display:flex; flex-direction:column; gap:48px; justify-content:center;">
+      <div style="display:flex; gap:16px; align-items:flex-start;">
+        <i data-icon="triangle-alert"></i>
+        <div>
+          <h3>POS vendors may limit API access</h3>
+          <p>Inventory sync depends on partner APIs. We mitigate with multiple POS partners and a direct-integration fallback if any vendor restricts access.</p>
+        </div>
+      </div>
+      <div style="display:flex; gap:16px; align-items:flex-start;">
+        <i data-icon="scale"></i>
+        <div>
+          <h3>Payroll rules differ by region</h3>
+          <p>Every region has its own withholding, insurance, and filing rules. We mitigate with the 50-café pilot in the simplest regions first and regional compliance review before any rollout.</p>
+        </div>
+      </div>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:28px; justify-content:center; border-left: var(--border) solid var(--line); padding-left: var(--gap);">
+      <p class="kicker">Decisions for this offsite</p>
+      <ul style="display:flex; flex-direction:column; gap:32px;">
+        <li><i data-icon="circle-check"></i><p><strong>Approve the 2027 roadmap</strong> as sequenced: sync beta Q1, payroll pilot Q2, bank feeds GA Q3.</p></li>
+        <li><i data-icon="user-plus"></i><p><strong>Staff the pilots:</strong> POS integrations and regional payroll compliance are the two hiring priorities.</p></li>
+        <li><i data-icon="target"></i><p><strong>Confirm success metrics</strong> for each bet so the Q4 pricing review stands on adoption data.</p></li>
+      </ul>
+    </div>
+  </div>
+  <p class="small">Gyeonbon Choi (Head of Product) owns the plan; Yesi Park will follow up with the staffing and metrics one-pager.</p>
+  <aside class="notes">Known risks: POS vendors may limit API access (mitigate with multiple partners and fallback integration); payroll rules differ by region (mitigate with a staged pilot and compliance review). Close by asking leadership to approve the roadmap, staff the pilots, and confirm success metrics.</aside>
+</section>
+
+</body>
+</html>

@@ -62,6 +62,18 @@ function registeredFamily(fonts, name) {
   return font?.family.toLowerCase();
 }
 
+const cssWeights = [100, 200, 300, 400, 500, 600, 700, 800, 900];
+
+function everyWeight(fonts) {
+  const nearest = (faces, weight) => faces.reduce((best, face) => (Math.abs(face.weight - weight) < Math.abs(best.weight - weight) ? face : best));
+  const families = [...new Set(fonts.map((font) => `${font.family}\u0000${font.style || "normal"}`))];
+  const missing = families.flatMap((key) => {
+    const faces = fonts.filter((font) => `${font.family}\u0000${font.style || "normal"}` === key);
+    return cssWeights.filter((weight) => !faces.some((face) => face.weight === weight)).map((weight) => ({ ...nearest(faces, weight), weight }));
+  });
+  return [...fonts, ...missing];
+}
+
 function registeredFont(font) {
   return { name: font.family, weight: font.weight, style: font.style || "normal", data: font.data, ...(font.generic ? { generic: font.generic } : {}) };
 }
@@ -188,7 +200,7 @@ async function writePdf(pdfPath, layout, inlineStyles, pages, css, fonts, bytesO
   const pdf = await renderPdf(html, {
     size: { width: size.width, height: size.height },
     margin: 0,
-    fonts: fonts.map(registeredFont),
+    fonts: everyWeight(fonts).map(registeredFont),
     css: [...css, resetStyle, pdfPageStyle],
     images: imagesOf(pages, bytesOf),
   });
@@ -229,7 +241,7 @@ async function main() {
   const bytesOf = (source) => resampled.get(source) || resolveSource(source);
   const fonts = await loadFonts(request.fonts);
   const renderer = new Renderer();
-  for (const font of fonts) await renderer.registerFont(registeredFont(font));
+  for (const font of everyWeight(fonts)) await renderer.registerFont(registeredFont(font));
   const css = [...collectStyles(document, request.excludeStyles), ...(request.extraCss || []), generatedContentStyle];
   const viewport = request.viewport;
   const inlineStyles = createInlineStyleFilter(renderer);

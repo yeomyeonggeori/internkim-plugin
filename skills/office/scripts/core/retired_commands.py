@@ -100,13 +100,13 @@ def built(arguments: list[str]) -> list[str]:
     requested = (flag_value(arguments, "--format") or "pdf").split(",")[0].strip()
     extension = "pptx" if requested == "all" else requested
     name = flag_value(arguments, "--name") or Path.cwd().name
-    source = flag_value(arguments, "--source") or "slides.html"
+    source = flag_value(arguments, "--source") or "."
     return ["create", f"build/{name}.{extension}", source, *without_flags(arguments, ("--format", "--name", "--source"))]
 
 
 def checked_deck(arguments: list[str]) -> list[str]:
     positionals = positional_arguments(arguments)
-    return ["check", *([] if positionals else ["slides.html"]), *renamed(arguments)]
+    return ["check", *([] if positionals else ["."]), *renamed(arguments)]
 
 
 def fetched_image(arguments: list[str]) -> list[str]:

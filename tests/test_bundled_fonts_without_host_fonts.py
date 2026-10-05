@@ -17,13 +17,12 @@ SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scri
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
+from staged_deck_fixture import write_staged_deck  # noqa: E402
 from fonts.registry import FAMILIES, resolved_face  # noqa: E402
 
 KOREAN_TEXT = "일금 일백만원整 다람쥐 헌 쳇바퀴에 타고파"
-DECK_SOURCE = f"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>글꼴</title>
-<style>body {{ margin: 0; }} section {{ width: 1600px; height: 900px; padding: 120px; box-sizing: border-box; font-family: system-ui, sans-serif; }} h1 {{ font-size: 72px; }}</style>
-</head><body><section><h1>{KOREAN_TEXT}</h1><p style="font-size: 32px">본문 문장입니다.</p></section></body></html>
-"""
+DECK_PAGE = f'<h1>{KOREAN_TEXT}</h1><p style="font-size: 32px">본문 문장입니다.</p>'
+DECK_STYLE = "section { justify-content: center; font-family: system-ui, sans-serif; } h1 { font-size: 72px; }"
 
 
 def fontconfig_without_fonts(directory: Path) -> Path:
@@ -76,8 +75,8 @@ class HostWithoutFontsTest(unittest.TestCase):
         self.assertTrue(envelope["details"]["pages"])
 
     def test_a_deck_draws_korean_with_bundled_fonts(self):
-        (self.directory / "slides.html").write_text(DECK_SOURCE, encoding="utf-8")
-        envelope = self.run_office("create", "build/deck.pdf", "slides.html")
+        write_staged_deck(self.directory, [DECK_PAGE], DECK_STYLE)
+        envelope = self.run_office("create", "build/deck.pdf", ".")
         self.assert_bundled_pdf(self.directory / envelope["outputPath"], KOREAN_TEXT)
 
     def test_a_document_draws_korean_with_bundled_fonts(self):

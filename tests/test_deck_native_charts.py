@@ -3,7 +3,6 @@ from __future__ import annotations
 import io
 import json
 from pathlib import Path
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -16,11 +15,10 @@ from pptx.oxml.ns import qn
 
 from png_fixture import read_png, write_png
 from render_fixture import can_render
-from test_deck_kit_samples import SAMPLE_DECKS_PATH, copy_sample_deck
+from free_deck_fixture import build_pptx, run_office_json, write_free_deck
 
 
 SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
-OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
 from deck.deck_kit import chart_types  # noqa: E402
@@ -185,31 +183,34 @@ class NativeChartPackageTest(unittest.TestCase):
         self.assertEqual(written.embedded_typefaces, ("Paperlogy 6 SemiBold", "Paperlogy 7 Bold"))
 
 
-NEW_CHART_TYPES_DECK = """<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>샘플전자 차트</title></head><body data-theme="corporate">
-<section data-layout="cover"><h1>샘플전자 2026년 사업 리뷰</h1><p class="meta">전략기획팀 이샘플</p></section>
-<section data-layout="chart"><h2>매출과 이익률이 함께 올랐습니다</h2><figure data-chart="combo" data-labels="1Q, 2Q, 3Q, 4Q" data-series="매출: 96, 104, 113, 128; 영업이익률: 11.2, 12.5, 13.1, 14.2" data-unit="억, %"><figcaption>분기 매출과 영업이익률</figcaption></figure></section>
-<section data-layout="statement"><h2>성장은 클라우드에서 나왔습니다</h2></section>
-<section data-layout="chart"><h2>클라우드 매출이 해마다 커졌습니다</h2><figure data-chart="area" data-labels="2022, 2023, 2024, 2025, 2026" data-series="클라우드: 20, 32, 45, 60, 78; 온프레미스: 60, 58, 55, 50, 44" data-unit="억"><figcaption>사업별 매출, 단위 억 원</figcaption></figure></section>
-<section data-layout="statement"><h2>큰 매장이 이익도 더 냅니다</h2></section>
-<section data-layout="chart"><h2>매출이 큰 매장일수록 이익률도 높습니다</h2><figure data-chart="scatter" data-labels="강남점, 판교점, 부산점, 대구점, 광주점" data-series="매출: 120, 95, 70, 52, 40; 이익률: 14.5, 12.1, 9.8, 8.2, 6.5" data-unit="억, %" data-highlight="강남점"><figcaption>매장별 연 매출과 이익률</figcaption></figure></section>
-<section data-layout="statement"><h2>프리미엄이 절반을 넘었습니다</h2></section>
-<section data-layout="chart"><h2>프리미엄 비중이 분기마다 늘었습니다</h2><figure data-chart="stacked100" data-labels="1Q, 2Q, 3Q, 4Q" data-series="프리미엄: 38, 45, 52, 58; 일반: 52, 48, 44, 40; 기타: 10, 7, 4, 2" data-unit="%"><figcaption>제품군별 매출 비중</figcaption></figure></section>
-<section data-layout="closing"><h2>프리미엄 라인을 넓히겠습니다</h2></section>
-</body></html>
-"""
+def figure(kind: str, labels: str, series: str, unit: str, extra: str = "", caption: str = "") -> str:
+    attribute = "data-series" if ";" in series else "data-values"
+    return f'<figure data-chart="{kind}" data-labels="{labels}" {attribute}="{series}" data-unit="{unit}" {extra}><figcaption>{caption}</figcaption></figure>'
+
+
+NEW_CHART_SECTIONS = [
+    "<h2>매출과 이익률이 함께 올랐습니다</h2>" + figure("combo", "1Q, 2Q, 3Q, 4Q", "매출: 96, 104, 113, 128; 영업이익률: 11.2, 12.5, 13.1, 14.2", "억, %", caption="분기 매출과 영업이익률"),
+    "<h2>클라우드 매출이 해마다 커졌습니다</h2>" + figure("area", "2022, 2023, 2024, 2025, 2026", "클라우드: 20, 32, 45, 60, 78; 온프레미스: 60, 58, 55, 50, 44", "억", caption="사업별 매출, 단위 억 원"),
+    "<h2>매출이 큰 매장일수록 이익률도 높습니다</h2>" + figure("scatter", "강남점, 판교점, 부산점, 대구점, 광주점", "매출: 120, 95, 70, 52, 40; 이익률: 14.5, 12.1, 9.8, 8.2, 6.5", "억, %", 'data-highlight="강남점"', "매장별 연 매출과 이익률"),
+    "<h2>프리미엄 비중이 분기마다 늘었습니다</h2>" + figure("stacked100", "1Q, 2Q, 3Q, 4Q", "프리미엄: 38, 45, 52, 58; 일반: 52, 48, 44, 40; 기타: 10, 7, 4, 2", "%", caption="제품군별 매출 비중"),
+]
+
+PROPOSAL_SECTIONS = [
+    "<h2>직원이 가장 많이 쓰는 시간은 재고 확인입니다</h2>" + figure("bar", "재고 확인, 발주 작성, 매출 정산, 직원 일정, 세금 서류", "9.5, 6.2, 4.8, 3.1, 2.4", "시간", caption="주간 업무 시간"),
+    "<h2>도입 매장의 지표가 비교 매장보다 앞섭니다</h2>" + figure("line", "1월, 2월, 3월, 4월", "도입 매장: 80, 86, 93, 101; 비교 매장: 79, 81, 82, 84", "점", caption="월별 지표"),
+    "<h2>도입 의향은 절반을 넘었습니다</h2>" + figure("donut", "있음, 검토 중, 없음", "52, 30, 18", "%", caption="점주 응답"),
+]
 
 
 class BuiltNativeChartTest(unittest.TestCase):
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_combo_area_scatter_and_percent_charts_build_clean_into_native_charts(self):
         with tempfile.TemporaryDirectory() as directory:
-            deck_path = Path(directory) / "charts"
-            deck_path.mkdir()
-            (deck_path / "slides.html").write_text(NEW_CHART_TYPES_DECK, encoding="utf-8")
-            built = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path).stdout)
+            deck_path = write_free_deck(Path(directory) / "charts", NEW_CHART_SECTIONS)
+            built = build_pptx(deck_path)
             pptx_path = Path(built["details"]["outputs"]["pptx"])
-            read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "read", str(pptx_path)], capture_output=True, text=True).stdout)
-            checked = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "check", str(pptx_path)], capture_output=True, text=True, cwd=deck_path).stdout)
+            read = run_office_json(["read", str(pptx_path)], deck_path)
+            checked = run_office_json(["check", str(pptx_path)], deck_path)
         self.assertTrue(built["details"]["acceptance"]["acceptable"], built["summary"])
         charts = [shape["chart"] for slide in read["details"]["slides"] for shape in slide["shapes"] if shape["kind"] == "chart"]
         self.assertEqual([chart["type"] for chart in charts], ["column_clustered+line_markers", "area_stacked", "xy_scatter", "column_stacked_100"])
@@ -220,11 +221,11 @@ class BuiltNativeChartTest(unittest.TestCase):
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
     def test_a_built_deck_carries_native_charts_read_back_and_previewed(self):
         with tempfile.TemporaryDirectory() as directory:
-            deck_path = copy_sample_deck(SAMPLE_DECKS_PATH / "product-proposal", Path(directory))
-            built = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", f"build/{Path(deck_path).name}.pptx", "slides.html"], capture_output=True, text=True, cwd=deck_path).stdout)
+            deck_path = write_free_deck(Path(directory) / "proposal", PROPOSAL_SECTIONS)
+            built = build_pptx(deck_path)
             pptx_path = Path(built["details"]["outputs"]["pptx"])
-            read = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "read", str(pptx_path)], capture_output=True, text=True).stdout)
-            checked = json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), "check", str(pptx_path)], capture_output=True, text=True, cwd=deck_path).stdout)
+            read = run_office_json(["read", str(pptx_path)], deck_path)
+            checked = run_office_json(["check", str(pptx_path)], deck_path)
             layout = json.loads((deck_path / "build" / "review" / "pptx-layers" / "layout.json").read_text(encoding="utf-8"))
             backgrounds = {number: read_png(deck_path / "build" / "review" / "pptx-layers" / f"background.{number:03}.png") for number, slide in enumerate(layout["slides"], start=1) if slide.get("charts")}
             preview = (deck_path / checked["details"]["preview"]).read_text(encoding="utf-8")
@@ -236,6 +237,19 @@ class BuiltNativeChartTest(unittest.TestCase):
         self.assert_chart_left_the_background(layout, backgrounds)
         self.assertNotIn("PPTX_NOT_RENDERED", {issue["code"] for issue in checked["issues"]})
         self.assertIn("svg", preview)
+
+    @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
+    def test_a_unit_that_is_a_word_stands_apart_from_its_number_and_a_symbol_does_not(self):
+        sections = [
+            "<h2>Paying cafes grew every quarter</h2>" + figure("column", "Q1, Q2, Q3", "3100, 3500, 4200", "cafés"),
+            "<h2>Churn fell every quarter</h2>" + figure("column", "Q1, Q2, Q3", "4.1, 3.6, 3.1", "%"),
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            deck_path = write_free_deck(Path(directory) / "units", sections)
+            built = build_pptx(deck_path)
+            presentation = Presentation(built["details"]["outputs"]["pptx"])
+            formats = [{label.find(qn("c:numFmt")).get("formatCode") for label in chart_frame(slide).chart.plots[0].series[0]._element.iter(qn("c:dLbl"))} for slide in presentation.slides]
+        self.assertEqual(formats, [{'#,##0" cafés"'}, {'#,##0.0"%"'}])
 
     def assert_chart_left_the_background(self, layout: dict, backgrounds: dict) -> None:
         for number, background in backgrounds.items():

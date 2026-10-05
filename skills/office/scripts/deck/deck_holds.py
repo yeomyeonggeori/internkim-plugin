@@ -16,7 +16,6 @@ def slide_holds(number: int, section: Node) -> dict:
     title_node = next((node for node in section.elements() if node.tag in SLIDE_TITLE_TAGS and unit_role(node)), None)
     holds = {
         "slide": number,
-        "layout": section.attributes.get("data-layout", ""),
         "title": unit_text(title_node) if title_node else "",
         "text": slide_text(section, title_node),
         "tables": [table_rows(table) for table in section.elements() if table.tag == "table" and not is_in_notes(table)],
