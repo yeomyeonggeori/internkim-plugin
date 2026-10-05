@@ -49,6 +49,8 @@ OBJECTIVE_DEFECT_CODES = frozenset(
     )
 )
 
+WORDS_THE_HOST_CANNOT_REPAIR = frozenset({REQUIRED_TEXT_MISSING.code, OFF_PALETTE_COLOR.code})
+
 
 @dataclass(frozen=True)
 class Acceptance:
@@ -56,9 +58,12 @@ class Acceptance:
     defects: tuple[Issue, ...]
     fix_round: int
     deliverable: str
+    repaired_by_host: bool = False
 
     @property
     def verdict(self) -> str:
+        if self.acceptable and self.repaired_by_host:
+            return f"ACCEPTABLE: deliver {self.deliverable}; the host reviews every render and repairs the slides it flags, so do not redesign slides"
         if self.acceptable:
             return f"ACCEPTABLE: deliver {self.deliverable}; the other issues are advice, so do not redesign clean slides"
         listed = "; ".join(f"{issue.kind.code} on {issue.location}" for issue in self.defects)
@@ -77,11 +82,12 @@ class Acceptance:
         }
 
 
-def judge_build(build_path: pathlib.Path, source_text: str, issues: list[Issue], deliverable: str) -> Acceptance:
-    defects = tuple(issue for issue in issues if issue.kind.code in OBJECTIVE_DEFECT_CODES)
+def judge_build(build_path: pathlib.Path, source_text: str, issues: list[Issue], deliverable: str, repaired_by_host: bool = False) -> Acceptance:
+    owned_codes = OBJECTIVE_DEFECT_CODES & WORDS_THE_HOST_CANNOT_REPAIR if repaired_by_host else OBJECTIVE_DEFECT_CODES
+    defects = tuple(issue for issue in issues if issue.kind.code in owned_codes)
     acceptable = not defects
     fix_round = record_build(build_path / HISTORY_FILE_NAME, source_digest(source_text), acceptable)
-    return Acceptance(acceptable, defects, fix_round, deliverable)
+    return Acceptance(acceptable, defects, fix_round, deliverable, repaired_by_host)
 
 
 def source_digest(source_text: str) -> str:

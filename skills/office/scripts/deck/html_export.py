@@ -61,7 +61,7 @@ def export_deck(request: ExportRequest) -> Result:
     html_output_path.write_text(deck_html_text(request.source_path, read_design_system(request.source_path.parent / "DESIGN.md")[0]), encoding="utf-8")
     derived = write_derived_outputs(request, html_output_path, slide_sources)
     issues = list(check.issues) + derived.issues
-    acceptance = judge_build(request.build_path, source_text, issues, deliverable_path(request))
+    acceptance = judge_build(request.build_path, source_text, issues, deliverable_path(request), host_reviews_renders())
     return Result(
         summary=f"{acceptance.verdict}. {build_summary(request, derived)}",
         output_path=deliverable_path(request),
@@ -70,9 +70,13 @@ def export_deck(request: ExportRequest) -> Result:
     )
 
 
-def visual_review_details(request: ExportRequest, issues: list[Issue]) -> dict[str, str]:
+def host_reviews_renders() -> bool:
     context = load_runtime_context()
-    if not context or not context.reviews_deck_renders:
+    return bool(context and context.reviews_deck_renders)
+
+
+def visual_review_details(request: ExportRequest, issues: list[Issue]) -> dict[str, str]:
+    if not host_reviews_renders():
         return {}
     return {"visualReview": str(write_visual_review(request.source_path, request.review_path, request.deck_name, issues, OBJECTIVE_DEFECT_CODES))}
 

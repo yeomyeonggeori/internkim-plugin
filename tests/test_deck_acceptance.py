@@ -12,13 +12,17 @@ sys.path.insert(0, str(SCRIPTS_PATH))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from deck.review.acceptance import FIX_ROUNDS_ALLOWED, OBJECTIVE_DEFECT_CODES, judge_build  # noqa: E402
-from deck.deck_definitions import MISSING_SPEAKER_NOTES  # noqa: E402
+from deck.deck_definitions import EMPTY_REGION, MISSING_SPEAKER_NOTES
+from core.office_result import Issue
+from core.text_checks import REQUIRED_TEXT_MISSING  # noqa: E402
 from core.design_rules import DESIGN_RULE_KINDS  # noqa: E402
 from design_gate_fixture import design_markdown  # noqa: E402
 from render_fixture import bare_environment, can_render  # noqa: E402
 
 
 OVERLAP = DESIGN_RULE_KINDS["CONTENT_OVERLAP"].issue("two text blocks cover each other", "slide 3")
+EMPTY = EMPTY_REGION.issue("a box is empty", "slide 4")
+REQUIRED_TEXT_MISSING_ISSUE = REQUIRED_TEXT_MISSING.issue("the required sentence is absent", "slide 2")
 NO_NOTES = MISSING_SPEAKER_NOTES.issue("slide 8 has no speaker notes", "slide 8")
 
 
@@ -40,6 +44,17 @@ class AcceptanceTest(unittest.TestCase):
         self.assertTrue(acceptance.verdict.startswith(f"FIX ROUND 1 OF {FIX_ROUNDS_ALLOWED}"))
         self.assertIn("CONTENT_OVERLAP on slide 3", acceptance.verdict)
         self.assertNotIn("MISSING_SPEAKER_NOTES", acceptance.verdict)
+
+    def test_layout_defects_are_left_to_the_host_that_repairs_renders_but_missing_words_are_not(self):
+        missing = REQUIRED_TEXT_MISSING_ISSUE
+        with tempfile.TemporaryDirectory() as directory:
+            left = judge_build(Path(directory), "<section>a</section>", [OVERLAP, EMPTY], "deck.pdf", repaired_by_host=True)
+            owned = judge_build(Path(directory), "<section>b</section>", [OVERLAP, missing], "deck.pdf", repaired_by_host=True)
+        self.assertTrue(left.acceptable)
+        self.assertIn("host", left.verdict)
+        self.assertFalse(owned.acceptable)
+        self.assertIn("REQUIRED_TEXT_MISSING", owned.verdict)
+        self.assertNotIn("CONTENT_OVERLAP", owned.verdict)
 
     def test_fixing_stops_after_the_allowed_rounds_and_a_rebuild_of_one_source_is_not_a_round(self):
         with tempfile.TemporaryDirectory() as directory:
