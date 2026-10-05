@@ -85,8 +85,11 @@ class JudgmentChoiceTest(unittest.TestCase):
         for word in ("data-layout", "theme", "kit"):
             self.assertNotIn(word, text)
 
-    def test_the_fixer_is_told_never_to_add_a_pattern_the_build_refuses(self):
-        self.assertIn("Never add a pattern the build refuses", REVIEW_DEFINITION["fixer"]["instructions"])
+    def test_the_fixer_chooses_among_edits_and_writes_no_markup(self):
+        instructions = REVIEW_DEFINITION["fixer"]["instructions"]
+        self.assertIn("Choose from edits only", instructions)
+        self.assertIn("Do not write markup", instructions)
+        self.assertNotIn("Return the whole <section>", instructions)
 
 
 if __name__ == "__main__":

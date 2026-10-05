@@ -92,6 +92,10 @@ class VisualConsistencyTest(unittest.TestCase):
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/deck.pdf", "slides.html"], capture_output=True, text=True, cwd=directory, env=environment)
         return json.loads(completed.stdout)
 
+    def run_check(self, directory: str, name: str) -> dict:
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "check", name], capture_output=True, text=True, cwd=directory)
+        return json.loads(completed.stdout)
+
     def located(self, envelope: dict, code: str) -> set[str]:
         return {issue["location"] for issue in envelope["issues"] if issue["code"] == code}
 
@@ -160,6 +164,20 @@ class VisualConsistencyTest(unittest.TestCase):
         self.assertTrue(second["section"].startswith("<section>"))
         self.assertEqual([icon["icon"] for icon in review["slides"][2]["state"]["icons"]], ["lightbulb", "megaphone"])
         self.assertIn("Canvas", review["fixer"]["kitGuide"])
+
+    def test_a_build_offers_each_slide_only_edits_that_pass_the_render_gate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            envelope = self.build_pptx(directory, True)
+            review = json.loads(Path(envelope["details"]["visualReview"]).read_text(encoding="utf-8"))
+            offered = {(slide["number"], edit["id"]) for slide in review["slides"] for edit in slide["edits"]}
+            for slide in review["slides"]:
+                for edit in slide["edits"]:
+                    self.assertEqual(sorted(edit), ["description", "id", "operation", "section"])
+                    self.assertTrue(edit["section"].startswith("<section"))
+            (Path(directory) / "variant.html").write_text(deck(*[edit["section"] for slide in review["slides"] for edit in slide["edits"][:1]]), encoding="utf-8")
+            variant = self.run_check(directory, "variant.html")
+        self.assertTrue(offered, "no edit was offered")
+        self.assertEqual([issue["code"] for issue in variant["issues"] if issue["severity"] == "error"], [])
 
     def test_an_off_palette_color_is_reported_on_the_slide_that_uses_it(self):
         envelope = self.build(deck(COVER, cards(), table(title_style="color:#D81B60"), CLOSING))
