@@ -24,8 +24,9 @@ def review_deck(source_path: pathlib.Path, deck_name: str, review_directory_path
     slide_count = max(len(slide_sources), len(image_paths))
     slide_texts = read_slide_texts(source_text, slide_count)
     slides = review_slides(image_paths, read_page_pixels(review_directory_path), slide_texts, read_geometry(review_directory_path))
-    issues = located_issues(slides) + content_warnings(slide_sources, slide_texts)
-    report = {"source": source_path.name, "deckName": deck_name, "slideCount": slide_count, "renderedSlideCount": len(image_paths), "contactSheets": read_contact_sheets(review_directory_path), "slides": [with_messages(slide) for slide in slides]}
+    deck_warnings = content_warnings(slide_sources, slide_texts)
+    issues = located_issues(slides) + deck_warnings
+    report = {"source": source_path.name, "deckName": deck_name, "slideCount": slide_count, "renderedSlideCount": len(image_paths), "contactSheets": read_contact_sheets(review_directory_path), "warnings": [warning.message for warning in deck_warnings], "slides": [with_messages(slide) for slide in slides]}
     review_directory_path.mkdir(parents=True, exist_ok=True)
     (review_directory_path / REVIEW_FILE_NAME).write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return Result(summary=f"reviewed {slide_count} slides", output_path=str(review_directory_path / REVIEW_FILE_NAME), issues=tuple(issues), details={"slideCount": slide_count, "renderedSlideCount": len(image_paths)})
