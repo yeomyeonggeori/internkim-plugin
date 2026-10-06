@@ -10,6 +10,7 @@ from core.css_color import parse_css_color
 from core.office_result import ERROR, WARNING, Issue, IssueKind
 from core.office_schema import closest_name, names_suggestion
 from core.text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
+from deck.chart_data import axis_unit_texts, chart_series, series_axes
 from deck.deck_kit import chart_types, icon_names
 from deck.deck_source import Element, find_all, normalized_text, visible_text
 from deck.design_system import DesignSystem, palette_of
@@ -21,7 +22,6 @@ DONUT_SLICE_MAXIMUM = 8
 ALWAYS_ALLOWED_COLORS = {"FFFFFF", "000000"}
 COLOR_LITERAL_PATTERN = re.compile(r"#[0-9A-Fa-f]{3,8}\b|(?:rgba?|hsla?)\([^)]*\)")
 DECLARATION_PATTERN = re.compile(r"([-\w]+)\s*:\s*([^;{}]+)")
-LOOSE_PATTERN = re.compile(r"[\W_]+")
 CONTENT_TAGS = {"img", "figure", "svg", "table"}
 
 SLIDE_WITHOUT_CONTENT = IssueKind("SLIDE_WITHOUT_CONTENT", ERROR, "a page has no visible text, image or chart", "give the page the content its outline entry names")
@@ -29,8 +29,11 @@ CHART_DATA_INVALID = IssueKind("CHART_DATA_INVALID", ERROR, "a chart's data attr
 IMAGE_NOT_FOUND = IssueKind("IMAGE_NOT_FOUND", ERROR, "an image is remote or its file does not exist, so the page would show an empty box", "point src at an image office guide design lists, or remove the image")
 ICON_UNKNOWN = IssueKind("ICON_UNKNOWN", ERROR, "a data-icon names an icon the kit does not ship", "use a name office guide slides lists under Icons, or drop the data-icon")
 OFF_PALETTE_COLOR = IssueKind("OFF_PALETTE_COLOR", WARNING, "the page paints with a color the style sheet does not name", "use the style sheet's colors through var(--accent), var(--text) and the other tokens, or add the color to DESIGN.md")
-PAGE_DIFFERS_FROM_OUTLINE = IssueKind("PAGE_DIFFERS_FROM_OUTLINE", WARNING, "the page does not show what its outline entry plans: its title or its planned photo", "compose the page from its outline entry in its layout")
-PAGE_CHECK_ISSUE_KINDS = (SLIDE_WITHOUT_CONTENT, CHART_DATA_INVALID, IMAGE_NOT_FOUND, ICON_UNKNOWN, OFF_PALETTE_COLOR, PAGE_DIFFERS_FROM_OUTLINE)
+CHART_NOT_FROM_FIGURES = IssueKind("CHART_NOT_FROM_FIGURES", ERROR, "a chart plots a value that is not one of its page's outline figures, or not as the figure states it", "plot the page's outline figures: each data-labels entry is a figure's label, each value that figure's value, data-unit its unit, and a data-series name its series")
+CHART_MIXED_UNITS = IssueKind("CHART_MIXED_UNITS", ERROR, "one chart axis plots figures whose units differ, so a count and a share read as one kind of number", "keep one unit per axis: chart the figures that share a unit and show the other apart, such as a KPI for the count beside a chart of the percentages")
+PAGE_TITLE_UNBOUND = IssueKind("PAGE_TITLE_UNBOUND", ERROR, "the page does not hold exactly one element with data-title, where the build writes its outline entry's title", "write the title as one empty element, such as <h1 data-title></h1>; the build fills in the outline entry's title")
+PAGE_DIFFERS_FROM_OUTLINE = IssueKind("PAGE_DIFFERS_FROM_OUTLINE", WARNING, "the page does not show the photo its outline entry plans", "compose the page from its outline entry in its layout")
+PAGE_CHECK_ISSUE_KINDS = (SLIDE_WITHOUT_CONTENT, CHART_DATA_INVALID, CHART_NOT_FROM_FIGURES, CHART_MIXED_UNITS, PAGE_TITLE_UNBOUND, IMAGE_NOT_FOUND, ICON_UNKNOWN, OFF_PALETTE_COLOR, PAGE_DIFFERS_FROM_OUTLINE)
 
 
 @dataclass(frozen=True)
@@ -57,6 +60,8 @@ def page_issues(page: Page, directory: pathlib.Path, system: DesignSystem) -> li
     return (
         empty_page_issues(page)
         + chart_issues(page)
+        + chart_figure_issues(page)
+        + title_issues(page)
         + icon_issues(page)
         + image_issues(page, directory)
         + placeholder_issues(page)
@@ -94,23 +99,9 @@ def chart_problems(chart_type: str, attributes: dict[str, str]) -> list[str]:
     series = chart_series(attributes)
     if isinstance(series, str):
         return [series]
-    problems = [series_problem(name, values, len(labels)) for name, values in series]
+    problems = [series_problem(name or "data-values", values, len(labels)) for name, values in series]
     problems += shape_problems(chart_type, labels, series, attributes.get("data-highlight"))
     return [problem for problem in problems if problem]
-
-
-def chart_series(attributes: dict[str, str]) -> list[tuple[str, list[str]]] | str:
-    if attributes.get("data-series", "").strip():
-        series = []
-        for part in [part.strip() for part in attributes["data-series"].split(";") if part.strip()]:
-            name, separator, values = part.partition(":")
-            if not separator:
-                return f'data-series part "{part}" has no "name:" before its numbers'
-            series.append((name.strip(), split_chart_list(values)))
-        return series
-    if attributes.get("data-values", "").strip():
-        return [("data-values", split_chart_list(attributes["data-values"]))]
-    return "the chart has neither data-values nor data-series"
 
 
 def series_problem(name: str, values: list[str], label_count: int) -> str:
@@ -148,6 +139,54 @@ def shape_problems(chart_type: str, labels: list[str], series: list[tuple[str, l
     if len(labels) > DONUT_SLICE_MAXIMUM:
         problems.append(f"{len(labels)} slices are too many to read; group the smallest into one")
     return problems
+
+
+def chart_figure_issues(page: Page) -> list[Issue]:
+    issues = []
+    for figure in page.charts():
+        problems, units_by_axis = plotted_figure_problems(page.entry, figure.attributes)
+        issues += [CHART_NOT_FROM_FIGURES.issue(f"{page.location}: {problem}", page.location) for problem in problems]
+        issues += axis_unit_issues(page, figure.attributes, units_by_axis)
+    return issues
+
+
+def plotted_figure_problems(entry: OutlinePage, attributes: dict[str, str]) -> tuple[list[str], dict[int, dict[str, str]]]:
+    series = chart_series(attributes)
+    if isinstance(series, str):
+        return [], {}
+    labels = split_chart_list(attributes.get("data-labels", ""))
+    axes = series_axes(attributes["data-chart"].strip(), len(series))
+    problems, units_by_axis = [], {}
+    for (name, values), axis in zip(series, axes):
+        for label, value in zip(labels, values):
+            figure = entry.figure(name, label)
+            if figure is None:
+                problems.append(f'"{" ".join(part for part in (label, name) if part)}" is not a figure of this page\'s outline entry; its figures are {listed_figures(entry)}')
+            elif chart_number(value) != figure.number:
+                problems.append(f'"{label}" plots {value}, but its figure is {figure.value}')
+            else:
+                units_by_axis.setdefault(axis, {})[figure.shown()] = figure.unit or ""
+    return problems, units_by_axis
+
+
+def listed_figures(entry: OutlinePage) -> str:
+    return ", ".join(figure.shown() for figure in entry.figures) or "none"
+
+
+def axis_unit_issues(page: Page, attributes: dict[str, str], units_by_axis: dict[int, dict[str, str]]) -> list[Issue]:
+    issues = []
+    written = axis_unit_texts(attributes["data-chart"].strip(), attributes.get("data-unit", ""))
+    for axis, units in sorted(units_by_axis.items()):
+        if len(set(units.values())) > 1:
+            issues.append(CHART_MIXED_UNITS.issue(f"{page.location}: one axis plots {', '.join(units)}", page.location))
+        elif written[axis] != next(iter(units.values())):
+            issues.append(CHART_NOT_FROM_FIGURES.issue(f'{page.location}: data-unit gives "{written[axis]}", but the figures it plots are in "{next(iter(units.values()))}"', page.location))
+    return issues
+
+
+def title_issues(page: Page) -> list[Issue]:
+    count = sum(1 for element in (page.element, *page.element.descendants()) if "data-title" in element.attributes)
+    return [] if count == 1 else [PAGE_TITLE_UNBOUND.issue(f"{page.location} has {count} elements with data-title", page.location)]
 
 
 def numbers_in(values: list[str]) -> list[float]:
@@ -211,14 +250,8 @@ def normalized_color(literal: str) -> str:
         return ""
 
 
-def loose(text: str) -> str:
-    return LOOSE_PATTERN.sub("", text).casefold()
-
-
 def agreement_warnings(page: Page) -> list[Issue]:
     differences = []
-    if page.entry.title and loose(page.entry.title) not in loose(page.text()):
-        differences.append(f'the outline title "{page.entry.title}" is not on the page')
     if page.entry.photos and not page.images():
         differences.append(f"the outline plans {len(page.entry.photos)} photo(s) and the page shows none")
     return [PAGE_DIFFERS_FROM_OUTLINE.issue(f"{page.location}: {difference}", page.location) for difference in differences]

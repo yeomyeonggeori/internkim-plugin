@@ -20,10 +20,11 @@ STYLE_SHEET_LINES = (
 PAGE_LINES = (
     "Stage 3, pages: for page N re-read DESIGN.md and outline entry N, write pages/NN.html in the layout the entry names, run office check pages/NN.html, fix it until it passes, then go to page N+1. Never write two pages in one step.",
     "  The layout names the composition; you decide its proportions, which parts appear and how many, sizes within the scale, emphasis, background treatment and photo crop.",
-    "  Every word and figure comes from the entry's brief; the title is the entry's title.",
+    "  Every word and figure comes from the entry's brief and figures. The title is one empty element, such as <h1 data-title></h1>: the build writes the entry's title into it. A chart plots the entry's figures: their labels, values and unit, one unit per axis.",
     "  Type scale: titles 56 to 80px, subtitles 30 to 40px, body 28 to 36px, captions 20px or more, hero numbers up to 160px.",
     "  Spacing: 64px or more from the page edge, 24px or more between text and a card edge, 24px or more between a title and its subtitle, 12px or more between stacked text blocks.",
-    "  Fill the page: spread the content over the whole 1600x900 page and make text, charts and photos as large as the layout allows; cards and columns run down to the bottom margin, and a page with few words sets them larger rather than leaving a blank field under them.",
+    "  Fill the page: spread the content over the whole 1600x900 page and make text, charts and photos as large as the layout allows. The lowest part ends near the bottom margin, about 100px from the edge: cards, columns and charts stretch down to it, and a page with few words sets them larger. A blank band under the content is a defect.",
+    "  A hero number is a quantity, amount, share or date from the brief, never an abbreviation, a label or a word set large in its place.",
     "  The parts the layout names are drawn: a photo layout shows its photo, chart_with_insight its chart. Colors come only from the style sheet; add a color to DESIGN.md before a page uses it.",
     "  Visuals: photos only from the list below; without photos, typography, color blocks and the kit's icons and charts carry the page, and never a grey box standing in for a photo. A chart's size is proportional to real values from the brief.",
 )
@@ -61,7 +62,8 @@ def typeface_lines(preparation: DeckPreparation) -> list[str]:
 def outline_lines() -> list[str]:
     return [
         "Stage 2, the outline: outline.json, the content of every page before any page exists:",
-        '  {"core_hook": "one sentence with tension, a number or a counter-intuitive contrast", "pages": [{"title": "...", "type": "cover", "brief": ["what goes on the page, one fact per line, with the real figures"], "photos": ["<listed path>"]}]}',
+        '  {"core_hook": "one sentence with tension, a number or a counter-intuitive contrast", "pages": [{"title": "...", "type": "cover", "brief": ["what goes on the page, one fact per line, with the real figures"], "figures": [{"label": "what it measures", "value": "64", "unit": "곳"}], "photos": ["<listed path>"]}]}',
+        '  figures holds every number the page shows large or charts, each with its unit as the request states it ("" only for a bare count); a figure of a chart with several series adds "series": "<series name>". A source line under a figure is written only when the request names that source.',
         f"  type is {', '.join(PAGE_TYPES)}; the first page is the cover and the last the closing page. photos lists the photos the page shows, [] for none. Every figure and name comes from the request or its attachments; leave out what they do not state.",
         "  office check outline.json checks it, and InternKim then judges its statements and chooses each page's layout from the library below; run the check again, as a command of its own, until it lists every page's layout.",
     ]
@@ -91,7 +93,7 @@ def image_lines(preparation: DeckPreparation) -> list[str]:
     if not preparation.images:
         return ["Photos: none. Plan pages that need no photo; the photo layouts are not offered.", *dropped]
     return [
-        "Photos the requester can use: use them readily where they show the deck's subject, and skip one that does not. A caption or a fact about a photo comes only from its title, its summary or the request.",
+        "Photos the requester can use: use them readily where they show the deck's subject, and skip one that does not. Plan one on the cover and on at least one content page, so InternKim can give those pages a photo layout. A caption or a fact about a photo comes only from its title, its summary or the request.",
         *(image_line(image) for image in preparation.images),
         *dropped,
     ]

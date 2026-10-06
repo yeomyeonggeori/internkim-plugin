@@ -7,12 +7,14 @@ import itertools
 import re
 
 from charts.numbers import split_chart_list
+from deck.chart_data import axis_unit_texts, chart_series, series_axes, spaced_unit
 from schemas.claims import sentences
 
 UNIT_TAGS = ("h1", "h2", "h3", "h4", "p", "li", "td", "th", "figcaption", "blockquote")
 VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
 FRAMED_ROLES = ("title", "stat", "cell", "deck")
 DECK_TITLE_PATH = "deck.title"
+CHART_VALUE_SEPARATOR = "\n"
 UNIT_PATH = re.compile(r"^slides\[(\d+)\]\.units\[(\d+)\](?:#(\d+))?$")
 ROLE_NAMES = {
     "ko": {"deck": "발표 자료 제목", "slide": "슬라이드", "title": "제목", "stat": "수치", "cell": "표", "chart": "차트", "caption": "차트 설명", "item": "항목", "text": "본문"},
@@ -173,15 +175,27 @@ def visible_strings(node: Node):
 
 
 def chart_text(node: Node) -> str:
-    labels = split_chart_list(node.attributes.get("data-labels", ""))
-    values = split_chart_list(node.attributes.get("data-values", ""))
-    unit = node.attributes.get("data-unit", "")
-    pairs = ", ".join(f"{label} {value}{unit}" for label, value in zip(labels, values) if label or value)
-    series = node.attributes.get("data-series", "")
-    return f"{node.attributes['data-chart']} chart: {pairs}" + (f" ({series})" if series else "")
+    return CHART_VALUE_SEPARATOR.join(plotted_values(node.attributes))
+
+
+def plotted_values(attributes: dict[str, str]) -> list[str]:
+    labels = split_chart_list(attributes.get("data-labels", ""))
+    series = chart_series(attributes)
+    if isinstance(series, str):
+        return []
+    chart_type = attributes["data-chart"].strip()
+    units = axis_unit_texts(chart_type, attributes.get("data-unit", ""))
+    axes = series_axes(chart_type, len(series))
+    return [
+        " ".join(part for part in (label, name, f"{value}{spaced_unit(units[axis])}") if part)
+        for (name, values), axis in zip(series, axes)
+        for label, value in zip(labels, values)
+    ]
 
 
 def split_unit(role: str, content: str) -> list[str]:
+    if role == "chart":
+        return content.split(CHART_VALUE_SEPARATOR)
     return sentences(content) if role in ("text", "item") else [content]
 
 
@@ -198,8 +212,15 @@ def place(unit: Unit, language: str) -> str:
     return f"{names['slide']} {slide_number} {names[unit.role]}"
 
 
+def units_by_path(units: list[Unit]) -> dict[str, Unit]:
+    found = {unit.path: unit for unit in units}
+    for unit in units:
+        found.setdefault(unit.path.partition("#")[0], unit)
+    return found
+
+
 def blanked_deck(text: str, paths: list[str], replacements: dict[str, str] | None = None) -> str:
-    units = {unit.path: unit for unit in deck_units(text)}
+    units = units_by_path(deck_units(text))
     chosen = [(path, units.get(path) or units.get(path.partition("#")[0])) for path in paths]
     chosen = [(path, unit) for path, unit in chosen if unit is not None]
     removed_slides = {slide_of(unit.node).start: slide_of(unit.node) for _, unit in chosen if unit.role == "chart"}

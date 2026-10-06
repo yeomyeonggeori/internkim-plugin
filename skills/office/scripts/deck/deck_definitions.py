@@ -65,7 +65,7 @@ IMAGE_ISSUE_KINDS = (IMAGE_SEARCH_FAILED, NO_IMAGE_FOUND)
 DESIGN_TOKEN_NAMES = ("text", "accent", "secondary", "surface", "line", "ground", "muted", "text-soft", "on-accent", "size-display", "size-title", "size-body", "size-small", "radius")
 CHART_ATTRIBUTES = (
     "data-chart: " + ", ".join(chart_types()),
-    "data-labels: category names separated by commas",
+    "data-labels: the labels of the page's outline figures it plots, separated by commas; data-values and data-series give those figures' values, and data-unit their unit",
     "data-values: one number per label, for a single series",
     "numbers are separated by a comma and a space, so \"1,200, 1,350\" is two numbers, and the unit goes in data-unit, never in the numbers",
     "data-series: \"name: 1, 2, 3; other: 4, 5, 6\" for several series, each with one number per label",
@@ -77,7 +77,7 @@ CHART_ATTRIBUTES = (
     "data-highlight: one label drawn in the accent color while the others are muted (single series, or a scatter point)",
     "data-center, data-center-label: the text in a donut's hole; default the first slice's share",
     "data-zero: true starts a line chart's axis at zero",
-    "<figcaption>: the unit, period and source under the chart, one unit and one source per chart",
+    "<figcaption>: the unit and period under the chart, and a source only when the request names one",
     "the figure takes the width and height your CSS gives it, at least 320 by 240 px; colors come from the style sheet",
 )
 

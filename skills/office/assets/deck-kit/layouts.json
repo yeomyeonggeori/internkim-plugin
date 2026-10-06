@@ -83,7 +83,7 @@
     }
   },
   "question": {
-    "instructions": "Choose the layout of each page of a slide deck from what that page holds: its title, its brief and its photos. Match the layout to the shape of the content: {criteria}. Judge only from the page's title, brief and photos. Do not count points, figures, steps or comparisons the brief does not state, do not choose a layout for variety, and do not choose by the deck's subject alone.",
+    "instructions": "Choose the layout of each page of a slide deck from what that page holds: its title, its brief and its photos. Match the layout to the shape of the content: {criteria}. Judge only from the page's title, brief and photos. A page that plans a photo shows it, so choose a layout that needs a photo for it whenever one is offered. Do not count points, figures, steps or comparisons the brief does not state, do not choose a layout for variety, and do not choose by the deck's subject alone.",
     "page": "Page {number} of {count}, a {type} page. Title: {title}. Brief: {brief}. Photos: {photos}."
   }
 }

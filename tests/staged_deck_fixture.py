@@ -15,7 +15,9 @@ if str(SCRIPTS_PATH) not in sys.path:
 
 from core.host_contract import RUNTIME_CONTEXT_VARIABLE  # noqa: E402,F401
 from deck.layout_choice import assigned_layouts  # noqa: E402
-from deck.outline import Outline, OutlinePage, valid_layouts  # noqa: E402
+from charts.numbers import split_chart_list  # noqa: E402
+from deck.chart_data import axis_unit_texts, chart_series, series_axes  # noqa: E402
+from deck.outline import Outline, OutlineFigure, OutlinePage, valid_layouts  # noqa: E402
 from deck.deck_source import find_all, parse_source  # noqa: E402
 from deck.outline import LAYOUTS  # noqa: E402
 
@@ -40,6 +42,8 @@ p { margin: 0; }
 NOTES = '<aside class="notes">notes</aside>'
 HEADING_PATTERN = re.compile(r"<(h[1-3])\b[^>]*>(.*?)</\1>", re.IGNORECASE | re.DOTALL)
 TAG_PATTERN = re.compile(r"<[^>]+>")
+HEADING_OPEN_PATTERN = re.compile(r"<(h[1-3])(?=[\s>])", re.IGNORECASE)
+FIGURE_OPEN_PATTERN = re.compile(r"<figure\b[^>]*>", re.IGNORECASE)
 
 
 def style_sheet_markdown(overrides: dict | None = None) -> str:
@@ -64,8 +68,15 @@ def section_parts(content) -> tuple[str, str]:
     return ("", content) if isinstance(content, str) else content
 
 
+def with_bound_title(markup: str) -> str:
+    if "data-title" in markup:
+        return markup
+    return HEADING_OPEN_PATTERN.sub(lambda match: f"<{match.group(1)} data-title", markup, count=1)
+
+
 def page_markup(content, style: str = "") -> str:
     attributes, markup = section_parts(content)
+    markup = with_bound_title(markup)
     notes = "" if 'class="notes"' in markup else NOTES
     return f"<section{attributes}>\n<style>{PAGE_STYLE}{style}</style>\n{markup}{notes}\n</section>\n"
 
@@ -90,7 +101,21 @@ def page_type(number: int, count: int, markup: str) -> str:
 def outline_page(number: int, count: int, content, photos: list[str]) -> OutlinePage:
     _, markup = section_parts(content)
     visible = plain_text(re.sub(r"<aside\b.*?</aside>|<style\b.*?</style>", "", markup, flags=re.S)) or "the page"
-    return OutlinePage(page_title(markup, number), page_type(number, count, markup), (visible,), tuple(photos))
+    return OutlinePage(page_title(markup, number), page_type(number, count, markup), (visible,), tuple(photos), figures=chart_figures(markup))
+
+
+def chart_figures(markup: str) -> tuple[OutlineFigure, ...]:
+    figures = []
+    for opening in FIGURE_OPEN_PATTERN.findall(markup):
+        attributes = find_all(parse_source(opening + "</figure>"), "figure")[0].attributes
+        series = chart_series(attributes)
+        if "data-chart" not in attributes or isinstance(series, str):
+            continue
+        chart_type = attributes["data-chart"].strip()
+        units = axis_unit_texts(chart_type, attributes.get("data-unit", ""))
+        for (name, values), axis in zip(series, series_axes(chart_type, len(series))):
+            figures += [OutlineFigure(label, value, units[axis], name) for label, value in zip(split_chart_list(attributes.get("data-labels", "")), values)]
+    return tuple(figures)
 
 
 STRUCTURE_TAGS = {"style", "script", "aside", "br"}

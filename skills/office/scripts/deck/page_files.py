@@ -16,6 +16,7 @@ COMMENT_PATTERN = re.compile(r"/\*.*?\*/", re.DOTALL)
 DOCUMENT_SELECTOR_PATTERN = re.compile(r"(?::root|html|body)(?![-\w])")
 SECTION_SELECTOR_PATTERN = re.compile(r"section(?![-\w])", re.IGNORECASE)
 HANGUL_PATTERN = re.compile(r"[가-힣]")
+TITLE_ELEMENT_PATTERN = re.compile(r"(<(?P<tag>[a-zA-Z][\w-]*)\b[^>]*\sdata-title\b[^>]*>)(?P<inner>.*?)(</(?P=tag)\s*>)", re.IGNORECASE | re.DOTALL)
 NESTED_AT_RULES = ("@media", "@supports")
 SELF_SELECTOR_STARTS = ".[:#"
 
@@ -103,6 +104,15 @@ def scoped_selector(selector: str, scope: str) -> str:
     return f"#{scope} {selector}"
 
 
+def titled_section(section: str, title: str) -> str:
+    return TITLE_ELEMENT_PATTERN.sub(lambda match: f"{match.group(1)}{html.escape(title, quote=False)}{match.group(4)}", section, count=1)
+
+
+def section_title(section: str) -> str | None:
+    match = TITLE_ELEMENT_PATTERN.search(section)
+    return html.unescape(re.sub(r"<[^>]+>", "", match.group("inner"))).strip() if match else None
+
+
 def scoped_page(section: str, number: int, page_type: str, layout: str) -> tuple[str, str]:
     scope = page_identifier(number)
     opening = OPENING_PATTERN.match(section)
@@ -119,7 +129,7 @@ def deck_language(outline: Outline) -> str:
 
 
 def assembled_deck(outline: Outline, sections: dict[int, str]) -> str:
-    pages = [scoped_page(section, number, outline.pages[number - 1].type, outline.pages[number - 1].layout) for number, section in sorted(sections.items())]
+    pages = [scoped_page(titled_section(section, outline.pages[number - 1].title), number, outline.pages[number - 1].type, outline.pages[number - 1].layout) for number, section in sorted(sections.items())]
     styles = "\n".join(style for _, style in pages if style.strip())
     body = "\n".join(markup for markup, _ in pages)
     title = html.escape(outline.pages[0].title if outline.pages else "")

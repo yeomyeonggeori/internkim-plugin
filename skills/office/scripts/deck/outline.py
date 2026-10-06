@@ -7,6 +7,8 @@ import pathlib
 
 from core.office_result import ERROR, WARNING, Issue, IssueKind
 from core.text_checks import PLACEHOLDER_LEFT, PLACEHOLDER_PATTERN
+from charts.numbers import chart_number
+from deck.chart_data import spaced_unit
 from deck.deck_kit import KIT_PATH
 from powerpoint.definitions import SLIDE_COUNT_MISMATCH
 
@@ -26,8 +28,27 @@ PHOTO_NOT_LISTED = IssueKind("PHOTO_NOT_LISTED", ERROR, "an outline page plans a
 LAYOUT_INVALID = IssueKind("LAYOUT_INVALID", ERROR, "an outline page names a layout that is not in the library for its type, or a photo layout for a page without a photo", "choose a layout office guide design lists for the page's type; photo layouts only for a page that plans a photo")
 LAYOUT_REPEATED = IssueKind("LAYOUT_REPEATED", ERROR, "two body pages in a row share one layout", "vary the composition: give the second page another layout its content fits")
 LAYOUT_VARIETY = IssueKind("LAYOUT_VARIETY", ERROR, f"the body pages use fewer than {VARIETY_MINIMUM} layouts", f"give the body pages at least {VARIETY_MINIMUM} different layouts, each chosen from its page's content")
+FIGURE_INVALID = IssueKind("FIGURE_INVALID", ERROR, "an outline figure lacks its label, a plain number as its value, or its unit", 'write each figure as {"label": "what it measures", "value": "64", "unit": "곳"}; the unit is "" only for a bare count, and a figure of a chart with several series names it in "series"')
 OUTLINE_ORDER = IssueKind("OUTLINE_ORDER", WARNING, "the first page is not a cover or the last page is not a closing page", "open with a cover and end with the decision or next step, unless the request asks otherwise")
-OUTLINE_ISSUE_KINDS = (OUTLINE_INVALID, OUTLINE_INCOMPLETE, PHOTO_NOT_LISTED, LAYOUT_INVALID, LAYOUT_REPEATED, LAYOUT_VARIETY, OUTLINE_ORDER)
+OUTLINE_ISSUE_KINDS = (OUTLINE_INVALID, OUTLINE_INCOMPLETE, FIGURE_INVALID, PHOTO_NOT_LISTED, LAYOUT_INVALID, LAYOUT_REPEATED, LAYOUT_VARIETY, OUTLINE_ORDER)
+
+
+@dataclass(frozen=True)
+class OutlineFigure:
+    label: str
+    value: str
+    unit: str | None
+    series: str = ""
+
+    @property
+    def number(self) -> float | None:
+        return chart_number(self.value)
+
+    def shown(self) -> str:
+        return " ".join(part for part in (self.label, self.series, f"{self.value}{spaced_unit(self.unit or '')}") if part)
+
+    def to_json(self) -> dict:
+        return {"label": self.label, "value": self.value, "unit": self.unit} | ({"series": self.series} if self.series else {})
 
 
 @dataclass(frozen=True)
@@ -37,13 +58,17 @@ class OutlinePage:
     brief: tuple[str, ...]
     photos: tuple[str, ...]
     layout: str = ""
+    figures: tuple[OutlineFigure, ...] = ()
 
     @property
     def is_body(self) -> bool:
         return self.type in BODY_TYPES
 
+    def figure(self, series: str, label: str) -> OutlineFigure | None:
+        return next((figure for figure in self.figures if (figure.series, figure.label) == (series, label)), None)
+
     def to_json(self) -> dict:
-        record = {"title": self.title, "type": self.type, "brief": list(self.brief), "photos": list(self.photos)}
+        record = {"title": self.title, "type": self.type, "brief": list(self.brief), "figures": [figure.to_json() for figure in self.figures], "photos": list(self.photos)}
         return record | ({"layout": self.layout} if self.layout else {})
 
 
@@ -84,7 +109,15 @@ def texts_of(value: object) -> tuple[str, ...]:
 
 def outline_page(entry: object) -> OutlinePage:
     fields = entry if isinstance(entry, dict) else {}
-    return OutlinePage(text_of(fields.get("title")), text_of(fields.get("type")), texts_of(fields.get("brief")), texts_of(fields.get("photos")), text_of(fields.get("layout")))
+    figures = fields.get("figures") if isinstance(fields.get("figures"), list) else []
+    return OutlinePage(text_of(fields.get("title")), text_of(fields.get("type")), texts_of(fields.get("brief")), texts_of(fields.get("photos")), text_of(fields.get("layout")), tuple(outline_figure(figure) for figure in figures))
+
+
+def outline_figure(entry: object) -> OutlineFigure:
+    fields = entry if isinstance(entry, dict) else {}
+    value = fields.get("value")
+    unit = fields.get("unit")
+    return OutlineFigure(text_of(fields.get("label")), str(value).strip() if isinstance(value, (int, float, str)) and not isinstance(value, bool) else "", unit.strip() if isinstance(unit, str) else None, text_of(fields.get("series")))
 
 
 def write_outline(path: pathlib.Path, outline: Outline) -> None:
@@ -106,8 +139,20 @@ def page_issues(index: int, page: OutlinePage, listed_photos: set[str]) -> list[
     issues = [OUTLINE_INCOMPLETE.issue(f'{location} has no "{name}"', location) for name in missing]
     if page.type not in PAGE_TYPES:
         issues.append(OUTLINE_INCOMPLETE.issue(f'{location} "type" is "{page.type}"; it is one of {", ".join(PAGE_TYPES)}', location))
+    issues += figure_issues(location, page)
     unlisted = [photo for photo in page.photos if photo not in listed_photos]
     return issues + [PHOTO_NOT_LISTED.issue(f"{location} plans {photo}, which office guide design does not list", location) for photo in unlisted]
+
+
+def figure_issues(location: str, page: OutlinePage) -> list[Issue]:
+    issues = []
+    for figure in page.figures:
+        problems = [problem for problem, is_missing in (("no label", not figure.label), (f'value "{figure.value}" is not a plain number', figure.number is None), ('no "unit"', figure.unit is None)) if is_missing]
+        if problems:
+            issues.append(FIGURE_INVALID.issue(f"{location} figure {figure.label or figure.value or '?'}: {', '.join(problems)}", location))
+    keys = [(figure.series, figure.label) for figure in page.figures]
+    repeated = sorted({label for series, label in keys if keys.count((series, label)) > 1})
+    return issues + [FIGURE_INVALID.issue(f'{location} names the figure "{label}" twice; give each figure its own label, or its series', location) for label in repeated]
 
 
 def placeholder_issues(outline: Outline) -> list[Issue]:

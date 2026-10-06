@@ -70,6 +70,12 @@ class PageBlankRemakeTest(unittest.TestCase):
         self.assertNotEqual(envelope["status"], "error", envelope["summary"])
         self.assertNotIn(deck_title, (self.directory / "pages" / "03.html").read_text(encoding="utf-8"))
 
+    def test_a_replaced_title_becomes_its_outline_entrys_title_so_the_build_keeps_it(self):
+        envelope = self.remake([], {"slides[2].units[0]": "Regional results"})
+        self.assertNotEqual(envelope["status"], "error", envelope["summary"])
+        self.assertEqual(self.outline()["pages"][2]["title"], "Regional results")
+        self.assertIn("Regional results", (self.directory / "slides.html").read_text(encoding="utf-8"))
+
     def test_a_brief_line_naming_a_blanked_value_in_another_case_leaves_the_outline(self):
         outline = self.outline()
         outline["pages"][2]["brief"] = ["regional results: seoul, busan and daegu"]

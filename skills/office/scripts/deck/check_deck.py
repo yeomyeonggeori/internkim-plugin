@@ -151,7 +151,15 @@ def fallback_layout_issues(outline: Outline, decision: dict) -> list[Issue]:
 
 def outline_ready_summary(outline: Outline) -> str:
     listed = "; ".join(f"page {number} {page.layout}" for number, page in enumerate(outline.pages, start=1))
-    return f"outline passes: {listed}. Write pages/01.html in its layout, run office check pages/01.html, and go on one page at a time"
+    return f"outline passes: {listed}. {page_assignment(outline, 1)}"
+
+
+def page_assignment(outline: Outline, number: int) -> str:
+    entry = outline.pages[number - 1]
+    parts = [f"Write pages/{number:02d}.html from outline entry {number} alone, in its layout {entry.layout}, with its title as an empty data-title element the build fills with \"{entry.title}\"", f"brief: {' / '.join(entry.brief)}"]
+    parts += [f"figures: {', '.join(figure.shown() for figure in entry.figures)}"] if entry.figures else []
+    parts += [f"photos: {', '.join(entry.photos)}"] if entry.photos else []
+    return "; ".join(parts) + f". Then run office check pages/{number:02d}.html"
 
 
 def outline_for_pages(directory: pathlib.Path) -> tuple[Outline | None, list[Issue]]:
@@ -194,7 +202,7 @@ def check_page(path: pathlib.Path) -> Result:
     issues += draft_claim_issues(draft_claims(outline, assembled_deck(outline, existing_sections(directory, outline))))[0]
     if not has_errors(issues):
         issues += page_render_issues(directory, outline, number, lone_section(path.read_text(encoding="utf-8")), system)
-    following = f"write pages/{number + 1:02d}.html next" if number < len(outline.pages) else "every page is written: build the deck with office create"
+    following = page_assignment(outline, number + 1) if number < len(outline.pages) else "every page is written: build the deck with office create"
     return stage_result(path, issues, f"page {number} ({outline.pages[number - 1].layout}) passes: {following}")
 
 

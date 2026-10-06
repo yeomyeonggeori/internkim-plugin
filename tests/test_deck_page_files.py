@@ -47,6 +47,12 @@ class AssembledDeckTest(unittest.TestCase):
         self.assertIn("<title>Cover</title>", head)
         self.assertIn('<html lang="en">', document)
 
+    def test_the_bound_title_element_takes_its_entrys_title(self):
+        outline = Outline("hook", (OutlinePage("Cover", "cover", ("a",), ()), OutlinePage("사업비 & 기간", "data", ("b",), (), "kpi_cards_row")))
+        document = assembled_deck(outline, {2: '<section><h1 class="t" data-title>이 사업으로 달성할 목표</h1><p>6억</p></section>'})
+        self.assertIn('<h1 class="t" data-title>사업비 &amp; 기간</h1>', document)
+        self.assertNotIn("달성할 목표", document)
+
     def test_a_file_holding_more_than_one_section_is_not_a_page(self):
         self.assertIsNone(lone_section("<section>a</section><section>b</section>"))
         self.assertIsNone(lone_section("<p>outside</p><section>a</section>"))

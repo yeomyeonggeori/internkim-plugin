@@ -158,6 +158,48 @@ class PageCheckTest(unittest.TestCase):
         self.assertEqual([issue.kind.severity for issue in result.issues if issue.kind.code == "PAGE_DIFFERS_FROM_OUTLINE"], ["warning"])
         self.assertEqual([issue.kind.code for issue in result.issues if issue.kind.severity == "error"], [])
 
+    def with_figures(self, sections: list, number: int, figures: list[dict], page: str):
+        with tempfile.TemporaryDirectory() as directory:
+            deck_path = write_staged_deck(Path(directory), sections)
+            outline = json.loads((deck_path / "outline.json").read_text(encoding="utf-8"))
+            outline["pages"][number - 1]["figures"] = figures
+            (deck_path / "outline.json").write_text(json.dumps(outline, ensure_ascii=False), encoding="utf-8")
+            (deck_path / "pages" / f"{number:02d}.html").write_text(page, encoding="utf-8")
+            return check_page(deck_path / "pages" / f"{number:02d}.html")
+
+    def test_a_chart_plots_only_its_own_entrys_figures_as_they_are_stated(self):
+        figures = [{"label": "1Q", "value": "96", "unit": "억"}, {"label": "2Q", "value": "104", "unit": "억"}]
+        foreign = '<section><h2 data-title></h2><figure style="width: 1200px; height: 600px" data-chart="column" data-labels="1Q, 3Q" data-values="96, 128" data-unit="억"></figure></section>'
+        changed = foreign.replace('data-labels="1Q, 3Q" data-values="96, 128"', 'data-labels="1Q, 2Q" data-values="96, 140"')
+        messages = [issue.message for issue in self.with_figures([COVER, CHART, CLOSING], 2, figures, foreign).issues if issue.kind.code == "CHART_NOT_FROM_FIGURES"]
+        self.assertTrue(any('"3Q" is not a figure' in message and "1Q 96억" in message for message in messages), messages)
+        messages = [issue.message for issue in self.with_figures([COVER, CHART, CLOSING], 2, figures, changed).issues if issue.kind.code == "CHART_NOT_FROM_FIGURES"]
+        self.assertTrue(any("plots 140, but its figure is 104" in message for message in messages), messages)
+
+    def test_one_axis_whose_figures_have_different_units_is_refused(self):
+        figures = [{"label": "도입 농가", "value": "64", "unit": "곳"}, {"label": "수확량 증가", "value": "17", "unit": "%"}]
+        mixed = '<section><h2 data-title></h2><figure style="width: 1200px; height: 600px" data-chart="column" data-labels="도입 농가, 수확량 증가" data-values="64, 17" data-unit="%"></figure></section>'
+        result = self.with_figures([COVER, CHART, CLOSING], 2, figures, mixed)
+        messages = [issue.message for issue in result.issues if issue.kind.code == "CHART_MIXED_UNITS"]
+        self.assertTrue(any("도입 농가 64곳" in message and "수확량 증가 17%" in message for message in messages), messages)
+        self.assertEqual(result.status, "error")
+
+    def test_a_chart_unit_other_than_its_figures_unit_is_refused(self):
+        figures = [{"label": "1Q", "value": "96", "unit": "억"}]
+        relabeled = '<section><h2 data-title></h2><figure style="width: 1200px; height: 600px" data-chart="column" data-labels="1Q" data-values="96" data-unit="%"></figure></section>'
+        messages = [issue.message for issue in self.with_figures([COVER, CHART, CLOSING], 2, figures, relabeled).issues if issue.kind.code == "CHART_NOT_FROM_FIGURES"]
+        self.assertTrue(any('data-unit gives "%"' in message for message in messages), messages)
+
+    def test_a_page_without_one_bound_title_is_refused(self):
+        typed = "<section><h2>사업 개요와 사업비</h2><p>총 사업비 6억 원</p></section>"
+        self.assertIn(("PAGE_TITLE_UNBOUND", "page 2"), codes_of(self.check_page([COVER, STATEMENT, CLOSING], 2, page=typed)))
+
+    def test_a_passing_page_hands_over_the_next_entry_alone(self):
+        result = self.check_page([COVER, STATEMENT, CLOSING], 2)
+        self.assertIn("pages/03.html from outline entry 3 alone", result.summary)
+        self.assertIn("예산을 승인해 주십시오", result.summary)
+        self.assertNotIn("배송이 빨라지면", result.summary)
+
     def test_a_page_composed_without_the_chart_its_layout_suggests_is_not_refused(self):
         result = self.check_page([COVER, KPI, CLOSING], 2, layouts=["cover_typography_hero", "chart_with_insight", "closing_cta"])
         self.assertEqual([issue.kind.code for issue in result.issues if issue.kind.severity == "error"], [])
@@ -168,7 +210,7 @@ class PageCheckTest(unittest.TestCase):
 
     @unittest.skipUnless(can_render(), "needs the renderer")
     def test_the_page_check_measures_the_page_alone(self):
-        spill = '<section><style>.spill { position: absolute; left: 1200px; top: 400px; width: 700px; } .faint { color: #EEF5F2; }</style><h2>배송이 빨라지면 재구매가 늘어납니다</h2><p class="spill">수도권 매출이 크게 늘었고 영남과 호남 매출도 함께 늘었습니다</p><p class="faint">재구매가 늘어난 고객이 많습니다</p></section>'
+        spill = '<section><style>.spill { position: absolute; left: 1200px; top: 400px; width: 700px; } .faint { color: #EEF5F2; }</style><h2 data-title></h2><p class="spill">수도권 매출이 크게 늘었고 영남과 호남 매출도 함께 늘었습니다</p><p class="faint">재구매가 늘어난 고객이 많습니다</p></section>'
         result = self.check_page([COVER, STATEMENT], 2, page=spill)
         codes = codes_of(result)
         self.assertIn(("OUT_OF_FRAME", "page 2"), codes)

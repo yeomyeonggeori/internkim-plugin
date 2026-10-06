@@ -54,7 +54,7 @@ class DeckClaimTest(unittest.TestCase):
         texts = [claim["text"] for claim in deck_claims(DECK)]
         self.assertIn("견본테크, 3년 만에 매출 4.5배", texts)
         self.assertIn("2025년 흑자를 달성했습니다.", texts)
-        self.assertIn("column chart: 2023 10억, 2024 21억, 2025 45억", texts)
+        self.assertIn("2025 45억", texts)
         self.assertIn("92%", texts)
         self.assertIn("영업 20억", texts)
         self.assertNotIn("매출 10억에서 45억.", texts)
@@ -62,7 +62,19 @@ class DeckClaimTest(unittest.TestCase):
     def test_a_chart_claim_keeps_grouped_numbers_whole(self):
         grouped = DECK.replace('data-labels="2023, 2024, 2025" data-values="10, 21, 45"', 'data-labels="Q1 2026, Q2 2026, Q3 2026" data-values="3,100, 3,500, 4,200"')
         texts = [claim["text"] for claim in deck_claims(grouped)]
-        self.assertIn("column chart: Q1 2026 3,100억, Q2 2026 3,500억, Q3 2026 4,200억", texts)
+        self.assertEqual([text for text in texts if text.startswith("Q")], ["Q1 2026 3,100억", "Q2 2026 3,500억", "Q3 2026 4,200억"])
+
+    def test_each_plotted_value_is_its_own_claim_as_its_axis_shows_it(self):
+        def chart_claims(figure):
+            page = f'<html lang="ko"><head><title>견본</title></head><body><section><h2>현재 성과</h2>{figure}</section></body></html>'
+            return [(claim["at"], claim["text"]) for claim in deck_claims(page) if claim["at"].endswith("차트")]
+
+        shares = chart_claims('<figure data-chart="column" data-labels="도입 농가, 수확량 증가" data-values="64, 17" data-unit="%"></figure>')
+        self.assertEqual(shares, [("슬라이드 1 차트", "도입 농가 64%"), ("슬라이드 1 차트", "수확량 증가 17%")])
+        worded = chart_claims('<figure data-chart="column" data-labels="Q1 2026" data-values="3100" data-unit="paying cafés"></figure>')
+        self.assertEqual([text for _, text in worded], ["Q1 2026 3100 paying cafés"])
+        two_axes = chart_claims('<figure data-chart="combo" data-labels="1Q, 2Q" data-series="매출: 10, 12; 이익률: 3, 4" data-unit="억, %"></figure>')
+        self.assertEqual([text for _, text in two_axes], ["1Q 매출 10억", "2Q 매출 12억", "1Q 이익률 3%", "2Q 이익률 4%"])
 
     def test_a_claim_names_its_slide_and_role_in_the_deck_language(self):
         self.assertEqual(claim_at("92%")["at"], "슬라이드 2 수치")
@@ -81,7 +93,7 @@ class DeckClaimTest(unittest.TestCase):
         self.assertIn("<h2></h2>", result)
 
     def test_an_unsupported_chart_takes_its_slide_with_it(self):
-        paths = [claim_at("column chart: 2023 10억, 2024 21억, 2025 45억")["path"], claim_at("92%")["path"]]
+        paths = [claim_at("2024 21억")["path"], claim_at("92%")["path"]]
         result = blanked_deck(DECK, paths)
         self.assertNotIn('data-layout="chart"', result)
         self.assertEqual(result.count("<section"), 2)
