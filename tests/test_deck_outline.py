@@ -9,7 +9,8 @@ from staged_deck_fixture import RUNTIME_CONTEXT_VARIABLE, style_sheet_markdown
 
 from deck.check_deck import check_outline  # noqa: E402
 from deck.layout_choice import assigned_layouts, decided_choices, is_decision_pending, layout_request, request_digest  # noqa: E402
-from deck.outline import Outline, OutlinePage, layout_issues, outline_issues, read_outline  # noqa: E402
+from deck.draft_claims import outline_claims  # noqa: E402
+from deck.outline import Outline, OutlineFigure, OutlinePage, layout_issues, outline_issues, outline_page, read_outline  # noqa: E402
 
 
 def page(title: str, page_type: str, brief: tuple[str, ...] = ("a fact from the request",), photos: tuple[str, ...] = (), layout: str = "") -> OutlinePage:
@@ -48,6 +49,26 @@ class OutlineContentTest(unittest.TestCase):
 
     def test_the_requested_page_count_is_enforced(self):
         self.assertIn(("SLIDE_COUNT_MISMATCH", "outline"), codes(outline_issues(outline(page("Cover", "cover"), page("Close", "closing")), set(), 5)))
+
+    def test_every_figure_states_its_label_a_plain_number_and_its_unit(self):
+        entry = outline_page({"title": "Results", "type": "data", "brief": ["Pilot results"], "figures": [
+            {"label": "Farms", "value": "64", "unit": "farms"},
+            {"label": "Yield", "value": "17%"},
+            {"label": "", "value": 11, "unit": "%"},
+            {"label": "Farms", "value": "70", "unit": "farms"},
+        ]})
+        messages = [issue.message for issue in outline_issues(outline(page("Cover", "cover"), entry), set(), None) if issue.kind.code == "FIGURE_INVALID"]
+        self.assertEqual(len(messages), 3, messages)
+        self.assertTrue(any('"17%" is not a plain number' in message and 'no "unit"' in message for message in messages), messages)
+        self.assertTrue(any("no label" in message for message in messages), messages)
+        self.assertTrue(any('"Farms" twice' in message for message in messages), messages)
+
+    def test_figures_are_judged_as_shown_with_their_unit(self):
+        entry = OutlinePage("Results", "data", ("Pilot results",), (), figures=(OutlineFigure("도입 농가", "64", "곳"), OutlineFigure("Q1 2026", "3,100", "paying cafés")))
+        sent = [claim for claim in outline_claims(outline(entry)) if claim["at"].endswith("figure")]
+        self.assertEqual([claim["text"] for claim in sent], ["도입 농가 64곳", "Q1 2026 3,100 paying cafés"])
+        self.assertEqual(sent[0]["path"], "outline.pages[0].figures[0]")
+        self.assertEqual(outline_page(entry.to_json()), entry)
 
     def test_a_deck_that_opens_without_a_cover_is_a_warning(self):
         issues = outline_issues(outline(page("Point", "content"), page("Point", "content"), page("Close", "content")), set(), None)

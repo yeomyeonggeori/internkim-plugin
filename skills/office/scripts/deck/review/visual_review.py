@@ -33,7 +33,7 @@ def measured_defects(issues: list[Issue], defect_codes: frozenset[str], number: 
 def slide_state(outline: Outline, style: dict, number: int, section: str) -> dict:
     entry = outline.pages[number - 1]
     icons = slide_icons(find_all(parse_source(section), "section")[0])
-    page = {"title": entry.title, "type": entry.type, "layout": entry.layout, "brief": list(entry.brief)}
+    page = {"title": entry.title, "type": entry.type, "layout": entry.layout, "brief": list(entry.brief), "figures": [figure.shown() for figure in entry.figures]}
     return {"deck": outline.pages[0].title, "slide": f"{number} of {len(outline.pages)}", "design": style, "page": page, **({"icons": icons} if icons else {})}
 
 

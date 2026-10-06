@@ -6,7 +6,7 @@ import pathlib
 
 from deck.deck_claims import blank_labels, blanked_deck, deck_units
 from deck.outline import OUTLINE_FILE_NAME, Outline, read_outline, write_outline
-from deck.page_files import deck_language, lone_section, page_path
+from deck.page_files import deck_language, lone_section, page_path, section_title, titled_section
 from deck.slide_source import split_slide_sources
 
 
@@ -49,6 +49,11 @@ def without_blanked_brief(outline: Outline, texts: set[str], removed: set[int]) 
     return replace(outline, pages=pages)
 
 
+def with_page_titles(outline: Outline, results: list[str | None]) -> Outline:
+    titles = [section_title(result) if result is not None else None for result in results]
+    return replace(outline, pages=tuple(page if title is None else replace(page, title=title) for page, title in zip(outline.pages, titles)))
+
+
 def rewrite_pages(directory: pathlib.Path, sections: list[str], previous_count: int) -> None:
     for number, section in enumerate(sections, start=1):
         page_path(directory, number).write_text(section + "\n", encoding="utf-8")
@@ -60,11 +65,11 @@ def blank_pages(directory: pathlib.Path, paths: list[str], replacements: dict[st
     outline, _ = read_outline(directory / OUTLINE_FILE_NAME)
     if outline is None or not (paths or replacements):
         return PageBlanks([], ())
-    sections = [lone_section(page_path(directory, number).read_text(encoding="utf-8")) or "" for number in range(1, len(outline.pages) + 1)]
+    sections = [titled_section(lone_section(page_path(directory, number).read_text(encoding="utf-8")) or "", page.title) for number, page in enumerate(outline.pages, start=1)]
     document = unscoped_deck(outline, sections)
     results = [blanked_section(outline, section, index, paths, replacements) for index, section in enumerate(sections)]
     removed = {index for index, result in enumerate(results) if result is None}
-    write_outline(directory / OUTLINE_FILE_NAME, without_blanked_brief(outline, blanked_texts(document, paths), removed))
+    write_outline(directory / OUTLINE_FILE_NAME, without_blanked_brief(with_page_titles(outline, results), blanked_texts(document, paths), removed))
     rewrite_pages(directory, [result for result in results if result is not None], len(sections))
     changed = [index for index, result in enumerate(results) if result is not None and result != sections[index]]
     return PageBlanks(blank_labels(document, paths), tuple(index + 1 - sum(1 for gone in removed if gone < index) for index in changed))

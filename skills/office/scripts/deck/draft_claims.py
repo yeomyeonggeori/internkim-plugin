@@ -29,6 +29,7 @@ def outline_claims(outline: Outline) -> list[dict]:
     for index, page in enumerate(outline.pages):
         claims.append({"path": f"outline.pages[{index}].title", "at": f"outline page {index + 1} title", "text": page.title})
         claims += [{"path": f"outline.pages[{index}].brief[{line}]", "at": f"outline page {index + 1} brief", "text": text} for line, text in enumerate(page.brief)]
+        claims += [{"path": f"outline.pages[{index}].figures[{number}]", "at": f"outline page {index + 1} figure", "text": figure.shown()} for number, figure in enumerate(page.figures)]
     return [claim for claim in claims if claim["text"]]
 
 
