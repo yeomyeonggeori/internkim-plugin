@@ -7,7 +7,7 @@ import re
 from core.css_color import contrast_ratio, hex_oklch, oklch_hex
 from core.design_rules import threshold_of
 from core.office_result import ERROR, WARNING, Issue, IssueKind
-from deck.design_tokens import parse_front_matter
+from deck.design_tokens import front_matter_problem, parse_front_matter
 from deck.typeface import TYPE_OPTIONS, TYPEFACE, type_pairing
 
 
@@ -29,11 +29,12 @@ READABLE_INKS = ("FFFFFF", "000000")
 KIT_RADIUS = "12px"
 
 DESIGN_MISSING = IssueKind("DESIGN_MISSING", ERROR, "DESIGN.md, the deck's style sheet, is missing", "write DESIGN.md first, as references/deck.md shows, then run office check DESIGN.md")
+DESIGN_FRONT_MATTER = IssueKind("DESIGN_FRONT_MATTER", ERROR, "DESIGN.md's front matter is not fenced, so none of its values can be read", "put --- alone on line 1 and again alone on the line the message names, with every value between them")
 DESIGN_INCOMPLETE = IssueKind("DESIGN_INCOMPLETE", ERROR, "the style sheet lacks a value the deck needs", "add the value the message names to the front matter of DESIGN.md")
 DESIGN_VALUE_INVALID = IssueKind("DESIGN_VALUE_INVALID", ERROR, "a style sheet value cannot be used", "write colors as #RRGGBB and sizes as px at or above the floors the message names, and use only the keys it lists")
 DESIGN_LOW_CONTRAST = IssueKind("DESIGN_LOW_CONTRAST", ERROR, "two style sheet colors that must be read against each other are too close", "darken or lighten one of the two until the contrast reaches the ratio the message names")
 REQUESTED_FONT_UNAVAILABLE = IssueKind("REQUESTED_FONT_UNAVAILABLE", WARNING, "the font the person asked for could not be used, so the deck is set in Paperlogy", "tell the person which font was not available and what was tried, and offer to rebuild the same deck when they attach the font file")
-DESIGN_ISSUE_KINDS = (DESIGN_MISSING, DESIGN_INCOMPLETE, DESIGN_VALUE_INVALID, DESIGN_LOW_CONTRAST, REQUESTED_FONT_UNAVAILABLE)
+DESIGN_ISSUE_KINDS = (DESIGN_MISSING, DESIGN_FRONT_MATTER, DESIGN_INCOMPLETE, DESIGN_VALUE_INVALID, DESIGN_LOW_CONTRAST, REQUESTED_FONT_UNAVAILABLE)
 
 
 @dataclass(frozen=True)
@@ -49,7 +50,11 @@ class DesignSystem:
 def read_design_system(path: pathlib.Path) -> tuple[DesignSystem | None, list[Issue]]:
     if not path.is_file():
         return None, [DESIGN_MISSING.issue(f"{DESIGN_FILE_NAME} was not found beside outline.json", DESIGN_FILE_NAME)]
-    sheet = parse_front_matter(path.read_text(encoding="utf-8"))
+    text = path.read_text(encoding="utf-8")
+    fence_problem = front_matter_problem(text)
+    if fence_problem:
+        return None, [DESIGN_FRONT_MATTER.issue(f"{DESIGN_FILE_NAME}: {fence_problem}", DESIGN_FILE_NAME)]
+    sheet = parse_front_matter(text)
     problems = sheet_problems(sheet)
     if problems:
         return None, problems
