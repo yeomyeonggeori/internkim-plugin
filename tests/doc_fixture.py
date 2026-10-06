@@ -13,7 +13,7 @@ if str(SCRIPTS_PATH) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_PATH))
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
 
-from core.host_contract import RUNTIME_CONTEXT_VARIABLE  # noqa: E402
+from task_context_fixture import CONTEXT_VARIABLE, write_context_at  # noqa: E402
 
 FIXTURE_DOCUMENT = """
 from docx import Document
@@ -30,7 +30,7 @@ document.save("fixture.docx")
 """
 
 
-RUNTIME_CONTEXT_FILE = "office-runtime-context.json"
+RUNTIME_CONTEXT_FILE = "task-context.json"
 
 
 def run_office(arguments, working_directory):
@@ -39,15 +39,15 @@ def run_office(arguments, working_directory):
 
 
 def office_environment(working_directory):
-    environment = {name: value for name, value in os.environ.items() if name != RUNTIME_CONTEXT_VARIABLE}
+    environment = {name: value for name, value in os.environ.items() if name != CONTEXT_VARIABLE}
     context_path = Path(working_directory) / RUNTIME_CONTEXT_FILE
-    return environment | ({RUNTIME_CONTEXT_VARIABLE: str(context_path)} if context_path.is_file() else {})
+    return environment | ({CONTEXT_VARIABLE: str(context_path)} if context_path.is_file() else {})
 
 
 def write_runtime_context(directory, profile_path):
-    context = {"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04",
-               "company": {"ko": str(profile_path), "en": str(profile_path)}, "registeredDocuments": [], "attachments": []}
-    write_json(Path(directory) / RUNTIME_CONTEXT_FILE, context)
+    facts = {"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04",
+             "company": {"ko": str(profile_path), "en": str(profile_path)}}
+    write_context_at(Path(directory) / RUNTIME_CONTEXT_FILE, facts)
 
 
 def run_office_python(code, working_directory):

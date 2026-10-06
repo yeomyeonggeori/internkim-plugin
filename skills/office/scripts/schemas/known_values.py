@@ -3,11 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 import json
-import os
 from pathlib import Path
 
-from core.host_contract import RUNTIME_CONTEXT_VARIABLE
 from core.office_result import ERROR, IssueKind, OfficeFailure
+from host.task_context import TaskContext, load_task_context
 
 
 COMPANY_NOT_READ = IssueKind("COMPANY_NOT_READ", ERROR, "no company profile was read in this task, so the letterhead has nothing to print", "call company_info_get for the document's language, then run the same command again")
@@ -21,20 +20,11 @@ class RuntimeContext:
     companies: dict = field(default_factory=dict)
     registered_documents: tuple = ()
     attachments: tuple = ()
-    reviews_deck_renders: bool = False
-    prepares_decks: bool = False
-    deck_design: dict | None = None
-    images: tuple = ()
-    fonts: tuple = ()
-    judges_draft_claims: bool = False
-    draft_claims: dict | None = None
-    chooses_deck_layouts: bool = False
-    deck_layouts: dict | None = None
 
     def company(self, language: str) -> dict:
         if not self.companies:
             raise OfficeFailure(COMPANY_NOT_READ.issue(
-                f"the runtime context names no company profile: company_info_get has not answered in this task",
+                "the task context records no company profile: company_info_get has not answered in this task",
                 "company",
                 f"call company_info_get with language {language!r}, then run the same command again; the runtime records the profile it answers",
             ))
@@ -42,9 +32,8 @@ class RuntimeContext:
         return company_profile(found) if isinstance(found, str) and found else {}
 
     def font_paths(self) -> list[Path]:
-        listed = [Path(font["path"]) for font in self.fonts if isinstance(font, dict) and font.get("path")]
         attached = [Path(attachment["path"]) for attachment in self.attachments if isinstance(attachment, dict) and attachment.get("path")]
-        return [path for path in (*listed, *attached) if path.suffix.casefold() in FONT_SUFFIXES]
+        return [path for path in attached if path.suffix.casefold() in FONT_SUFFIXES]
 
     def brand_font(self) -> str:
         profiles = [company_profile(path) for path in self.companies.values() if isinstance(path, str) and path]
@@ -95,27 +84,37 @@ def company_value(company: dict, name: str) -> str:
     return str(company.get(name) or "")
 
 
+COMPANY_INFO_TOOL = "company_info_get"
+DOCUMENT_REGISTER_TOOL = "company_document_register"
+COMPANY_PROFILE_FILE = "company-profile.json"
+DEFAULT_PROFILE_LANGUAGE = "ko"
+
+
 def load_runtime_context() -> RuntimeContext | None:
-    path = os.environ.get(RUNTIME_CONTEXT_VARIABLE, "").strip()
-    if not path or not os.path.isfile(path):
-        return None
-    with open(path, encoding="utf-8") as context_file:
-        document = json.load(context_file)
-    requester = document.get("requester") or {}
+    context = load_task_context()
+    return runtime_context_of(context) if context is not None else None
+
+
+def runtime_context_of(context: TaskContext) -> RuntimeContext:
     return RuntimeContext(
-        requester_name=str(requester.get("name") or ""),
-        requester_email=str(requester.get("email") or ""),
-        today=date.fromisoformat(document["today"]) if document.get("today") else None,
-        companies=document.get("company") or {},
-        registered_documents=tuple(document.get("registeredDocuments") or ()),
-        attachments=tuple(document.get("attachments") or ()),
-        reviews_deck_renders=document.get("reviewsDeckRenders") is True,
-        prepares_decks=document.get("preparesDecks") is True,
-        deck_design=document.get("deckDesign") if isinstance(document.get("deckDesign"), dict) else None,
-        images=tuple(image for image in document.get("images") or () if isinstance(image, dict) and image.get("path")),
-        fonts=tuple(font for font in document.get("fonts") or () if isinstance(font, dict) and font.get("path")),
-        judges_draft_claims=document.get("judgesDraftClaims") is True,
-        draft_claims=document.get("draftClaims") if isinstance(document.get("draftClaims"), dict) else None,
-        chooses_deck_layouts=document.get("choosesDeckLayouts") is True,
-        deck_layouts=document.get("deckLayouts") if isinstance(document.get("deckLayouts"), dict) else None,
+        requester_name=context.requester_name,
+        requester_email=context.requester_email,
+        today=context.today,
+        companies=company_profiles(context),
+        registered_documents=registered_documents(context),
+        attachments=tuple({"name": attachment.name, "path": attachment.path} for attachment in context.attachments if attachment.path),
     )
+
+
+def company_profiles(context: TaskContext) -> dict:
+    profiles = {}
+    for record in context.records_of(COMPANY_INFO_TOOL):
+        profile_path = record.file_named(COMPANY_PROFILE_FILE)
+        if profile_path:
+            profiles[str(record.input.get("language") or DEFAULT_PROFILE_LANGUAGE)] = profile_path
+    return profiles
+
+
+def registered_documents(context: TaskContext) -> tuple:
+    numbers = [record.result.get("documentNumber") for record in context.records_of(DOCUMENT_REGISTER_TOOL) if isinstance(record.result, dict)]
+    return tuple({"documentNumber": str(number)} for number in numbers if isinstance(number, str) and number.strip())

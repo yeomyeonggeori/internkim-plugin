@@ -1,7 +1,7 @@
 # Style sheet, layout library, sizing and anti-pattern guidance adapted from GenOffice packages/pipelines/src/slides/guides/design.md and apps/slides/src/renderer/ai/AiPanel.tsx (Apache-2.0, Copyright 2026 Mainfunc, Inc.); see NOTICE.
 from __future__ import annotations
 
-from deck.deck_preparation import DeckPreparation, prepare_deck, request_preparation
+from deck.deck_preparation import DeckPreparation, ensure_prepared, prepare_deck
 from deck.outline import LAYOUTS, LIBRARY, PAGE_TYPES
 from deck.typeface import type_pairing
 
@@ -42,15 +42,12 @@ ANTI_PATTERNS = (
 
 
 def guide_preamble() -> list[str]:
-    if request_preparation(prepare_deck()):
-        return ["", "Next, run office guide design as a command of its own: InternKim gathers the photos and logo the deck can use before the next command runs."]
     return ["", "Next, run office guide design: it gives the style sheet, the layout library and the photos and logo the deck can use."]
 
 
 def design_text() -> str:
+    ensure_prepared()
     preparation = prepare_deck()
-    if request_preparation(preparation):
-        return "InternKim is gathering this deck's photos, logo and typeface now. Run office guide design again as a command of its own; this answer is read only by the next command."
     sections = (typeface_lines(preparation), STYLE_SHEET_LINES, outline_lines(), library_lines(), PAGE_LINES, anti_pattern_lines(), logo_lines(preparation), image_lines(preparation))
     return "\n\n".join("\n".join(section) for section in sections)
 
@@ -65,7 +62,7 @@ def outline_lines() -> list[str]:
         '  {"core_hook": "one sentence with tension, a number or a counter-intuitive contrast", "pages": [{"title": "...", "type": "cover", "brief": ["what goes on the page, one fact per line, with the real figures"], "figures": [{"label": "what it measures", "value": "64", "unit": "곳"}], "photos": ["<listed path>"]}]}',
         '  figures holds every number the page shows large or charts, each with its unit as the request states it ("" only for a bare count); a figure of a chart with several series adds "series": "<series name>". A source line under a figure is written only when the request names that source.',
         f"  type is {', '.join(PAGE_TYPES)}; the first page is the cover and the last the closing page. photos lists the photos the page shows, [] for none. Every figure and name comes from the request or its attachments; leave out what they do not state.",
-        "  office check outline.json checks it, and InternKim then judges its statements and chooses each page's layout from the library below; run the check again, as a command of its own, until it lists every page's layout.",
+        "  office check outline.json checks it, and InternKim judges its statements and chooses each page's layout from the library below in the same command; the result lists every page's layout.",
     ]
 
 

@@ -21,9 +21,9 @@ from deck.review.geometry_checks import GEOMETRY_FILE_NAME
 from deck.review.visual_review import write_visual_review
 from deck.slide_structure import extract_notes
 from deck.source_preflight import read_checked_source
+from host import script_host
 from powerpoint.chart_audit import presentation_chart_issues
 from render.renderer import PIXELS_FILE_NAME, RENDER_FAILED, RENDERER_UNAVAILABLE, RenderFailed, RendererUnavailable, RenderRequest, render_html, render_issues
-from schemas.known_values import load_runtime_context
 
 
 BUILD_REVIEW_FACTS = ("slideCount", "renderedSlideCount")
@@ -76,8 +76,7 @@ def export_deck(request: ExportRequest) -> Result:
 
 
 def host_reviews_renders() -> bool:
-    context = load_runtime_context()
-    return bool(context and context.reviews_deck_renders)
+    return script_host.is_present()
 
 
 def visual_review_details(request: ExportRequest, system: DesignSystem, outline: Outline, issues: list[Issue]) -> dict[str, str]:

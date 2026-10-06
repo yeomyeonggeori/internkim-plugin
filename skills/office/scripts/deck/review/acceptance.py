@@ -43,7 +43,7 @@ class Acceptance:
     @property
     def verdict(self) -> str:
         if self.acceptable and self.repaired_by_host:
-            return f"ACCEPTABLE: deliver {self.deliverable}; the host reviews every render and repairs the slides it flags, so do not redesign slides"
+            return f"ACCEPTABLE: deliver {self.deliverable}; this command reviewed every render and repaired the slides it flagged before answering, so do not redesign slides"
         if self.acceptable:
             return f"ACCEPTABLE: deliver {self.deliverable}; the other issues are advice, so do not redesign clean slides"
         listed = "; ".join(f"{issue.kind.code} on {issue.location}" for issue in self.defects)

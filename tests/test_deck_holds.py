@@ -1,5 +1,4 @@
 from pathlib import Path
-import json
 import sys
 import unittest
 
@@ -7,8 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills" / "office"
 
 from deck.deck_claims import blanked_deck, deck_claims
 from deck.deck_holds import deck_slides
-
-HOST_CONTRACT = json.loads((Path(__file__).resolve().parents[1] / "skills" / "office" / "assets" / "host-contract.json").read_text(encoding="utf-8"))
+from delivery.delivered_metadata import holds_of
 
 DECK = """<!doctype html>
 <html lang="ko">
@@ -58,12 +56,12 @@ class DeckHoldsTest(unittest.TestCase):
         self.assertNotIn("text", slide)
         self.assertEqual(slide["tables"], [[["구분 (백만 원)", "2025", "2026E"], ["영업이익", "-310", ""]]])
 
-    def test_every_field_the_host_reads_as_content_or_beside_it_is_declared_in_the_snapshot(self):
-        declared = HOST_CONTRACT["source"]["properties"]
-        source_content = HOST_CONTRACT["sourceContent"]
-        named = source_content["fields"] + source_content["companionFields"]
-        self.assertEqual([field for field in named if field not in declared], [])
-        self.assertIn("slides", source_content["fields"])
+    def test_a_deck_snapshot_holds_its_slides_and_blanks_and_nothing_else(self):
+        snapshot = {"command": "office create", "deck": "/deck", "claims": deck_claims(DECK), "slides": deck_slides(DECK), "blanks": [{"field": "f", "label": "l"}]}
+        self.assertEqual(holds_of(snapshot), {"slides": deck_slides(DECK), "blanks": [{"field": "f", "label": "l"}]})
+
+    def test_a_snapshot_holding_only_its_blanks_holds_nothing(self):
+        self.assertEqual(holds_of({"command": "office create", "blanks": []}), {})
 
 
 if __name__ == "__main__":

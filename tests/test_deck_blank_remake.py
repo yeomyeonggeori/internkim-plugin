@@ -1,12 +1,12 @@
 import json
-import os
 from pathlib import Path
 import tempfile
 import unittest
 
 from design_gate_slides import BODY, CLEAN, CLEAN_STYLE, HEADING
 from render_fixture import can_render
-from staged_deck_fixture import RUNTIME_CONTEXT_VARIABLE, build_deck, check_deck, write_staged_deck
+from staged_deck_fixture import build_deck, check_deck, write_staged_deck
+from task_context_fixture import environment_with_context, write_context_at
 
 from deck.deck_claims import deck_units  # noqa: E402
 
@@ -20,10 +20,10 @@ def unit_paths(directory: Path) -> dict[str, str]:
     return {unit.path: unit.text for unit in deck_units((directory / "slides.html").read_text(encoding="utf-8"))}
 
 
-def reviewing_host(directory: Path) -> dict:
-    context = directory / "context.json"
-    context.write_text(json.dumps({"requester": {"name": "", "email": ""}, "today": "2026-10-04", "company": {}, "registeredDocuments": [], "attachments": [], "reviewsDeckRenders": True}), encoding="utf-8")
-    return {**os.environ, RUNTIME_CONTEXT_VARIABLE: str(context)}
+def claim_check_remake(directory: Path) -> dict:
+    context = write_context_at(directory / "task" / "task-context.json", {"today": "2026-10-04"})
+    script_host = {"SKILL_HOST_URL": "http://127.0.0.1:9", "SKILL_HOST_TOKEN": "unused", "OFFICE_IS_REMAKE": "1"}
+    return environment_with_context(context) | script_host
 
 
 @unittest.skipUnless(can_render(), "the renderer is not available")
@@ -60,7 +60,7 @@ class PageBlankRemakeTest(unittest.TestCase):
         self.assertIn(last_title, (self.directory / "pages" / "03.html").read_text(encoding="utf-8"))
 
     def test_a_page_the_claim_check_changed_is_handed_to_the_visual_review_to_recompose(self):
-        envelope = self.remake([self.path_of("Busan")], environment=reviewing_host(self.directory))
+        envelope = self.remake([self.path_of("Busan")], environment=claim_check_remake(self.directory))
         review = json.loads(Path(envelope["details"]["visualReview"]).read_text(encoding="utf-8"))
         self.assertEqual([slide["number"] for slide in review["slides"] if slide.get("recompose")], [3])
 

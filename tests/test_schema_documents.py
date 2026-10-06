@@ -1,7 +1,6 @@
 from datetime import date
 from decimal import Decimal
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -9,6 +8,7 @@ import tempfile
 import unittest
 
 from doc_fixture import OFFICE_ENTRY, write_json
+from task_context_fixture import environment_with_context, write_context_at
 
 from core.office_result import OfficeFailure
 from schemas.expression import Scope, evaluate, parse_expression
@@ -50,19 +50,9 @@ def sample_instance(given):
     return instance
 
 
-def with_company_files(context_path):
-    context = json.loads(Path(context_path).read_text(encoding="utf-8"))
-    for language, profile in (context.get("company") or {}).items():
-        if isinstance(profile, dict):
-            profile_path = Path(context_path).with_name(f"company-profile.{language}.json")
-            write_json(profile_path, profile)
-            context["company"][language] = str(profile_path)
-    write_json(context_path, context)
-
-
 def run_office_with_context(arguments, working_directory, context_path):
-    with_company_files(context_path)
-    environment = dict(os.environ, OFFICE_RUNTIME_CONTEXT=str(context_path))
+    facts = json.loads(Path(context_path).read_text(encoding="utf-8"))
+    environment = environment_with_context(write_context_at(context_path, facts))
     completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *arguments], capture_output=True, text=True, cwd=working_directory, env=environment)
     return json.loads(completed.stdout)
 

@@ -1,5 +1,4 @@
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -10,14 +9,13 @@ from free_deck_fixture import write_free_deck
 
 from doc_fixture import OFFICE_ENTRY, run_office, write_json
 from render_fixture import can_render
+from task_context_fixture import environment_with_context, register_record, write_context_at
 
-
-SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scripts"
-HOST_CONTRACT = json.loads((SCRIPTS_PATH.parent / "assets" / "host-contract.json").read_text(encoding="utf-8"))
+from core.source_snapshot import SOURCE_SUFFIX
 
 
 def source_beside(path):
-    snapshot = Path(str(path) + HOST_CONTRACT["sourceSuffix"])
+    snapshot = Path(str(path) + SOURCE_SUFFIX)
     return json.loads(snapshot.read_text(encoding="utf-8")) if snapshot.is_file() else None
 
 
@@ -43,7 +41,7 @@ class ProvenanceTest(unittest.TestCase):
     def test_reading_checking_and_rendering_leave_no_snapshot(self):
         Path(self.directory, "note.md").write_text("# 메모\n\n본문\n", encoding="utf-8")
         run_office(["create", "note.docx", "note.md"], self.directory)
-        Path(str(self.directory / "note.docx") + HOST_CONTRACT["sourceSuffix"]).unlink()
+        Path(str(self.directory / "note.docx") + SOURCE_SUFFIX).unlink()
         for verb in ("read", "check"):
             run_office([verb, "note.docx"], self.directory)
         self.assertIsNone(source_beside(self.directory / "note.docx"))
@@ -72,8 +70,13 @@ class ProvenanceTest(unittest.TestCase):
         self.assertIn("place", [blank["field"] for blank in result["details"]["blanks"]])
 
 
-class HostContractTest(unittest.TestCase):
-    def sample_context(self, directory):
+READER = ("from schemas.known_values import load_runtime_context; context = load_runtime_context(); import json; "
+          "print(json.dumps({'requester': [context.requester_name, context.requester_email], 'today': str(context.today), 'company': context.company('ko').get('name'), "
+          "'seal': context.company('ko').get('stampPath'), 'number': context.document_number(), 'attachments': [attachment['name'] for attachment in context.attachments]}, ensure_ascii=False))")
+
+
+class TaskContextTest(unittest.TestCase):
+    def sample_facts(self, directory):
         profile = Path(directory, "company-profile.json")
         write_json(profile, {"name": "샘플테크 주식회사", "sealImage": "seal.png"})
         return {
@@ -82,57 +85,28 @@ class HostContractTest(unittest.TestCase):
             "company": {"ko": str(profile)},
             "registeredDocuments": [{"documentNumber": "SAMPLE-20261004-001"}],
             "attachments": [{"name": "budget.csv", "path": str(Path(directory, "budget.csv"))}],
-            "reviewsDeckRenders": True,
-            "preparesDecks": True,
-            "deckDesign": None,
-            "choosesDeckLayouts": True,
-            "deckLayouts": None,
-            "images": [],
-            "fonts": [],
-            "judgesDraftClaims": True,
-            "draftClaims": None,
         }
 
-    def test_the_sample_context_holds_exactly_the_fields_the_contract_names(self):
-        schema = HOST_CONTRACT["runtimeContext"]
-        with tempfile.TemporaryDirectory() as directory:
-            context = self.sample_context(directory)
-        self.assertEqual(set(context), set(schema["properties"]))
-        self.assertEqual(set(schema["required"]), set(schema["properties"]))
-        for name in ("requester", "registeredDocuments", "attachments"):
-            properties = schema["properties"][name].get("properties") or schema["properties"][name]["items"]["properties"]
-            sample = context[name] if isinstance(context[name], dict) else context[name][0]
-            self.assertEqual(set(sample), set(properties), name)
+    def read_known_values(self, directory, facts):
+        context_path = write_context_at(Path(directory, "task", "task-context.json"), facts)
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", READER], capture_output=True, text=True, env=environment_with_context(context_path), check=True)
+        return json.loads(completed.stdout)
 
-    def test_the_office_reader_takes_every_field_of_the_contract(self):
+    def test_the_office_reads_the_known_values_from_the_task_context(self):
         with tempfile.TemporaryDirectory() as directory:
-            context_path = Path(directory, "context.json")
-            write_json(context_path, self.sample_context(directory))
-            reader = "from schemas.known_values import load_runtime_context; context = load_runtime_context(); import json; print(json.dumps({'requester': [context.requester_name, context.requester_email], 'today': str(context.today), 'company': context.company('ko').get('name'), 'seal': context.company('ko').get('stampPath'), 'number': context.document_number(), 'attachments': [attachment['name'] for attachment in context.attachments], 'reviewsDeckRenders': context.reviews_deck_renders}, ensure_ascii=False))"
-            environment = dict(os.environ, OFFICE_RUNTIME_CONTEXT=str(context_path))
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", reader], capture_output=True, text=True, env=environment, check=True)
-        read = json.loads(completed.stdout)
+            read = self.read_known_values(directory, self.sample_facts(directory))
         self.assertEqual(read["requester"], ["이샘플", "sample@example.com"])
         self.assertEqual(read["today"], "2026-10-04")
         self.assertEqual(read["company"], "샘플테크 주식회사")
         self.assertEqual(read["seal"], str(Path(directory, "seal.png")))
         self.assertEqual(read["number"], "SAMPLE-20261004-001")
         self.assertEqual(read["attachments"], ["budget.csv"])
-        self.assertIs(read["reviewsDeckRenders"], True)
 
-    def test_a_context_from_a_host_that_names_no_render_review_reads_as_no_review(self):
+    def test_the_document_number_is_the_last_one_a_registration_answered(self):
         with tempfile.TemporaryDirectory() as directory:
-            context_path = Path(directory, "context.json")
-            older = {name: value for name, value in self.sample_context(directory).items() if name != "reviewsDeckRenders"}
-            write_json(context_path, older)
-            environment = dict(os.environ, OFFICE_RUNTIME_CONTEXT=str(context_path))
-            reader = "from schemas.known_values import load_runtime_context; print(load_runtime_context().reviews_deck_renders)"
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", reader], capture_output=True, text=True, env=environment, check=True)
-        self.assertEqual(completed.stdout.strip(), "False")
-
-    def test_the_variable_the_reader_looks_for_is_the_contract_variable(self):
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", "from schemas.known_values import RUNTIME_CONTEXT_VARIABLE; print(RUNTIME_CONTEXT_VARIABLE)"], capture_output=True, text=True, check=True)
-        self.assertEqual(completed.stdout.strip(), HOST_CONTRACT["runtimeContextVariable"])
+            facts = self.sample_facts(directory) | {"registeredDocuments": [{"documentNumber": "QT-1"}, {"documentNumber": "QT-2"}], "records": [register_record(None)]}
+            read = self.read_known_values(directory, facts)
+        self.assertEqual(read["number"], "QT-2")
 
 
 if __name__ == "__main__":

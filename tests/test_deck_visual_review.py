@@ -1,11 +1,12 @@
 import json
-import os
 from pathlib import Path
 import tempfile
 import unittest
 
 from render_fixture import can_render
-from staged_deck_fixture import RUNTIME_CONTEXT_VARIABLE, build_deck, write_staged_deck
+from host_fixture import FakeHost
+from staged_deck_fixture import build_deck, write_staged_deck
+from task_context_fixture import environment_with_context, write_context_at
 
 
 STYLE = """
@@ -47,13 +48,16 @@ def table(title_style: str = "") -> str:
     )
 
 
-def context_environment(directory: Path, reviews_deck_renders: bool | None) -> dict:
-    environment = {name: value for name, value in os.environ.items() if name != RUNTIME_CONTEXT_VARIABLE}
-    if reviews_deck_renders is None:
-        return environment
-    context_path = directory / "office-runtime-context.json"
-    context_path.write_text(json.dumps({"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04", "company": {}, "registeredDocuments": [], "attachments": [], "reviewsDeckRenders": reviews_deck_renders}), encoding="utf-8")
-    return environment | {RUNTIME_CONTEXT_VARIABLE: str(context_path)}
+def context_environment(directory: Path, has_context: bool) -> dict:
+    if not has_context:
+        return environment_with_context(None)
+    return environment_with_context(write_context_at(directory / "task" / "task-context.json", {"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04"}))
+
+
+def clean_answers(body: dict) -> dict:
+    claims = body["state"].get("claims") or {}
+    choices = {name: "source" if name in claims else "none" for name in body["questions"]}
+    return {"answers": {name: {"type": "choice", "choice": choice, "probabilities": {choice: 1.0}} for name, choice in choices.items()}, "modelName": "fake", "usage": {"costUSD": 0.0}}
 
 
 def located(envelope: dict, code: str) -> set[str]:
@@ -65,7 +69,7 @@ class PageContrastTest(unittest.TestCase):
     def build(self, sections: list, design: dict | None = None) -> dict:
         with tempfile.TemporaryDirectory() as directory:
             write_staged_deck(Path(directory), sections, STYLE, design)
-            return build_deck(Path(directory), extension="pdf", environment=context_environment(Path(directory), None))
+            return build_deck(Path(directory), extension="pdf", environment=context_environment(Path(directory), False))
 
     def test_text_too_faint_for_its_background_is_refused_on_its_page(self):
         envelope = self.build([COVER, cards(paragraph_style="color:#EEF5F2"), CLOSING])
@@ -86,14 +90,14 @@ class PageContrastTest(unittest.TestCase):
 
 @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
 class VisualReviewManifestTest(unittest.TestCase):
-    def build(self, directory: Path, reviews_deck_renders: bool | None) -> dict:
+    def build(self, directory: Path, has_context: bool) -> dict:
         write_staged_deck(directory, [COVER, cards(), ICON_PAGE], STYLE)
-        return build_deck(directory, environment=context_environment(directory, reviews_deck_renders))
+        return build_deck(directory, environment=context_environment(directory, has_context))
 
-    def test_a_build_for_a_host_that_does_not_review_renders_writes_no_visual_review(self):
-        for reviews_deck_renders in (None, False):
+    def test_a_build_without_a_script_host_writes_no_visual_review(self):
+        for has_context in (False, True):
             with tempfile.TemporaryDirectory() as directory:
-                envelope = self.build(Path(directory), reviews_deck_renders)
+                envelope = self.build(Path(directory), has_context)
                 snapshot = json.loads((Path(directory) / "build" / "deck.pptx.source.json").read_text(encoding="utf-8"))
                 written = (Path(directory) / "build" / "review" / "visual-review.json").exists()
             self.assertIn(envelope["status"], ("ok", "warning"), envelope["summary"])
@@ -103,13 +107,14 @@ class VisualReviewManifestTest(unittest.TestCase):
 
     def test_each_slide_of_the_visual_review_names_its_page_file_and_outline_entry(self):
         with tempfile.TemporaryDirectory() as directory:
-            envelope = self.build(Path(directory), True)
-            review = json.loads(Path(envelope["details"]["visualReview"]).read_text(encoding="utf-8"))
+            with FakeHost(decide=clean_answers):
+                envelope = self.build(Path(directory), True)
             snapshot = json.loads((Path(directory) / "build" / "deck.pptx.source.json").read_text(encoding="utf-8"))
+            review = json.loads(Path(snapshot["visualReview"]).read_text(encoding="utf-8"))
             images_exist = [Path(slide["image"]).is_file() for slide in review["slides"]]
             second_page = (Path(directory) / "pages" / "02.html").read_text(encoding="utf-8")
             outline = json.loads((Path(directory) / "outline.json").read_text(encoding="utf-8"))
-        self.assertEqual(snapshot["visualReview"], envelope["details"]["visualReview"])
+        self.assertEqual(envelope["details"]["visualReview"]["outcome"], "clean", envelope["details"]["visualReview"])
         self.assertEqual(images_exist, [True, True, True])
         self.assertIn(review["question"]["cleanOption"], review["question"]["options"])
         self.assertNotIn("hero_metric_template", review["question"]["options"])

@@ -45,13 +45,13 @@ class AcceptanceTest(unittest.TestCase):
         self.assertIn("CONTENT_OVERLAP on slide 3", acceptance.verdict)
         self.assertNotIn("MISSING_SPEAKER_NOTES", acceptance.verdict)
 
-    def test_layout_defects_are_left_to_the_host_that_repairs_renders_but_missing_words_are_not(self):
+    def test_layout_defects_are_left_to_the_render_review_but_missing_words_are_not(self):
         missing = REQUIRED_TEXT_MISSING_ISSUE
         with tempfile.TemporaryDirectory() as directory:
             left = judge_build(Path(directory), "<section>a</section>", [OVERLAP, FAINT], "deck.pdf", repaired_by_host=True)
             owned = judge_build(Path(directory), "<section>b</section>", [OVERLAP, missing], "deck.pdf", repaired_by_host=True)
         self.assertTrue(left.acceptable)
-        self.assertIn("host", left.verdict)
+        self.assertIn("reviewed every render", left.verdict)
         self.assertFalse(owned.acceptable)
         self.assertIn("REQUIRED_TEXT_MISSING", owned.verdict)
         self.assertNotIn("CONTENT_OVERLAP", owned.verdict)

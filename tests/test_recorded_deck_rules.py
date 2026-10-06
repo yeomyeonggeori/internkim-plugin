@@ -17,10 +17,10 @@ sys.path.insert(0, str(SCRIPTS_PATH))
 
 from deck.deck_logo import logo_crop_box, read_logo  # noqa: E402
 from core.design_rules import render_rule_issues  # noqa: E402
-from core.host_contract import RUNTIME_CONTEXT_VARIABLE  # noqa: E402
 from deck.deck_html import measure_for_gate  # noqa: E402
 from deck.design_system import read_design_system  # noqa: E402
 from staged_deck_fixture import style_sheet_markdown  # noqa: E402
+from task_context_fixture import CONTEXT_VARIABLE, write_context_at  # noqa: E402
 
 
 def measure_with_company_logo(path: Path, system) -> list[dict]:
@@ -29,16 +29,16 @@ def measure_with_company_logo(path: Path, system) -> list[dict]:
     if (path / "logo.png").exists():
         shutil.copy(path / "logo.png", company / "logo.png")
         (company / "company-profile.json").write_text(json.dumps({"name": "Sample", "logoImage": "logo.png"}), encoding="utf-8")
-    context = company / "office-runtime-context.json"
-    context.write_text(json.dumps({"requester": {"name": "", "email": ""}, "today": "2026-10-04", "company": {"en": str(company / "company-profile.json")} if (company / "company-profile.json").exists() else {}, "registeredDocuments": [], "attachments": [], "reviewsDeckRenders": False}), encoding="utf-8")
-    previous = os.environ.get(RUNTIME_CONTEXT_VARIABLE)
-    os.environ[RUNTIME_CONTEXT_VARIABLE] = str(context)
+    profile = company / "company-profile.json"
+    context = write_context_at(company / "task-context.json", {"today": "2026-10-04", "company": {"en": str(profile)} if profile.exists() else {}})
+    previous = os.environ.get(CONTEXT_VARIABLE)
+    os.environ[CONTEXT_VARIABLE] = str(context)
     try:
         return measure_for_gate(path / "slides.html", system)
     finally:
-        os.environ.pop(RUNTIME_CONTEXT_VARIABLE, None)
+        os.environ.pop(CONTEXT_VARIABLE, None)
         if previous is not None:
-            os.environ[RUNTIME_CONTEXT_VARIABLE] = previous
+            os.environ[CONTEXT_VARIABLE] = previous
 
 
 BALANCED = ({"display": "64px", "title": "48px", "body": "28px", "small": "20px"}, "96px", "32px")

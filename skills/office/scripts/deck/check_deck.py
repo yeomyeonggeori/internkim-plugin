@@ -12,24 +12,22 @@ from deck.deck_preparation import prepare_deck
 from deck.deck_source import find_all, parse_source
 from deck.design_system import DESIGN_FILE_NAME, DesignSystem, read_design_system
 from deck.draft_claims import draft_claim_issues, draft_claims
-from deck.layout_choice import assigned_layouts, decided_choices, is_decision_pending, write_layout_request
+from deck.layout_choice import assigned_layouts, decided_choices, layout_decision
 from deck.outline import OUTLINE_FILE_NAME, PAGES_DIRECTORY_NAME, Outline, layout_issues, outline_issues, read_outline, write_outline
 from deck.page_checks import Page, page_issues
 from deck.page_files import assembled_deck, lone_section, page_number, page_path
-from schemas.known_values import load_runtime_context
+from host import script_host
 
 
 ASSEMBLED_FILE_NAME = "slides.html"
 PAGE_CHECK_FILE_NAME = ".page-check.html"
 
 STAGE_NOT_READY = IssueKind("STAGE_NOT_READY", ERROR, "an earlier stage of the deck is missing or does not pass its check", "run office check on the file the message names and fix it before this one")
-OUTLINE_BEING_PREPARED = IssueKind("OUTLINE_BEING_PREPARED", ERROR, "InternKim is choosing each page's layout and judging the outline's statements", "run office check outline.json again, as a command of its own, before writing any page")
 LAYOUT_CHOICE_FAILED = IssueKind("LAYOUT_CHOICE_FAILED", ERROR, "InternKim could not choose the pages' layouts, so the outline must name them", 'add "layout" to every page from the library office guide design lists, then check the outline again')
 PAGE_NOT_ONE_SECTION = IssueKind("PAGE_NOT_ONE_SECTION", ERROR, "a page file is not exactly one <section> element", "write the page as one <section>, with its <style> inside it, and nothing outside it")
 PAGE_MISSING = IssueKind("PAGE_MISSING", ERROR, "an outline page has no page file", "write pages/NN.html for every outline page, checking each with office check")
 PAGE_NOT_IN_OUTLINE = IssueKind("PAGE_NOT_IN_OUTLINE", ERROR, "a page file has no outline entry", "add the page to outline.json and check the outline, or delete the file")
-OUTLINE_WAIT_SUMMARY = "the outline passes its checks; InternKim now chooses each page's layout and judges its statements on its own, and nothing is asked of the person: run office check outline.json again as your next command, before writing any page"
-STAGE_ISSUE_KINDS = (STAGE_NOT_READY, OUTLINE_BEING_PREPARED, LAYOUT_CHOICE_FAILED, PAGE_NOT_ONE_SECTION, PAGE_MISSING, PAGE_NOT_IN_OUTLINE)
+STAGE_ISSUE_KINDS = (STAGE_NOT_READY, LAYOUT_CHOICE_FAILED, PAGE_NOT_ONE_SECTION, PAGE_MISSING, PAGE_NOT_IN_OUTLINE)
 
 
 @dataclass(frozen=True)
@@ -85,8 +83,7 @@ def listed_photos() -> set[str]:
 
 
 def chooses_layouts() -> bool:
-    context = load_runtime_context()
-    return bool(context and context.chooses_deck_layouts)
+    return script_host.is_present()
 
 
 def design_or_refusal(directory: pathlib.Path) -> tuple[DesignSystem | None, list[Issue]]:
@@ -118,28 +115,24 @@ def check_outline(outline_path: pathlib.Path, requested_slide_count: int | None)
     issues += [] if chooses_layouts() else layout_issues(outline)
     if has_errors(issues):
         return stage_result(outline_path, issues, "")
-    claim_issues, is_judged = draft_claim_issues(draft_claims(outline, assembled_deck(outline, existing_sections(directory, outline))))
-    outline, layout_issues_found, is_pending = settled_layouts(outline_path, outline)
-    issues += claim_issues + layout_issues_found
-    details = {"pages": [page.to_json() for page in outline.pages]}
-    if not has_errors(issues) and (is_pending or not is_judged):
-        return Result(summary=OUTLINE_WAIT_SUMMARY, output_path=str(outline_path), issues=(*issues, OUTLINE_BEING_PREPARED.issue(OUTLINE_WAIT_SUMMARY, "outline")), details=details)
-    return stage_result(outline_path, issues, outline_ready_summary(outline), details)
+    issues += draft_claim_issues(draft_claims(outline, assembled_deck(outline, existing_sections(directory, outline))))
+    if has_errors(issues):
+        return stage_result(outline_path, issues, "")
+    outline, layout_issues_found = settled_layouts(outline_path, outline)
+    issues += layout_issues_found
+    return stage_result(outline_path, issues, outline_ready_summary(outline), {"pages": [page.to_json() for page in outline.pages]})
 
 
-def settled_layouts(outline_path: pathlib.Path, outline: Outline) -> tuple[Outline, list[Issue], bool]:
-    context = load_runtime_context()
-    if not (context and context.chooses_deck_layouts):
-        return outline, [], False
-    write_layout_request(outline)
-    if is_decision_pending(outline, context.deck_layouts):
-        return outline, [], True
-    choices = decided_choices(outline, context.deck_layouts)
+def settled_layouts(outline_path: pathlib.Path, outline: Outline) -> tuple[Outline, list[Issue]]:
+    if not chooses_layouts():
+        return outline, []
+    decision = layout_decision(outline)
+    choices = decided_choices(outline, decision)
     if choices is None:
-        return outline, fallback_layout_issues(outline, context.deck_layouts), False
+        return outline, fallback_layout_issues(outline, decision)
     settled = outline.with_layouts(assigned_layouts(outline, choices))
     write_outline(outline_path, settled)
-    return settled, [], False
+    return settled, []
 
 
 def fallback_layout_issues(outline: Outline, decision: dict) -> list[Issue]:
@@ -199,7 +192,7 @@ def check_page(path: pathlib.Path) -> Result:
     page, issues = checked_page(directory, outline, number, system)
     if page is None:
         return stage_result(path, issues, "")
-    issues += draft_claim_issues(draft_claims(outline, assembled_deck(outline, existing_sections(directory, outline))))[0]
+    issues += draft_claim_issues(draft_claims(outline, assembled_deck(outline, existing_sections(directory, outline))))
     if not has_errors(issues):
         issues += page_render_issues(directory, outline, number, lone_section(path.read_text(encoding="utf-8")), system)
     following = page_assignment(outline, number + 1) if number < len(outline.pages) else "every page is written: build the deck with office create"
@@ -225,7 +218,7 @@ def check_staged_deck(request: DeckRequest) -> DeckCheck:
     sections = existing_sections(request.directory, outline)
     request.assembled_path.write_text(assembled_deck(outline, sections), encoding="utf-8")
     if not request.is_blank_remake:
-        issues += draft_claim_issues(draft_claims(outline, request.assembled_path.read_text(encoding="utf-8")))[0]
+        issues += draft_claim_issues(draft_claims(outline, request.assembled_path.read_text(encoding="utf-8")), may_ask=False)
     if not has_errors(issues):
         issues += render_gate_issues(request.assembled_path, system, [f"page {number}" for number in sorted(sections)])
     if request.is_blank_remake:

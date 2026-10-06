@@ -8,7 +8,7 @@ from core.css_color import contrast_ratio, hex_oklch, oklch_hex
 from core.design_rules import threshold_of
 from core.office_result import ERROR, WARNING, Issue, IssueKind
 from deck.design_tokens import parse_front_matter
-from deck.typeface import TYPE_OPTIONS, TYPEFACE, decided_type, type_pairing
+from deck.typeface import TYPE_OPTIONS, TYPEFACE, type_pairing
 
 
 DESIGN_FILE_NAME = "DESIGN.md"
@@ -115,10 +115,9 @@ def requested_font_of(sheet: dict):
 
 
 def design_system_of(sheet: dict, requested) -> DesignSystem:
-    from schemas.known_values import load_runtime_context
+    from deck.deck_preparation import prepared_type
 
-    context = load_runtime_context()
-    pairing = type_pairing(str(sheet.get(TYPE_KEY) or decided_type(context.deck_design if context else None)))
+    pairing = type_pairing(str(sheet.get(TYPE_KEY) or prepared_type()))
     family = None if requested is None else requested.family.name
     return DesignSystem(
         style=str(sheet[STYLE_KEY]).strip(),

@@ -1,5 +1,4 @@
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -7,6 +6,7 @@ import tempfile
 import unittest
 
 from doc_fixture import OFFICE_ENTRY, run_office, run_office_python, write_json
+from task_context_fixture import environment_with_context, write_context_at
 
 
 FORM_DOCUMENT = """
@@ -46,14 +46,13 @@ workbook.save("form.xlsx")
 
 
 def runtime_context(directory):
-    path = Path(directory, "context.json")
-    write_json(path, {"requester": {"name": "이샘플"}, "today": "2026-10-04", "company": {"ko": {"name": "샘플테크"}}, "registeredDocuments": [{"documentNumber": "SAMPLE-7"}]})
-    return path
+    facts = {"requester": {"name": "이샘플"}, "today": "2026-10-04", "company": {"ko": {"name": "샘플테크"}}, "registeredDocuments": [{"documentNumber": "SAMPLE-7"}]}
+    return write_context_at(Path(directory, "context.json"), facts)
 
 
 def merge(directory, schema, values, output):
     write_json(Path(directory, "values.json"), values)
-    environment = dict(os.environ, OFFICE_RUNTIME_CONTEXT=str(runtime_context(directory)))
+    environment = environment_with_context(runtime_context(directory))
     completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "merge", schema, "values.json", output], capture_output=True, text=True, cwd=directory, env=environment)
     return json.loads(completed.stdout)
 

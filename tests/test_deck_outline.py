@@ -1,14 +1,15 @@
-import hashlib
 import json
 import os
 from pathlib import Path
 import tempfile
 import unittest
 
-from staged_deck_fixture import RUNTIME_CONTEXT_VARIABLE, style_sheet_markdown
+from host_fixture import FakeHost
+from staged_deck_fixture import style_sheet_markdown
+from task_context_fixture import CONTEXT_VARIABLE, write_context_at
 
 from deck.check_deck import check_outline  # noqa: E402
-from deck.layout_choice import assigned_layouts, decided_choices, is_decision_pending, layout_request, request_digest  # noqa: E402
+from deck.layout_choice import assigned_layouts, decided_choices, layout_request, request_digest  # noqa: E402
 from deck.draft_claims import outline_claims  # noqa: E402
 from deck.outline import Outline, OutlineFigure, OutlinePage, layout_issues, outline_issues, outline_page, read_outline  # noqa: E402
 
@@ -112,10 +113,9 @@ class LayoutChoiceTest(unittest.TestCase):
         deck = outline(page("Cover", "cover"), page("Close", "closing"))
         changed = outline(page("Cover", "cover"), page("Close again", "closing"))
         decision = {"digest": request_digest(deck), "choices": answer({"cover_dark_minimal": 0.9}, {"closing_cta": 0.9})}
-        self.assertTrue(is_decision_pending(deck, None))
-        self.assertFalse(is_decision_pending(deck, decision))
-        self.assertTrue(is_decision_pending(changed, decision))
         self.assertIsNotNone(decided_choices(deck, decision))
+        self.assertIsNone(decided_choices(changed, decision))
+        self.assertIsNone(decided_choices(deck, None))
         self.assertIsNone(decided_choices(deck, decision | {"failure": "timeout"}))
 
     def test_the_most_likely_layout_is_taken_unless_it_repeats_the_body_page_before(self):
@@ -138,21 +138,22 @@ class LayoutChoiceTest(unittest.TestCase):
         self.assertEqual(layout_issues(deck.with_layouts(layouts)), [])
 
 
-def write_context(directory: Path, **fields) -> Path:
-    context = {"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-05", "company": {}, "registeredDocuments": [], "attachments": [], "reviewsDeckRenders": False, "choosesDeckLayouts": True, "deckLayouts": None, "judgesDraftClaims": True, "draftClaims": None} | fields
-    path = directory / "office-runtime-context.json"
-    path.write_text(json.dumps(context, ensure_ascii=False), encoding="utf-8")
-    return path
+class AnsweringHost:
+    def __init__(self, flagged: tuple[str, ...] = ()):
+        self.flagged = flagged
 
+    def decide(self, body: dict) -> dict:
+        claims = body["state"].get("claims")
+        answers = {name: self.claim_answer(claims[name]) if claims else self.layout_answer(question) for name, question in body["questions"].items()}
+        return {"answers": answers, "modelName": "jev", "usage": {"costUSD": 0.001}}
 
-def answer_as_host(context_path: Path, flagged: tuple[str, ...] = ()) -> None:
-    context = json.loads(context_path.read_text(encoding="utf-8"))
-    request = (context_path.parent / "deck-layouts-request.json").read_bytes()
-    claims = (context_path.parent / "draft-claims-request.json").read_bytes()
-    questions = json.loads(request)["questions"]
-    context["deckLayouts"] = {"digest": hashlib.sha256(request).hexdigest(), "choices": {name: {"option": sorted(question["options"])[0], "probabilities": {option: 0.5 for option in question["options"]} | {sorted(question["options"])[0]: 0.9}} for name, question in questions.items()}}
-    context["draftClaims"] = {"digest": hashlib.sha256(claims).hexdigest(), "unsupported": [claim for claim in json.loads(claims)["claims"] if claim["text"] in flagged]}
-    context_path.write_text(json.dumps(context, ensure_ascii=False), encoding="utf-8")
+    def claim_answer(self, claim: dict) -> dict:
+        kind = "claim" if claim["text"] in self.flagged else "source"
+        return {"type": "choice", "choice": kind, "probabilities": {kind: 0.9}}
+
+    def layout_answer(self, question: dict) -> dict:
+        first = sorted(question["criteria"])[0]
+        return {"type": "choice", "choice": first, "probabilities": {option: 0.5 for option in question["criteria"]} | {first: 0.9}}
 
 
 OUTLINE = {"core_hook": "Delivery got faster and repeat orders rose", "pages": [
@@ -169,35 +170,36 @@ class OutlineStageTest(unittest.TestCase):
         self.directory = Path(self.temporary.name)
         (self.directory / "DESIGN.md").write_text(style_sheet_markdown(), encoding="utf-8")
         (self.directory / "outline.json").write_text(json.dumps(OUTLINE), encoding="utf-8")
-        self.context = write_context(self.directory)
-        previous = os.environ.get(RUNTIME_CONTEXT_VARIABLE)
-        os.environ[RUNTIME_CONTEXT_VARIABLE] = str(self.context)
-        self.addCleanup(lambda: os.environ.pop(RUNTIME_CONTEXT_VARIABLE, None) if previous is None else os.environ.__setitem__(RUNTIME_CONTEXT_VARIABLE, previous))
+        context = write_context_at(self.directory / "task" / "task-context.json", {"today": "2026-10-05", "request": ["Third quarter review: delivery faster, repeat orders up 12 percent"]})
+        previous = os.environ.get(CONTEXT_VARIABLE)
+        os.environ[CONTEXT_VARIABLE] = str(context)
+        self.addCleanup(lambda: os.environ.pop(CONTEXT_VARIABLE, None) if previous is None else os.environ.__setitem__(CONTEXT_VARIABLE, previous))
 
-    def check(self):
-        return check_outline(self.directory / "outline.json", None)
+    def check(self, host: AnsweringHost):
+        with FakeHost(decide=host.decide) as fake:
+            result = check_outline(self.directory / "outline.json", None)
+        return result, fake.requests_to("decide")
 
-    def test_the_outline_waits_for_the_host_then_gains_a_layout_per_page(self):
-        waiting = self.check()
-        self.assertEqual([issue.kind.code for issue in waiting.issues], ["OUTLINE_BEING_PREPARED"])
-        self.assertTrue((self.directory / "deck-layouts-request.json").is_file())
-        self.assertIn("run office check outline.json again as your next command", waiting.summary)
-        self.assertIn("nothing is asked of the person", waiting.summary)
-        answer_as_host(self.context)
-        ready = self.check()
+    def test_the_outline_gains_a_layout_per_page_in_the_same_check(self):
+        ready, asked = self.check(AnsweringHost())
         written, _ = read_outline(self.directory / "outline.json")
         self.assertEqual(ready.status, "ok", ready.summary)
         self.assertTrue(all(page.layout for page in written.pages))
         self.assertIn(written.pages[1].layout, ready.summary)
+        self.assertEqual(len(asked), 2)
 
-    def test_a_statement_the_host_flags_is_refused_once_before_any_page_exists(self):
-        self.check()
-        answer_as_host(self.context, flagged=("A rival cut prices",))
-        refused = self.check()
+    def test_layouts_chosen_for_the_same_outline_are_not_asked_again(self):
+        self.check(AnsweringHost())
+        _, asked = self.check(AnsweringHost())
+        self.assertEqual([body for body in asked if "claims" not in body["state"]], [])
+
+    def test_a_statement_the_judge_flags_is_refused_once_before_any_page_exists(self):
+        refused, asked = self.check(AnsweringHost(flagged=("A rival cut prices",)))
         self.assertEqual([(issue.kind.code, issue.location) for issue in refused.issues], [("UNSUPPORTED_CLAIM", "outline page 2")])
-        sent = json.loads((self.directory / "draft-claims-request.json").read_text(encoding="utf-8"))["claims"]
-        self.assertIn({"path": "outline.pages[1].brief[1]", "at": "outline page 2 brief", "text": "A rival cut prices"}, sent)
-        self.assertNotEqual(self.check().status, "error")
+        sent = list(asked[0]["state"]["claims"].values())
+        self.assertIn({"at": "outline page 2 brief", "text": "A rival cut prices"}, sent)
+        self.assertEqual(len(asked), 1)
+        self.assertNotEqual(self.check(AnsweringHost(flagged=("A rival cut prices",)))[0].status, "error")
 
 
 if __name__ == "__main__":
