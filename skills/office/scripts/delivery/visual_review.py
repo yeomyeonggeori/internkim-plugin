@@ -19,6 +19,7 @@ QUESTION_KEY = "visual_defect"
 DECK_QUESTION_PREFIX = "slide_"
 MAXIMUM_PARALLEL_CALLS = 16
 MAXIMUM_REFUSAL_CHARACTERS = 1500
+RECOMPOSE_ROUNDS = 1
 SHEET_DESCRIPTION = "every slide of the deck at reduced size, in reading order from the top left; the number on each tile is the slide's number"
 
 CLEAN = "clean"
@@ -100,15 +101,15 @@ class VisualReview:
         return document | {name: value for name, value in optional.items() if value}
 
 
-def review_deck(file_path: Path, snapshot: dict, deadline: float) -> VisualReview:
-    return run_review(OfficeDeck(Path(file_path), snapshot), Path(file_path).name, deadline)
+def review_deck(file_path: Path, snapshot: dict, deadline: float, is_recompose_only: bool = False) -> VisualReview:
+    return run_review(OfficeDeck(Path(file_path), snapshot), Path(file_path).name, deadline, is_recompose_only)
 
 
-def run_review(deck: Deck, file_name: str, deadline: float) -> VisualReview:
+def run_review(deck: Deck, file_name: str, deadline: float, is_recompose_only: bool = False) -> VisualReview:
     review = VisualReview(file=file_name)
     loop = None
     try:
-        loop = ReviewLoop(deck)
+        loop = ReviewLoop(deck, is_recompose_only)
         loop.run(deadline)
     except script_host.HostUnavailable as unavailable:
         review.outcome, review.detail = UNAVAILABLE, str(unavailable)
@@ -136,10 +137,11 @@ def record_loop(review: VisualReview, loop: "ReviewLoop | None") -> None:
 
 
 class ReviewLoop:
-    def __init__(self, deck: Deck):
+    def __init__(self, deck: Deck, is_recompose_only: bool = False):
         self.deck = deck
+        self.is_recompose_only = is_recompose_only
         self.manifest = deck.manifest()
-        self.rounds = self.manifest.rounds
+        self.rounds = min(self.manifest.rounds, RECOMPOSE_ROUNDS) if is_recompose_only else self.manifest.rounds
         self.first_sections = self.manifest.sections_by_number()
         self.assessments: dict[int, Assessment] = {}
         self.fix_problems: dict[int, str] = {}
@@ -155,8 +157,10 @@ class ReviewLoop:
         self.deck_error = ""
 
     def run(self, deadline: float) -> None:
-        self.record_reviews(review_slides(self.deck, self.manifest, list(self.manifest.slides)))
-        self.review_deck()
+        reviewed = self.manifest.slides_numbered(self.recompose) if self.is_recompose_only else list(self.manifest.slides)
+        self.record_reviews(review_slides(self.deck, self.manifest, reviewed))
+        if not self.is_recompose_only:
+            self.review_deck()
         while self.rounds_used < self.rounds and self.candidates() and time.monotonic() <= deadline:
             self.fix_round()
 
@@ -310,7 +314,10 @@ def is_improved(before: Assessment, after: Assessment) -> bool:
     if not before.findings:
         return len(after.measured) < len(before.measured)
     kinds = before.kinds()
-    return not has_new_kind(before, after) and highest_probability(after.probabilities, kinds) < highest_probability(before.probabilities, kinds)
+    if has_new_kind(before, after):
+        return False
+    after_probability, before_probability = highest_probability(after.probabilities, kinds), highest_probability(before.probabilities, kinds)
+    return after_probability < before_probability or len(after.measured) < len(before.measured) and after_probability <= before_probability
 
 
 def is_no_worse(before: Assessment, after: Assessment) -> bool:

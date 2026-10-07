@@ -1,9 +1,11 @@
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
 
 from design_gate_slides import BODY, CLEAN, CLEAN_STYLE, HEADING
+from host_fixture import FakeHost
 from render_fixture import can_render
 from staged_deck_fixture import build_deck, check_deck, write_staged_deck
 from task_context_fixture import environment_with_context, write_context_at
@@ -60,9 +62,25 @@ class PageBlankRemakeTest(unittest.TestCase):
         self.assertIn(last_title, (self.directory / "pages" / "03.html").read_text(encoding="utf-8"))
 
     def test_a_page_the_claim_check_changed_is_handed_to_the_visual_review_to_recompose(self):
-        envelope = self.remake([self.path_of("Busan")], environment=claim_check_remake(self.directory))
-        review = json.loads(Path(envelope["details"]["visualReview"]).read_text(encoding="utf-8"))
+        self.remake([self.path_of("Busan")], environment=claim_check_remake(self.directory))
+        snapshot = json.loads((self.directory / "build" / "deck.pdf.source.json").read_text(encoding="utf-8"))
+        review = json.loads(Path(snapshot["visualReview"]).read_text(encoding="utf-8"))
         self.assertEqual([slide["number"] for slide in review["slides"] if slide.get("recompose")], [3])
+
+    def test_a_remake_recomposes_the_page_it_emptied_through_the_page_fixer(self):
+        page = self.directory / "pages" / "03.html"
+
+        def recomposed(body: dict) -> dict:
+            payload = json.loads(body["prompt"])
+            self.assertIs(payload["recompose"], True)
+            return {"answer": {"section": payload["section"].replace("</section>", "<p>Seoul leads.</p></section>", 1), "change": "recomposed"}, "usage": {"costUSD": 0.0}}
+        clean = {"answers": {"visual_defect": {"type": "choice", "probabilities": {"none": 0.97}}}, "usage": {"costUSD": 0.0}}
+        with FakeHost(decide=lambda body: clean, generate=recomposed) as host:
+            environment = claim_check_remake(self.directory) | {name: os.environ[name] for name in ("SKILL_HOST_URL", "SKILL_HOST_TOKEN")}
+            envelope = self.remake([self.path_of("Busan")], environment=environment)
+        self.assertNotEqual(envelope["status"], "error", envelope["summary"])
+        self.assertEqual(len(host.requests_to("generate")), 1)
+        self.assertIn("Seoul leads.", page.read_text(encoding="utf-8"))
 
     def test_a_blanked_title_inside_the_deck_is_not_replaced_by_the_deck_title(self):
         deck_title = self.units["slides[0].units[0]"]
