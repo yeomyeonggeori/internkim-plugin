@@ -28,9 +28,9 @@ can do that work too.
 
 It works as you. Every tool call carries your account, and your company's
 permissions decide what it may do. Some skills, such as `calculator`,
-`weather` and most of `office`, run on your machine and need no account at
-all. Each skill's `SKILL.md` under [`skills/`](skills) says when it applies and
-which tools it calls.
+`weather` and most of `office`, run on your machine and need no account. Each skill's
+`SKILL.md` under [`skills/`](skills) says when it applies and which tools it
+calls.
 
 ## Install
 
@@ -61,8 +61,7 @@ version applies from the next session.
 ### If you added the server by hand
 
 The plugin declares the tool server itself. If `internkim` is already in your
-MCP configuration from before, remove that entry, or every tool shows up
-twice:
+MCP configuration, remove that entry, or every tool shows up twice:
 
 ```sh
 claude mcp remove internkim -s user

@@ -1,8 +1,8 @@
 # internkim-plugin
 
 The plugin is the portable [Agent Plugins](https://agent-plugins.org) 1.0.0
-layout: `plugin.json`, `skills/` and `mcp.json`. The README says how to
-install it; this page is the reference behind that.
+layout, `plugin.json`, `skills/` and `mcp.json`, with no client-specific
+manifest or adapter.
 
 ## Skills
 
@@ -24,14 +24,12 @@ member in through the browser and keeps the token itself.
 
 A client that does not implement MCP authorization can send a personal access
 token, issued from the account settings of the InternKim web app, as
-`Authorization: Bearer ik_…`. Configure that in the client; this repository
-never holds one.
+`Authorization: Bearer ik_…`, configured in the client.
 
 ## Loading it
 
-The plugin carries no client-specific manifest or adapter. The repository also
-publishes itself as a marketplace, through one catalog per client that points
-at the plugin and adds nothing to it.
+The repository publishes itself as a marketplace, through one catalog per
+client that points at the plugin and adds nothing to it.
 
 | Client | How it loads the plugin |
 | --- | --- |
@@ -39,9 +37,6 @@ at the plugin and adds nothing to it.
 | Claude Code | `.claude-plugin/marketplace.json` lists the repository root with `strict: false`, naming `./skills` and `./mcp.json`, because Claude Code reads its own manifest format. |
 | Pi | Ships no MCP client. The community extensions `pi-agent-plugins` (an Agent Plugins 1.0.0 client) and `pi-mcp-adapter` load the layout: `pi install npm:pi-mcp-adapter`, `pi install npm:pi-agent-plugins`, then place a checkout under `.pi/plugins/`. |
 | [Bluecollar](https://github.com/yeomyeonggeori/bluecollar) | The ACP host passes the servers in `mcp.json` when it opens a session; the loop itself owns no tools. |
-
-Both Claude Code and Codex cache an installed plugin under its version, so a
-copy is replaced only when `version` in `plugin.json` changes.
 
 ## Setup
 
