@@ -25,21 +25,25 @@ ABOUT = ("The sources are request (the requester's own words), attachments (the 
          "Each claim is one value the writer put into a delivered document; at says where it sits. All claims belong to one document, so a claim can be checked against the others. "
          "removed, when present, lists values that were taken out of the document because the sources did not support them; the document no longer holds them.")
 
-SOURCE_KIND = "says what the request, attachments or runtimeFacts say, in other words, shortened or merged, with the same values, owners and status; a figure credited to an origin the sources name as its origin is source"
+SOURCE_KIND = ("says what the request, attachments or runtimeFacts say, in other words, shortened or merged, with the same values, owners and status; a figure credited to an origin the sources name as its origin is source; "
+               "an addressing line, saying who sends or receives the document (from, to, cc, attention), is source when it names the requester, the company or anyone runtimeFacts name, "
+               "or the audience the request addresses, in any wording, broader or narrower")
 DERIVED_KIND = "follows correctly from the sources by arithmetic or the calendar (a total, a share, a multiple, a duration, a weekday), is a heading or label naming what the sources hold, or summarizes them adding nothing"
 EXPRESSION_KIND = ("a unit with a relational role: a greeting, thanks, an apology, sympathy, an invitation to get in touch, a closing wish; a formulaic line that does a social or legal job "
                    "(a business-letter greeting or closing, a contract recital, an agreement preamble, an offer-letter welcome, a proposal closing); or emphasis on, or an interpretation of, "
                    "this document's own facts that adds no fact of its own (growth called fast when the sources give the figures, demand called proven when the sources show it). "
                    "A line that does none of these jobs and only sounds weighty is hollow")
 
+ADDRESSING_GUARD = "An addressing line is claim only when it names a person, team or organization no source names, and mistake only when the sources name a different sender or recipient for this document. "
+
 ORIGIN_GUARD = ("A credit to an origin, such as a Source line, is judged on its own: choose claim when the sources do not name that origin, even when the figures beside it are in the sources; "
                 "a heading or label that names what the sources hold without crediting an origin is not claim. ")
 
 GUARD_TODAY = ("Wording, tone, emphasis and formatting are never claim, and whether the tone suits the kind of document is not this question. "
-               + ORIGIN_GUARD + "Choose claim only for content the sources do not hold, or hold with a weaker status.")
+               + ORIGIN_GUARD + ADDRESSING_GUARD + "Choose claim only for content the sources do not hold, or hold with a weaker status.")
 
 GUARD_KINDS = ("Wording, tone, emphasis, formatting and where a value sits in a list are never a defect: choose source, derived or expression when the claim says what the sources say, however differently. "
-               "Choose claim for content the sources do not hold, and do not require a unit to be wrong to be a claim. " + ORIGIN_GUARD
+               "Choose claim for content the sources do not hold, and do not require a unit to be wrong to be a claim. " + ORIGIN_GUARD + ADDRESSING_GUARD
                + "Choose mistake or error only when you can name the exact source value or other claim it conflicts with; do not add a requirement the sources do not state.")
 
 INVENTED_FRAMING = ("an origin named as where a figure comes from (a source line, a report, survey, dataset, internal system or metrics) that the sources do not state as that figure's origin, "
