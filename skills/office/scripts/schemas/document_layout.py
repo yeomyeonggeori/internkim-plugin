@@ -63,13 +63,18 @@ class MarkdownDocument:
         for section_index, section in enumerate(sections):
             if section.get("heading"):
                 self.add(f"## {section['heading']}", "")
-            for block_index, block in enumerate(section.get("blocks") or []):
+            body_start = len(self.lines)
+            blocks = section.get("blocks") or []
+            for block_index, block in enumerate(blocks):
                 self.block(block, f"{part['field']}[{section_index}].blocks[{block_index}]")
+            if blocks and len(self.lines) == body_start:
+                self.add(BLANK, "")
 
     def block(self, block: dict, location: str) -> None:
         kind = block.get("type")
         if kind == "paragraph":
-            self.add(block.get("text") or BLANK, "")
+            if block.get("text"):
+                self.add(block["text"], "")
         elif kind == "items":
             self.items(block, location)
         elif kind == "table":
@@ -80,10 +85,12 @@ class MarkdownDocument:
             self.chart(block, location)
 
     def items(self, block: dict, location: str) -> None:
-        for index, item in enumerate(block.get("items") or []):
-            marker = f"{index + 1}." if block.get("numbered") else "-"
+        shown = [(index, item) for index, item in enumerate(block.get("items") or []) if any(value is not None for value in item.values())]
+        for number, (index, item) in enumerate(shown, start=1):
+            marker = f"{number}." if block.get("numbered") else "-"
             self.add(f"{marker} {self.item_line(item, f'{location}.items[{index}]')}")
-        self.add("")
+        if shown:
+            self.add("")
 
     def item_line(self, item: dict, location: str) -> str:
         details = [self.item_detail(item, name, location) for name in ITEM_DETAILS if item.get(name) is not None or name in BLANK_WHEN_NULL and name in item]

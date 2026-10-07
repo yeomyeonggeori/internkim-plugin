@@ -27,6 +27,7 @@ def main() -> Result:
     output_path = Path(arguments.output).expanduser()
     require_output_kind(schema, output_path)
     instance = schema_instance(schema, values, output_path)
+    instance.withdrawn = frozenset(path for path in arguments.blank or () if path in written)
     issues, drawn_blanks = render(instance, output_path)
     blanks = given_blanks(schema, values) + drawn_blanks + unknown_known_values(instance)
     blanks += left_blank(schema, written, arguments.blank, blanks)

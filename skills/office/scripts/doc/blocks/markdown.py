@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 
 from doc.blocks.charts import FENCE, parse_chart_fence
+from schemas.typed_values import BLANK
 
 
 HEADING_PATTERN = re.compile(r"^(#{1,4})\s+(.*)$")
@@ -18,6 +19,10 @@ INLINE_PATTERN = re.compile(rf"({INLINE_MATH}|\[[^\]]+\]\([^)\s]+\)|\*\*.+?\*\*|
 INLINE_MATH_PATTERN = re.compile(INLINE_MATH)
 DISPLAY_MATH_FENCE = "$$"
 CELL_LINE_BREAK_PATTERN = re.compile(r"[ \t]*<br\s*/?>[ \t]*", re.IGNORECASE)
+
+
+def is_thematic_break(line: str) -> bool:
+    return bool(THEMATIC_BREAK_PATTERN.match(line)) and line.strip() != BLANK
 
 
 @dataclass(frozen=True)
@@ -102,7 +107,7 @@ def parse_markdown(markdown_text: str) -> list:
             block, index = equation_block(lines, index)
             blocks.append(block)
             continue
-        if THEMATIC_BREAK_PATTERN.match(line):
+        if is_thematic_break(line):
             blocks.append(ThematicBreak())
             list_indents = []
             index += 1
@@ -185,7 +190,7 @@ def paragraph_block(lines: list[str], index: int):
 
 def continues_paragraph(line: str) -> bool:
     stripped = line.strip()
-    if not stripped or HEADING_PATTERN.match(stripped) or is_table_line(line) or stripped.startswith(FENCE) or THEMATIC_BREAK_PATTERN.match(line) or stripped.startswith(DISPLAY_MATH_FENCE):
+    if not stripped or HEADING_PATTERN.match(stripped) or is_table_line(line) or stripped.startswith(FENCE) or is_thematic_break(line) or stripped.startswith(DISPLAY_MATH_FENCE):
         return False
     return not LIST_PATTERN.match(line) and not IMAGE_LINE_PATTERN.match(line)
 
