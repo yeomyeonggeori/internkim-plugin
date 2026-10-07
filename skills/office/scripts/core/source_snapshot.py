@@ -43,4 +43,4 @@ def keep_provenance(output_path: str | None, arguments: list[str] | None = None)
     if verb in CARRYING_VERBS and input_path and source_path_of(input_path).is_file():
         shutil.copyfile(source_path_of(input_path), source_path_of(output_path))
         return
-    write_source(output_path, {"command": f"office {verb}", "arguments": words})
+    write_source(output_path, {"command": f"office {verb}", "arguments": words, "directory": os.getcwd()})

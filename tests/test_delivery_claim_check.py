@@ -208,7 +208,7 @@ class DeliveredMadeFileTest(unittest.TestCase):
     def metadata(self) -> dict:
         return json.loads((self.directory / "notice.pdf.meta.json").read_text(encoding="utf-8"))
 
-    def test_an_unsupported_claim_is_blanked_by_remaking_the_file_and_the_reply_is_told_what_it_said(self):
+    def test_an_unsupported_claim_is_blanked_by_remaking_the_file_and_the_reply_is_told_where_but_never_what_it_said(self):
         with FakeHost(decide=kind_answers({INVENTED: "claim"})):
             result = self.merge()
         self.assertEqual(result["details"]["claimCheck"][0]["outcome"], "blanked")
@@ -217,8 +217,9 @@ class DeliveredMadeFileTest(unittest.TestCase):
         self.assertIn("sections[0].blocks[0].text#1", [blank["field"] for blank in self.snapshot()["blanks"]])
         note = self.metadata()["notes"][0]
         self.assertIn("left blank, for the reply to offer to complete", note)
-        self.assertIn(INVENTED, note)
-        self.assertIn("which nothing the person gave supports", note)
+        self.assertNotIn(INVENTED, note)
+        self.assertIn("never repeats", note)
+        self.assertIn("nothing the person gave supports it", note)
 
     def test_a_supported_file_is_left_as_it_is_with_no_note(self):
         with FakeHost(decide=kind_answers({})):
@@ -315,8 +316,8 @@ class DeliveredFileTextTest(unittest.TestCase):
         self.assertIn("이전 후에도 업무는 이어집니다.", text)
         self.assertEqual(result["details"]["claimCheck"][0]["outcome"], "blanked")
         notes = json.loads((self.directory / "memo.docx.meta.json").read_text(encoding="utf-8"))["notes"]
-        self.assertIn(FIGURE, notes[0])
-        self.assertIn(INVENTED, notes[0])
+        self.assertNotIn("13%", notes[0])
+        self.assertNotIn(INVENTED, notes[0])
 
     def test_a_merged_file_rewritten_afterwards_is_judged_by_what_it_now_says(self):
         (self.directory / "notice.json").write_text(json.dumps(NOTICE | {"sections": [{"heading": "이전 안내", "blocks": [{"type": "paragraph", "text": "10월 20일 새 사무실로 이전합니다."}]}]}, ensure_ascii=False), encoding="utf-8")
@@ -337,6 +338,92 @@ class DeliveredFileTextTest(unittest.TestCase):
             result = deliver(self.directory, "report.docx", self.context_path)
         self.assertNotIn("13%", self.text_of("report.docx"))
         self.assertEqual(result["details"]["claimCheck"][0]["outcome"], "blanked")
+
+    def blocks_of(self, name: str) -> list[tuple[str, str]]:
+        return [(block["kind"], block.get("text") or "") for block in self.office("read", name)["details"]["blocks"]]
+
+    def write_memo_with_invented_sections(self) -> None:
+        from docx import Document
+
+        document = Document()
+        document.add_heading("사무실 이전 안내", level=1)
+        document.add_paragraph("발신: 경영지원팀")
+        document.add_paragraph("10월 20일 새 사무실로 이전합니다.")
+        document.add_heading("기대 효과", level=2)
+        document.add_paragraph("출근 시간이 20% 줄어듭니다.", style="List Bullet")
+        document.add_paragraph("업무 만족도가 15% 오릅니다.", style="List Bullet")
+        document.add_heading("유의사항", level=2)
+        document.add_paragraph("이전 기간에는 전화 응대가 어렵습니다.")
+        document.sections[0].header.paragraphs[0].text = "주식회사 예시 대외비 등급 A"
+        document.save(self.directory / "memo.docx")
+
+    def test_a_blanked_line_keeps_its_label_a_blanked_sentence_goes_and_an_emptied_section_keeps_one_line_to_fill(self):
+        self.write_memo_with_invented_sections()
+        flagged = {"발신: 경영지원팀": "claim", "출근 시간이 20% 줄어듭니다.": "claim", "업무 만족도가 15% 오릅니다.": "claim", "유의사항": "claim", INVENTED: "claim"}
+        with FakeHost(decide=kind_answers(flagged)):
+            deliver(self.directory, "memo.docx", self.context_path)
+        self.assertEqual(self.blocks_of("memo.docx"), [
+            ("heading", "사무실 이전 안내"),
+            ("paragraph", "발신: __________"),
+            ("paragraph", "10월 20일 새 사무실로 이전합니다."),
+            ("heading", "기대 효과"),
+            ("listItem", "__________"),
+        ])
+
+    def test_an_invented_header_is_judged_and_blanked(self):
+        self.write_memo_with_invented_sections()
+        with FakeHost(decide=kind_answers({"주식회사 예시 대외비 등급 A": "claim"})) as host:
+            deliver(self.directory, "memo.docx", self.context_path)
+        asked = [unit["text"] for body in host.requests_to("decide") for unit in body["state"]["claims"].values()]
+        self.assertIn("주식회사 예시 대외비 등급 A", asked)
+        self.assertEqual(self.office("read", "memo.docx")["details"]["sections"][0]["header"], "")
+
+    def test_a_chart_holding_an_invented_value_is_taken_out(self):
+        self.write_by_script("memo.docx", ["10월 20일 새 사무실로 이전합니다."])
+        operations = self.directory / "chart.json"
+        operations.write_text(json.dumps([{"op": "insert_chart", "at": "end", "type": "column", "categories": ["9월", "10월"], "series": [{"name": "방문객", "values": [120, 340]}]}]), encoding="utf-8")
+        self.office("apply", "memo.docx", str(operations))
+        with FakeHost(decide=kind_answers({"10월 방문객 340": "claim"})):
+            result = deliver(self.directory, "memo.docx", self.context_path)
+        self.assertEqual(result["details"]["claimCheck"][0]["outcome"], "blanked")
+        self.assertNotIn("charts", self.office("read", "memo.docx")["details"])
+
+    def test_a_pdf_converted_from_a_document_is_blanked_through_that_document_and_converted_again(self):
+        self.write_by_script("memo.docx", ["10월 20일 새 사무실로 이전합니다.", INVENTED])
+        (self.directory / "out").mkdir()
+        self.office("convert", "memo.docx", "out/memo.pdf")
+        with FakeHost(decide=kind_answers({INVENTED: "claim"})):
+            result = deliver(self.directory / "out", "memo.pdf", self.context_path)
+        self.assertEqual(result["details"]["claimCheck"][0]["outcome"], "blanked")
+        self.assertNotIn(INVENTED, self.text_of("out/memo.pdf"))
+        self.assertIn("10월 20일 새 사무실로 이전합니다.", self.text_of("out/memo.pdf"))
+
+    def judged_state(self, host) -> dict:
+        return host.requests_to("decide")[0]["state"]
+
+    def test_the_judge_reads_the_company_profile_the_task_recorded(self):
+        self.write_by_script("memo.docx", ["발신: 주식회사 예시 총무팀"])
+        with FakeHost(decide=kind_answers({})) as host:
+            deliver(self.directory, "memo.docx", self.context_path)
+        self.assertEqual(self.judged_state(host)["runtimeFacts"]["company"]["ko"]["name"], COMPANY["name"])
+
+    def test_the_judge_asks_for_the_company_profile_when_the_task_never_read_it(self):
+        context_path = write_task_context(self.directory / "unread", {"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04", "request": [REQUEST]})
+        profile_path = self.directory / "company-profile.json"
+        profile_path.write_text(json.dumps(COMPANY | {"logoImage": "logo.png", "phone": ""}, ensure_ascii=False), encoding="utf-8")
+        self.write_by_script("memo.docx", ["발신: 주식회사 예시"])
+        answer = {"result": {}, "files": [{"name": "company-profile.json", "path": str(profile_path)}]}
+        with FakeHost(decide=kind_answers({}), tools={"company_info_get": lambda body: answer}) as host:
+            deliver(self.directory, "memo.docx", context_path)
+        self.assertEqual(self.judged_state(host)["runtimeFacts"]["company"], {"ko": COMPANY})
+
+    def test_an_addressing_line_is_judged_by_whom_it_names_and_is_a_mistake_only_against_a_named_party(self):
+        self.write_by_script("memo.docx", ["수신: 사내 전체"])
+        with FakeHost(decide=kind_answers({})) as host:
+            deliver(self.directory, "memo.docx", self.context_path)
+        state = self.judged_state(host)
+        self.assertIn("addressing line", state["kinds"]["source"])
+        self.assertIn("sources name a different sender or recipient", next(iter(host.requests_to("decide")[0]["questions"].values()))["instructions"])
 
     def test_a_supported_script_written_file_is_delivered_as_it_is(self):
         self.write_by_script("memo.docx", ["10월 20일 새 사무실로 이전합니다."])

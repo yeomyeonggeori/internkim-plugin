@@ -356,6 +356,22 @@ class ReportMergeTest(unittest.TestCase):
             self.assertEqual(result["status"], "ok", result)
             self.assertEqual([blank["label"] for blank in result["details"]["blanks"]], ["B Cost"])
 
+    def test_an_emptied_unit_leaves_no_shell_and_an_emptied_section_keeps_one_line_to_fill(self):
+        values = {"language": "ko", "title": "안내", "sections": [
+            {"heading": "기대 효과", "blocks": [{"type": "items", "items": [{"text": None, "percent": None}, {"text": None}]}]},
+            {"heading": "개요", "blocks": [{"type": "paragraph", "text": "시범 운영을 합니다."}, {"type": "paragraph", "text": None}, {"type": "items", "items": [{"text": "개발팀"}, {"text": None}]}]},
+            {"heading": "기타", "blocks": [{"type": "paragraph", "text": None}]},
+        ]}
+        with tempfile.TemporaryDirectory() as directory:
+            write_json(Path(directory, "values.json"), values)
+            write_json(Path(directory, "context.json"), runtime_context())
+            result = run_office_with_context(["merge", "report", "values.json", "memo.docx"], directory, Path(directory, "context.json"))
+            self.assertEqual(result["status"], "ok", result)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "read", "memo.docx"], capture_output=True, text=True, cwd=directory)
+            blocks = [(block["kind"], block.get("text") or "") for block in json.loads(completed.stdout)["details"]["blocks"]]
+        body = blocks[[text for _, text in blocks].index("기대 효과"):]
+        self.assertEqual(body, [("heading", "기대 효과"), ("paragraph", BLANK), ("heading", "개요"), ("paragraph", "시범 운영을 합니다."), ("listItem", "개발팀"), ("heading", "기타"), ("paragraph", BLANK)])
+
 
 if __name__ == "__main__":
     unittest.main()
