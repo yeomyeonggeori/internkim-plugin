@@ -116,7 +116,7 @@ class MarkdownDocument:
 
     def cell(self, column: dict, value: object, location: str, row: list) -> str:
         if value is None:
-            self.blanks.append({"field": location, "label": f"{row[0] if row and row[0] is not None else ''} {column.get('name', '')}".strip()})
+            self.blanks.append({"field": location, "label": f"{row[0] if row and row[0] is not None else ''} {column.get('name') or ''}".strip()})
             return " "
         value_type = column.get("type", "text")
         unit = "" if value_type == "amount" and column.get("unit", "").upper() not in ("USD", "EUR", "GBP", "JPY") else column.get("unit", "")

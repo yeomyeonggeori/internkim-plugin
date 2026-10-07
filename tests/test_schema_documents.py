@@ -172,6 +172,16 @@ class BlankFieldTest(unittest.TestCase):
         self.assertEqual(blanks, [{"field": "lines[0].quantity", "label": "quantity"}])
 
 
+class TableBlankTest(unittest.TestCase):
+    def test_a_blank_cell_under_an_unnamed_column_is_labelled_by_its_row_alone(self):
+        report = {"language": "ko", "title": "실적", "sections": [{"heading": "효과", "blocks": [{"type": "table", "columns": [{"name": "항목", "type": "text"}, {"name": None, "type": "percent"}], "rows": [["생산성", None]]}]}]}
+        with tempfile.TemporaryDirectory() as directory:
+            write_json(Path(directory) / "report.json", report)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "merge", "report", "report.json", "report.docx"], capture_output=True, text=True, cwd=directory, env=environment_with_context(None))
+        labels = [blank["label"] for blank in json.loads(completed.stdout)["details"]["blanks"]]
+        self.assertEqual(labels[0], "생산성")
+
+
 class TemplateTest(unittest.TestCase):
     def test_a_line_naming_an_optional_value_left_out_disappears(self):
         self.assertIsNone(render_template(sample_instance({"buyer": "A", "lines": []}), "{contact} 님"))
