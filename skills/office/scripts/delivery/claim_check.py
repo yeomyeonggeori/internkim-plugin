@@ -10,6 +10,7 @@ import sys
 from core.source_snapshot import SOURCE_SUFFIX, read_source
 from delivery.claim_kinds import BLANK, REWRITE, AttachmentText, Claim, Sources, Verdict, judge
 from delivery.claim_rewrites import Outcome, recompute, treat
+from delivery.file_text import OFFICE_ENTRY, REMAKE_VARIABLE, blank_in_place, text_claims
 from host import script_host
 from host.task_context import TaskContext
 
@@ -21,11 +22,11 @@ UNREAD_SOURCES = "not_enforced_unread_attachment"
 JUDGE_FAILED = "judge_failed"
 REMAKE_FAILED = "remake_failed"
 NO_REMAKE_COMMAND = "no_remake_command"
+NOT_EDITABLE = "not_editable"
+RECORD_ANSWER_LIMIT = 4000
 
 MAXIMUM_WITHDRAWAL_PASSES = 2
 REMAKE_TIMEOUT_SECONDS = 180
-REMAKE_VARIABLE = "OFFICE_IS_REMAKE"
-OFFICE_ENTRY = Path(__file__).resolve().parents[1] / "office"
 
 
 @dataclass
@@ -175,9 +176,43 @@ def claim_sources(context: TaskContext, snapshot: dict) -> tuple[Sources, bool]:
     facts = {"today": context.today.isoformat() if context.today else "", "requester": {"name": context.requester_name, "email": context.requester_email}}
     if snapshot.get("known"):
         facts["known"] = snapshot["known"]
+    answered = [{"tool": record.tool, "result": bounded_result(record.result)} for record in context.records if record.result is not None]
+    if answered:
+        facts["recordAnswers"] = answered
     current = [attachment for attachment in context.attachments if attachment.is_current]
     attachments = tuple(AttachmentText(name=attachment.name, text=attachment.text) for attachment in current if attachment.text.strip())
     return Sources(request=context.request, attachments=attachments, runtime_facts=facts), len(attachments) == len(current)
+
+
+def bounded_result(result: object) -> object:
+    encoded = json.dumps(result, ensure_ascii=False)
+    return result if len(encoded) <= RECORD_ANSWER_LIMIT else encoded[:RECORD_ANSWER_LIMIT]
+
+
+def check_text(context: TaskContext, file_path: Path) -> ClaimCheck:
+    check = ClaimCheck(file=file_path.name, outcome=SUPPORTED)
+    claims = text_claims(file_path)
+    if not claims:
+        return check
+    sources, is_every_source_read = claim_sources(context, {})
+    try:
+        judgment = judge(sources, claims_marked_free(claims))
+    except (script_host.HostFailure, script_host.HostUnavailable) as failure:
+        check.outcome, check.detail = JUDGE_FAILED, str(failure)
+        return check
+    judgment = recomputed(check, sources, judgment)
+    check.asked = judgment.asked()
+    check.add_cost(judgment.cost, judgment.calls)
+    check.flagged = judgment.treated(BLANK)
+    if not check.flagged:
+        return check
+    if not is_every_source_read:
+        check.outcome = UNREAD_SOURCES
+    elif blank_in_place(file_path, [verdict.claim for verdict in check.flagged]):
+        check.outcome, check.blanked = BLANKED, [verdict.place for verdict in check.flagged]
+    else:
+        check.outcome = NOT_EDITABLE
+    return check
 
 
 def remake_words(snapshot: dict, file_path: Path, paths: list[str], replacements: list[Claim]) -> list[str] | None:

@@ -226,6 +226,7 @@ TOOLS = (
     Tool("guide", "guide [verb] [kind] [operation]", "print what a verb or kind takes: fields, operations, rules and issue codes"),
     Tool("setup", "setup", "install the Python environment, the renderer and the OCR engine into the skill, about 450 MB on disk; nothing else installs anything"),
     Tool("python", "python <script.py> [arguments]", "run a task-local Python script with the office packages"),
+    Tool("delivery-check", "delivery-check <file>", "judge a file about to be delivered against the task and blank what nothing supports; the host runs it on every delivery, never the model"),
 )
 
 

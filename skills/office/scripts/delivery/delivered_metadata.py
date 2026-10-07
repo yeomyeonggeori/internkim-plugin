@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from delivery.claim_check import BLANKED, NO_REMAKE_COMMAND, REMAKE_FAILED, SUPPORTED, UNREAD_SOURCES, ClaimCheck
+from delivery.claim_check import BLANKED, NO_REMAKE_COMMAND, NOT_EDITABLE, REMAKE_FAILED, SUPPORTED, UNREAD_SOURCES, ClaimCheck
 from delivery.claim_kinds import ERROR, MISTAKE, Verdict
 
 
@@ -94,6 +94,8 @@ def left_in_file_cause(check: ClaimCheck) -> str:
         return f"the remake failed: {check.detail}"
     if check.outcome == NO_REMAKE_COMMAND:
         return "the file's snapshot names no command that remakes it"
+    if check.outcome == NOT_EDITABLE:
+        return "this kind of file cannot be edited in place and no snapshot remakes it as it is"
     if check.outcome == UNREAD_SOURCES:
         return "an attachment was not read, so the check was not enforced"
     return check.outcome

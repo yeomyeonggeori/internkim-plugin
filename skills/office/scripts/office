@@ -30,6 +30,8 @@ def main(arguments: list[str]) -> int:
         return run_text_command(lambda: guide_for(arguments[1:]))
     if arguments[0] == "python":
         return run_python(arguments[1:])
+    if arguments[0] == "delivery-check":
+        return run_python(["-m", "delivery.delivery_check", *arguments[1:]])
     if arguments[0] == "setup":
         return run_command(lambda: setup_result(arguments[1:]))
     verb = find_verb(arguments[0])

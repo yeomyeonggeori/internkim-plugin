@@ -38,11 +38,13 @@ def claim_texts(claims):
 
 
 class WrittenClaimsTest(unittest.TestCase):
-    def test_only_the_values_the_model_wrote_as_text_are_claims(self):
+    def test_every_value_the_model_wrote_is_a_claim_numbers_included(self):
         claims = written_claims(sample_schema(), {"buyer": "견본상사", "contact": None, "lines": [{"item": "노트북", "quantity": 2, "price": 1000}]})
         self.assertEqual(claims, [
             {"path": "buyer", "at": "Buyer", "text": "견본상사"},
             {"path": "lines[0].item", "at": "Lines", "text": "노트북"},
+            {"path": "lines[0].quantity", "at": "Lines", "text": "2"},
+            {"path": "lines[0].price", "at": "Lines", "text": "1000"},
         ])
 
     def test_a_paragraph_is_one_claim_per_sentence(self):
@@ -52,12 +54,13 @@ class WrittenClaimsTest(unittest.TestCase):
         self.assertEqual(paragraph[1]["text"], "The pool ran out at 14:12.")
         self.assertIn("Root Cause", paragraph[1]["at"])
 
-    def test_a_cell_is_a_claim_only_when_its_column_or_field_is_text(self):
+    def test_a_typed_cell_or_field_is_a_claim_like_a_text_one(self):
         texts = claim_texts(written_claims(load_schema("report"), POSTMORTEM))
         self.assertIn("Alert fired", texts)
         self.assertIn("checkout", texts)
-        self.assertNotIn("2026-09-30 14:02", texts)
-        self.assertNotIn(120, texts)
+        self.assertIn("2026-09-30 14:02", texts)
+        self.assertIn("120", texts)
+        self.assertIn("1240", texts)
         self.assertIn("Failed checkouts", texts)
 
     def test_a_choice_such_as_a_block_kind_is_not_a_claim(self):
@@ -77,7 +80,8 @@ class WrittenClaimsTest(unittest.TestCase):
             result = run_office_with_context(["merge", "kr/quote", "values.json", "quote.pdf"], directory, Path(directory, "context.json"))
             snapshot = json.loads(Path(directory, result["details"]["source"]).read_text(encoding="utf-8"))
         texts = claim_texts(snapshot["claims"])
-        self.assertEqual(texts, ["견본상사", "한시범 과장", "납품 후 30일 이내 현금", "노트북", "대", "모니터", "대", "교육 용역", "식"])
+        self.assertEqual([text for text in texts if not text.replace(",", "").isdigit()], ["견본상사", "한시범 과장", "납품 후 30일 이내 현금", "노트북", "대", "모니터", "대", "교육 용역", "식"])
+        self.assertIn("10", texts)
         self.assertNotIn("샘플테크 주식회사", texts)
         self.assertNotIn("SAMPLE-1", texts)
 
@@ -98,9 +102,9 @@ class DeclarationClaimsTest(unittest.TestCase):
             "charts": [{"view": "By quarter", "type": "line", "title": "호남 실적은 시스템 장애로 지연되었습니다."}],
         }
         claims = declaration_claims(declaration)
-        self.assertEqual([claim["text"] for claim in claims], ["지역별 매출", "수도권", "호남", "호남 실적은 시스템 장애로 지연되었습니다."])
-        self.assertEqual(claims[1]["path"], "tables[0].rows[0][1]")
-        self.assertEqual(claims[1]["at"], "Data > Region")
+        self.assertEqual([claim["text"] for claim in claims], ["지역별 매출", "2025", "수도권", "820", "2026", "호남", "호남 실적은 시스템 장애로 지연되었습니다."])
+        self.assertEqual(claims[2]["path"], "tables[0].rows[0][1]")
+        self.assertEqual(claims[2]["at"], "Data > Region")
 
 
 class BlankedRemergeTest(unittest.TestCase):

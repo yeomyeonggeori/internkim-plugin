@@ -6,7 +6,12 @@ import tempfile
 import unittest
 
 from doc_fixture import OFFICE_ENTRY, RUNTIME_CONTEXT_FILE, run_office, write_json
+from host_fixture import FakeHost
 from task_context_fixture import environment_with_context, write_context_at
+
+
+def everything_from_the_sources(body: dict) -> dict:
+    return {"answers": {name: {"type": "choice", "choice": "source", "probabilities": {"source": 1.0}} for name in body["questions"]}, "modelName": "jev", "usage": {"costUSD": 0}}
 
 
 SALES = {"2025": {"Q1": [820, 410], "Q2": [870, 395], "Q3": [905, 450], "Q4": [990, 480]}, "2026": {"Q1": [940, 455], "Q2": [1010, None]}}
@@ -311,8 +316,11 @@ class CompiledCellsTest(DeclaredWorkbookFixture):
         self.assertEqual(source["charts"], [{"view": "By quarter", "type": "line", "title": "Revenue trend"}])
 
     def test_the_metadata_beside_the_workbook_holds_what_its_snapshot_says_it_holds(self):
-        write_context_at(Path(self.directory.name, RUNTIME_CONTEXT_FILE), {"requester": {"name": "이샘플"}, "today": "2026-10-04"})
+        context_path = Path(self.directory.name, RUNTIME_CONTEXT_FILE)
+        write_context_at(context_path, {"requester": {"name": "이샘플"}, "today": "2026-10-04"})
         self.create(sales_declaration([BY_QUARTER], [{"view": "By quarter", "type": "line", "title": "Revenue trend"}]))
+        with FakeHost(decide=everything_from_the_sources):
+            subprocess.run([sys.executable, str(OFFICE_ENTRY), "delivery-check", "book.xlsx"], capture_output=True, text=True, cwd=self.directory.name, env=environment_with_context(context_path), check=True)
         source = json.loads(Path(self.directory.name, "book.xlsx.source.json").read_text(encoding="utf-8"))
         holds = json.loads(Path(self.directory.name, "book.xlsx.meta.json").read_text(encoding="utf-8"))["holds"]
         self.assertEqual(holds, {name: source[name] for name in ("tables", "views", "charts", "blanks")})

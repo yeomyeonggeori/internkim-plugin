@@ -176,7 +176,12 @@ class RewriteTest(unittest.TestCase):
         self.assertEqual(host.requests_to("generate"), [])
 
 
-class FinishedFileTest(unittest.TestCase):
+def deliver(directory: Path, name: str, context_path) -> dict:
+    completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "delivery-check", name], capture_output=True, text=True, cwd=directory, env=environment_with_context(context_path))
+    return json.loads(completed.stdout)
+
+
+class DeliveredMadeFileTest(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
@@ -188,8 +193,8 @@ class FinishedFileTest(unittest.TestCase):
 
     def merge(self, facts: dict | None = None) -> dict:
         context_path = write_task_context(self.directory, facts or self.facts())
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "merge", "letter", "notice.json", "notice.pdf"], capture_output=True, text=True, cwd=self.directory, env=environment_with_context(context_path))
-        return json.loads(completed.stdout)
+        subprocess.run([sys.executable, str(OFFICE_ENTRY), "merge", "letter", "notice.json", "notice.pdf"], capture_output=True, text=True, cwd=self.directory, env=environment_with_context(context_path), check=True)
+        return deliver(self.directory, "notice.pdf", context_path)
 
     def snapshot(self) -> dict:
         return json.loads((self.directory / "notice.pdf.source.json").read_text(encoding="utf-8"))
@@ -203,7 +208,7 @@ class FinishedFileTest(unittest.TestCase):
         self.assertEqual(result["details"]["claimCheck"][0]["outcome"], "blanked")
         given_text = self.snapshot()["given"]["sections"][0]["blocks"][0]["text"]
         self.assertNotIn(INVENTED, given_text or "")
-        self.assertIn("sections[0].blocks[0].text#1", [blank["field"] for blank in result["details"]["blanks"]])
+        self.assertIn("sections[0].blocks[0].text#1", [blank["field"] for blank in self.snapshot()["blanks"]])
         note = self.metadata()["notes"][0]
         self.assertIn("left blank, for the reply to offer to complete", note)
         self.assertIn(INVENTED, note)
@@ -264,6 +269,74 @@ class FinishedFileTest(unittest.TestCase):
         result = json.loads(completed.stdout)
         self.assertNotIn("claimCheck", result.get("details") or {})
         self.assertFalse((self.directory / "notice.pdf.meta.json").exists())
+
+
+
+FIGURE = "재택근무로 생산성이 13% 향상됩니다."
+REPORT = {"language": "ko", "title": "재택근무 안내", "sections": [{"heading": "기대 효과", "blocks": [{"type": "fields", "fields": [{"label": "생산성 향상", "type": "percent", "value": 13}]}]}]}
+
+
+class DeliveredFileTextTest(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.directory = Path(self.temporary.name)
+        self.context_path = write_task_context(self.directory, {"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04", "company": {"ko": COMPANY}, "request": [REQUEST]})
+
+    def office(self, *words: str) -> dict:
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *words], capture_output=True, text=True, cwd=self.directory, env=environment_with_context(self.context_path))
+        return json.loads(completed.stdout)
+
+    def text_of(self, name: str) -> str:
+        return json.dumps(self.office("read", name)["details"], ensure_ascii=False)
+
+    def write_by_script(self, name: str, paragraphs: list[str]) -> None:
+        from docx import Document
+
+        document = Document()
+        for paragraph in paragraphs:
+            document.add_paragraph(paragraph)
+        document.save(self.directory / name)
+
+    def test_a_file_a_script_wrote_is_judged_by_its_own_text_and_the_invented_figure_is_blanked(self):
+        self.write_by_script("memo.docx", ["10월 20일 새 사무실로 이전합니다.", f"이전 후에도 업무는 이어집니다. {FIGURE}"])
+        with FakeHost(decide=kind_answers({FIGURE: "claim"})):
+            result = deliver(self.directory, "memo.docx", self.context_path)
+        text = self.text_of("memo.docx")
+        self.assertNotIn("13%", text)
+        self.assertIn("10월 20일 새 사무실로 이전합니다.", text)
+        self.assertIn("이전 후에도 업무는 이어집니다.", text)
+        self.assertEqual(result["details"]["claimCheck"][0]["outcome"], "blanked")
+        notes = json.loads((self.directory / "memo.docx.meta.json").read_text(encoding="utf-8"))["notes"]
+        self.assertIn(FIGURE, notes[0])
+
+    def test_a_merged_file_rewritten_afterwards_is_judged_by_what_it_now_says(self):
+        (self.directory / "notice.json").write_text(json.dumps(NOTICE | {"sections": [{"heading": "이전 안내", "blocks": [{"type": "paragraph", "text": "10월 20일 새 사무실로 이전합니다."}]}]}, ensure_ascii=False), encoding="utf-8")
+        self.office("merge", "letter", "notice.json", "notice.docx")
+        from docx import Document
+
+        document = Document(self.directory / "notice.docx")
+        document.add_paragraph(FIGURE)
+        document.save(self.directory / "notice.docx")
+        with FakeHost(decide=kind_answers({FIGURE: "claim"})):
+            deliver(self.directory, "notice.docx", self.context_path)
+        self.assertNotIn("13%", self.text_of("notice.docx"))
+
+    def test_an_invented_percent_in_a_typed_field_is_blanked_when_the_file_is_made_again(self):
+        (self.directory / "report.json").write_text(json.dumps(REPORT, ensure_ascii=False), encoding="utf-8")
+        self.office("merge", "report", "report.json", "report.docx")
+        with FakeHost(decide=kind_answers({"13%": "claim"})):
+            result = deliver(self.directory, "report.docx", self.context_path)
+        self.assertNotIn("13%", self.text_of("report.docx"))
+        self.assertEqual(result["details"]["claimCheck"][0]["outcome"], "blanked")
+
+    def test_a_supported_script_written_file_is_delivered_as_it_is(self):
+        self.write_by_script("memo.docx", ["10월 20일 새 사무실로 이전합니다."])
+        before = (self.directory / "memo.docx").read_bytes()
+        with FakeHost(decide=kind_answers({})):
+            result = deliver(self.directory, "memo.docx", self.context_path)
+        self.assertEqual(result["details"]["claimCheck"][0]["outcome"], "supported")
+        self.assertEqual((self.directory / "memo.docx").read_bytes(), before)
 
 
 if __name__ == "__main__":

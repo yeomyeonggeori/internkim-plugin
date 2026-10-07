@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -29,7 +30,9 @@ class ProvenanceTest(unittest.TestCase):
         Path(self.directory, "note.md").write_text("# 메모\n\n본문\n", encoding="utf-8")
         result = run_office(["create", "note.docx", "note.md"], self.directory)
         self.assertNotEqual(result["status"], "error", result)
-        self.assertEqual(source_beside(self.directory / "note.docx"), {"command": "office create", "arguments": ["note.docx", "note.md"]})
+        source = source_beside(self.directory / "note.docx")
+        self.assertEqual({key: value for key, value in source.items() if key != "made"}, {"command": "office create", "arguments": ["note.docx", "note.md"]})
+        self.assertEqual(source["made"], hashlib.sha256((self.directory / "note.docx").read_bytes()).hexdigest())
 
     def test_convert_leaves_a_snapshot_beside_the_file_it_writes(self):
         Path(self.directory, "note.md").write_text("# 메모\n\n본문\n", encoding="utf-8")

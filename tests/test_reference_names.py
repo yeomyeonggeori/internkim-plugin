@@ -40,7 +40,7 @@ def help_text() -> str:
 class ReferenceNamesTest(unittest.TestCase):
     def test_every_command_the_documents_name_exists(self):
         commands = {verb.name for verb in VERBS} | {tool.name for tool in TOOLS}
-        named = set(re.findall(r"(?:`|scripts/)office ([a-z]+)\b", documents_text()))
+        named = set(re.findall(r"(?:`|scripts/)office ([a-z]+(?:-[a-z]+)*)\b", documents_text()))
         self.assertEqual(named - commands, set())
         self.assertEqual(named & set(RETIRED_FORMATS), set())
 
