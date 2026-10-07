@@ -30,31 +30,34 @@ def holds_of(snapshot: dict) -> dict:
     return held | {name: snapshot[name] for name in COMPANION_FIELDS if name in snapshot}
 
 
-def blank_labels(snapshot: dict) -> list[str]:
-    labels = []
-    for blank in snapshot.get("blanks") or ():
-        label = str(blank.get("label") or "") if isinstance(blank, dict) else ""
-        if label and label not in labels:
-            labels.append(label)
-    return labels
+def blank_labels(snapshot: dict) -> list[tuple[str, str]]:
+    return [(str(blank.get("label") or ""), str(blank.get("field") or "")) for blank in snapshot.get("blanks") or () if isinstance(blank, dict) and blank.get("label")]
 
 
-def delivered_file_notes(filename: str, labels: list[str], checks: list[ClaimCheck], leftover_slides: list[dict]) -> list[str]:
+def delivered_file_notes(filename: str, labels: list[tuple[str, str]], checks: list[ClaimCheck], leftover_slides: list[dict]) -> list[str]:
     notes = []
-    blanks = blank_descriptions(labels, checks)
-    if blanks:
-        notes.append(f"{filename}: left blank, for the reply to offer to complete; the file no longer holds what these places said, so the reply names each place and never repeats what was there: {', '.join(blanks)}")
+    never_given, taken_out = blank_descriptions(labels, checks)
+    if never_given or taken_out:
+        notes.append(f"{filename}: left blank, for the reply to offer to complete" + "".join(blank_clauses(never_given, taken_out)))
     notes += left_in_file_notes(filename, checks)
     if leftover_slides:
         notes.append(f"{filename}: slides that still show a defect after the visual review, for the reply to say what remains: {leftover_slide_names(leftover_slides)}")
     return notes
 
 
-def blank_descriptions(labels: list[str], checks: list[ClaimCheck]) -> list[str]:
+def blank_clauses(never_given: list[str], taken_out: list[str]) -> list[str]:
+    clauses = [f": {', '.join(never_given)}"] if never_given else []
+    if taken_out:
+        clauses.append(f"; taken out by the check, so the file no longer holds what these places said and the reply names each place and never repeats what was there: {', '.join(taken_out)}")
+    return clauses
+
+
+def blank_descriptions(labels: list[tuple[str, str]], checks: list[ClaimCheck]) -> tuple[list[str], list[str]]:
     flagged = [verdict for check in checks if check.outcome == BLANKED for verdict in check.flagged]
-    described_places = {verdict.place for verdict in flagged}
-    descriptions = list(dict.fromkeys(f"{verdict.place} ({flag_reason(verdict.defect)})" for verdict in flagged))
-    return descriptions + [label for label in dict.fromkeys(labels) if label.strip() and label not in described_places]
+    taken_places = {verdict.place for verdict in flagged} | {verdict.claim.path.partition("#")[0] for verdict in flagged}
+    taken_out = list(dict.fromkeys(f"{verdict.place} ({flag_reason(verdict.defect)})" for verdict in flagged))
+    never_given = [label for label, field in labels if label.strip() and label not in taken_places and field.partition("#")[0] not in taken_places]
+    return list(dict.fromkeys(never_given)), taken_out
 
 
 def flag_reason(defect: str) -> str:

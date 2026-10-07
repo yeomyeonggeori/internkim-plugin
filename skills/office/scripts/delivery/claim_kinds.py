@@ -34,7 +34,8 @@ EXPRESSION_KIND = ("a unit with a relational role: a greeting, thanks, an apolog
                    "this document's own facts that adds no fact of its own (growth called fast when the sources give the figures, demand called proven when the sources show it). "
                    "A line that does none of these jobs and only sounds weighty is hollow")
 
-ADDRESSING_GUARD = "An addressing line is claim only when it names a person, team or organization no source names, and mistake only when the sources name a different sender or recipient for this document. "
+ADDRESSING_GUARD = ("An addressing value, one that says who sends or receives the document (at a from, to, cc or attention field such as 발신, 수신 or 참조), is source when it names the requester, the company or the audience the request addresses, even with a broader or narrower word for that audience; "
+                    "it is claim only when it names a person, team or organization no source names, and mistake only when the sources name a different sender or recipient for this document. ")
 
 ORIGIN_GUARD = ("A credit to an origin, such as a Source line, is judged on its own: choose claim when the sources do not name that origin, even when the figures beside it are in the sources; "
                 "a heading or label that names what the sources hold without crediting an origin is not claim. ")

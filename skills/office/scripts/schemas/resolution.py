@@ -25,6 +25,7 @@ class Instance:
     derived: dict = field(default_factory=dict)
     rows: dict = field(default_factory=dict)
     original: dict = field(default_factory=dict)
+    withdrawn: frozenset = frozenset()
 
     def scope(self, row: dict | None = None) -> Scope:
         return Scope(lambda name: self.value(name, row), self.list_values, self.rounded or (lambda value: value), self.words or (lambda value: grouped(value)))
@@ -86,7 +87,7 @@ class Instance:
                 if child is not None:
                     return child.optional
         given = self.schema.field(name)
-        return bool(given and given.optional)
+        return bool(given and given.optional) and name not in self.withdrawn
 
 
 def navigate(value, path: str):

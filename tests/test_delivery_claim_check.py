@@ -228,6 +228,25 @@ class DeliveredMadeFileTest(unittest.TestCase):
         self.assertEqual(self.metadata()["notes"], [])
         self.assertEqual(self.metadata()["holds"]["schema"], "letter")
 
+    def test_a_value_the_writer_left_blank_is_named_without_saying_the_file_lost_it(self):
+        notice = NOTICE | {"recipient": None, "sections": [{"heading": "이전 안내", "blocks": [{"type": "paragraph", "text": "10월 20일 새 사무실로 이전합니다."}]}]}
+        (self.directory / "notice.json").write_text(json.dumps(notice, ensure_ascii=False), encoding="utf-8")
+        with FakeHost(decide=kind_answers({})):
+            self.merge()
+        note = self.metadata()["notes"][0]
+        self.assertIn("left blank, for the reply to offer to complete", note)
+        self.assertNotIn("no longer holds", note)
+
+    def test_a_note_says_only_the_taken_out_places_no_longer_hold_what_they_said(self):
+        notice = NOTICE | {"recipient": None}
+        (self.directory / "notice.json").write_text(json.dumps(notice, ensure_ascii=False), encoding="utf-8")
+        with FakeHost(decide=kind_answers({INVENTED: "claim"})):
+            self.merge()
+        note = self.metadata()["notes"][0]
+        never_had, _, taken_out = note.partition("no longer holds")
+        self.assertIn("수신", never_had)
+        self.assertNotIn("이전 안내", never_had)
+
     def test_a_mistake_is_blanked_and_the_note_asks_the_person_to_confirm(self):
         with FakeHost(decide=kind_answers({INVENTED: "mistake"})):
             self.merge()

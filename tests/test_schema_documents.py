@@ -372,6 +372,17 @@ class ReportMergeTest(unittest.TestCase):
         body = blocks[[text for _, text in blocks].index("기대 효과"):]
         self.assertEqual(body, [("heading", "기대 효과"), ("paragraph", BLANK), ("heading", "개요"), ("paragraph", "시범 운영을 합니다."), ("listItem", "개발팀"), ("heading", "기타"), ("paragraph", BLANK)])
 
+    def test_an_optional_value_the_claim_check_took_out_stays_as_a_line_to_fill(self):
+        values = {"language": "ko", "title": "안내", "recipient": "전 직원", "sections": []}
+        with tempfile.TemporaryDirectory() as directory:
+            write_json(Path(directory, "values.json"), values)
+            write_json(Path(directory, "context.json"), runtime_context())
+            result = run_office_with_context(["merge", "report", "values.json", "memo.docx", "--blank", "recipient"], directory, Path(directory, "context.json"))
+            self.assertEqual(result["status"], "ok", result)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "read", "memo.docx"], capture_output=True, text=True, cwd=directory)
+            text = json.dumps(json.loads(completed.stdout)["details"]["blocks"], ensure_ascii=False)
+        self.assertIn(f"수신: {BLANK}", text)
+
 
 if __name__ == "__main__":
     unittest.main()
