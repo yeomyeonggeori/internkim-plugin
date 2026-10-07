@@ -13,6 +13,7 @@ from delivery.claim_rewrites import Outcome, recompute, treat
 from delivery.file_text import OFFICE_ENTRY, REMAKE_VARIABLE, blank_in_place, text_claims
 from host import script_host
 from host.task_context import TaskContext
+from schemas.known_values import COMPANY_INFO_TOOL, COMPANY_PROFILE_FILE, DEFAULT_PROFILE_LANGUAGE, company_profile, company_profiles
 
 
 SUPPORTED = "supported"
@@ -24,6 +25,7 @@ REMAKE_FAILED = "remake_failed"
 NO_REMAKE_COMMAND = "no_remake_command"
 NOT_EDITABLE = "not_editable"
 RECORD_ANSWER_LIMIT = 4000
+COMPANY_FILE_FIELDS = ("logoImage", "sealImage", "logoPath", "stampPath", "updatedAt", "language")
 
 MAXIMUM_WITHDRAWAL_PASSES = 2
 REMAKE_TIMEOUT_SECONDS = 180
@@ -174,6 +176,9 @@ def is_sentence_path(path: str) -> bool:
 
 def claim_sources(context: TaskContext, snapshot: dict) -> tuple[Sources, bool]:
     facts = {"today": context.today.isoformat() if context.today else "", "requester": {"name": context.requester_name, "email": context.requester_email}}
+    company = company_facts(context)
+    if company:
+        facts["company"] = company
     if snapshot.get("known"):
         facts["known"] = snapshot["known"]
     answered = [{"tool": record.tool, "result": bounded_result(record.result)} for record in context.records if record.result is not None]
@@ -182,6 +187,30 @@ def claim_sources(context: TaskContext, snapshot: dict) -> tuple[Sources, bool]:
     current = [attachment for attachment in context.attachments if attachment.is_current]
     attachments = tuple(AttachmentText(name=attachment.name, text=attachment.text) for attachment in current if attachment.text.strip())
     return Sources(request=context.request, attachments=attachments, runtime_facts=facts), len(attachments) == len(current)
+
+
+def company_facts(context: TaskContext) -> dict:
+    paths = company_profile_paths(context) or company_profile_paths_read_now()
+    profiles = {language: stated_values(company_profile(path)) for language, path in paths.items()}
+    return {language: profile for language, profile in profiles.items() if profile}
+
+
+def company_profile_paths(context: TaskContext) -> dict:
+    return {language: path for language, path in company_profiles(context).items() if path}
+
+
+def company_profile_paths_read_now() -> dict:
+    try:
+        answer = script_host.call_tool(COMPANY_INFO_TOOL, {})
+    except (script_host.HostFailure, script_host.HostUnavailable):
+        return {}
+    files = answer.get("files") if isinstance(answer, dict) else None
+    paths = [str(file.get("path")) for file in files or () if isinstance(file, dict) and Path(str(file.get("path") or "")).name == COMPANY_PROFILE_FILE]
+    return {DEFAULT_PROFILE_LANGUAGE: paths[0]} if paths else {}
+
+
+def stated_values(profile: dict) -> dict:
+    return {name: value.strip() for name, value in profile.items() if isinstance(value, str) and value.strip() and name not in COMPANY_FILE_FIELDS}
 
 
 def bounded_result(result: object) -> object:
@@ -232,10 +261,10 @@ def remake_words(snapshot: dict, file_path: Path, paths: list[str], replacements
     return words
 
 
-def run_remake(words: list[str]) -> str:
+def run_remake(words: list[str], directory: Path | None = None) -> str:
     environment = {**os.environ, REMAKE_VARIABLE: "1"}
     try:
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *words], capture_output=True, text=True, env=environment, timeout=REMAKE_TIMEOUT_SECONDS)
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *words], capture_output=True, text=True, env=environment, timeout=REMAKE_TIMEOUT_SECONDS, cwd=directory)
     except subprocess.TimeoutExpired:
         return f"the remake took longer than {REMAKE_TIMEOUT_SECONDS} seconds"
     if completed.returncode == 0:
