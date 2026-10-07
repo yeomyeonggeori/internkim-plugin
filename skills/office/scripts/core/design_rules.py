@@ -3,13 +3,13 @@ from __future__ import annotations
 import json
 import pathlib
 
-from core.office_result import ERROR, Issue, IssueKind
+from core.office_result import ERROR, WARNING, Issue, IssueKind
 
 
 DESIGN_RULES_PATH = pathlib.Path(__file__).resolve().parents[2] / "assets" / "design-rules.json"
 DESIGN_RULES = tuple(json.loads(DESIGN_RULES_PATH.read_text(encoding="utf-8"))["rules"])
 RULES_BY_CODE = {rule["code"]: rule for rule in DESIGN_RULES}
-DESIGN_RULE_KINDS = {rule["code"]: IssueKind(rule["code"], ERROR, rule["meaning"], rule["suggestion"]) for rule in DESIGN_RULES}
+DESIGN_RULE_KINDS = {rule["code"]: IssueKind(rule["code"], WARNING if rule.get("severity") == WARNING else ERROR, rule["meaning"], rule["suggestion"]) for rule in DESIGN_RULES}
 FINDINGS_NAMED_PER_ISSUE = 3
 
 
