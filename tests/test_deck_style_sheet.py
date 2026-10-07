@@ -97,5 +97,14 @@ class StyleSheetTest(unittest.TestCase):
         self.assertIn("--on-content: #14213D;", style)
 
 
+
+class StyleSheetReferenceTest(unittest.TestCase):
+    def test_the_reference_shows_the_shape_of_a_style_sheet_and_no_palette_to_copy(self):
+        reference = (Path(__file__).resolve().parents[1] / "skills" / "office" / "references" / "deck.md").read_text(encoding="utf-8")
+        example = reference.split("```markdown", 1)[1].split("```", 1)[0]
+        self.assertIn("accent:", example)
+        self.assertNotRegex(example, r"#[0-9A-Fa-f]{6}\b")
+
+
 if __name__ == "__main__":
     unittest.main()
