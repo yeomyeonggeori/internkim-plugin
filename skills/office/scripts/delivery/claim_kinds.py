@@ -252,7 +252,17 @@ def copy_sources(sources: Sources) -> list[str]:
 
 def is_copied_from(text: str, sources: list[str]) -> bool:
     wanted = collapsed_space(text)
-    return not wanted or any(wanted in collapsed_space(source) for source in sources)
+    return not wanted or any(occurs_whole(wanted, collapsed_space(source)) for source in sources)
+
+
+def occurs_whole(wanted: str, source: str) -> bool:
+    start = source.find(wanted)
+    while start >= 0:
+        end = start + len(wanted)
+        if not (wanted[0].isdigit() and start > 0 and source[start - 1].isdigit()) and not (wanted[-1].isdigit() and end < len(source) and source[end].isdigit()):
+            return True
+        start = source.find(wanted, start + 1)
+    return False
 
 
 def collapsed_space(text: str) -> str:

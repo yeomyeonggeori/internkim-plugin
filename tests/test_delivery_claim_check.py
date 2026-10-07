@@ -67,6 +67,12 @@ class JudgeTest(unittest.TestCase):
         asked = host.requests_to("decide")[0]["state"]["claims"]
         self.assertEqual([unit["text"] for unit in asked.values()], [INVENTED])
 
+    def test_a_number_found_only_inside_a_longer_number_is_asked(self):
+        with FakeHost(decide=kind_answers({})) as host:
+            judge(Sources(request=("2026년 10월 7일까지 접수합니다.",)), [claim("7"), claim("20"), claim("2026")])
+        asked = host.requests_to("decide")[0]["state"]["claims"]
+        self.assertEqual([unit["text"] for unit in asked.values()], ["20"])
+
     def test_only_a_claim_at_or_above_the_threshold_is_a_defect(self):
         def answer(body):
             return {"answers": {"claim0": {"choice": "source", "probabilities": {"source": 0.51, "claim": 0.49}}, "claim1": {"choice": "claim", "probabilities": {"claim": 0.5, "source": 0.5}}}}
@@ -294,13 +300,14 @@ class DeliveredFileTextTest(unittest.TestCase):
         from docx import Document
 
         document = Document()
+        document.add_heading("이전 안내", level=1)
         for paragraph in paragraphs:
             document.add_paragraph(paragraph)
         document.save(self.directory / name)
 
     def test_a_file_a_script_wrote_is_judged_by_its_own_text_and_the_invented_figure_is_blanked(self):
-        self.write_by_script("memo.docx", ["10월 20일 새 사무실로 이전합니다.", f"이전 후에도 업무는 이어집니다. {FIGURE}"])
-        with FakeHost(decide=kind_answers({FIGURE: "claim"})):
+        self.write_by_script("memo.docx", ["10월 20일 새 사무실로 이전합니다.", f"이전 후에도 업무는 이어집니다. {FIGURE}", INVENTED])
+        with FakeHost(decide=kind_answers({FIGURE: "claim", INVENTED: "claim"})):
             result = deliver(self.directory, "memo.docx", self.context_path)
         text = self.text_of("memo.docx")
         self.assertNotIn("13%", text)
@@ -309,6 +316,7 @@ class DeliveredFileTextTest(unittest.TestCase):
         self.assertEqual(result["details"]["claimCheck"][0]["outcome"], "blanked")
         notes = json.loads((self.directory / "memo.docx.meta.json").read_text(encoding="utf-8"))["notes"]
         self.assertIn(FIGURE, notes[0])
+        self.assertIn(INVENTED, notes[0])
 
     def test_a_merged_file_rewritten_afterwards_is_judged_by_what_it_now_says(self):
         (self.directory / "notice.json").write_text(json.dumps(NOTICE | {"sections": [{"heading": "이전 안내", "blocks": [{"type": "paragraph", "text": "10월 20일 새 사무실로 이전합니다."}]}]}, ensure_ascii=False), encoding="utf-8")

@@ -51,20 +51,10 @@ def delivered_file_notes(filename: str, labels: list[str], checks: list[ClaimChe
 
 
 def blank_descriptions(labels: list[str], checks: list[ClaimCheck]) -> list[str]:
-    flagged = {}
-    for check in checks:
-        if check.outcome != BLANKED:
-            continue
-        for verdict in check.flagged:
-            flagged[verdict.place] = verdict
-    descriptions, described = [], set()
-    for place in [*labels, *flagged]:
-        if place in described or not place.strip():
-            continue
-        described.add(place)
-        verdict = flagged.get(place)
-        descriptions.append(unit_description(verdict, "said") if verdict else place)
-    return descriptions
+    flagged = [verdict for check in checks if check.outcome == BLANKED for verdict in check.flagged]
+    described_places = {verdict.place for verdict in flagged}
+    descriptions = list(dict.fromkeys(unit_description(verdict, "said") for verdict in flagged))
+    return descriptions + [label for label in dict.fromkeys(labels) if label.strip() and label not in described_places]
 
 
 def flag_reason(defect: str) -> str:
