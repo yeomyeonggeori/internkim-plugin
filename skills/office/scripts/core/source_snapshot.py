@@ -6,9 +6,9 @@ from pathlib import Path
 import shutil
 import sys
 
-from core.host_contract import DELIVERABLE_EXTENSIONS, SOURCE_SUFFIX
 
-
+SOURCE_SUFFIX = ".source.json"
+DELIVERABLE_EXTENSIONS = (".docx", ".xlsx", ".pptx", ".pdf")
 WRITING_VERBS = ("create", "merge", "convert", "apply")
 CARRYING_VERBS = ("apply",)
 

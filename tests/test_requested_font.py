@@ -12,6 +12,7 @@ from fontTools.ttLib import TTFont  # noqa: E402
 
 from fonts.registry import FONT_DIRECTORY, reset_runtime_families  # noqa: E402
 from fonts.requested import GOOGLE_LISTING_URL, resolve_requested_font  # noqa: E402
+from task_context_fixture import CONTEXT_VARIABLE, environment_with_context, write_context_at  # noqa: E402
 
 BASE_FACE = FONT_DIRECTORY / "a2z" / "A2Z-4Regular.woff2"
 NAME_IDS = (1, 4, 6, 16)
@@ -131,9 +132,8 @@ def context_file(directory: Path, attachments: list[Path] = (), brand_font: str 
     company.mkdir(exist_ok=True)
     profile = {"name": "Sample"} | ({"brandFont": brand_font} if brand_font else {})
     (company / "company-profile.json").write_text(json.dumps(profile), encoding="utf-8")
-    context = directory / "office-runtime-context.json"
-    context.write_text(json.dumps({"requester": {"name": "", "email": ""}, "today": "2026-10-04", "company": {"en": str(company / "company-profile.json")}, "registeredDocuments": [], "attachments": [{"name": path.name, "path": str(path)} for path in attachments], "reviewsDeckRenders": False}), encoding="utf-8")
-    return context
+    facts = {"today": "2026-10-04", "company": {"en": str(company / "company-profile.json")}, "attachments": [{"name": path.name, "path": str(path)} for path in attachments]}
+    return write_context_at(directory / "task" / "task-context.json", facts)
 
 
 def style_sheet_with(selection: str) -> str:
@@ -145,12 +145,11 @@ def style_sheet_with(selection: str) -> str:
 def read_with(selection: str, directory: Path, context: Path, cache: Path):
     import os
 
-    from core.host_contract import RUNTIME_CONTEXT_VARIABLE
     from deck.design_system import read_design_system
 
     (directory / "DESIGN.md").write_text(style_sheet_with(selection), encoding="utf-8")
-    previous = {name: os.environ.get(name) for name in (RUNTIME_CONTEXT_VARIABLE, "OFFICE_FONT_CACHE")}
-    os.environ[RUNTIME_CONTEXT_VARIABLE], os.environ["OFFICE_FONT_CACHE"] = str(context), str(cache)
+    previous = {name: os.environ.get(name) for name in (CONTEXT_VARIABLE, "OFFICE_FONT_CACHE")}
+    os.environ[CONTEXT_VARIABLE], os.environ["OFFICE_FONT_CACHE"] = str(context), str(cache)
     try:
         return read_design_system(directory / "DESIGN.md")
     finally:
@@ -218,10 +217,7 @@ class RequestedFontEmbeddedTest(unittest.TestCase):
             context = context_file(path, attached)
             write_staged_deck(path, [DECK_PAGE])
             (path / "DESIGN.md").write_text(style_sheet_with('requested-font: "Sample Sans"'), encoding="utf-8")
-            environment = dict(os.environ) | {"OFFICE_RUNTIME_CONTEXT": str(context), "OFFICE_FONT_CACHE": str(path / "cache")}
-            from core.host_contract import RUNTIME_CONTEXT_VARIABLE
-
-            environment[RUNTIME_CONTEXT_VARIABLE] = str(context)
+            environment = environment_with_context(context) | {"OFFICE_FONT_CACHE": str(path / "cache")}
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "build/deck.pptx", "."], capture_output=True, text=True, cwd=path, env=environment)
             envelope = json.loads(completed.stdout)
             self.assertNotEqual(envelope["status"], "error", envelope["summary"])

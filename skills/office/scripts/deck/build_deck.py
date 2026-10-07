@@ -4,10 +4,9 @@ from __future__ import annotations
 import pathlib
 from dataclasses import replace
 
-from core.host_contract import DELIVERABLE_EXTENSIONS
 from core.office_arguments import route_arguments
 from core.office_result import Result, run_command
-from core.source_snapshot import read_source, write_source
+from core.source_snapshot import DELIVERABLE_EXTENSIONS, read_source, write_source
 from deck.check_deck import DeckRequest, deck_directory
 from deck.deck_claims import deck_claims
 from deck.deck_holds import deck_slides

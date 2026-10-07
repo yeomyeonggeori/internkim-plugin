@@ -2,7 +2,7 @@
 
 A deck is designed top-down in stages, one file per stage, each checked before the next starts. There are no templates: you compose every page. The skill supplies the fonts, line icons, native charts, the company logo, photos and the checks. SKILL.md's rules for source truth apply: a deck never invents dates, people, values or claims, and design adds no text.
 
-Work in `artifacts/<deck-slug>/`. Run `<skill>/scripts/office guide slides`, then, as a command of its own, `<skill>/scripts/office guide design`. The host gathers photos and the typeface between the two commands, so never chain them; if `guide design` says InternKim is still gathering, run it again. Write every file with your file tool, never a heredoc.
+Work in `artifacts/<deck-slug>/`. Run `<skill>/scripts/office guide slides`, then `<skill>/scripts/office guide design`, which on InternKim gathers the photos and chooses the typeface before it answers. Write every file with your file tool, never a heredoc.
 
 | Stage | File | Check |
 | --- | --- | --- |
@@ -41,7 +41,7 @@ A color the request names, or the logo's own color, becomes the accent. Only whe
 
 ## 2. Outline
 
-`outline.json` holds every page's content before any page exists: a core hook, then per page its title, type, brief (one fact per line, with the real figures), figures (each number the page charts or shows large, as `{"label", "value", "unit"}`) and the listed photos it shows. Pass the slide count the user asked for: `office check outline.json --slide-count 10`. InternKim then judges the outline's statements against the request and chooses each page's layout on its own, without asking the person; run the check again, as a command of its own, until it passes and lists every page's layout. `UNSUPPORTED_CLAIM` names a statement the request and its attachments do not support: restate it from them or drop it.
+`outline.json` holds every page's content before any page exists: a core hook, then per page its title, type, brief (one fact per line, with the real figures), figures (each number the page charts or shows large, as `{"label", "value", "unit"}`) and the listed photos it shows. Pass the slide count the user asked for: `office check outline.json --slide-count 10`. On InternKim the same command judges the outline's statements against the request and chooses each page's layout, without asking the person; when it passes, it lists every page's layout. `UNSUPPORTED_CLAIM` names a statement the request and its attachments do not support: restate it from them or drop it.
 
 ## 3. Pages
 
@@ -57,7 +57,7 @@ Run from `artifacts/<deck-slug>`, passing the source facts that must appear:
 
 The output's extension picks the format: `.pptx` writes the PowerPoint and the PDF beside it. The build checks every stage again, then renders and measures every page. The summary starts with the verdict:
 
-- `ACCEPTABLE`: deliver the file it names. When the build result names `visualReview`, deliver without opening the renders: the host reviews every page's render, repairs the pages it flags and reports what remains, which the reply then names.
+- `ACCEPTABLE`: deliver the file it names. When the build result names `visualReview`, deliver without opening the renders: the build already reviewed every page's render, repaired the pages it flagged and reported what remains, which the reply then names.
 - `FIX ROUND 1 OF 2` or `2 OF 2`: fix only the listed defects in their page files, keep the copy, facts, palette and composition, and build again.
 - `STOP FIXING`: deliver and name the defects that remain.
 

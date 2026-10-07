@@ -213,7 +213,9 @@ def command_result(command: Callable[[], Result]) -> Result:
     if result.status == "error":
         return result
     keep_provenance(result.output_path)
-    return replace(result, issues=result.issues + library_warnings.issues())
+    from delivery.finish import finished
+
+    return finished(replace(result, issues=result.issues + library_warnings.issues()))
 
 
 def resolved_from(path: object) -> str:

@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
-import pathlib
 
-from core.host_contract import HOST_CONTRACT, RUNTIME_CONTEXT_VARIABLE
+from deck.deck_decisions import decided, read_state, request_wordings, write_state
 from deck.outline import LAYOUTS, LIBRARY, VARIETY_MINIMUM, VARIETY_MINIMUM_BODY_PAGES, Outline, OutlinePage, valid_layouts
 
 
-LAYOUT_REQUEST_FILE = HOST_CONTRACT["deckLayouts"]["requestFile"]
+LAYOUTS_FILE = "deck-layouts.json"
 QUESTION = LIBRARY["question"]
 NO_PHOTOS = "none"
 
@@ -36,10 +34,14 @@ def request_digest(outline: Outline) -> str:
     return hashlib.sha256(request_bytes(outline)).hexdigest()
 
 
-def write_layout_request(outline: Outline) -> None:
-    context_path = os.environ.get(RUNTIME_CONTEXT_VARIABLE, "").strip()
-    if context_path:
-        (pathlib.Path(context_path).parent / LAYOUT_REQUEST_FILE).write_bytes(request_bytes(outline))
+def layout_decision(outline: Outline) -> dict:
+    digest = request_digest(outline)
+    recorded = read_state(LAYOUTS_FILE)
+    if isinstance(recorded, dict) and recorded.get("digest") == digest:
+        return recorded
+    decision = decided({"request": request_wordings()}, layout_request(outline)) | {"digest": digest}
+    write_state(LAYOUTS_FILE, decision)
+    return decision
 
 
 def decided_choices(outline: Outline, decision: dict | None) -> dict | None:
@@ -47,10 +49,6 @@ def decided_choices(outline: Outline, decision: dict | None) -> dict | None:
         return None
     choices = decision.get("choices")
     return choices if isinstance(choices, dict) and choices else None
-
-
-def is_decision_pending(outline: Outline, decision: dict | None) -> bool:
-    return not isinstance(decision, dict) or decision.get("digest") != request_digest(outline)
 
 
 def ranked_layouts(page: OutlinePage, choice: object) -> tuple[list[str], dict[str, float]]:

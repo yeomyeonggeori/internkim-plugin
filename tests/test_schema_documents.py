@@ -1,7 +1,6 @@
 from datetime import date
 from decimal import Decimal
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -9,6 +8,7 @@ import tempfile
 import unittest
 
 from doc_fixture import OFFICE_ENTRY, write_json
+from task_context_fixture import environment_with_context, write_context_at
 
 from core.office_result import OfficeFailure
 from schemas.expression import Scope, evaluate, parse_expression
@@ -50,19 +50,9 @@ def sample_instance(given):
     return instance
 
 
-def with_company_files(context_path):
-    context = json.loads(Path(context_path).read_text(encoding="utf-8"))
-    for language, profile in (context.get("company") or {}).items():
-        if isinstance(profile, dict):
-            profile_path = Path(context_path).with_name(f"company-profile.{language}.json")
-            write_json(profile_path, profile)
-            context["company"][language] = str(profile_path)
-    write_json(context_path, context)
-
-
 def run_office_with_context(arguments, working_directory, context_path):
-    with_company_files(context_path)
-    environment = dict(os.environ, OFFICE_RUNTIME_CONTEXT=str(context_path))
+    facts = json.loads(Path(context_path).read_text(encoding="utf-8"))
+    environment = environment_with_context(write_context_at(context_path, facts))
     completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), *arguments], capture_output=True, text=True, cwd=working_directory, env=environment)
     return json.loads(completed.stdout)
 
@@ -180,6 +170,16 @@ class BlankFieldTest(unittest.TestCase):
     def test_a_blank_inside_a_list_names_its_row(self):
         blanks = blank_fields(sample_schema().fields, {"buyer": "A", "lines": [{"item": "x", "quantity": None, "price": 1}]})
         self.assertEqual(blanks, [{"field": "lines[0].quantity", "label": "quantity"}])
+
+
+class TableBlankTest(unittest.TestCase):
+    def test_a_blank_cell_under_an_unnamed_column_is_labelled_by_its_row_alone(self):
+        report = {"language": "ko", "title": "실적", "sections": [{"heading": "효과", "blocks": [{"type": "table", "columns": [{"name": "항목", "type": "text"}, {"name": None, "type": "percent"}], "rows": [["생산성", None]]}]}]}
+        with tempfile.TemporaryDirectory() as directory:
+            write_json(Path(directory) / "report.json", report)
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "merge", "report", "report.json", "report.docx"], capture_output=True, text=True, cwd=directory, env=environment_with_context(None))
+        labels = [blank["label"] for blank in json.loads(completed.stdout)["details"]["blanks"]]
+        self.assertEqual(labels[0], "생산성")
 
 
 class TemplateTest(unittest.TestCase):

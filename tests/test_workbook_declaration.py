@@ -1,15 +1,17 @@
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
 
-from doc_fixture import OFFICE_ENTRY, run_office, write_json
+from doc_fixture import OFFICE_ENTRY, RUNTIME_CONTEXT_FILE, run_office, write_json
+from host_fixture import FakeHost
+from task_context_fixture import environment_with_context, write_context_at
 
 
-HOST_CONTRACT = json.loads((Path(__file__).resolve().parents[1] / "skills" / "office" / "assets" / "host-contract.json").read_text(encoding="utf-8"))
+def everything_from_the_sources(body: dict) -> dict:
+    return {"answers": {name: {"type": "choice", "choice": "source", "probabilities": {"source": 1.0}} for name in body["questions"]}, "modelName": "jev", "usage": {"costUSD": 0}}
 
 
 SALES = {"2025": {"Q1": [820, 410], "Q2": [870, 395], "Q3": [905, 450], "Q4": [990, 480]}, "2026": {"Q1": [940, 455], "Q2": [1010, None]}}
@@ -253,11 +255,10 @@ class AttachedTableTest(DeclaredWorkbookFixture):
         attachment = Path(self.directory.name, "attachments", attachment_name)
         attachment.parent.mkdir()
         attachment.write_text(text, encoding="utf-8")
-        context = {"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04", "company": {}, "registeredDocuments": [],
-                   "attachments": [{"name": attachment_name, "path": str(attachment)}]}
-        write_json(Path(self.directory.name, "context.json"), context)
+        facts = {"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04", "attachments": [{"name": attachment_name, "path": str(attachment)}]}
+        context_path = write_context_at(Path(self.directory.name, "context.json"), facts)
         write_json(Path(self.directory.name, "book.workbook.json"), {"kind": "workbook", "language": "en", "tables": [table], "views": [BUDGET_VIEW]})
-        environment = dict(os.environ, OFFICE_RUNTIME_CONTEXT=str(Path(self.directory.name, "context.json")))
+        environment = environment_with_context(context_path)
         completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "create", "book.xlsx", "book.workbook.json"], capture_output=True, text=True, cwd=self.directory.name, env=environment)
         return json.loads(completed.stdout)
 
@@ -314,9 +315,15 @@ class CompiledCellsTest(DeclaredWorkbookFixture):
         self.assertEqual(source["views"][0]["rows"][1], ["Q1", "$1,230", "$1,395", "13.4%"])
         self.assertEqual(source["charts"], [{"view": "By quarter", "type": "line", "title": "Revenue trend"}])
 
-    def test_every_field_the_host_reads_as_content_is_declared_in_the_snapshot(self):
-        declared = HOST_CONTRACT["source"]["properties"]
-        self.assertEqual([field for field in HOST_CONTRACT["sourceContent"]["fields"] if field not in declared], [])
+    def test_the_metadata_beside_the_workbook_holds_what_its_snapshot_says_it_holds(self):
+        context_path = Path(self.directory.name, RUNTIME_CONTEXT_FILE)
+        write_context_at(context_path, {"requester": {"name": "이샘플"}, "today": "2026-10-04"})
+        self.create(sales_declaration([BY_QUARTER], [{"view": "By quarter", "type": "line", "title": "Revenue trend"}]))
+        with FakeHost(decide=everything_from_the_sources):
+            subprocess.run([sys.executable, str(OFFICE_ENTRY), "delivery-check", "book.xlsx"], capture_output=True, text=True, cwd=self.directory.name, env=environment_with_context(context_path), check=True)
+        source = json.loads(Path(self.directory.name, "book.xlsx.source.json").read_text(encoding="utf-8"))
+        holds = json.loads(Path(self.directory.name, "book.xlsx.meta.json").read_text(encoding="utf-8"))["holds"]
+        self.assertEqual(holds, {name: source[name] for name in ("tables", "views", "charts", "blanks")})
 
     def test_apply_refuses_to_write_into_a_compiled_view(self):
         self.create(BUDGET)

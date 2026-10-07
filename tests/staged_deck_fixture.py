@@ -13,7 +13,6 @@ OFFICE_ENTRY = SCRIPTS_PATH / "office"
 if str(SCRIPTS_PATH) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_PATH))
 
-from core.host_contract import RUNTIME_CONTEXT_VARIABLE  # noqa: E402,F401
 from deck.layout_choice import assigned_layouts  # noqa: E402
 from charts.numbers import split_chart_list  # noqa: E402
 from deck.chart_data import axis_unit_texts, chart_series, series_axes  # noqa: E402

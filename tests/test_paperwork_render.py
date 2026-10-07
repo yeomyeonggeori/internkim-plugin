@@ -6,7 +6,8 @@ import sys
 import tempfile
 import unittest
 
-from doc_fixture import OFFICE_ENTRY, run_office, write_form_values, write_runtime_context
+from doc_fixture import OFFICE_ENTRY, RUNTIME_CONTEXT_FILE, run_office, write_form_values, write_runtime_context
+from task_context_fixture import write_context_at
 from render_fixture import can_render, pdf_page_count
 
 
@@ -246,8 +247,7 @@ class CompanyProfileFileTest(unittest.TestCase):
         self.assertIn("signature.stamp", locations)
 
     def test_a_task_whose_company_profile_was_never_read_is_told_to_read_it(self):
-        context = {"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04", "company": {}, "registeredDocuments": [], "attachments": []}
-        (self.directory / "office-runtime-context.json").write_text(json.dumps(context, ensure_ascii=False), encoding="utf-8")
+        write_context_at(self.directory / RUNTIME_CONTEXT_FILE, {"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04"})
         envelope, _, _ = self.merge(None)
 
         self.assertEqual(envelope["status"], "error")
@@ -258,9 +258,9 @@ class CompanyProfileFileTest(unittest.TestCase):
         english.mkdir()
         (english / "company-profile.json").write_text(json.dumps({"name": "Sample Tech Inc."}), encoding="utf-8")
         (self.answered / "company-profile.json").write_text(json.dumps(ANSWERED_PROFILE, ensure_ascii=False), encoding="utf-8")
-        context = {"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04", "registeredDocuments": [], "attachments": [],
-                   "company": {"ko": str(self.answered / "company-profile.json"), "en": str(english / "company-profile.json")}}
-        (self.directory / "office-runtime-context.json").write_text(json.dumps(context, ensure_ascii=False), encoding="utf-8")
+        facts = {"requester": {"name": "이샘플", "email": "sample@example.com"}, "today": "2026-10-04",
+                 "company": {"ko": str(self.answered / "company-profile.json"), "en": str(english / "company-profile.json")}}
+        write_context_at(self.directory / RUNTIME_CONTEXT_FILE, facts)
         values = {"form": "intl/purchase-order", "title": "Quotation", "recipient": {"lines": ["Example Buyer Ltd."]},
                   "items": {"headers": ["Item", "Qty", "Amount"], "rows": [["Chair", "10", "4,000"]]}}
         (self.directory / "values.json").write_text(json.dumps(values), encoding="utf-8")

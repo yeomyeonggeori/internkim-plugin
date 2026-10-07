@@ -4,7 +4,7 @@ import re
 
 from schemas.schema_document import DocumentSchema, SchemaField
 
-WRITTEN_TYPES = ("text", "person", "organization")
+CLAIMED_TYPES = ("text", "person", "organization", "date", "amount", "quantity", "percent", "cell")
 SENTENCE_END = re.compile(r"(?<!^\d\.)(?<!^\d\d\.)(?<=[.!?。])\s+", re.MULTILINE)
 
 
@@ -42,12 +42,16 @@ def field_claims(field: SchemaField, value: object, record: dict, path: str, nam
 
 
 def text_claims(kind: str, value: object, path: str, names: tuple):
-    if kind not in WRITTEN_TYPES or not isinstance(value, str) or not value.strip():
+    if kind not in CLAIMED_TYPES or value is None or isinstance(value, bool) or not str(value).strip():
         return
-    pieces = sentences(value)
+    pieces = sentences(value) if isinstance(value, str) else [shown_value(kind, value)]
     place = " > ".join(names) or path.rsplit(".", 1)[-1]
     for index, piece in enumerate(pieces):
         yield {"path": f"{path}#{index}" if len(pieces) > 1 else path, "at": place, "text": piece}
+
+
+def shown_value(kind: str, value: object) -> str:
+    return f"{value}%" if kind == "percent" else str(value)
 
 
 def sentences(text: str) -> list[str]:

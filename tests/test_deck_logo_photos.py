@@ -19,7 +19,7 @@ SCRIPTS_PATH = Path(__file__).resolve().parents[1] / "skills" / "office" / "scri
 OFFICE_ENTRY = SCRIPTS_PATH / "office"
 sys.path.insert(0, str(SCRIPTS_PATH))
 
-from core.host_contract import RUNTIME_CONTEXT_VARIABLE  # noqa: E402
+from task_context_fixture import CONTEXT_VARIABLE, write_context_at  # noqa: E402
 
 
 LOGO_COLOR = (20, 60, 150)
@@ -48,20 +48,22 @@ def company_context(directory: Path, images: list[str]) -> Path:
     logo.paste(LOGO_COLOR + (255,), (20, 10, 220, 70))
     logo.save(company_path / "logo.png")
     (company_path / "company-profile.json").write_text(json.dumps({"name": "Sample", "logoImage": "logo.png"}), encoding="utf-8")
-    context_path = company_path / "office-runtime-context.json"
-    context_path.write_text(json.dumps({"requester": {"name": "", "email": ""}, "today": "2026-10-04", "company": {"en": str(company_path / "company-profile.json")}, "registeredDocuments": [], "attachments": [], "images": [{"path": image} for image in images], "reviewsDeckRenders": False}), encoding="utf-8")
+    context_path = write_context_at(company_path / "task-context.json", {"today": "2026-10-04", "company": {"en": str(company_path / "company-profile.json")}})
+    state = company_path / "office"
+    state.mkdir()
+    (state / "deck-preparation.json").write_text(json.dumps({"images": [{"path": image} for image in images]}), encoding="utf-8")
     return context_path
 
 
 def run(arguments: list[str], deck_path: Path, with_logo: bool) -> dict:
     environment = dict(os.environ)
-    environment.pop(RUNTIME_CONTEXT_VARIABLE, None)
+    environment.pop(CONTEXT_VARIABLE, None)
     images = [str(path) for path in sorted((deck_path / "images").glob("*.jpg"))]
     if with_logo or images:
         context_path = company_context(deck_path, images)
         if not with_logo:
             (context_path.parent / "logo.png").unlink()
-        environment[RUNTIME_CONTEXT_VARIABLE] = str(context_path)
+        environment[CONTEXT_VARIABLE] = str(context_path)
     return json.loads(subprocess.run([sys.executable, str(OFFICE_ENTRY), *arguments], capture_output=True, text=True, cwd=deck_path, env=environment).stdout)
 
 
