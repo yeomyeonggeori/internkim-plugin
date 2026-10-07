@@ -17,6 +17,7 @@ MAKING_VERBS = ("merge", "create")
 MADE_KEY = "made"
 LEFTOVERS_KEY = "reviewLeftovers"
 REVIEW_BUDGET_SECONDS = 75
+RECOMPOSE_BUDGET_SECONDS = 45
 
 
 def finished(result: Result) -> Result:
@@ -44,11 +45,25 @@ def made_path(result: Result) -> Path | None:
 
 def reviewed_deck(file_path: Path):
     snapshot = read_source(file_path)
-    if is_remake() or not snapshot.get("visualReview") or not script_host.is_present() or load_task_context() is None:
+    if not snapshot.get("visualReview") or not script_host.is_present() or load_task_context() is None:
         return None
+    from delivery.office_deck import OfficeDeck
     from delivery.visual_review import review_deck
 
-    return review_deck(file_path, snapshot, time.monotonic() + REVIEW_BUDGET_SECONDS)
+    if not is_remake():
+        return review_deck(file_path, snapshot, time.monotonic() + REVIEW_BUDGET_SECONDS)
+    if not slides_to_recompose(OfficeDeck(file_path, snapshot)):
+        return None
+    return review_deck(file_path, snapshot, time.monotonic() + RECOMPOSE_BUDGET_SECONDS, is_recompose_only=True)
+
+
+def slides_to_recompose(deck) -> set[int]:
+    from delivery.review_manifest import ManifestError
+
+    try:
+        return deck.manifest().slides_to_recompose()
+    except (ManifestError, OSError):
+        return set()
 
 
 def file_digest(file_path: Path) -> str:

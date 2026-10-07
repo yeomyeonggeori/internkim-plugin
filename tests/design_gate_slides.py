@@ -13,18 +13,28 @@ SEEDED_STYLE = """
 .short-card { height: 70px; padding: 28px; background: var(--surface); border-radius: var(--radius); }
 .stacked-a { position: absolute; left: 96px; top: 300px; width: 700px; margin: 0; }
 .stacked-b { position: absolute; left: 160px; top: 312px; width: 700px; margin: 0; }
+.foot { position: absolute; left: 96px; right: 96px; bottom: 96px; margin: 0; font-size: 28px; }
 """
 
-SEEDED = {
+FOOT = '<p class="foot">Figures are from the third quarter plan.</p>'
+
+
+def footed(content):
+    if isinstance(content, tuple):
+        return content[0], content[1] + FOOT
+    return content + FOOT
+
+SEEDED = {name: content if name == "EMPTY_LOWER_BAND" else footed(content) for name, content in {
     "CANVAS_NOT_FILLED": (' class="short"', f'{HEADING}{BODY}'),
     "ONE_SIDED_ACCENT_BAR": f'{HEADING}<div class="callout">{BODY}</div>',
     "BROKEN_WORD": f'{HEADING}<div class="narrow-cell">Subscription renews monthly</div>',
     "OUT_OF_FRAME": f'{HEADING}<p class="spill">The logistics business closed the quarter above its plan in every region.</p>',
     "CONTENT_OVERFLOW": f'{HEADING}<div class="short-card"><p>The logistics business closed the quarter above its plan in every region.</p><p>Costs fell in each of the four quarters while volume grew.</p></div>',
     "CONTENT_OVERLAP": f'{HEADING}<p class="stacked-a">The logistics business closed the quarter above its plan in every region.</p><p class="stacked-b">The logistics business closed the quarter above its plan in every region.</p>',
+    "EMPTY_LOWER_BAND": f'{HEADING}{BODY}',
     "TEXT_TOO_SMALL": f'{HEADING}<p style="font-size: 16px">The logistics business closed the quarter above its plan in every region.</p>',
     "CHART_COLLAPSED": f'{HEADING}<figure data-chart="bar" data-labels="Q1, Q2" data-values="10, 12" style="width: 600px; height: 120px"></figure>',
-}
+}.items()}
 
 CLEAN_STYLE = """
 .centered { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 24px; }

@@ -127,6 +127,20 @@ export function measureDesignRules(page, rules, tools) {
         return box.height < minimumHeight || box.width < minimumWidth ? [finding(figure, `a chart drawn ${Math.round(box.width)}x${Math.round(box.height)}px, too small to show its marks`)] : [];
       }),
 
+    lowerBand: ({ maximumImbalance, pageTypes }) => {
+      if (!pageTypes.includes(page.dataset.type || "")) return [];
+      const pageRect = rectOf(page);
+      const shown = elementsOf(page).slice(1).filter((element) => !element.closest("aside"));
+      const textRects = shown.flatMap((element) => ownTextRects(element));
+      const mediaRects = shown.filter((element) => element.matches("img, canvas, video, figure, table")).map(rectOf);
+      const drawn = [...textRects, ...mediaRects].filter((rect) => rect.width > 0 && rect.height > 0);
+      if (drawn.length === 0) return [];
+      const top = Math.max(0, Math.min(...drawn.map((rect) => rect.top - pageRect.top)));
+      const lowest = Math.min(pageRect.height, Math.max(...drawn.map((rect) => rect.bottom - pageRect.top)));
+      const band = pageRect.height - lowest;
+      return band - top > maximumImbalance ? [finding(page, `the last text or picture ends ${Math.round(lowest)}px down the ${Math.round(pageRect.height)}px page, so the ${Math.round(band)}px under it hold nothing to read, against ${Math.round(top)}px above the first`)] : [];
+    },
+
     inkBoxes: (threshold) => measureInkBoxes(page, { describe, elementsOf, ownTextRects, isPainted }, threshold),
 
     textSize: ({ bodyMinimum, captionMinimum, bodyCharacters, bodyWords }) => {

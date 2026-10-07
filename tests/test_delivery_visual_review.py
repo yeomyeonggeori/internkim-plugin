@@ -339,6 +339,27 @@ class FixLoopTest(unittest.TestCase):
         self.assertEqual(payload["facts"]["theme"], "corporate")
 
 
+    def test_a_remake_reviews_and_recomposes_only_the_pages_the_claim_check_emptied_in_one_round(self):
+        manifest = sample_manifest(3, section("BAD one"), section("fine two"), deck=deck_question())
+        slides = (manifest.slides[0], Slide(2, section=section("fine two"), state={"theme": "corporate"}, recompose=True))
+        deck = FakeDeck(Manifest(manifest.question, manifest.deck, manifest.threshold, {}, 3, manifest.fixer_instructions, "", slides))
+        with FakeHost(decide=slide_decider(distribution_by_content, repetition_of(deck)), generate=fixer(lambda original: repair(original.replace("fine two", "BAD two", 1), "recomposed"))) as host:
+            loop = ReviewLoop(deck, is_recompose_only=True)
+            loop.run(EVERYTHING_ALLOWED)
+        reviewed = [image_text(body) for body in host.requests_to("decide") if "visual_defect" in body["questions"]]
+        self.assertTrue(all("two" in text for text in reviewed), reviewed)
+        self.assertFalse(any("visual_defect" not in body["questions"] for body in host.requests_to("decide")))
+        self.assertEqual(len(host.requests_to("generate")), 1)
+
+
+    def test_a_fix_that_clears_a_measured_defect_is_kept_when_the_reviewer_sees_it_no_worse(self):
+        before = visual_review.Assessment(probabilities={"wasted_space": 0.6}, findings=[{"kind": "wasted_space", "probability": 0.6}], measured=({"code": "EMPTY_LOWER_BAND"},))
+        same = visual_review.Assessment(probabilities={"wasted_space": 0.6}, findings=[{"kind": "wasted_space", "probability": 0.6}])
+        worse = visual_review.Assessment(probabilities={"wasted_space": 0.7}, findings=[{"kind": "wasted_space", "probability": 0.7}])
+        self.assertTrue(visual_review.is_improved(before, same))
+        self.assertFalse(visual_review.is_improved(before, worse))
+
+
 class DeckReviewTest(unittest.TestCase):
     def deck(self, rounds: int, *sections: str, large: bool = False) -> FakeDeck:
         return FakeDeck(sample_manifest(rounds, *sections, deck=deck_question()), rendered=True, large=large)
