@@ -13,22 +13,22 @@ Work in `artifacts/<deck-slug>/`. Run `<skill>/scripts/office guide slides`, the
 
 ## 1. Style sheet
 
-`guide design` gives the shape. The front matter holds concrete colors and sizes:
+`guide design` gives the shape. The front matter holds concrete colors and sizes, each color a `#RRGGBB` value you choose for this deck's subject, audience and company:
 
 ```markdown
 ---
 style: "one sentence: the design language and why it fits this subject and audience"
 colors:
-  text: "#1B2430"
-  accent: "#0E7C66"
-  secondary: "#E0A526"
-  surface: "#EEF5F2"
-  line: "#D5E2DC"
+  text: "#RRGGBB"
+  accent: "#RRGGBB"
+  secondary: "#RRGGBB"
+  surface: "#RRGGBB"
+  line: "#RRGGBB"
 backgrounds:
-  cover: "#0E3B33"
-  content: "#FFFFFF"
-  data: "#FFFFFF"
-  closing: "#0E3B33"
+  cover: "#RRGGBB"
+  content: "#RRGGBB"
+  data: "#RRGGBB"
+  closing: "#RRGGBB"
 sizes:
   display: "128px"
   title: "64px"
@@ -37,7 +37,7 @@ sizes:
 ---
 ```
 
-A color the request names, or the logo's own color, becomes the accent. Only when the person asks for a font by name, add `requested-font: "Exact Family Name"`: the build looks for it among the attachments, the data room, its cache and Google Fonts, embeds it, and when it finds none sets the deck in Paperlogy and reports `REQUESTED_FONT_UNAVAILABLE`, which your reply says, offering to rebuild when the person attaches the file.
+A color the request names, or the logo's own color, becomes the accent; otherwise the subject's mood picks it. Only when the person asks for a font by name, add `requested-font: "Exact Family Name"`: the build looks for it among the attachments, the data room, its cache and Google Fonts, embeds it, and when it finds none sets the deck in Paperlogy and reports `REQUESTED_FONT_UNAVAILABLE`, which your reply says, offering to rebuild when the person attaches the file.
 
 ## 2. Outline
 
