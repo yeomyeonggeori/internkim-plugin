@@ -10,7 +10,7 @@ from core.office_result import OfficeFailure, Result, read_json_file, run_comman
 from core.source_snapshot import write_source
 from schemas.known_values import load_runtime_context
 from sheet.operations.operation_set import SHEET_OPERATIONS, SheetEditing, save_editing
-from schemas.blank_paths import blanked, replacement_map
+from schemas.blank_paths import blanked, replacement_map, withdrawn_marked
 from sheet.declaration_claims import declaration_claims
 from sheet.workbook_declaration import DECLARATION_REQUIRED
 
@@ -21,7 +21,7 @@ def create_declared(arguments, written, declaration_path):
 
     context = load_runtime_context()
     workbook, chart_operations, compiler = declared_workbook(declaration, context.attachments if context else ())
-    blanks = compiler.blanks + left_blank(written, arguments.blank)
+    blanks = withdrawn_marked(compiler.blanks, declaration_claims(written), arguments.blank, [])
     output_path = Path(os.path.expanduser(arguments.output))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     editing = SheetEditing(workbook, None)
@@ -41,11 +41,6 @@ def create_declared(arguments, written, declaration_path):
     })
     summary = f"created {output_path}" + (f"; {len(blanks)} blank input cells for the person to fill or send: {', '.join(blank['label'] for blank in blanks)}" if blanks else "; no blank cells")
     return Result(summary=summary, output_path=str(output_path), issues=tuple(issues), details={"blanks": blanks, "views": views})
-
-
-def left_blank(written: dict, paths: list[str]) -> list[dict]:
-    places = {claim["path"]: claim["at"] for claim in declaration_claims(written)}
-    return [{"field": path, "label": places.get(path, path)} for path in dict.fromkeys(paths)]
 
 
 def declaration_source(arguments) -> tuple[object, str]:

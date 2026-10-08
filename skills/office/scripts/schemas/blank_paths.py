@@ -6,6 +6,26 @@ import re
 from schemas.claims import sentences
 
 PATH_PART = re.compile(r"([^.\[\]#]+)|\[(\d+)\]")
+WITHDRAWN = "withdrawn"
+WITHDRAWN_VALUE = "value"
+WITHDRAWN_TEXT = "text"
+
+
+def withdrawn_marked(blanks: list[dict], claims: list[dict], paths: list[str], held: list[dict]) -> list[dict]:
+    paths = list(dict.fromkeys(paths or ()))
+    withdrawn_values = set(paths) | {blank.get("field") for blank in held if blank.get(WITHDRAWN) == WITHDRAWN_VALUE}
+    marked = [blank | {WITHDRAWN: WITHDRAWN_VALUE} if blank.get("field") in withdrawn_values else blank for blank in blanks]
+    fields = {blank.get("field") for blank in marked}
+    carried = [blank for blank in held if blank.get(WITHDRAWN) == WITHDRAWN_TEXT and blank.get("field") not in fields and blank.get("field") not in paths]
+    by_path = {claim["path"]: claim for claim in claims}
+    taken = [withdrawn_place(path, by_path.get(path)) for path in paths if path not in fields]
+    return marked + carried + taken
+
+
+def withdrawn_place(path: str, claim: dict | None) -> dict:
+    if claim is None:
+        return {"field": path, "label": path, WITHDRAWN: WITHDRAWN_TEXT}
+    return {"field": path, "label": claim["at"], WITHDRAWN: WITHDRAWN_VALUE if claim.get("named") else WITHDRAWN_TEXT}
 
 
 def replacement_map(pairs: list[str]) -> dict[str, str]:
