@@ -7,6 +7,7 @@ const inlineBoxDisplays = new Set(["inline-block", "inline-flex", "inline-grid",
 const boxOnlyDisplays = new Set(["flex", "inline-flex", "grid", "inline-grid", "table", "inline-table", "table-row-group", "table-header-group", "table-footer-group", "table-row"]);
 const resetStyle = "html, body { margin: 0 !important; padding: 0 !important; }";
 const emptyRect = { left: 0, top: 0, right: 0, bottom: 0 };
+const noInset = emptyRect;
 
 function escapeAttribute(value) {
   return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
@@ -28,9 +29,13 @@ export function documentFragmentHtml(elements) {
   return `${chain.map(openTag).join("")}${elements.map((element) => element.outerHTML).join("")}${chain.reverse().map((element) => `</${element.localName}>`).join("")}`;
 }
 
-function rectFromMeasured(measured) {
+function rectFromMeasured(measured, inset = noInset) {
   const [a, b, c, d, e, f] = measured.transform;
-  const corners = [[0, 0], [measured.width, 0], [0, measured.height], [measured.width, measured.height]].map(([x, y]) => [a * x + c * y + e, b * x + d * y + f]);
+  const left = inset.left;
+  const top = inset.top;
+  const right = Math.max(left, measured.width - inset.right);
+  const bottom = Math.max(top, measured.height - inset.bottom);
+  const corners = [[left, top], [right, top], [left, bottom], [right, bottom]].map(([x, y]) => [a * x + c * y + e, b * x + d * y + f]);
   const xs = corners.map(([x]) => x);
   const ys = corners.map(([, y]) => y);
   return { left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) };
@@ -179,7 +184,7 @@ export function createLayout({ window, document, renderer, styleTexts, viewport,
   function inlineAtomicEntries(nodes) {
     return visibleChildren(nodes).flatMap((node) => {
       if (node.nodeType !== 1) return [];
-      if (isAtomicInline(node)) return [{ element: node }];
+      if (isAtomicInline(node)) return [{ element: node, isInlineLevel: true }];
       return inlineAtomicEntries(Array.from(node.childNodes));
     });
   }
@@ -249,9 +254,15 @@ export function createLayout({ window, document, renderer, styleTexts, viewport,
     return displayOf(element) === "list-item" && styles.getComputedStyle(element).listStyleType !== "none";
   }
 
-  function mapElement(measured, element, layout) {
+  function marginsOf(element) {
+    const style = styles.getComputedStyle(element);
+    const margin = (side) => parseFloat(style[`margin${side}`]) || 0;
+    return { left: margin("Left"), top: margin("Top"), right: margin("Right"), bottom: margin("Bottom") };
+  }
+
+  function mapElement(measured, element, layout, isInlineLevel = false) {
     if (isHidden(element)) return;
-    layout.boxes.set(element, rectFromMeasured(measured));
+    layout.boxes.set(element, rectFromMeasured(measured, isInlineLevel ? marginsOf(element) : noInset));
     const { entries, ownsText } = boxEntries(element);
     const children = hasMarker(element) && measured.children.length === entries.length + 1 ? measured.children.slice(1) : measured.children;
     if (children.length !== entries.length) {
@@ -260,7 +271,7 @@ export function createLayout({ window, document, renderer, styleTexts, viewport,
     }
     if (ownsText) assignRuns(measured, inlineTextNodes(Array.from(element.childNodes)), layout, element);
     entries.forEach((entry, index) => {
-      if (entry.element) mapElement(children[index], entry.element, layout);
+      if (entry.element) mapElement(children[index], entry.element, layout, entry.isInlineLevel);
       else mapAnonymous(children[index], entry.anonymous, layout, element);
     });
   }
@@ -272,7 +283,7 @@ export function createLayout({ window, document, renderer, styleTexts, viewport,
       return;
     }
     assignRuns(measured, inlineTextNodes(nodes), layout, owner);
-    entries.forEach((entry, index) => mapElement(measured.children[index], entry.element, layout));
+    entries.forEach((entry, index) => mapElement(measured.children[index], entry.element, layout, entry.isInlineLevel));
   }
 
   function assignRuns(measured, textNodes, layout, owner) {

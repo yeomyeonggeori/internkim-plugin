@@ -51,9 +51,14 @@ td.number { text-align: right; }
 .narrow { width: 440px; }
 .rail { position: relative; height: 30px; }
 .rail::before { content: ""; position: absolute; left: 0; right: 0; top: 10px; height: 4px; background: #14213d; }
+.byline { display: flex; gap: 48px; font-size: 26px; margin-top: 24px; }
+.byline span + span::before { content: ""; display: inline-block; width: 2px; height: 26px; background: #0e7c66; margin-right: 48px; }
+.divider { display: inline-block; width: 3px; height: 24px; background: #0e7c66; margin: 4px 1.5em; }
 """
 DECK_PAGES = [
-    '<h1>샘플전자 매출은<br>3분기에 18% 늘었습니다</h1><p>박예시 · <em>전략기획팀</em></p><aside class="notes">표지 노트</aside>',
+    '<h1>샘플전자 매출은<br>3분기에 18% 늘었습니다</h1><p>박예시 · <em>전략기획팀</em></p>'
+    '<div class="byline"><span>신청 기업: 샘플전자</span><span>발표자: 박예시</span></div><p>왼쪽<span class="divider"></span>오른쪽</p>'
+    '<aside class="notes">표지 노트</aside>',
     '<h2>성장은 두 가지에서 나왔습니다</h2>'
     '<ul><li>프리미엄 전환이 <strong>2배</strong> 늘었습니다</li><li>설치가 하루로 줄었습니다</li></ul>'
     '<ol start="3"><li>공공 계약 12건</li><li>자세한 표는 <a href="https://example.com/q3">부록</a>에 있습니다</li></ol>'
@@ -309,6 +314,7 @@ class RenderedEditablePptxTest(unittest.TestCase):
         self.assertEqual(table_cell_texts(slides[2]), ["지역", "3분기", "수도권", "₩25억"])
         self.assertNotIn("수도권", "".join(text_box_texts(slides[2])))
         self.assert_boxes_are_shapes_and_left_the_picture(slides, backgrounds)
+        self.assert_inline_rules_keep_their_own_size(slides[0])
         narrow, = [lines for lines in paragraph_lines(slides[1]) if "".join(lines).startswith("연간물류비")]
         self.assertGreater(len(narrow), 1)
         self.assertTrue(any("4.3년" in line for line in narrow), narrow)
@@ -325,6 +331,11 @@ class RenderedEditablePptxTest(unittest.TestCase):
                     self.assertEqual(properties.find("a:ea", NAMESPACES).get("typeface"), properties.find("a:latin", NAMESPACES).get("typeface"))
                 for left, top, frame_width, frame_height in shape_frames(slide):
                     self.assertTrue(0 <= left and 0 <= top and left + frame_width <= width and top + frame_height <= height)
+
+    def assert_inline_rules_keep_their_own_size(self, cover: ElementTree.Element) -> None:
+        rules = [shape.find("a:xfrm/a:ext", NAMESPACES) for shape in preset_shapes(cover, "rect") if solid_color(shape) == ("0E7C66", None)]
+        sizes = sorted((int(extent.get("cx")), int(extent.get("cy"))) for extent in rules)
+        self.assertEqual(sizes, [(2 * EMU_PER_PIXEL, 26 * EMU_PER_PIXEL), (3 * EMU_PER_PIXEL, 24 * EMU_PER_PIXEL)])
 
     def assert_boxes_are_shapes_and_left_the_picture(self, slides: list[ElementTree.Element], backgrounds: list[dict]) -> None:
         summary, comparison = slides[1], slides[2]
