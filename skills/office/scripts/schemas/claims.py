@@ -18,7 +18,7 @@ def record_claims(fields: tuple, record: dict, location: str, names: tuple):
         if value is None or field.choices:
             continue
         path = f"{location}.{field.name}" if location else field.name
-        yield from field_claims(field, value, record, path, names + human_label(field))
+        yield from (claim | ({"named": True} if human_label(field) and claim["path"] == path else {}) for claim in field_claims(field, value, record, path, names + human_label(field)))
 
 
 def field_claims(field: SchemaField, value: object, record: dict, path: str, names: tuple):

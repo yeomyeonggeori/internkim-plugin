@@ -111,7 +111,7 @@ class DeckClaimTest(unittest.TestCase):
 
     def test_each_blank_is_listed_with_its_place(self):
         path = claim_at("92%")["path"]
-        self.assertEqual(blank_labels(DECK, [path]), [{"field": path, "label": "슬라이드 2 수치"}])
+        self.assertEqual(blank_labels(DECK, [path]), [{"field": path, "label": "슬라이드 2 수치", "withdrawn": "text"}])
 
 
 if __name__ == "__main__":

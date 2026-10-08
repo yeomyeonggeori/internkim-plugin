@@ -8,6 +8,7 @@ import re
 
 from charts.numbers import split_chart_list
 from deck.chart_data import axis_unit_texts, chart_series, series_axes, spaced_unit
+from schemas.blank_paths import withdrawn_marked
 from schemas.claims import sentences
 
 UNIT_TAGS = ("h1", "h2", "h3", "h4", "p", "li", "td", "th", "figcaption", "blockquote")
@@ -319,5 +320,4 @@ def blank_span(unit: Unit, removed: set[int], replaced: dict[int, str], cover_fa
 
 
 def blank_labels(text: str, paths: list[str]) -> list[dict]:
-    places = {claim["path"]: claim["at"] for claim in deck_claims(text)}
-    return [{"field": path, "label": places.get(path, path)} for path in dict.fromkeys(paths)]
+    return withdrawn_marked([], deck_claims(text), paths, [])

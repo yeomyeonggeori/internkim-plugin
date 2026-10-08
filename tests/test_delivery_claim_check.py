@@ -216,7 +216,7 @@ class DeliveredMadeFileTest(unittest.TestCase):
         self.assertNotIn(INVENTED, given_text or "")
         self.assertIn("sections[0].blocks[0].text#1", [blank["field"] for blank in self.snapshot()["blanks"]])
         note = self.metadata()["notes"][0]
-        self.assertIn("left blank, for the reply to offer to complete", note)
+        self.assertIn("text the check took out of these places", note)
         self.assertNotIn(INVENTED, note)
         self.assertIn("never repeats", note)
         self.assertIn("nothing the person gave supports it", note)
@@ -246,6 +246,33 @@ class DeliveredMadeFileTest(unittest.TestCase):
         never_had, _, taken_out = note.partition("no longer holds")
         self.assertIn("수신", never_had)
         self.assertNotIn("이전 안내", never_had)
+
+    def test_a_sentence_taken_out_is_reported_as_text_taken_from_its_place_and_the_place_never_as_left_blank(self):
+        with FakeHost(decide=kind_answers({INVENTED: "claim"})):
+            self.merge()
+        self.assertEqual(self.snapshot()["given"]["sections"][0]["blocks"][0]["text"], "10월 20일 새 사무실로 이전합니다.")
+        context_path = write_task_context(self.directory, self.facts())
+        for delivered in ("first", "again"):
+            notes = self.metadata()["notes"]
+            with self.subTest(delivered=delivered):
+                self.assertFalse([note for note in notes if "left blank, for the reply to offer to complete" in note and "이전 안내" in note], notes)
+                self.assertTrue([note for note in notes if note.startswith("notice.pdf: text the check took out") and "이전 안내" in note], notes)
+            with FakeHost(decide=kind_answers({})):
+                deliver(self.directory, "notice.pdf", context_path)
+
+    def test_a_value_taken_out_stays_taken_out_when_the_file_is_delivered_again(self):
+        invented_recipient = "전 직원"
+        notice = NOTICE | {"recipient": invented_recipient, "sections": [{"heading": "이전 안내", "blocks": [{"type": "paragraph", "text": "10월 20일 새 사무실로 이전합니다."}]}]}
+        (self.directory / "notice.json").write_text(json.dumps(notice, ensure_ascii=False), encoding="utf-8")
+        with FakeHost(decide=kind_answers({invented_recipient: "claim"})):
+            self.merge()
+        context_path = write_task_context(self.directory, self.facts())
+        with FakeHost(decide=kind_answers({})):
+            deliver(self.directory, "notice.pdf", context_path)
+        note = self.metadata()["notes"][0]
+        never_had, _, taken_out = note.partition("no longer holds")
+        self.assertNotIn("수신", never_had)
+        self.assertIn("수신", taken_out)
 
     def test_a_mistake_is_blanked_and_the_note_asks_the_person_to_confirm(self):
         with FakeHost(decide=kind_answers({INVENTED: "mistake"})):

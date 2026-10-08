@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import json
 from pathlib import Path
 
 from delivery.claim_check import BLANKED, NO_REMAKE_COMMAND, NOT_EDITABLE, REMAKE_FAILED, SUPPORTED, UNREAD_SOURCES, ClaimCheck
 from delivery.claim_kinds import ERROR, MISTAKE, Verdict
+from schemas.blank_paths import WITHDRAWN, WITHDRAWN_TEXT, WITHDRAWN_VALUE
 
 
 METADATA_SUFFIX = ".meta.json"
@@ -17,7 +19,7 @@ def metadata_path_of(file_path: Path) -> Path:
 
 
 def write_metadata(file_path: Path, snapshot: dict, checks: list[ClaimCheck], leftover_slides: list[dict]) -> Path:
-    document = {"holds": holds_of(snapshot), "notes": delivered_file_notes(file_path.name, blank_labels(snapshot), checks, leftover_slides)}
+    document = {"holds": holds_of(snapshot), "notes": delivered_file_notes(file_path.name, snapshot_blanks(snapshot), checks, leftover_slides)}
     path = metadata_path_of(file_path)
     path.write_text(json.dumps(document, ensure_ascii=False, indent=1), encoding="utf-8")
     return path
@@ -30,15 +32,17 @@ def holds_of(snapshot: dict) -> dict:
     return held | {name: snapshot[name] for name in COMPANION_FIELDS if name in snapshot}
 
 
-def blank_labels(snapshot: dict) -> list[tuple[str, str]]:
-    return [(str(blank.get("label") or ""), str(blank.get("field") or "")) for blank in snapshot.get("blanks") or () if isinstance(blank, dict) and blank.get("label")]
+def snapshot_blanks(snapshot: dict) -> list[dict]:
+    return [blank for blank in snapshot.get("blanks") or () if isinstance(blank, dict) and str(blank.get("label") or "").strip()]
 
 
-def delivered_file_notes(filename: str, labels: list[tuple[str, str]], checks: list[ClaimCheck], leftover_slides: list[dict]) -> list[str]:
+def delivered_file_notes(filename: str, blanks: list[dict], checks: list[ClaimCheck], leftover_slides: list[dict]) -> list[str]:
     notes = []
-    never_given, taken_out = blank_descriptions(labels, checks)
-    if never_given or taken_out:
-        notes.append(f"{filename}: left blank, for the reply to offer to complete" + "".join(blank_clauses(never_given, taken_out)))
+    blanked = BlankedPlaces.of(blanks, checks)
+    if blanked.never_given or blanked.taken_values:
+        notes.append(f"{filename}: left blank, for the reply to offer to complete" + "".join(blank_clauses(blanked.never_given, blanked.taken_values)))
+    if blanked.taken_text:
+        notes.append(f"{filename}: text the check took out of these places; each place keeps whatever else it holds, so the reply says text was taken out of it, never that the place is empty or left blank, and never repeats what was there: {', '.join(blanked.taken_text)}")
     notes += left_in_file_notes(filename, checks)
     if leftover_slides:
         notes.append(f"{filename}: slides that still show a defect after the visual review, for the reply to say what remains: {leftover_slide_names(leftover_slides)}")
@@ -52,12 +56,39 @@ def blank_clauses(never_given: list[str], taken_out: list[str]) -> list[str]:
     return clauses
 
 
-def blank_descriptions(labels: list[tuple[str, str]], checks: list[ClaimCheck]) -> tuple[list[str], list[str]]:
-    flagged = [verdict for check in checks if check.outcome == BLANKED for verdict in check.flagged]
-    taken_places = {verdict.place for verdict in flagged} | {verdict.claim.path.partition("#")[0] for verdict in flagged}
-    taken_out = list(dict.fromkeys(f"{verdict.place} ({flag_reason(verdict.defect)})" for verdict in flagged))
-    never_given = [label for label, field in labels if label.strip() and label not in taken_places and field.partition("#")[0] not in taken_places]
-    return list(dict.fromkeys(never_given)), taken_out
+@dataclass(frozen=True)
+class BlankedPlaces:
+    never_given: list[str]
+    taken_values: list[str]
+    taken_text: list[str]
+
+    @staticmethod
+    def of(blanks: list[dict], checks: list[ClaimCheck]) -> "BlankedPlaces":
+        flagged = {verdict.claim.path: verdict for check in checks if check.outcome == BLANKED for verdict in check.flagged}
+        never_given, taken_values, taken_text = [], [], []
+        for blank in blanks:
+            verdict = flagged.pop(str(blank.get("field") or ""), None)
+            withdrawal = withdrawal_of(blank, verdict)
+            if not withdrawal:
+                never_given.append(str(blank["label"]))
+                continue
+            (taken_text if withdrawal == WITHDRAWN_TEXT else taken_values).append(taken_out_place(str(blank["label"]), verdict))
+        taken_text += [taken_out_place(verdict.place, verdict) for verdict in flagged.values()]
+        return BlankedPlaces(unique(never_given), unique(taken_values), unique(taken_text))
+
+
+def withdrawal_of(blank: dict, verdict: Verdict | None) -> str:
+    if blank.get(WITHDRAWN):
+        return str(blank[WITHDRAWN])
+    return WITHDRAWN_VALUE if verdict else ""
+
+
+def taken_out_place(label: str, verdict: Verdict | None) -> str:
+    return f"{label} ({flag_reason(verdict.defect)})" if verdict else label
+
+
+def unique(names: list[str]) -> list[str]:
+    return list(dict.fromkeys(names))
 
 
 def flag_reason(defect: str) -> str:
