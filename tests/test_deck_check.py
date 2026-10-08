@@ -12,10 +12,10 @@ from deck.check_deck import DeckRequest, check_page, check_staged_deck  # noqa: 
 
 
 COVER = "<h1>샘플전자 3분기 매출이 늘었습니다</h1><p>이샘플</p>"
-STATEMENT = "<h2>배송이 빨라지면 재구매가 늘어납니다</h2>"
-KPI = "<h2>매출과 이익이 모두 늘었습니다</h2><p>매출 128억</p><p>이익률 14%</p>"
+STATEMENT = '<h2>배송이 빨라지면 재구매가 늘어납니다</h2><div class="fill"></div>'
+KPI = '<h2>매출과 이익이 모두 늘었습니다</h2><div class="fill"><p>매출 128억</p><p>이익률 14%</p></div>'
 CHART = '<h2>매출이 네 분기 연속 늘었습니다</h2><figure style="width: 1200px; height: 600px" data-chart="column" data-labels="1Q, 2Q, 3Q" data-values="96, 104, 128" data-unit="억"></figure>'
-TABLE = "<h2>수도권이 성장을 이끌었습니다</h2><table><tr><th>지역</th><th>매출</th></tr><tr><td>수도권</td><td>58억</td></tr></table>"
+TABLE = '<h2>수도권이 성장을 이끌었습니다</h2><table style="flex: 1"><tr><th>지역</th><th>매출</th></tr><tr><td>수도권</td><td>58억</td></tr></table>'
 CLOSING = "<h2>예산을 승인해 주십시오</h2><ol><li>예산 6억 원</li><li>11월 3일 출시</li></ol>"
 CLEAN = [COVER, STATEMENT, KPI, CHART, TABLE, CLOSING]
 

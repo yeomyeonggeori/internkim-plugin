@@ -36,6 +36,7 @@ p { margin: 0; }
 .card { padding: 28px; background: var(--surface); border-radius: var(--radius); display: flex; flex-direction: column; gap: 12px; }
 .row { display: flex; gap: 32px; }
 .row > .card { flex: 1; }
+.fill { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; padding: 28px; background: var(--surface); border-radius: var(--radius); }
 """
 
 NOTES = '<aside class="notes">notes</aside>'

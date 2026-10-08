@@ -12,6 +12,7 @@ from core.design_rules import DESIGN_RULE_KINDS
 from deck.design_system import DESIGN_ISSUE_KINDS
 from deck.draft_claims import UNSUPPORTED_CLAIM
 from deck.deck_html import RENDER_GATE_SKIPPED
+from deck.composition import REPEATED_COMPOSITION
 from deck.outline import OUTLINE_ISSUE_KINDS
 from deck.page_checks import PAGE_CHECK_ISSUE_KINDS
 from deck.check_deck import STAGE_ISSUE_KINDS
@@ -45,6 +46,7 @@ CHECK_ISSUE_KINDS = (
     *TEXT_CHECK_ISSUE_KINDS,
     UNSUPPORTED_CLAIM,
     *DESIGN_RULE_KINDS.values(),
+    REPEATED_COMPOSITION,
     RENDER_GATE_SKIPPED,
 )
 

@@ -22,14 +22,18 @@ const tableParts = new Set(["TABLE", "THEAD", "TBODY", "TFOOT", "TR", "TD", "TH"
 
 import { measureInkBoxes } from "./ink_boxes.mjs";
 
-export function measureDesignRules(page, rules, tools) {
-  const { describe, elementsOf, ownTextRects, descendantTextRects, slideSize } = tools;
+const sameColor = (first, second) => ["red", "green", "blue"].every((channel) => Math.abs(first[channel] - second[channel]) < 2);
+
+const borderWidths = (style) => sides.map((side) => (style[`border${side}Style`] === "none" ? 0 : pixels(style[`border${side}Width`])));
+
+const hasFullBorder = (style) => borderWidths(style).every((width) => width >= 0.5);
+
+const areaOf = (rect) => Math.max(0, rect.width) * Math.max(0, rect.height);
+
+function boxReader(page, tools) {
+  const { descendantTextRects } = tools;
   const styleOf = (element) => getComputedStyle(element);
   const rectOf = (element) => element.getBoundingClientRect();
-  const finding = (element, detail) => ({ ...describe(element), detail });
-  const fontSize = (element) => pixels(styleOf(element).fontSize);
-  const textElements = () => elementsOf(page).filter((element) => ownTextRects(element).length > 0);
-
   const backgroundOf = (element) => parseColor(styleOf(element).backgroundColor);
 
   const groundBehind = (element) => {
@@ -40,18 +44,36 @@ export function measureDesignRules(page, rules, tools) {
     return { red: 255, green: 255, blue: 255, alpha: 1 };
   };
 
-  const isPainted = (element) => {
-    const style = styleOf(element);
+  const isFilled = (element) => {
     const fill = backgroundOf(element);
-    const isFilled = isVisibleColor(fill) && !sameColor(fill, groundBehind(element));
-    return isFilled || (style.backgroundImage && style.backgroundImage !== "none") || borderWidths(style).some((width) => width >= 0.5);
+    return isVisibleColor(fill) && !sameColor(fill, groundBehind(element));
   };
 
-  const sameColor = (first, second) => ["red", "green", "blue"].every((channel) => Math.abs(first[channel] - second[channel]) < 2);
+  const isPainted = (element) => {
+    const style = styleOf(element);
+    return isFilled(element) || (style.backgroundImage && style.backgroundImage !== "none") || borderWidths(style).some((width) => width >= 0.5);
+  };
 
-  const borderWidths = (style) => sides.map((side) => (style[`border${side}Style`] === "none" ? 0 : pixels(style[`border${side}Width`])));
+  const isCard = (element) => {
+    if (element === page || tableParts.has(element.tagName.toUpperCase()) || element.closest("svg, figure, table")) return false;
+    const style = styleOf(element);
+    if (style.display.startsWith("inline")) return false;
+    const rect = rectOf(element);
+    if (rect.width < 60 || rect.height < 40 || descendantTextRects(element).length === 0) return false;
+    return isFilled(element) || hasFullBorder(style);
+  };
 
-  const hasFullBorder = (style) => borderWidths(style).every((width) => width >= 0.5);
+  const shownParts = () => tools.elementsOf(page).slice(1).filter((element) => !element.closest("aside"));
+
+  return { styleOf, rectOf, backgroundOf, isPainted, isCard, shownParts };
+}
+
+export function measureDesignRules(page, rules, tools) {
+  const { describe, elementsOf, ownTextRects, descendantTextRects, slideSize, backgroundShareOfSlide } = tools;
+  const { styleOf, rectOf, backgroundOf, isPainted, isCard, shownParts } = boxReader(page, tools);
+  const finding = (element, detail) => ({ ...describe(element), detail });
+  const fontSize = (element) => pixels(styleOf(element).fontSize);
+  const textElements = () => elementsOf(page).filter((element) => ownTextRects(element).length > 0);
 
   const largestRadius = (element) => {
     const style = styleOf(element);
@@ -62,15 +84,35 @@ export function measureDesignRules(page, rules, tools) {
     }));
   };
 
-  const isCard = (element) => {
-    if (element === page || tableParts.has(element.tagName.toUpperCase()) || element.closest("svg, figure, table")) return false;
-    const style = styleOf(element);
-    if (style.display.startsWith("inline")) return false;
-    const rect = rectOf(element);
-    if (rect.width < 60 || rect.height < 40 || descendantTextRects(element).length === 0) return false;
-    const fill = backgroundOf(element);
-    const filled = isVisibleColor(fill) && !sameColor(fill, groundBehind(element));
-    return filled || hasFullBorder(style);
+  const drawnBoxes = () => {
+    const pageArea = areaOf(rectOf(page));
+    return shownParts()
+      .filter((element) => element.matches("img, svg, canvas, video, figure, table") || (isPainted(element) && areaOf(rectOf(element)) < pageArea * backgroundShareOfSlide))
+      .map(rectOf)
+      .filter((rect) => rect.width > 0 && rect.height > 0);
+  };
+
+  const drawnRects = () => [...shownParts().flatMap((element) => ownTextRects(element)), ...drawnBoxes()];
+
+  const widestEmptyBand = (rects, frame) => {
+    const spans = rects
+      .map((rect) => ({ top: Math.max(0, rect.top - frame.top), bottom: Math.min(frame.height, rect.bottom - frame.top) }))
+      .filter((span) => span.bottom > span.top)
+      .sort((first, second) => first.top - second.top);
+    if (spans.length === 0) return null;
+    let reached = spans[0].top;
+    let widest = { top: reached, bottom: reached };
+    for (const span of [...spans, { top: frame.height, bottom: frame.height }]) {
+      if (span.top - reached > widest.bottom - widest.top) widest = { top: reached, bottom: span.top };
+      reached = Math.max(reached, span.bottom);
+    }
+    return widest;
+  };
+
+  const describeBand = (band, height) => {
+    const share = `${Math.round(((band.bottom - band.top) / height) * 100)}%`;
+    if (band.bottom >= height) return `everything drawn ends ${Math.round(band.top)}px down the ${Math.round(height)}px page, so its lowest ${Math.round(band.bottom - band.top)}px (${share}) hold nothing`;
+    return `nothing is drawn from ${Math.round(band.top)}px to ${Math.round(band.bottom)}px down the ${Math.round(height)}px page, a ${Math.round(band.bottom - band.top)}px band (${share}) empty across its whole width`;
   };
 
   const measures = {
@@ -138,7 +180,17 @@ export function measureDesignRules(page, rules, tools) {
       const top = Math.max(0, Math.min(...drawn.map((rect) => rect.top - pageRect.top)));
       const lowest = Math.min(pageRect.height, Math.max(...drawn.map((rect) => rect.bottom - pageRect.top)));
       const band = pageRect.height - lowest;
-      return band - top > maximumImbalance ? [finding(page, `the last text or picture ends ${Math.round(lowest)}px down the ${Math.round(pageRect.height)}px page, so the ${Math.round(band)}px under it hold nothing to read, against ${Math.round(top)}px above the first`)] : [];
+      const boxesEnd = Math.max(lowest, ...drawnBoxes().map((rect) => rect.bottom - pageRect.top));
+      const isBandBoxed = boxesEnd - lowest > band / 2;
+      return band - top > maximumImbalance && isBandBoxed ? [finding(page, `the last text or picture ends ${Math.round(lowest)}px down the ${Math.round(pageRect.height)}px page, so the ${Math.round(band)}px under it hold nothing to read, against ${Math.round(top)}px above the first`)] : [];
+    },
+
+    verticalFill: ({ maximumEmptyShare, pageTypes }) => {
+      if (!pageTypes.includes(page.dataset.type || "")) return [];
+      const frame = rectOf(page);
+      const band = widestEmptyBand(drawnRects(), frame);
+      if (!band || band.bottom - band.top <= frame.height * maximumEmptyShare) return [];
+      return [finding(page, describeBand(band, frame.height))];
     },
 
     inkBoxes: (threshold) => measureInkBoxes(page, { describe, elementsOf, ownTextRects, isPainted }, threshold),
@@ -158,5 +210,49 @@ export function measureDesignRules(page, rules, tools) {
   };
 
   return rules.flatMap((rule) => measures[rule.measure](rule.threshold).map((found) => ({ code: rule.code, ...found })));
+}
+
+const isNear = (first, second, tolerance) => Math.abs(first - second) <= tolerance * Math.max(first, second);
+
+const distinctPositions = (values, tolerance) =>
+  [...values].sort((first, second) => first - second).reduce((kept, value) => (kept.length && value - kept[kept.length - 1] <= tolerance ? kept : [...kept, value]), []);
+
+const equalSizeGroups = (cards, sizeTolerance) =>
+  cards.reduce((groups, card) => {
+    const group = groups.find(([first]) => isNear(first.rect.width, card.rect.width, sizeTolerance) && isNear(first.rect.height, card.rect.height, sizeTolerance));
+    if (group) group.push(card);
+    else groups.push([card]);
+    return groups;
+  }, []);
+
+const groupArea = (cards) => {
+  const left = Math.min(...cards.map((card) => card.rect.left));
+  const top = Math.min(...cards.map((card) => card.rect.top));
+  const right = Math.max(...cards.map((card) => card.rect.right));
+  const bottom = Math.max(...cards.map((card) => card.rect.bottom));
+  return (right - left) * (bottom - top);
+};
+
+const arrangementOf = (cards, alignmentTolerance) => {
+  const rows = distinctPositions(cards.map((card) => card.rect.top), alignmentTolerance).length;
+  const columns = distinctPositions(cards.map((card) => card.rect.left), alignmentTolerance).length;
+  if (rows === 1) return { arrangement: "row", rows, columns };
+  if (columns === 1) return { arrangement: "column", rows, columns };
+  return rows * columns === cards.length ? { arrangement: "grid", rows, columns } : null;
+};
+
+export function measureComposition(page, threshold, tools) {
+  const { minimumShareOfPage, sizeTolerance, alignmentTolerance } = threshold;
+  const { rectOf, isCard, shownParts } = boxReader(page, tools);
+  const pageArea = areaOf(rectOf(page));
+  const cards = shownParts().filter(isCard).map((element) => ({ element, rect: rectOf(element) }));
+  const arranged = equalSizeGroups(cards, sizeTolerance)
+    .filter((group) => group.length >= 2 && groupArea(group) >= pageArea * minimumShareOfPage)
+    .map((group) => ({ group, area: groupArea(group), shape: arrangementOf(group, alignmentTolerance) }))
+    .filter(({ shape }) => shape !== null)
+    .sort((first, second) => second.area - first.area);
+  if (arranged.length === 0) return null;
+  const { group, shape } = arranged[0];
+  return { ...shape, count: group.length, ...tools.describe(group[0].element) };
 }
 

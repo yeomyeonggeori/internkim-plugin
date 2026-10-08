@@ -16,8 +16,11 @@
      "meaning": "a chart is drawn so small that its marks vanish and only its labels show",
      "suggestion": "give the chart a width and a height of its own, at least 320 by 240 px, instead of letting it shrink inside a flex box"},
     {"code": "EMPTY_LOWER_BAND", "measure": "lowerBand", "severity": "warning", "threshold": {"maximumImbalance": 140, "pageTypes": ["content", "data"]},
-     "meaning": "the text and pictures of a content or data page stop high, so its lower part holds nothing to read, only empty space or empty boxes",
+     "meaning": "the text and pictures of a content or data page stop high while its cards, columns or panels run on down, so its lower part shows empty boxes",
      "suggestion": "fill the lower part with what the page already holds: set the numbers, headings and body text larger, spread each card's parts down its height, and stretch the chart or photo to about 100px from the bottom edge; never add words to fill the space"},
+    {"code": "PAGE_NOT_FILLED", "measure": "verticalFill", "threshold": {"maximumEmptyShare": 0.22, "pageTypes": ["content", "data"]},
+     "meaning": "a content or data page leaves a band across its whole width empty, most often its lower part, because its parts end high or sit centered in a taller area",
+     "suggestion": "let what the page holds take the band: give the row, grid, list, timeline, chart or photo the height between the title and about 100px above the bottom edge (flex: 1 or an explicit height, cards stretched), start it near the title instead of centering a short block in a tall area, and set its type and numbers larger; never add words to fill it"},
     {"code": "OUT_OF_FRAME", "measure": "inkBoxes", "threshold": {"relation": "frame", "tolerance": 2, "minimumArea": 64, "backdropShare": 0.4},
      "meaning": "a part of the slide is drawn partly or wholly outside the slide, so it is cut off at the edge",
      "suggestion": "keep every part inside the slide: move or resize it, shorten the text that runs past, or split the slide"},
@@ -27,5 +30,10 @@
     {"code": "CONTENT_OVERLAP", "measure": "inkBoxes", "threshold": {"relation": "sibling", "tolerance": 2, "minimumArea": 64, "backdropShare": 0.4},
      "meaning": "two parts of the slide are drawn over each other: text over text, text over a logo, icon, picture or box",
      "suggestion": "move one of them apart from the other, or shorten the text, so no two parts overlap; a part that fills most of the slide is a background and is the one overlap allowed"}
+  ],
+  "deckRules": [
+    {"code": "REPEATED_COMPOSITION", "measure": "composition", "threshold": {"minimumShareOfPage": 0.15, "sizeTolerance": 0.12, "alignmentTolerance": 24, "maximumPages": 2, "pageTypes": ["content", "data"]},
+     "meaning": "a content or data page sets its content as the same arrangement of equal cards (the same row, column or grid of as many cards) as the page before it or as two earlier pages, so the deck reads as one slide repeated",
+     "suggestion": "compose this page another way that fits its layout: columns divided by thin rules instead of boxes, a numbered list, a table, one lead block beside smaller ones, a large figure with its context, or cards of different sizes; keep the words and figures"}
   ]
 }

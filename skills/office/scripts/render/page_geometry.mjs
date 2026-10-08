@@ -1,7 +1,7 @@
-import { measureDesignRules } from "./design_rules.mjs";
+import { measureComposition, measureDesignRules } from "./design_rules.mjs";
 
 export function measurePageGeometry(pages, thresholds) {
-  const { overlapRatioMinimum, aspectRatioTolerance, imageUpscaleMaximum, textPreviewLength, backgroundShareOfSlide, textContrastMinimum, largeTextContrastMinimum, largeTextShareOfWidth, largeBoldTextShareOfWidth, slideSize, designRules = [] } = thresholds;
+  const { overlapRatioMinimum, aspectRatioTolerance, imageUpscaleMaximum, textPreviewLength, backgroundShareOfSlide, textContrastMinimum, largeTextContrastMinimum, largeTextShareOfWidth, largeBoldTextShareOfWidth, slideSize, designRules = [], composition = null } = thresholds;
 
   const isMeasurable = (element) => {
     const style = getComputedStyle(element);
@@ -257,6 +257,7 @@ export function measurePageGeometry(pages, thresholds) {
     distortedDrawings: distortedDrawings(page),
     coveredText: coveredText(page),
     lowContrastText: lowContrastText(page),
-    designFindings: measureDesignRules(page, designRules, { describe, isMeasurable, elementsOf, ownTextRects, descendantTextRects, unionRect, slideSize }),
+    designFindings: measureDesignRules(page, designRules, { describe, isMeasurable, elementsOf, ownTextRects, descendantTextRects, unionRect, slideSize, backgroundShareOfSlide }),
+    ...(composition ? { composition: measureComposition(page, composition, { describe, elementsOf, descendantTextRects }) } : {}),
   }));
 }
