@@ -281,6 +281,7 @@ export function createStyleEngine({ styleTexts, viewport, version, percentBaseOf
       computed[`border-${side}-color`] = computeColor(declaredValues[`border-${side}-color`], colorObject) || color;
       computed[`border-${side}-width`] = `${lineWidth(declaredValues[`border-${side}-width`], declaredValues[`border-${side}-style`], lengthContext)}px`;
       computed[`padding-${side}`] = `${lengthOrZero(declaredValues[`padding-${side}`], element, lengthContext)}px`;
+      computed[`margin-${side}`] = `${lengthOrZero(declaredValues[`margin-${side}`], element, lengthContext)}px`;
     }
     for (const corner of corners) computed[`border-${corner}-radius`] = computeRadius(declaredValues[`border-${corner}-radius`], lengthContext);
     for (const name of ["top", "right", "bottom", "left", "width", "height"]) computed[name] = computeOffset(declaredValues[name], lengthContext);
