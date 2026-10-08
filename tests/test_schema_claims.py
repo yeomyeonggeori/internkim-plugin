@@ -41,7 +41,7 @@ class WrittenClaimsTest(unittest.TestCase):
     def test_every_value_the_model_wrote_is_a_claim_numbers_included(self):
         claims = written_claims(sample_schema(), {"buyer": "견본상사", "contact": None, "lines": [{"item": "노트북", "quantity": 2, "price": 1000}]})
         self.assertEqual(claims, [
-            {"path": "buyer", "at": "Buyer", "text": "견본상사"},
+            {"path": "buyer", "at": "Buyer", "text": "견본상사", "named": True},
             {"path": "lines[0].item", "at": "Lines", "text": "노트북"},
             {"path": "lines[0].quantity", "at": "Lines", "text": "2"},
             {"path": "lines[0].price", "at": "Lines", "text": "1000"},
