@@ -13,10 +13,14 @@ SEEDED_STYLE = """
 .short-card { height: 70px; padding: 28px; background: var(--surface); border-radius: var(--radius); }
 .stacked-a { position: absolute; left: 96px; top: 300px; width: 700px; margin: 0; }
 .stacked-b { position: absolute; left: 160px; top: 312px; width: 700px; margin: 0; }
-.foot { position: absolute; left: 96px; right: 96px; bottom: 96px; margin: 0; font-size: 28px; }
+.foot { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 28px; background: var(--surface); border-radius: var(--radius); font-size: 28px; }
+.boxed-lower { flex: 1; padding: 28px; background: var(--surface); border-radius: var(--radius); }
 """
 
-FOOT = '<p class="foot">Figures are from the third quarter plan.</p>'
+FOOT = '<div class="foot"><p>Figures are from the third quarter plan.</p></div>'
+
+
+UNFOOTED = {"EMPTY_LOWER_BAND", "PAGE_NOT_FILLED"}
 
 
 def footed(content):
@@ -24,14 +28,15 @@ def footed(content):
         return content[0], content[1] + FOOT
     return content + FOOT
 
-SEEDED = {name: content if name == "EMPTY_LOWER_BAND" else footed(content) for name, content in {
+SEEDED = {name: content if name in UNFOOTED else footed(content) for name, content in {
     "CANVAS_NOT_FILLED": (' class="short"', f'{HEADING}{BODY}'),
     "ONE_SIDED_ACCENT_BAR": f'{HEADING}<div class="callout">{BODY}</div>',
     "BROKEN_WORD": f'{HEADING}<div class="narrow-cell">Subscription renews monthly</div>',
     "OUT_OF_FRAME": f'{HEADING}<p class="spill">The logistics business closed the quarter above its plan in every region.</p>',
     "CONTENT_OVERFLOW": f'{HEADING}<div class="short-card"><p>The logistics business closed the quarter above its plan in every region.</p><p>Costs fell in each of the four quarters while volume grew.</p></div>',
     "CONTENT_OVERLAP": f'{HEADING}<p class="stacked-a">The logistics business closed the quarter above its plan in every region.</p><p class="stacked-b">The logistics business closed the quarter above its plan in every region.</p>',
-    "EMPTY_LOWER_BAND": f'{HEADING}{BODY}',
+    "EMPTY_LOWER_BAND": f'{HEADING}<div class="boxed-lower">{BODY}</div>',
+    "PAGE_NOT_FILLED": f'{HEADING}{BODY}',
     "TEXT_TOO_SMALL": f'{HEADING}<p style="font-size: 16px">The logistics business closed the quarter above its plan in every region.</p>',
     "CHART_COLLAPSED": f'{HEADING}<figure data-chart="bar" data-labels="Q1, Q2" data-values="10, 12" style="width: 600px; height: 120px"></figure>',
 }.items()}
@@ -55,6 +60,7 @@ th { color: var(--muted); font-weight: 600; }
 figure { width: 900px; height: 620px; margin: 0; }
 .stretch { flex: 1; align-items: stretch; }
 .stretch > .card { justify-content: center; }
+.split.spread > .narrow { align-self: stretch; display: flex; flex-direction: column; justify-content: center; padding: 48px; background: var(--surface); border-radius: var(--radius); }
 """
 
 CLEAN = [
@@ -66,7 +72,7 @@ CLEAN = [
     ],
     [
         '<div class="centered"><h1>Cold chain readiness review</h1><p>Prepared for the operations committee</p></div>',
-        '<div class="split"><div class="wide"><h2>Spoilage fell to 0.8 percent</h2><p>Sensors on all 41 trucks report every minute, and alerts reach the dispatcher in under two.</p></div><div class="narrow"><div class="big">0.8%</div><p>spoilage, down from 2.1%</p></div></div>',
+        '<div class="split spread"><div class="wide"><h2>Spoilage fell to 0.8 percent</h2><p>Sensors on all 41 trucks report every minute, and alerts reach the dispatcher in under two.</p></div><div class="narrow"><div class="big">0.8%</div><p>spoilage, down from 2.1%</p></div></div>',
         '<h2>Where the losses came from</h2><div class="row stretch"><div class="card" style="flex:2"><h3>Door openings</h3><p>Most losses followed long loading stops at two depots, which now have a second dock door and a fixed stop limit.</p></div><div class="card"><h3>Power cuts</h3><p>Two events, both covered by backup units.</p></div></div>',
     ],
     [
@@ -81,6 +87,7 @@ VARIANT_STYLE = SEEDED_STYLE + """
 .clipper { height: 40px; overflow: hidden; }
 .icon-over { position: absolute; left: 100px; top: 306px; width: 90px; height: 90px; }
 .low-column { position: absolute; left: 96px; top: 860px; width: 500px; margin: 0; }
+.centered-track { flex: 1; display: flex; flex-direction: column; justify-content: center; }
 """
 
 SEEDED_VARIANTS = [
@@ -90,5 +97,6 @@ SEEDED_VARIANTS = [
     ("OUT_OF_FRAME", f'{HEADING}<p class="low-column">The logistics business closed the quarter above its plan in every region and beyond.</p>'),
     ("OUT_OF_FRAME", f'{HEADING}<svg class="icon-over" style="left:1540px" aria-hidden="true" width="90" height="90"></svg>{BODY}'),
     ("CONTENT_OVERLAP", f'{HEADING}<svg class="icon-over" aria-hidden="true" width="90" height="90"></svg><p class="stacked-a">The logistics business closed the quarter above its plan in every region.</p>'),
+    ("PAGE_NOT_FILLED", f'{HEADING}<div class="centered-track">{BODY}</div>'),
     ("BROKEN_WORD", f'{HEADING}<table style="width: 160px"><tr><td style="word-break: break-all">$19/month</td></tr></table>'),
 ]

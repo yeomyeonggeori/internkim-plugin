@@ -1,6 +1,7 @@
 # Style sheet, layout library, sizing and anti-pattern guidance adapted from GenOffice packages/pipelines/src/slides/guides/design.md and apps/slides/src/renderer/ai/AiPanel.tsx (Apache-2.0, Copyright 2026 Mainfunc, Inc.); see NOTICE.
 from __future__ import annotations
 
+from deck.composition import MAXIMUM_PAGES_PER_COMPOSITION
 from deck.deck_preparation import DeckPreparation, ensure_prepared, prepare_deck
 from deck.outline import LAYOUTS, LIBRARY, PAGE_TYPES
 from deck.typeface import type_pairing
@@ -24,6 +25,7 @@ PAGE_LINES = (
     "  Type scale: titles 56 to 80px, subtitles 30 to 40px, body 28 to 36px, captions 20px or more, hero numbers up to 160px.",
     "  Spacing: 64px or more from the page edge, 24px or more between text and a card edge, 24px or more between a title and its subtitle, 12px or more between stacked text blocks.",
     "  Fill the page: spread the content over the whole 1600x900 page and make text, charts and photos as large as the layout allows. The lowest part ends near the bottom margin, about 100px from the edge: cards, columns and charts stretch down to it, and a page with few words sets them larger. A blank band under the content is a defect.",
+    f"  Equal cards in a row, a column or a grid are one composition among many: the check refuses a page whose cards repeat the arrangement of the page before it or of {MAXIMUM_PAGES_PER_COMPOSITION} earlier pages. Set parallel points or metrics also as columns divided by thin rules, a numbered list, a table, one lead block beside smaller ones or a large figure with its context.",
     "  A hero number is a quantity, amount, share or date from the brief, never an abbreviation, a label or a word set large in its place.",
     "  The parts the layout names are drawn: a photo layout shows its photo, chart_with_insight its chart. Colors come only from the style sheet; add a color to DESIGN.md before a page uses it.",
     "  Visuals: photos only from the list below; without photos, typography, color blocks and the kit's icons and charts carry the page, and never a grey box standing in for a photo. A chart's size is proportional to real values from the brief.",

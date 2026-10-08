@@ -7,7 +7,8 @@ import pathlib
 from core.office_arguments import route_arguments
 from core.office_result import ERROR, WARNING, Issue, IssueKind, Result, run_command
 from core.text_checks import text_presence_issues
-from deck.deck_html import render_gate_issues
+from deck.composition import PageComposition, repeated_composition_issues
+from deck.deck_html import gate_measurements, slide_rule_issues
 from deck.deck_preparation import prepare_deck
 from deck.deck_source import find_all, parse_source
 from deck.design_system import DESIGN_FILE_NAME, DesignSystem, read_design_system
@@ -171,11 +172,22 @@ def checked_page(directory: pathlib.Path, outline: Outline, number: int, system:
     return page, page_issues(page, directory, system)
 
 
+def render_gate_issues(source_path: pathlib.Path, outline: Outline, numbers: list[int], system: DesignSystem, judged: set[int]) -> list[Issue]:
+    slides, skipped = gate_measurements(source_path, system)
+    measured = list(zip(numbers, slides))
+    rule_issues = [issue for number, slide in measured if number in judged for issue in slide_rule_issues(slide, f"page {number}")]
+    compositions = [PageComposition(number, outline.pages[number - 1].type, slide.get("composition")) for number, slide in measured]
+    judged_locations = {f"page {number}" for number in judged}
+    return skipped + rule_issues + [issue for issue in repeated_composition_issues(compositions) if issue.location in judged_locations]
+
+
 def page_render_issues(directory: pathlib.Path, outline: Outline, number: int, section: str, system: DesignSystem) -> list[Issue]:
+    earlier = {page: text for page, text in existing_sections(directory, outline).items() if page < number}
+    sections = earlier | {number: section}
     path = directory / PAGE_CHECK_FILE_NAME
-    path.write_text(assembled_deck(outline, {number: section}), encoding="utf-8")
+    path.write_text(assembled_deck(outline, sections), encoding="utf-8")
     try:
-        return render_gate_issues(path, system, [f"page {number}"])
+        return render_gate_issues(path, outline, sorted(sections), system, {number})
     finally:
         path.unlink(missing_ok=True)
 
@@ -220,7 +232,7 @@ def check_staged_deck(request: DeckRequest) -> DeckCheck:
     if not request.is_blank_remake:
         issues += draft_claim_issues(draft_claims(outline, request.assembled_path.read_text(encoding="utf-8")), may_ask=False)
     if not has_errors(issues):
-        issues += render_gate_issues(request.assembled_path, system, [f"page {number}" for number in sorted(sections)])
+        issues += render_gate_issues(request.assembled_path, outline, sorted(sections), system, set(sections))
     if request.is_blank_remake:
         issues = [demoted_to_warning(issue) for issue in issues]
     return DeckCheck(stage_result(request.outline_path, issues, f"checked {len(outline.pages)} pages: ready to build", {"slideCount": len(outline.pages)}), system, outline)

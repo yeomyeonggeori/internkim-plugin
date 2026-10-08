@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from core.design_rules import render_rule_requests
+from core.design_rules import deck_rule_requests, render_rule_requests
 from deck.deck_kit import slide_size
 from powerpoint.definitions import BACKGROUND_SHARE_OF_SLIDE, DISTORTION_TOLERANCE, OVERLAP_RATIO
 
@@ -29,4 +29,4 @@ def renderer_thresholds() -> dict[str, object]:
 
 
 def gate_thresholds() -> dict[str, object]:
-    return renderer_thresholds() | {"slideSize": {"width": slide_size()[0], "height": slide_size()[1]}, "designRules": render_rule_requests()}
+    return renderer_thresholds() | {"slideSize": {"width": slide_size()[0], "height": slide_size()[1]}, "designRules": render_rule_requests()} | deck_rule_requests()

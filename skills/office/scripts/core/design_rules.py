@@ -7,9 +7,18 @@ from core.office_result import ERROR, WARNING, Issue, IssueKind
 
 
 DESIGN_RULES_PATH = pathlib.Path(__file__).resolve().parents[2] / "assets" / "design-rules.json"
-DESIGN_RULES = tuple(json.loads(DESIGN_RULES_PATH.read_text(encoding="utf-8"))["rules"])
-RULES_BY_CODE = {rule["code"]: rule for rule in DESIGN_RULES}
-DESIGN_RULE_KINDS = {rule["code"]: IssueKind(rule["code"], WARNING if rule.get("severity") == WARNING else ERROR, rule["meaning"], rule["suggestion"]) for rule in DESIGN_RULES}
+DESIGN_RULE_DOCUMENT = json.loads(DESIGN_RULES_PATH.read_text(encoding="utf-8"))
+DESIGN_RULES = tuple(DESIGN_RULE_DOCUMENT["rules"])
+DECK_RULES = tuple(DESIGN_RULE_DOCUMENT["deckRules"])
+RULES_BY_CODE = {rule["code"]: rule for rule in DESIGN_RULES + DECK_RULES}
+
+
+def rule_kind(rule: dict) -> IssueKind:
+    return IssueKind(rule["code"], WARNING if rule.get("severity") == WARNING else ERROR, rule["meaning"], rule["suggestion"])
+
+
+DESIGN_RULE_KINDS = {rule["code"]: rule_kind(rule) for rule in DESIGN_RULES}
+DECK_RULE_KINDS = {rule["code"]: rule_kind(rule) for rule in DECK_RULES}
 FINDINGS_NAMED_PER_ISSUE = 3
 
 
@@ -19,6 +28,10 @@ def threshold_of(code: str) -> dict:
 
 def render_rule_requests() -> list[dict]:
     return [{"code": rule["code"], "measure": rule["measure"], "threshold": rule["threshold"]} for rule in DESIGN_RULES]
+
+
+def deck_rule_requests() -> dict[str, dict]:
+    return {rule["measure"]: rule["threshold"] for rule in DECK_RULES}
 
 
 def render_rule_issues(findings: list[dict], location: str) -> list[Issue]:

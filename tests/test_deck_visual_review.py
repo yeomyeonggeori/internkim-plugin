@@ -13,6 +13,7 @@ STYLE = """
 figure[data-chart] { width: 1400px; height: 560px; margin: 0; }
 .cards { display: flex; gap: 24px; flex: 1; }
 .cards > .card { flex: 1; justify-content: space-between; }
+table { flex: 1; }
 """
 DARK = {"colors": {"text": "#F2F4F7", "surface": "#1E2A3A", "line": "#3A4A5E"}, "backgrounds": {"cover": "#0B1320", "content": "#0B1320", "data": "#0B1320", "closing": "#0B1320"}}
 
