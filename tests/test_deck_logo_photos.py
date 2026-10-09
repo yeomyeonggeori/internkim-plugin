@@ -28,12 +28,12 @@ STYLE = """
 section { position: relative; display: block; padding: 0; }
 h1 { position: absolute; left: 96px; top: 380px; margin: 0; font-size: 56px; }
 .photo { position: absolute; right: 0; top: 0; width: 640px; height: 900px; object-fit: cover; }
-.filler { position: absolute; left: 96px; right: 560px; top: 160px; bottom: 96px; background: var(--surface); padding: 40px; font-size: 28px; }
+.filler { position: absolute; left: 96px; right: 560px; top: 160px; bottom: 96px; display: flex; flex-direction: column; justify-content: space-between; background: var(--surface); padding: 40px; font-size: 28px; }
 .filler, h1 { color: var(--text); }
 """
 
 
-FILLER = '<div class="filler"><p>Shelf checks, counted by sensors instead of people.</p></div>'
+FILLER = '<div class="filler"><p>Shelf checks, counted by sensors instead of people.</p><p>Every aisle reports twice an hour.</p></div>'
 DARK_COVER = {"backgrounds": {"cover": "#14213D"}}
 
 

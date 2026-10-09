@@ -27,7 +27,7 @@ def threshold_of(code: str) -> dict:
 
 
 def render_rule_requests() -> list[dict]:
-    return [{"code": rule["code"], "measure": rule["measure"], "threshold": rule["threshold"]} for rule in DESIGN_RULES]
+    return [{"code": rule["code"], "measure": rule["measure"], "threshold": rule["threshold"], "supersedes": rule.get("supersedes", [])} for rule in DESIGN_RULES]
 
 
 def deck_rule_requests() -> dict[str, dict]:

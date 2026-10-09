@@ -13,14 +13,15 @@ SEEDED_STYLE = """
 .short-card { height: 70px; padding: 28px; background: var(--surface); border-radius: var(--radius); }
 .stacked-a { position: absolute; left: 96px; top: 300px; width: 700px; margin: 0; }
 .stacked-b { position: absolute; left: 160px; top: 312px; width: 700px; margin: 0; }
-.foot { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 28px; background: var(--surface); border-radius: var(--radius); font-size: 28px; }
+.foot { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding: 28px; background: var(--surface); border-radius: var(--radius); font-size: 28px; }
+.tall-number { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 28px; background: var(--surface); border-radius: var(--radius); }
 .boxed-lower { flex: 1; padding: 28px; background: var(--surface); border-radius: var(--radius); }
 """
 
-FOOT = '<div class="foot"><p>Figures are from the third quarter plan.</p></div>'
+FOOT = '<div class="foot"><p>Figures are from the third quarter plan.</p><p>Every region reported by the tenth of October.</p></div>'
 
 
-UNFOOTED = {"EMPTY_LOWER_BAND", "PAGE_NOT_FILLED"}
+UNFOOTED = {"EMPTY_LOWER_BAND", "PAGE_NOT_FILLED", "CARD_NOT_FILLED"}
 
 
 def footed(content):
@@ -35,8 +36,9 @@ SEEDED = {name: content if name in UNFOOTED else footed(content) for name, conte
     "OUT_OF_FRAME": f'{HEADING}<p class="spill">The logistics business closed the quarter above its plan in every region.</p>',
     "CONTENT_OVERFLOW": f'{HEADING}<div class="short-card"><p>The logistics business closed the quarter above its plan in every region.</p><p>Costs fell in each of the four quarters while volume grew.</p></div>',
     "CONTENT_OVERLAP": f'{HEADING}<p class="stacked-a">The logistics business closed the quarter above its plan in every region.</p><p class="stacked-b">The logistics business closed the quarter above its plan in every region.</p>',
-    "EMPTY_LOWER_BAND": f'{HEADING}<div class="boxed-lower">{BODY}</div>',
+    "EMPTY_LOWER_BAND": f'{HEADING}<div class="boxed-lower">{BODY * 9}</div>',
     "PAGE_NOT_FILLED": f'{HEADING}{BODY}',
+    "CARD_NOT_FILLED": f'{HEADING}<div class="tall-number"><p class="big">18%</p></div>',
     "TEXT_TOO_SMALL": f'{HEADING}<p style="font-size: 16px">The logistics business closed the quarter above its plan in every region.</p>',
     "CHART_COLLAPSED": f'{HEADING}<figure data-chart="bar" data-labels="Q1, Q2" data-values="10, 12" style="width: 600px; height: 120px"></figure>',
 }.items()}
@@ -60,7 +62,7 @@ th { color: var(--muted); font-weight: 600; }
 figure { width: 900px; height: 620px; margin: 0; }
 .stretch { flex: 1; align-items: stretch; }
 .stretch > .card { justify-content: center; }
-.split.spread > .narrow { align-self: stretch; display: flex; flex-direction: column; justify-content: center; padding: 48px; background: var(--surface); border-radius: var(--radius); }
+.split.spread > .narrow { align-self: stretch; display: flex; flex-direction: column; justify-content: space-between; padding: 48px; background: var(--surface); border-radius: var(--radius); }
 """
 
 CLEAN = [
@@ -72,7 +74,7 @@ CLEAN = [
     ],
     [
         '<div class="centered"><h1>Cold chain readiness review</h1><p>Prepared for the operations committee</p></div>',
-        '<div class="split spread"><div class="wide"><h2>Spoilage fell to 0.8 percent</h2><p>Sensors on all 41 trucks report every minute, and alerts reach the dispatcher in under two.</p></div><div class="narrow"><div class="big">0.8%</div><p>spoilage, down from 2.1%</p></div></div>',
+        '<div class="split spread"><div class="wide"><h2>Spoilage fell to 0.8 percent</h2><p>Sensors on all 41 trucks report every minute, and alerts reach the dispatcher in under two.</p></div><div class="narrow"><div class="big">0.8%</div><p>spoilage, down from 2.1%</p><p>Measured on 41 trucks from July to September.</p></div></div>',
         '<h2>Where the losses came from</h2><div class="row stretch"><div class="card" style="flex:2"><h3>Door openings</h3><p>Most losses followed long loading stops at two depots, which now have a second dock door and a fixed stop limit.</p></div><div class="card"><h3>Power cuts</h3><p>Two events, both covered by backup units.</p></div></div>',
     ],
     [
