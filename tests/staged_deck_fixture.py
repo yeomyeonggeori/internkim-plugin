@@ -36,10 +36,12 @@ p { margin: 0; }
 .card { padding: 28px; background: var(--surface); border-radius: var(--radius); display: flex; flex-direction: column; gap: 12px; }
 .row { display: flex; gap: 32px; }
 .row > .card { flex: 1; }
-.fill { flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; padding: 28px; background: var(--surface); border-radius: var(--radius); }
+.fill { display: flex; flex-direction: column; gap: 12px; padding: 28px; background: var(--surface); border-radius: var(--radius); }
 """
 
 NOTES = '<aside class="notes">notes</aside>'
+PICTURE_SOURCE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='900'%3E%3Crect width='1600' height='900' fill='%23EEF5F2'/%3E%3Ccircle cx='800' cy='450' r='240' fill='%23D5E2DC'/%3E%3C/svg%3E"
+PICTURE = f'<figure style="flex: 1; min-height: 0; margin: 0; border-radius: var(--radius); background: url(&quot;{PICTURE_SOURCE}&quot;) center / cover"></figure>'
 HEADING_PATTERN = re.compile(r"<(h[1-3])\b[^>]*>(.*?)</\1>", re.IGNORECASE | re.DOTALL)
 TAG_PATTERN = re.compile(r"<[^>]+>")
 HEADING_OPEN_PATTERN = re.compile(r"<(h[1-3])(?=[\s>])", re.IGNORECASE)

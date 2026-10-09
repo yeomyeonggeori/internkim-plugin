@@ -9,12 +9,13 @@ import tempfile
 import unittest
 
 from free_deck_fixture import write_free_deck
+from staged_deck_fixture import PICTURE
 
 from render_fixture import can_render
 from skill_copy_fixture import PREPARED_LOCATIONS, copy_skill
 
 
-DECK_SECTIONS = ["<h1>매출이 6% 늘었습니다</h1><p>이샘플</p>", '<h2>서울이 성장을 이끌었습니다</h2><div class="fill"><p>수도권 매출이 58억 원입니다.</p><p>지방 매출은 31억 원입니다.</p></div>']
+DECK_SECTIONS = ["<h1>매출이 6% 늘었습니다</h1><p>이샘플</p>", f'<h2>서울이 성장을 이끌었습니다</h2><div class="fill"><p>수도권 매출이 58억 원입니다.</p></div>{PICTURE}']
 REPORT = "# 분기 보고서\n\n3분기 매출은 **128억 원**입니다.\n\n| 지점 | 매출 |\n| --- | --- |\n| 서울 | 1,200 |\n"
 
 

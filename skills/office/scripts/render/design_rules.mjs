@@ -113,24 +113,16 @@ export function measureDesignRules(page, rules, tools) {
     const rect = rectOf(element);
     const top = rect.top + pixels(style.borderTopWidth) + pixels(style.paddingTop);
     const bottom = rect.bottom - pixels(style.borderBottomWidth) - pixels(style.paddingBottom);
-    return { top, bottom, height: Math.max(0, bottom - top) };
+    return { top, height: Math.max(0, bottom - top) };
   };
 
-  const emptyHeightOf = (container) => {
-    const inner = innerBox(container);
-    const rects = contentRects(container).map((rect) => ({ top: Math.max(inner.top, rect.top), bottom: Math.min(inner.bottom, rect.bottom) })).filter((span) => span.bottom > span.top);
-    if (rects.length === 0 || inner.height === 0) return null;
-    const extent = Math.max(...rects.map((span) => span.bottom)) - Math.min(...rects.map((span) => span.top));
-    return { empty: inner.height - extent, height: inner.height };
-  };
-
-  const widestEmptyBand = (rects, frame) => {
+  const widestEmptyBand = (rects, frame, { fromTopEdge = false } = {}) => {
     const spans = rects
       .map((rect) => ({ top: Math.max(0, rect.top - frame.top), bottom: Math.min(frame.height, rect.bottom - frame.top) }))
       .filter((span) => span.bottom > span.top)
       .sort((first, second) => first.top - second.top);
     if (spans.length === 0) return null;
-    let reached = spans[0].top;
+    let reached = fromTopEdge ? 0 : spans[0].top;
     let widest = { top: reached, bottom: reached };
     for (const span of [...spans, { top: frame.height, bottom: frame.height }]) {
       if (span.top - reached > widest.bottom - widest.top) widest = { top: reached, bottom: span.top };
@@ -227,11 +219,13 @@ export function measureDesignRules(page, rules, tools) {
       if (!pageTypes.includes(page.dataset.type || "")) return [];
       const pageArea = areaOf(rectOf(page));
       return shownParts()
-        .filter((element) => isCard(element) && styleOf(element).backgroundImage === "none" && areaOf(rectOf(element)) < pageArea * backgroundShareOfSlide)
+        .filter((element) => isCard(element) && !styleOf(element).backgroundImage.includes("url(") && areaOf(rectOf(element)) < pageArea * backgroundShareOfSlide)
         .flatMap((card) => {
-          const measured = emptyHeightOf(card);
-          if (!measured || measured.empty < minimumEmptyHeight || measured.empty <= measured.height * maximumEmptyShare) return [];
-          return [finding(card, `its words and pictures take ${Math.round(measured.height - measured.empty)}px of its ${Math.round(measured.height)}px inner height, leaving ${Math.round(measured.empty)}px (${Math.round((measured.empty / measured.height) * 100)}%) of the box empty`)];
+          const inner = innerBox(card);
+          const gap = inner.height > 0 ? widestEmptyBand(contentRects(card), inner, { fromTopEdge: true }) : null;
+          const empty = gap ? gap.bottom - gap.top : 0;
+          if (empty < minimumEmptyHeight || empty <= inner.height * maximumEmptyShare) return [];
+          return [finding(card, `nothing is drawn across ${Math.round(empty)}px (${Math.round((empty / inner.height) * 100)}%) of its ${Math.round(inner.height)}px inner height, from ${Math.round(gap.top)}px to ${Math.round(gap.bottom)}px down the box`)];
         });
     },
 

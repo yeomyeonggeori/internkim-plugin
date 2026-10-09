@@ -28,17 +28,20 @@ STYLE = """
 section { position: relative; display: block; padding: 0; }
 h1 { position: absolute; left: 96px; top: 380px; margin: 0; font-size: 56px; }
 .photo { position: absolute; right: 0; top: 0; width: 640px; height: 900px; object-fit: cover; }
-.filler { position: absolute; left: 96px; right: 560px; top: 160px; bottom: 96px; display: flex; flex-direction: column; justify-content: space-between; background: var(--surface); padding: 40px; font-size: 28px; }
+.filler { position: absolute; left: 96px; right: 560px; top: 160px; bottom: 96px; background: var(--surface); padding: 40px; font-size: 28px; }
+.filler.pictured { background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23EEF5F2'/%3E%3Ccircle cx='4' cy='4' r='1' fill='%23D5E2DC'/%3E%3C/svg%3E"); }
 .filler, h1 { color: var(--text); }
 """
 
 
-FILLER = '<div class="filler"><p>Shelf checks, counted by sensors instead of people.</p><p>Every aisle reports twice an hour.</p></div>'
+FILLER = '<div class="filler"><p>Shelf checks, counted by sensors instead of people.</p></div>'
+PICTURED_FILLER = '<div class="filler pictured"><p>Shelf checks, counted by sensors instead of people.</p></div>'
 DARK_COVER = {"backgrounds": {"cover": "#14213D"}}
 
 
 def deck(first_slide: str, second_slide: str | None = '<h1>Stock checks take 47 minutes less a day</h1>', middle: str | None = None) -> list[str]:
-    return [f"{FILLER}{slide}" for slide in (first_slide, middle, second_slide) if slide is not None]
+    slides = [slide for slide in (first_slide, middle, second_slide) if slide is not None]
+    return [f"{FILLER if number == 0 else PICTURED_FILLER}{slide}" for number, slide in enumerate(slides)]
 
 
 def company_context(directory: Path, images: list[str]) -> Path:

@@ -5,14 +5,14 @@ import unittest
 
 from render_fixture import can_render
 from host_fixture import FakeHost
-from staged_deck_fixture import build_deck, write_staged_deck
+from staged_deck_fixture import PICTURE, build_deck, write_staged_deck
 from task_context_fixture import environment_with_context, write_context_at
 
 
 STYLE = """
 figure[data-chart] { width: 1400px; height: 560px; margin: 0; }
-.cards { display: flex; gap: 24px; flex: 1; }
-.cards > .card { flex: 1; justify-content: space-between; }
+.cards { display: flex; gap: 24px; }
+.cards > .card { flex: 1; }
 table { flex: 1; }
 """
 DARK = {"colors": {"text": "#F2F4F7", "surface": "#1E2A3A", "line": "#3A4A5E"}, "backgrounds": {"cover": "#0B1320", "content": "#0B1320", "data": "#0B1320", "closing": "#0B1320"}}
@@ -29,6 +29,7 @@ def cards(paragraph_style: str = "") -> str:
         '<div class="card"><h3>품절 알림</h3><p>재고가 줄면 담당자에게 바로 알립니다.</p></div>'
         f'<div class="card"><h3>발주 추천</h3><p{attribute}>판매 추세로 발주량을 제안합니다.</p></div>'
         '<div class="card"><h3>매출 정산</h3><p>매장별 매출을 매일 맞춥니다.</p></div></div>'
+        f'{PICTURE}'
     )
 
 
