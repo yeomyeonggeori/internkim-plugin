@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 
-from delivery.claim_check import BLANKED, NO_REMAKE_COMMAND, NOT_EDITABLE, REMAKE_FAILED, SUPPORTED, UNREAD_SOURCES, ClaimCheck
+from delivery.claim_check import BLANKED, NO_REMAKE_COMMAND, NOT_EDITABLE, REFUSED, REMAKE_FAILED, SUPPORTED, UNREAD_SOURCES, ClaimCheck
 from delivery.claim_kinds import ERROR, MISTAKE, Verdict
 from schemas.blank_paths import WITHDRAWN, WITHDRAWN_TEXT, WITHDRAWN_VALUE
 
@@ -19,10 +19,22 @@ def metadata_path_of(file_path: Path) -> Path:
 
 
 def write_metadata(file_path: Path, snapshot: dict, checks: list[ClaimCheck], leftover_slides: list[dict]) -> Path:
-    document = {"holds": holds_of(snapshot), "notes": delivered_file_notes(file_path.name, snapshot_blanks(snapshot), checks, leftover_slides)}
+    refused = [check for check in checks if check.outcome == REFUSED]
+    if refused:
+        document = {"holds": {}, "notes": [], "refusal": refusal(file_path.name, refused)}
+    else:
+        document = {"holds": holds_of(snapshot), "notes": delivered_file_notes(file_path.name, snapshot_blanks(snapshot), checks, leftover_slides)}
     path = metadata_path_of(file_path)
     path.write_text(json.dumps(document, ensure_ascii=False, indent=1), encoding="utf-8")
     return path
+
+
+def refusal(filename: str, checks: list[ClaimCheck]) -> str:
+    statements = "; ".join(unit_description(verdict) for check in checks for verdict in check.flagged)
+    return (f"{filename} was not delivered. Its pages state what nothing the person gave supports: {statements}. "
+            "Rewrite each page named here without these statements, recomposing the page so it still reads as finished, with no box, row, number or bullet left where a statement was, "
+            "then build the deck again and deliver it. A statement only the person can supply stays out of the deck, and the final reply asks them for it. "
+            "A deck delivered again still holding such a statement is delivered with the check taking it out of the file.")
 
 
 def holds_of(snapshot: dict) -> dict:

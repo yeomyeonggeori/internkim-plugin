@@ -7,7 +7,7 @@ import sys
 from core.office_result import Result, run_command
 from core.source_snapshot import DELIVERABLE_EXTENSIONS, read_source
 from delivery.claim_check import BLANKED, REMAKE_FAILED, REWRITTEN, ClaimCheck, check_file, check_text, run_remake, snapshot_claims
-from delivery.delivered_metadata import write_metadata
+from delivery.delivered_metadata import metadata_path_of, write_metadata
 from delivery.finish import LEFTOVERS_KEY, is_as_made
 from host import script_host
 from host.task_context import TaskContext, load_task_context
@@ -18,6 +18,7 @@ CONVERTIBLE_SOURCES = (".docx",)
 
 def main() -> Result:
     file_path = Path(sys.argv[1]).expanduser()
+    metadata_path_of(file_path).unlink(missing_ok=True)
     context = load_task_context()
     if file_path.suffix.lower() not in DELIVERABLE_EXTENSIONS or context is None or not script_host.is_present():
         return Result(summary=f"{file_path.name}: nothing to check")
@@ -36,7 +37,7 @@ def checked(context: TaskContext, file_path: Path, snapshot: dict) -> ClaimCheck
     claims = snapshot_claims(snapshot)
     if claims and is_as_made(file_path, snapshot):
         return check_file(context, file_path, claims)
-    return check_text(context, file_path)
+    return check_text(context, file_path, snapshot)
 
 
 def converted_from(file_path: Path, snapshot: dict) -> Path | None:

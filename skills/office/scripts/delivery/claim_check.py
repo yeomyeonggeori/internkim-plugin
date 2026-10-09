@@ -10,6 +10,7 @@ import sys
 from core.source_snapshot import SOURCE_SUFFIX, read_source
 from delivery.claim_kinds import BLANK, REWRITE, AttachmentText, Claim, Sources, Verdict, judge
 from delivery.claim_rewrites import Outcome, recompute, treat
+from delivery.deck_refusal import is_deck, may_refuse, remember_refusal
 from delivery.file_text import OFFICE_ENTRY, REMAKE_VARIABLE, blank_in_place, text_claims
 from host import script_host
 from host.task_context import TaskContext
@@ -19,6 +20,7 @@ from schemas.known_values import COMPANY_INFO_TOOL, COMPANY_PROFILE_FILE, DEFAUL
 SUPPORTED = "supported"
 BLANKED = "blanked"
 REWRITTEN = "rewritten"
+REFUSED = "refused"
 UNREAD_SOURCES = "not_enforced_unread_attachment"
 JUDGE_FAILED = "judge_failed"
 REMAKE_FAILED = "remake_failed"
@@ -109,6 +111,10 @@ def act_on_flagged(check: ClaimCheck, file_path: Path, snapshot: dict, treated: 
         return
     if not is_every_source_read:
         check.outcome = UNREAD_SOURCES
+        return
+    if treated.blank and is_deck(snapshot) and may_refuse(file_path, snapshot):
+        remember_refusal(file_path, snapshot)
+        check.outcome = REFUSED
         return
     paths = [verdict.claim.path for verdict in treated.blank + treated.removed]
     words = remake_words(snapshot, file_path, paths, treated.replaced)
@@ -218,7 +224,7 @@ def bounded_result(result: object) -> object:
     return result if len(encoded) <= RECORD_ANSWER_LIMIT else encoded[:RECORD_ANSWER_LIMIT]
 
 
-def check_text(context: TaskContext, file_path: Path) -> ClaimCheck:
+def check_text(context: TaskContext, file_path: Path, snapshot: dict) -> ClaimCheck:
     check = ClaimCheck(file=file_path.name, outcome=SUPPORTED)
     claims = text_claims(file_path)
     if not claims:
@@ -237,6 +243,9 @@ def check_text(context: TaskContext, file_path: Path) -> ClaimCheck:
         return check
     if not is_every_source_read:
         check.outcome = UNREAD_SOURCES
+    elif is_deck(snapshot) and may_refuse(file_path, snapshot):
+        remember_refusal(file_path, snapshot)
+        check.outcome = REFUSED
     elif blank_in_place(file_path, [verdict.claim for verdict in check.flagged]):
         check.outcome, check.blanked = BLANKED, [verdict.place for verdict in check.flagged]
     else:
