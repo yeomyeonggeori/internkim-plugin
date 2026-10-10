@@ -137,7 +137,7 @@ def act_on_flagged(check: ClaimCheck, file_path: Path, snapshot: dict, treated: 
 def refuses(check: ClaimCheck, file_path: Path, snapshot: dict, verdicts: list[Verdict], losing: list[dict]) -> bool:
     if not may_refuse(file_path, snapshot, bool(losing)):
         return False
-    remember_refusal(file_path, snapshot)
+    remember_refusal(file_path, snapshot, bool(losing))
     check.outcome, check.flagged, check.losing_slides = REFUSED, verdicts, losing
     return True
 

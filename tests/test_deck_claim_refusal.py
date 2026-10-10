@@ -163,6 +163,17 @@ class DeckWithdrawalRefusalTest(unittest.TestCase):
         self.assertEqual(self.page_count(), 4)
         self.assertIn("would lose that slide", self.metadata()["refusal"])
 
+    def test_a_deck_that_keeps_losing_a_slide_is_refused_once_and_then_delivered_with_notes(self):
+        self.assertEqual(self.deliver({CHART_PLAN: "claim"})["details"]["claimCheck"][0]["outcome"], "refused")
+        page = self.directory / "pages" / "03.html"
+        page.write_text(page.read_text(encoding="utf-8").replace("<td>Daegu</td>", "<td>Daegu metro</td>"), encoding="utf-8")
+        self.build()
+        self.assertIn("Daegu metro", (self.directory / "slides.html").read_text(encoding="utf-8"))
+        envelope = self.deliver({CHART_PLAN: "claim"})
+        self.assertEqual(envelope["details"]["claimCheck"][0]["outcome"], "blanked")
+        self.assertEqual(self.page_count(), 3)
+        self.assertIn("the file has 3 slides", " ".join(self.metadata()["notes"]))
+
     def test_the_same_build_delivered_again_loses_the_slide_and_the_notes_count_what_remains(self):
         self.deliver({INVENTED: "claim"})
         self.rewrite_the_steps_page()

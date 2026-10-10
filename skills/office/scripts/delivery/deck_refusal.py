@@ -25,25 +25,25 @@ def build_digest(file_path: Path, snapshot: dict) -> str:
     return hashlib.sha256(json.dumps(snapshot.get("claims") or [], ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
 
 
-def refused_builds(file_path: Path, snapshot: dict) -> dict:
+def deck_refusals(file_path: Path, snapshot: dict) -> dict:
     refused = (read_state(REFUSALS_FILE) or {}).get(deck_key(file_path, snapshot))
-    if not isinstance(refused, dict):
-        return {}
-    return refused.get("builds") or {}
+    return refused if isinstance(refused, dict) else {}
 
 
 def may_refuse(file_path: Path, snapshot: dict, is_losing_slides: bool) -> bool:
-    builds = refused_builds(file_path, snapshot)
+    refused = deck_refusals(file_path, snapshot)
+    builds = refused.get("builds") or {}
     files = builds.get(build_digest(file_path, snapshot))
     if files is not None:
         return file_path.name not in files
-    return not builds or is_losing_slides
+    return not builds or (is_losing_slides and not refused.get("refusedSlideLoss"))
 
 
-def remember_refusal(file_path: Path, snapshot: dict) -> None:
+def remember_refusal(file_path: Path, snapshot: dict, is_losing_slides: bool) -> None:
     refusals = read_state(REFUSALS_FILE) or {}
-    builds = refused_builds(file_path, snapshot)
+    refused = deck_refusals(file_path, snapshot)
+    builds = refused.get("builds") or {}
     build = build_digest(file_path, snapshot)
     builds[build] = [*builds.get(build, []), file_path.name]
-    refusals[deck_key(file_path, snapshot)] = {"builds": builds}
+    refusals[deck_key(file_path, snapshot)] = {"builds": builds, "refusedSlideLoss": bool(refused.get("refusedSlideLoss")) or is_losing_slides}
     write_state(REFUSALS_FILE, refusals)
