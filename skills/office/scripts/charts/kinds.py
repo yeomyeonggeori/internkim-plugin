@@ -69,3 +69,10 @@ def kit_document_kind(kit_kind: str) -> str:
 
 def is_round_kind(kind: str) -> bool:
     return kit_document_kind(kind) in ROUND_CHART_KINDS
+
+
+def single_slice_problem(kind: str, slice_count: int) -> str:
+    if not is_round_kind(kind) or slice_count != 1:
+        return ""
+    return (f"a {kind} chart shows parts of one whole, so a single slice fills the whole ring and reads as 100%; "
+            "add the rest of the whole as its own slice when the figures give it, or show the share as a number instead")

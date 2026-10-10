@@ -87,6 +87,18 @@ class StagedDeckCheckTest(unittest.TestCase):
         self.assertIn("zero or more", messages["page 4"])
         self.assertNotIn("page 5", messages)
 
+    def test_a_round_chart_needs_more_than_one_part_of_its_whole(self):
+        round_charts = [
+            '<h2>한 조각뿐인 도넛</h2><figure data-chart="donut" data-labels="완성차 1차 협력사" data-values="72" data-unit="%"></figure>',
+            '<h2>한 조각뿐인 파이</h2><figure data-chart="pie" data-labels="정부 지원금" data-values="4.5" data-unit="억 원"></figure>',
+            '<h2>나머지를 함께 그린 도넛</h2><figure data-chart="donut" data-labels="완성차 1차 협력사, 그 밖의 고객" data-values="72, 28" data-unit="%"></figure>',
+        ]
+        result = self.check([COVER, *round_charts])
+        messages = {issue.location: issue.message for issue in result.issues if issue.kind.code == "CHART_DATA_INVALID"}
+        self.assertIn("reads as 100%", messages["page 2"])
+        self.assertIn("reads as 100%", messages["page 3"])
+        self.assertNotIn("page 4", messages)
+
     def test_grouped_thousands_are_one_number_when_values_are_comma_space_separated(self):
         grouped = '<h2>매출이 늘었습니다</h2><figure style="width: 1200px; height: 600px" data-chart="column" data-labels="1월, 2월" data-values="1,200, 1,350" data-unit="만원"></figure>'
         self.assertNotIn("CHART_DATA_INVALID", [code for code, _ in codes_of(self.check([COVER, grouped]))])
