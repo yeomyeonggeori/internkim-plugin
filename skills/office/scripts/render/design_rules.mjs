@@ -116,13 +116,26 @@ export function measureDesignRules(page, rules, tools) {
     return { top, height: Math.max(0, bottom - top) };
   };
 
-  const widestEmptyBand = (rects, frame, { fromTopEdge = false } = {}) => {
-    const spans = rects
+  const spansWithin = (rects, frame) =>
+    rects
       .map((rect) => ({ top: Math.max(0, rect.top - frame.top), bottom: Math.min(frame.height, rect.bottom - frame.top) }))
       .filter((span) => span.bottom > span.top)
       .sort((first, second) => first.top - second.top);
+
+  const emptyGaps = (rects, frame) => {
+    const gaps = [];
+    let reached = 0;
+    for (const span of [...spansWithin(rects, frame), { top: frame.height, bottom: frame.height }]) {
+      if (span.top > reached) gaps.push(span.top - reached);
+      reached = Math.max(reached, span.bottom);
+    }
+    return gaps;
+  };
+
+  const widestEmptyBand = (rects, frame) => {
+    const spans = spansWithin(rects, frame);
     if (spans.length === 0) return null;
-    let reached = fromTopEdge ? 0 : spans[0].top;
+    let reached = spans[0].top;
     let widest = { top: reached, bottom: reached };
     for (const span of [...spans, { top: frame.height, bottom: frame.height }]) {
       if (span.top - reached > widest.bottom - widest.top) widest = { top: reached, bottom: span.top };
@@ -130,6 +143,19 @@ export function measureDesignRules(page, rules, tools) {
     }
     return widest;
   };
+
+  const innerBottomOf = (element) => {
+    const style = styleOf(element);
+    return rectOf(element).bottom - pixels(style.borderBottomWidth) - pixels(style.paddingBottom);
+  };
+
+  const setHeightOf = (element) => (/px$/.test(styleOf(element).height) ? pixels(styleOf(element).height) : null);
+
+  const boxBoundingTheContent = (contentEnd, frame) =>
+    shownParts().find((element) => setHeightOf(element) !== null && Math.abs(innerBottomOf(element) - frame.top - contentEnd) <= 2 && rectOf(element).bottom - frame.top < frame.height - 2);
+
+  const describeBoundingBox = (box, frame) =>
+    `; it all sits in ${describe(box).selector}, whose height is set to ${Math.round(setHeightOf(box))}px, so its content ends at ${Math.round(innerBottomOf(box) - frame.top)}px and nothing inside it reaches lower until that box is taller`;
 
   const describeBand = (band, height) => {
     const share = `${Math.round(((band.bottom - band.top) / height) * 100)}%`;
@@ -212,20 +238,22 @@ export function measureDesignRules(page, rules, tools) {
       const frame = rectOf(page);
       const band = widestEmptyBand(fillingRects(ruleMaximum), frame);
       if (!band || band.bottom - band.top <= frame.height * maximumEmptyShare) return [];
-      return [finding(page, describeBand(band, frame.height))];
+      const box = band.bottom >= frame.height ? boxBoundingTheContent(band.top, frame) : undefined;
+      return [finding(page, describeBand(band, frame.height) + (box ? describeBoundingBox(box, frame) : ""))];
     },
 
-    cardFill: ({ maximumEmptyShare, minimumEmptyHeight, pageTypes }) => {
+    cardFill: ({ maximumEmptyShare, minimumEmptyHeight, minimumGap, pageTypes }) => {
       if (!pageTypes.includes(page.dataset.type || "")) return [];
       const pageArea = areaOf(rectOf(page));
       return shownParts()
         .filter((element) => isCard(element) && !styleOf(element).backgroundImage.includes("url(") && areaOf(rectOf(element)) < pageArea * backgroundShareOfSlide)
         .flatMap((card) => {
           const inner = innerBox(card);
-          const gap = inner.height > 0 ? widestEmptyBand(contentRects(card), inner, { fromTopEdge: true }) : null;
-          const empty = gap ? gap.bottom - gap.top : 0;
+          if (inner.height <= 0) return [];
+          const gaps = emptyGaps(contentRects(card), inner).filter((gap) => gap >= minimumGap);
+          const empty = gaps.reduce((sum, gap) => sum + gap, 0);
           if (empty < minimumEmptyHeight || empty <= inner.height * maximumEmptyShare) return [];
-          return [finding(card, `nothing is drawn across ${Math.round(empty)}px (${Math.round((empty / inner.height) * 100)}%) of its ${Math.round(inner.height)}px inner height, from ${Math.round(gap.top)}px to ${Math.round(gap.bottom)}px down the box`)];
+          return [finding(card, `nothing is drawn across ${Math.round(empty)}px (${Math.round((empty / inner.height) * 100)}%) of its ${Math.round(inner.height)}px inner height, in gaps of ${gaps.map((gap) => `${Math.round(gap)}px`).join(", ")} above, between and below what it holds`)];
         });
     },
 
