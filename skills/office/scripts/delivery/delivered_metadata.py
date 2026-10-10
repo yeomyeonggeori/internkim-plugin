@@ -6,7 +6,7 @@ from pathlib import Path
 
 from delivery.claim_check import BLANKED, NO_REMAKE_COMMAND, NOT_EDITABLE, REFUSED, REMAKE_FAILED, SUPPORTED, UNREAD_SOURCES, ClaimCheck
 from delivery.claim_kinds import ERROR, MISTAKE, Verdict
-from schemas.blank_paths import WITHDRAWN, WITHDRAWN_TEXT, WITHDRAWN_VALUE
+from schemas.blank_paths import WITHDRAWN, WITHDRAWN_SLIDE, WITHDRAWN_TEXT, WITHDRAWN_VALUE
 
 
 METADATA_SUFFIX = ".meta.json"
@@ -23,7 +23,8 @@ def write_metadata(file_path: Path, snapshot: dict, checks: list[ClaimCheck], le
     if refused:
         document = {"holds": {}, "notes": [], "refusal": refusal(file_path.name, refused)}
     else:
-        document = {"holds": holds_of(snapshot), "notes": delivered_file_notes(file_path.name, snapshot_blanks(snapshot), checks, leftover_slides)}
+        notes = delivered_file_notes(file_path.name, snapshot_blanks(snapshot), checks, leftover_slides) + slide_count_notes(file_path.name, snapshot)
+        document = {"holds": holds_of(snapshot), "notes": notes}
     path = metadata_path_of(file_path)
     path.write_text(json.dumps(document, ensure_ascii=False, indent=1), encoding="utf-8")
     return path
@@ -31,10 +32,20 @@ def write_metadata(file_path: Path, snapshot: dict, checks: list[ClaimCheck], le
 
 def refusal(filename: str, checks: list[ClaimCheck]) -> str:
     statements = "; ".join(unit_description(verdict) for check in checks for verdict in check.flagged)
-    return (f"{filename} was not delivered. Its pages state what nothing the person gave supports: {statements}. "
+    losing = ", ".join(slide["label"] for check in checks for slide in check.losing_slides)
+    loss = f" Taking them out would leave nothing to show on {losing}, so the deck would lose that slide; keep the slide by giving it content the person did support." if losing else ""
+    return (f"{filename} was not delivered. Its pages state what nothing the person gave supports: {statements}.{loss} "
             "Rewrite each page named here without these statements, recomposing the page so it still reads as finished, with no box, row, number or bullet left where a statement was, "
             "then build the deck again and deliver it. A statement only the person can supply stays out of the deck, and the final reply asks them for it. "
             "A deck delivered again still holding such a statement is delivered with the check taking it out of the file.")
+
+
+def slide_count_notes(filename: str, snapshot: dict) -> list[str]:
+    removed = [str(blank["label"]) for blank in snapshot_blanks(snapshot) if blank.get(WITHDRAWN) == WITHDRAWN_SLIDE]
+    if not removed:
+        return []
+    count = len(snapshot.get("slides") or [])
+    return [f"{filename}: the check took these slides out whole, because what they showed was taken out; the file has {count} slides, so the reply gives that count and never describes these slides as part of the file: {', '.join(removed)}"]
 
 
 def holds_of(snapshot: dict) -> dict:
@@ -79,6 +90,8 @@ class BlankedPlaces:
         flagged = {verdict.claim.path: verdict for check in checks if check.outcome == BLANKED for verdict in check.flagged}
         never_given, taken_values, taken_text = [], [], []
         for blank in blanks:
+            if blank.get(WITHDRAWN) == WITHDRAWN_SLIDE:
+                continue
             verdict = flagged.pop(str(blank.get("field") or ""), None)
             withdrawal = withdrawal_of(blank, verdict)
             if not withdrawal:

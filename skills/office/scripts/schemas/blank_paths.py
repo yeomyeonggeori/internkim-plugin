@@ -9,6 +9,7 @@ PATH_PART = re.compile(r"([^.\[\]#]+)|\[(\d+)\]")
 WITHDRAWN = "withdrawn"
 WITHDRAWN_VALUE = "value"
 WITHDRAWN_TEXT = "text"
+WITHDRAWN_SLIDE = "slide"
 
 
 def withdrawn_marked(blanks: list[dict], claims: list[dict], paths: list[str], held: list[dict]) -> list[dict]:

@@ -61,6 +61,15 @@ class PageBlankRemakeTest(unittest.TestCase):
         self.assertFalse((self.directory / "pages" / "04.html").exists())
         self.assertIn(last_title, (self.directory / "pages" / "03.html").read_text(encoding="utf-8"))
 
+    def test_blanks_after_a_page_taken_out_name_the_slide_as_the_remade_deck_numbers_it(self):
+        chart_title = self.outline()["pages"][1]["title"]
+        envelope = self.remake(["slides[1].units[1]", "slides[3].units[1]"])
+        self.assertNotEqual(envelope["status"], "error", envelope["summary"])
+        blanks = envelope["details"]["blanks"]
+        self.assertIn({"field": "slides[2].units[1]", "label": "slide 3 item", "withdrawn": "text"}, blanks)
+        self.assertIn({"field": "slides[1]", "label": f'slide "{chart_title}"', "withdrawn": "slide"}, blanks)
+        self.assertFalse(any(blank["label"].startswith("slide 4") or blank["label"].startswith("slide 2 chart") for blank in blanks))
+
     def test_a_page_the_claim_check_changed_is_handed_to_the_visual_review_to_recompose(self):
         self.remake([self.path_of("Busan")], environment=claim_check_remake(self.directory))
         snapshot = json.loads((self.directory / "build" / "deck.pdf.source.json").read_text(encoding="utf-8"))

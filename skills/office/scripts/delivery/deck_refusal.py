@@ -8,28 +8,42 @@ from deck.deck_decisions import read_state, write_state
 
 
 REFUSALS_FILE = "deck-claim-refusals.json"
+PRESENTATION_EXTENSION = ".pptx"
 
 
-def is_deck(snapshot: dict) -> bool:
-    return bool(snapshot.get("deck"))
+def is_deck(file_path: Path, snapshot: dict) -> bool:
+    return bool(snapshot.get("deck")) or file_path.suffix.lower() == PRESENTATION_EXTENSION
 
 
-def build_digest(snapshot: dict) -> str:
+def deck_key(file_path: Path, snapshot: dict) -> str:
+    return str(snapshot.get("deck") or file_path.resolve())
+
+
+def build_digest(file_path: Path, snapshot: dict) -> str:
+    if not snapshot.get("deck"):
+        return hashlib.sha256(file_path.read_bytes()).hexdigest()
     return hashlib.sha256(json.dumps(snapshot.get("claims") or [], ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
 
 
-def may_refuse(file_path: Path, snapshot: dict) -> bool:
-    refusals = read_state(REFUSALS_FILE) or {}
-    refused = refusals.get(str(snapshot["deck"]))
-    if not isinstance(refused, dict):
-        return True
-    return refused.get("build") == build_digest(snapshot) and file_path.name not in (refused.get("files") or [])
+def deck_refusals(file_path: Path, snapshot: dict) -> dict:
+    refused = (read_state(REFUSALS_FILE) or {}).get(deck_key(file_path, snapshot))
+    return refused if isinstance(refused, dict) else {}
 
 
-def remember_refusal(file_path: Path, snapshot: dict) -> None:
+def may_refuse(file_path: Path, snapshot: dict, is_losing_slides: bool) -> bool:
+    refused = deck_refusals(file_path, snapshot)
+    builds = refused.get("builds") or {}
+    files = builds.get(build_digest(file_path, snapshot))
+    if files is not None:
+        return file_path.name not in files
+    return not builds or (is_losing_slides and not refused.get("refusedSlideLoss"))
+
+
+def remember_refusal(file_path: Path, snapshot: dict, is_losing_slides: bool) -> None:
     refusals = read_state(REFUSALS_FILE) or {}
-    deck, build = str(snapshot["deck"]), build_digest(snapshot)
-    refused = refusals.get(deck)
-    files = (refused.get("files") or []) if isinstance(refused, dict) and refused.get("build") == build else []
-    refusals[deck] = {"build": build, "files": [*files, file_path.name]}
+    refused = deck_refusals(file_path, snapshot)
+    builds = refused.get("builds") or {}
+    build = build_digest(file_path, snapshot)
+    builds[build] = [*builds.get(build, []), file_path.name]
+    refusals[deck_key(file_path, snapshot)] = {"builds": builds, "refusedSlideLoss": bool(refused.get("refusedSlideLoss")) or is_losing_slides}
     write_state(REFUSALS_FILE, refusals)
