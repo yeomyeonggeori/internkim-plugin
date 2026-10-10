@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -83,6 +84,99 @@ class DeckClaimRefusalTest(unittest.TestCase):
         self.deliver("deck.pptx")
         self.assertNotEqual(build_deck(self.directory, extension="pptx", environment=environment_with_context(self.context))["status"], "error")
         self.assertEqual(self.outcome(self.deliver("deck.pptx")), "blanked")
+
+    def test_a_presentation_delivered_apart_from_its_build_is_refused_too(self):
+        carried = self.directory / "carried"
+        carried.mkdir()
+        shutil.copyfile(self.directory / "build" / "deck.pptx", carried / "deck.pptx")
+        with FakeHost(decide=judging_invented):
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "delivery-check", "carried/deck.pptx"], capture_output=True, text=True, cwd=self.directory, env=environment_with_context(self.context))
+        envelope = json.loads(completed.stdout)
+        self.assertEqual(self.outcome(envelope), "refused")
+        self.assertIn(INVENTED, json.loads((carried / "deck.pptx.meta.json").read_text(encoding="utf-8"))["refusal"])
+
+
+HOLLOW = "Every team pulled together like never before."
+INVENTED_PLAN = "Hire 40 drivers"
+CHART_PLAN = "Q4 plan"
+
+
+def judging(flagged: dict[str, str]):
+    def decide(body: dict) -> dict:
+        claims = body["state"].get("claims") or {}
+        answers = {}
+        for key, question in body["questions"].items():
+            claim = claims.get(key)
+            kind = next((kind for marker, kind in flagged.items() if claim and marker in claim["text"]), "source" if claim else next(iter(question["criteria"])))
+            answers[key] = {"type": "choice", "choice": kind, "probabilities": {kind: 0.9}}
+        return {"answers": answers, "modelName": "jev", "usage": {"costUSD": 0.001}}
+    return decide
+
+
+def rewriting_to_nothing(body: dict) -> dict:
+    if "checks" in json.dumps(body.get("schema") or {}):
+        return {"answer": {"checks": []}, "usage": {"costUSD": 0.0}}
+    return {"answer": {"text": ""}, "usage": {"costUSD": 0.0}}
+
+
+@unittest.skipUnless(can_render(), "the renderer is not available")
+class DeckWithdrawalRefusalTest(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        sections = [CLEAN[0][0], CLEAN[0][1].replace("ahead of Q2 by 16 percent.", f"ahead of Q2 by 16 percent. {HOLLOW}"), *CLEAN[0][2:]]
+        self.directory = write_staged_deck(Path(self.temporary.name), sections, CLEAN_STYLE)
+        self.context = write_context_at(self.directory / "task" / "task-context.json", {"today": "2026-10-04", "request": [REQUEST]})
+        self.build()
+
+    def build(self) -> None:
+        envelope = build_deck(self.directory, extension="pptx", environment=environment_with_context(self.context))
+        self.assertNotEqual(envelope["status"], "error", envelope["summary"])
+
+    def deliver(self, flagged: dict[str, str]) -> dict:
+        with FakeHost(decide=judging(flagged), generate=rewriting_to_nothing):
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "delivery-check", "build/deck.pptx"], capture_output=True, text=True, cwd=self.directory, env=environment_with_context(self.context))
+        return json.loads(completed.stdout)
+
+    def metadata(self) -> dict:
+        return json.loads((self.directory / "build" / "deck.pptx.meta.json").read_text(encoding="utf-8"))
+
+    def page_count(self) -> int:
+        return len(list((self.directory / "pages").glob("*.html")))
+
+    def rewrite_the_steps_page(self) -> None:
+        page = self.directory / "pages" / "04.html"
+        page.write_text(page.read_text(encoding="utf-8").replace(INVENTED, INVENTED_PLAN), encoding="utf-8")
+        self.build()
+
+    def test_a_statement_the_check_would_take_out_whole_refuses_the_deck(self):
+        envelope = self.deliver({HOLLOW: "hollow"})
+        self.assertEqual(envelope["details"]["claimCheck"][0]["outcome"], "refused")
+        self.assertIn(HOLLOW, (self.directory / "pages" / "02.html").read_text(encoding="utf-8"))
+        self.assertIn(HOLLOW, self.metadata()["refusal"])
+
+    def test_a_later_build_that_would_lose_a_slide_is_refused_again_and_says_which(self):
+        self.deliver({INVENTED: "claim"})
+        self.rewrite_the_steps_page()
+        envelope = self.deliver({CHART_PLAN: "claim", INVENTED_PLAN: "claim"})
+        self.assertEqual(envelope["details"]["claimCheck"][0]["outcome"], "refused")
+        self.assertEqual(self.page_count(), 4)
+        self.assertIn("would lose that slide", self.metadata()["refusal"])
+
+    def test_the_same_build_delivered_again_loses_the_slide_and_the_notes_count_what_remains(self):
+        self.deliver({INVENTED: "claim"})
+        self.rewrite_the_steps_page()
+        self.deliver({CHART_PLAN: "claim", INVENTED_PLAN: "claim"})
+        envelope = self.deliver({CHART_PLAN: "claim", INVENTED_PLAN: "claim"})
+        self.assertEqual(envelope["details"]["claimCheck"][0]["outcome"], "blanked")
+        self.assertEqual(self.page_count(), 3)
+        metadata = self.metadata()
+        self.assertEqual(len(metadata["holds"]["slides"]), 3)
+        notes = " ".join(metadata["notes"])
+        self.assertIn("the file has 3 slides", notes)
+        self.assertIn("slide 3 item", notes)
+        self.assertNotIn("slide 4", notes)
+        self.assertNotIn("slide 2 chart", notes)
 
 
 if __name__ == "__main__":

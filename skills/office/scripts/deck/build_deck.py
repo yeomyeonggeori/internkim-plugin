@@ -53,7 +53,7 @@ def main() -> Result:
     output_path = pathlib.Path(parsed.output).expanduser().resolve()
     held = held_blanks(output_path)
     made = blank_pages(deck_directory(parsed.source), parsed.blank or [], replacement_map(parsed.replace or []))
-    blanks = with_held_blanks(made.blanks, held)
+    blanks = with_held_blanks(made.blanks, made.held_on_the_remade_deck(held))
     request = export_request(parsed, made.recomposed, bool(held or parsed.blank or parsed.replace))
     result = export_deck(request)
     if result.status == "error":

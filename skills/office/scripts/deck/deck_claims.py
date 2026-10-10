@@ -17,6 +17,7 @@ FRAMED_ROLES = ("title", "stat", "cell", "deck")
 DECK_TITLE_PATH = "deck.title"
 CHART_VALUE_SEPARATOR = "\n"
 UNIT_PATH = re.compile(r"^slides\[(\d+)\]\.units\[(\d+)\](?:#(\d+))?$")
+SLIDE_PATH = re.compile(r"^slides\[(\d+)\]")
 ROLE_NAMES = {
     "ko": {"deck": "발표 자료 제목", "slide": "슬라이드", "title": "제목", "stat": "수치", "cell": "표", "chart": "차트", "caption": "차트 설명", "item": "항목", "text": "본문"},
     "en": {"deck": "deck title", "slide": "slide", "title": "title", "stat": "figure", "cell": "table", "chart": "chart", "caption": "chart caption", "item": "item", "text": "text"},
@@ -211,6 +212,32 @@ def place(unit: Unit, language: str) -> str:
         return names["deck"]
     slide_number = int(UNIT_PATH.match(unit.path).group(1)) + 1
     return f"{names['slide']} {slide_number} {names[unit.role]}"
+
+
+def slide_index_of(path: str) -> int | None:
+    match = SLIDE_PATH.match(path)
+    return int(match.group(1)) if match else None
+
+
+def renumbered_path(path: str, removed_slides: set[int]) -> str | None:
+    index = slide_index_of(path)
+    if index is None:
+        return path
+    if index in removed_slides:
+        return None
+    shift = sum(1 for gone in removed_slides if gone < index)
+    return f"slides[{index - shift}]" + path[len(f"slides[{index}]"):]
+
+
+def renumbered_place(at: str, path: str, moved_path: str) -> str:
+    old, new = slide_index_of(path), slide_index_of(moved_path)
+    if old is None or new is None or old == new:
+        return at
+    for names in ROLE_NAMES.values():
+        prefix = f"{names['slide']} {old + 1} "
+        if at.startswith(prefix):
+            return f"{names['slide']} {new + 1} " + at[len(prefix):]
+    return at
 
 
 def units_by_path(units: list[Unit]) -> dict[str, Unit]:

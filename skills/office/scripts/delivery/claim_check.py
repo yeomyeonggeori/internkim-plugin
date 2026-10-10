@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import json
 import os
 from pathlib import Path
@@ -8,6 +8,8 @@ import subprocess
 import sys
 
 from core.source_snapshot import SOURCE_SUFFIX, read_source
+from deck.deck_claims import renumbered_path, renumbered_place, slide_index_of
+from deck.page_blanks import slides_a_blanking_removes
 from delivery.claim_kinds import BLANK, REWRITE, AttachmentText, Claim, Sources, Verdict, judge
 from delivery.claim_rewrites import Outcome, recompute, treat
 from delivery.deck_refusal import is_deck, may_refuse, remember_refusal
@@ -40,6 +42,7 @@ class ClaimCheck:
     flagged: list = field(default_factory=list)
     hollow: list = field(default_factory=list)
     blanked: list = field(default_factory=list)
+    losing_slides: list = field(default_factory=list)
     outcome: str = ""
     detail: str = ""
     cost: float = 0.0
@@ -112,11 +115,11 @@ def act_on_flagged(check: ClaimCheck, file_path: Path, snapshot: dict, treated: 
     if not is_every_source_read:
         check.outcome = UNREAD_SOURCES
         return
-    if treated.blank and is_deck(snapshot) and may_refuse(file_path, snapshot):
-        remember_refusal(file_path, snapshot)
-        check.outcome = REFUSED
+    verdicts = treated.blank + treated.removed
+    paths = [verdict.claim.path for verdict in verdicts]
+    losing = slides_a_blanking_removes(Path(snapshot["deck"]), paths) if paths and snapshot.get("deck") else []
+    if paths and is_deck(file_path, snapshot) and refuses(check, file_path, snapshot, verdicts, losing):
         return
-    paths = [verdict.claim.path for verdict in treated.blank + treated.removed]
     words = remake_words(snapshot, file_path, paths, treated.replaced)
     if words is None:
         check.outcome = NO_REMAKE_COMMAND
@@ -126,11 +129,28 @@ def act_on_flagged(check: ClaimCheck, file_path: Path, snapshot: dict, treated: 
         check.outcome, check.detail = REMAKE_FAILED, failure
         return
     check.outcome = BLANKED if paths else REWRITTEN
-    check.blanked = [verdict.place for verdict in treated.blank]
+    check.losing_slides = losing
+    check.flagged = on_the_remade_deck(check.flagged, losing)
+    check.blanked = [verdict.place for verdict in on_the_remade_deck(treated.blank, losing)] + [slide["label"] for slide in losing]
+
+
+def refuses(check: ClaimCheck, file_path: Path, snapshot: dict, verdicts: list[Verdict], losing: list[dict]) -> bool:
+    if not may_refuse(file_path, snapshot, bool(losing)):
+        return False
+    remember_refusal(file_path, snapshot)
+    check.outcome, check.flagged, check.losing_slides = REFUSED, verdicts, losing
+    return True
+
+
+def on_the_remade_deck(verdicts: list[Verdict], losing: list[dict]) -> list[Verdict]:
+    gone = {slide_index_of(slide["field"]) for slide in losing}
+    moved = [(verdict, renumbered_path(verdict.claim.path, gone)) for verdict in verdicts]
+    return [replace(verdict, claim=replace(verdict.claim, path=path, at=renumbered_place(verdict.claim.at, verdict.claim.path, path))) for verdict, path in moved if path is not None]
 
 
 def judge_what_the_blanks_left(check: ClaimCheck, file_path: Path, sources: Sources, newly_removed: list[Verdict]) -> None:
     removed = [verdict.claim for verdict in newly_removed]
+    newly_removed = on_the_remade_deck(newly_removed, check.losing_slides)
     for _ in range(MAXIMUM_WITHDRAWAL_PASSES):
         if check.outcome != BLANKED or not newly_removed:
             return
@@ -239,18 +259,22 @@ def check_text(context: TaskContext, file_path: Path, snapshot: dict) -> ClaimCh
     check.asked = judgment.asked()
     check.add_cost(judgment.cost, judgment.calls)
     check.flagged = judgment.treated(BLANK)
+    blank_text_in_place(check, file_path, snapshot, is_every_source_read)
+    return check
+
+
+def blank_text_in_place(check: ClaimCheck, file_path: Path, snapshot: dict, is_every_source_read: bool) -> None:
     if not check.flagged:
-        return check
+        return
     if not is_every_source_read:
         check.outcome = UNREAD_SOURCES
-    elif is_deck(snapshot) and may_refuse(file_path, snapshot):
-        remember_refusal(file_path, snapshot)
-        check.outcome = REFUSED
-    elif blank_in_place(file_path, [verdict.claim for verdict in check.flagged]):
+        return
+    if is_deck(file_path, snapshot) and refuses(check, file_path, snapshot, check.flagged, []):
+        return
+    if blank_in_place(file_path, [verdict.claim for verdict in check.flagged]):
         check.outcome, check.blanked = BLANKED, [verdict.place for verdict in check.flagged]
-    else:
-        check.outcome = NOT_EDITABLE
-    return check
+        return
+    check.outcome = NOT_EDITABLE
 
 
 def remake_words(snapshot: dict, file_path: Path, paths: list[str], replacements: list[Claim]) -> list[str] | None:
