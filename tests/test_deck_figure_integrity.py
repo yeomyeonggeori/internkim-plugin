@@ -16,6 +16,7 @@ FIGURE_STYLE = """
 .amount { width: 330px; margin: 0; font-size: 150px; font-weight: 800; line-height: 1; }
 .amount small { font-size: 48px; margin-left: 10px; }
 .roomy { width: 900px; }
+.label { width: 330px; margin: 0; }
 """
 
 CHART = '<figure data-chart="bar" data-labels="Brakes, Steering, Housings" data-values="38, 27, 19" data-unit="억"><figcaption>Sales by product line</figcaption></figure>'
@@ -24,6 +25,7 @@ SQUEEZED_CHART = ' class="squeezed-chart"', f"<h2>Brakes lead sales by product l
 SYMBOL_TORN_FROM_ITS_NUMBER = "<h2>Margin fell this quarter</h2><p class=\"number\">8.4<small>%</small></p><p>Down from 9.7% a year ago.</p>"
 SYMBOL_WITH_ROOM = "<h2>Margin fell this quarter</h2><p class=\"number roomy\">8.4<small>%</small></p><p>Down from 9.7% a year ago.</p>"
 UNIT_LEFT_ON_A_LINE_OF_ITS_OWN = "<h2>정부 지원금은 4.5억 원입니다</h2><p class=\"amount\">4.5<small>억 원</small></p><p>총 사업비의 75%</p>"
+LABEL_LEFT_WITH_ONE_SYLLABLE = "<h2>시범 농가 64곳이 서비스를 썼습니다</h2><p class=\"label\">시범 사업에 참여한 딸기농가 수</p><p>2025년 시범 사업 기준</p>"
 UNIT_WITH_ROOM = "<h2>정부 지원금은 4.5억 원입니다</h2><p class=\"amount roomy\">4.5<small>억 원</small></p><p>총 사업비의 75%</p>"
 
 
@@ -53,9 +55,16 @@ class NumberAndUnitTest(unittest.TestCase):
 
     def test_a_unit_left_alone_on_the_last_line_is_refused(self):
         envelope = checked([UNIT_LEFT_ON_A_LINE_OF_ITS_OWN])
-        self.assertIn("TEXT_RUNT", codes_at(envelope, "page 2"), envelope["summary"])
+        runts = [issue for issue in issues_at(envelope, "TEXT_RUNT") if issue["location"] == "page 2"]
+        self.assertEqual([issue["severity"] for issue in runts], ["error"], envelope["summary"])
         message = next(issue["message"] for issue in issues_at(envelope, "TEXT_RUNT"))
         self.assertIn('"원"', message)
+
+    def test_a_one_syllable_last_line_in_body_text_is_only_a_warning(self):
+        envelope = checked([LABEL_LEFT_WITH_ONE_SYLLABLE])
+        runts = [issue for issue in issues_at(envelope, "TEXT_RUNT") if issue["location"] == "page 2"]
+        self.assertEqual([issue["severity"] for issue in runts], ["warning"], envelope["summary"])
+        self.assertIn('"수"', runts[0]["message"])
 
     def test_numbers_with_room_for_their_units_pass(self):
         envelope = checked([SYMBOL_WITH_ROOM, UNIT_WITH_ROOM])

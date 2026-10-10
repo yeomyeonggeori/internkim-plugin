@@ -60,12 +60,25 @@ const followsASpace = (stream, placed) => {
   return position > 0 && isWhitespace(stream[position - 1].character);
 };
 
+const largestTextSize = (block) => Math.max(...inlineTextNodes(block).map((node) => parseFloat(getComputedStyle(node.parentElement).fontSize) || 0));
+
+const displaySizeOf = (page) => {
+  const probe = document.createElement("i");
+  probe.style.setProperty("font-size", "var(--size-display)");
+  page.appendChild(probe);
+  const size = parseFloat(getComputedStyle(probe).fontSize) || Infinity;
+  probe.remove();
+  return size;
+};
+
 export function measureLineRunts(page, { describe, elementsOf }, { maximumCharacters }) {
+  const displaySize = displaySizeOf(page);
   return textBlocks(page, elementsOf).flatMap(({ block, stream }) => {
     const lines = linesOf(stream.filter((placed) => placed.rect));
     const last = lines.at(-1);
     const text = last.map((placed) => placed.character).join("");
     if (lines.length < 2 || text.length > maximumCharacters || !followsASpace(stream, last[0])) return [];
-    return [{ ...describe(block), detail: `its text wraps onto ${lines.length} lines and the last holds only "${text}"` }];
+    const severity = largestTextSize(block) >= displaySize ? {} : { severity: "warning" };
+    return [{ ...describe(block), ...severity, detail: `its text wraps onto ${lines.length} lines and the last holds only "${text}"` }];
   });
 }
