@@ -160,6 +160,7 @@ The proposal was a typed fact sheet with a verbatim quote per fact, references f
 | A paragraph states something the request does not | `merge` or `create` classifies each claim in the snapshot before it answers and makes the file again with each `claim` blank; expression stays |
 | The model writes its own script instead of the declaration | possible today through `office python`; the evaluation measured it and the rollout closes it |
 | The model asks for a value a known or derived field covers | cannot happen through the command: those fields are not in the guide's JSON Schema |
+| A PDF renderer cuts off text the page lays out | takumi-pdf 0.15.0 clips the end of every line inside an element with `opacity` below 1 that paints no box of its own, so before a deck's PDF is drawn its opacity is folded into the colors of the element and everything inside it (a picture, or a box with a shadow, filter or background image, keeps its own opacity); `office check` on any PDF, and every deck build, report `TEXT_NOT_DRAWN` for a character of the text layer whose box draws no ink |
 
 ## Evaluation
 

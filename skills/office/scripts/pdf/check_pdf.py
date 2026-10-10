@@ -21,6 +21,7 @@ from pdf.pdf_definitions import (
 )
 from core.text_checks import text_presence_issues
 from core.text_script import has_hangul
+from pdf.drawn_text import text_not_drawn_issues
 
 
 KOREAN_CHARACTER_COLLECTION = "Korea1"
@@ -39,6 +40,7 @@ def main() -> Result:
         + text_presence_issues(extracted_text, arguments.required_text, arguments.forbidden_text)
         + korean_font_issues(korean_fonts)
         + font_issues(font_summary, arguments.required_font)
+        + ([] if reader.is_encrypted else text_not_drawn_issues(source_path))
     )
     details = {
         "isPDF": source_path.read_bytes()[:4] == b"%PDF",

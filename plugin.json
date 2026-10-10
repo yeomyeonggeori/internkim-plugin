@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "internkim",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "Every skill from the InternKim agent, packaged to run on any Agent Plugins client, with InternKim's tool server declared for the workspace skills: office documents, calculation, weather, data room, tasks, calendar, messages and mail.",
   "license": "Apache-2.0",
   "repository": "https://github.com/yeomyeonggeori/internkim-plugin",

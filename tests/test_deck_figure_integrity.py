@@ -26,6 +26,7 @@ SYMBOL_TORN_FROM_ITS_NUMBER = "<h2>Margin fell this quarter</h2><p class=\"numbe
 SYMBOL_WITH_ROOM = "<h2>Margin fell this quarter</h2><p class=\"number roomy\">8.4<small>%</small></p><p>Down from 9.7% a year ago.</p>"
 UNIT_LEFT_ON_A_LINE_OF_ITS_OWN = "<h2>정부 지원금은 4.5억 원입니다</h2><p class=\"amount\">4.5<small>억 원</small></p><p>총 사업비의 75%</p>"
 LABEL_LEFT_WITH_ONE_SYLLABLE = "<h2>시범 농가 64곳이 서비스를 썼습니다</h2><p class=\"label\">시범 사업에 참여한 딸기농가 수</p><p>2025년 시범 사업 기준</p>"
+YEAR_BESIDE_ITS_QUARTER = "<h2>양산은 2027년 1분기에 시작합니다</h2><p class=\"number\">2027<small>1분기</small></p><p>신규 수주 2건, 연간 32억 원</p>"
 UNIT_WITH_ROOM = "<h2>정부 지원금은 4.5억 원입니다</h2><p class=\"amount roomy\">4.5<small>억 원</small></p><p>총 사업비의 75%</p>"
 
 
@@ -52,6 +53,12 @@ class NumberAndUnitTest(unittest.TestCase):
         self.assertIn("BROKEN_WORD", codes_at(envelope, "page 2"), envelope["summary"])
         message = next(issue["message"] for issue in issues_at(envelope, "BROKEN_WORD"))
         self.assertIn('"8.4%"', message)
+
+    def test_a_number_wrapped_inside_itself_beside_a_label_in_its_own_element_is_a_broken_word(self):
+        envelope = checked([YEAR_BESIDE_ITS_QUARTER])
+        self.assertIn("BROKEN_WORD", codes_at(envelope, "page 2"), envelope["summary"])
+        message = next(issue["message"] for issue in issues_at(envelope, "BROKEN_WORD"))
+        self.assertIn('"2027" is split', message)
 
     def test_a_unit_left_alone_on_the_last_line_is_refused(self):
         envelope = checked([UNIT_LEFT_ON_A_LINE_OF_ITS_OWN])

@@ -19,6 +19,7 @@ import { extractNativeCharts } from "./native_charts.mjs";
 import { extractNativeIcons } from "./native_icons.mjs";
 import { attachConnectorShapes, extractNativeConnectors } from "./native_connectors.mjs";
 import { extractNativeTables, hideNativeTables, nativeCellAttribute, nativeTableAttribute } from "./native_tables.mjs";
+import { foldOpacityIntoPaint } from "./pdf_opacity.mjs";
 import { measurePageGeometry } from "./page_geometry.mjs";
 import { analyzePagePixels } from "./page_pixels.mjs";
 import { exportedListAttribute, exportedTextAttribute, extractTextLayout, hideExportedText, insertMarkerProbes, markerProbeAttribute, markerProbeHostId } from "./text_layout.mjs";
@@ -192,11 +193,13 @@ async function writeDrawnPages(drawn, pathOf) {
 }
 
 async function writePdf(pdfPath, layout, inlineStyles, pages, css, fonts, bytesOf) {
+  const restoreOpacity = foldOpacityIntoPaint(pages, layout.styles);
   await inlineStyles.prepare(pages);
   pages.forEach((page, index) => page.setAttribute(pageAttribute, index === pages.length - 1 ? "last" : "page"));
   const size = layout.sizeOf(pages[0]);
   const html = inlineStyles.filterHtml(documentFragmentHtml(pages));
   pages.forEach((page) => page.removeAttribute(pageAttribute));
+  restoreOpacity();
   const pdf = await renderPdf(html, {
     size: { width: size.width, height: size.height },
     margin: 0,

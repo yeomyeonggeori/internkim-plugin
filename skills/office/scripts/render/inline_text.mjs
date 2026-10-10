@@ -2,6 +2,8 @@ const isWhitespace = (character) => /\s/u.test(character);
 
 const isEastAsian = (word) => /[　-鿿가-힯]/u.test(word);
 
+const isDigit = (character) => /\p{N}/u.test(character);
+
 const isInline = (element) => getComputedStyle(element).display === "inline";
 
 const inlineTextNodes = (block) =>
@@ -14,10 +16,10 @@ const inlineTextNodes = (block) =>
 const placedCharacters = (node) => {
   const range = document.createRange();
   return Array.from(node.textContent).map((character, offset) => {
-    if (isWhitespace(character)) return { character, rect: null };
+    if (isWhitespace(character)) return { character, node, rect: null };
     range.setStart(node, offset);
     range.setEnd(node, offset + 1);
-    return { character, rect: range.getClientRects()[0] || null };
+    return { character, node, rect: range.getClientRects()[0] || null };
   });
 };
 
@@ -32,9 +34,15 @@ const linesOf = (characters) =>
     return lines;
   }, [[]]);
 
+const startsAnotherWord = (preceding, placed) =>
+  isEastAsian(preceding.character) !== isEastAsian(placed.character) ||
+  (preceding.node !== placed.node && isDigit(preceding.character) && isDigit(placed.character));
+
 const wordsOf = (stream) =>
   stream.reduce((words, placed) => {
     if (!placed.rect) return isWhitespace(placed.character) && words.at(-1).length ? [...words, []] : words;
+    const preceding = words.at(-1).at(-1);
+    if (preceding && startsAnotherWord(preceding, placed)) return [...words, [placed]];
     words.at(-1).push(placed);
     return words;
   }, [[]]).filter((word) => word.length > 0);

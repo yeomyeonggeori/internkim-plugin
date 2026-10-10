@@ -17,6 +17,7 @@ from deck.outline import OUTLINE_ISSUE_KINDS
 from deck.page_checks import PAGE_CHECK_ISSUE_KINDS
 from deck.check_deck import STAGE_ISSUE_KINDS
 from render.renderer import RENDER_ISSUE_KINDS
+from pdf.pdf_definitions import TEXT_NOT_DRAWN
 from core.text_checks import PLACEHOLDER_LEFT, TEXT_CHECK_ISSUE_KINDS
 
 
@@ -52,6 +53,7 @@ CHECK_ISSUE_KINDS = (
 
 BUILD_ISSUE_KINDS = (
     *RENDER_ISSUE_KINDS,
+    TEXT_NOT_DRAWN,
     SOURCE_NOT_HTML,
     NO_SLIDE_SECTIONS,
     FONT_NOT_EMBEDDED,
