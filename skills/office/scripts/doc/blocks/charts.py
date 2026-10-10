@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from charts.kinds import DOCUMENT_CHART_KINDS, ROUND_CHART_KINDS, kit_document_kind
+from charts.kinds import DOCUMENT_CHART_KINDS, ROUND_CHART_KINDS, kit_document_kind, single_slice_problem
 from charts.numbers import chart_number, split_chart_list
 from doc.doc_definitions import CHART_BLOCK_INVALID, CHART_KEYS
 from core.office_result import OfficeFailure
@@ -59,6 +59,7 @@ def chart_specification(entries: dict[str, str]) -> tuple[dict, list[str]]:
             problems.append(f"{entry['name']} has {len(entry['values'])} numbers for {len(categories)} labels")
     if kind in ROUND_CHART_KINDS and len(series) > 1:
         problems.append(f"a {kind} chart takes one series in values:")
+    problems += [problem for problem in (single_slice_problem(kind, len(categories)),) if problem]
     specification = {"type": kind, "categories": categories, "series": series}
     if entries.get("title"):
         specification["title"] = entries["title"]

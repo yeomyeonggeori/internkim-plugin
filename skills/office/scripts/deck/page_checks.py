@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import pathlib
 import re
 
-from charts.kinds import KIT_STACKED_CHARTS, is_round_kind
+from charts.kinds import KIT_STACKED_CHARTS, is_round_kind, single_slice_problem
 from charts.numbers import chart_number, split_chart_list
 from core.css_color import parse_css_color
 from core.office_result import ERROR, WARNING, Issue, IssueKind
@@ -138,7 +138,7 @@ def shape_problems(chart_type: str, labels: list[str], series: list[tuple[str, l
         problems.append(f"a {chart_type} chart needs positive shares")
     if len(labels) > DONUT_SLICE_MAXIMUM:
         problems.append(f"{len(labels)} slices are too many to read; group the smallest into one")
-    return problems
+    return [*problems, single_slice_problem(chart_type, len(labels))]
 
 
 def chart_figure_issues(page: Page) -> list[Issue]:

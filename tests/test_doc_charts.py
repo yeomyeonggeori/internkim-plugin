@@ -94,6 +94,12 @@ class DocumentChartTest(unittest.TestCase):
         self.assertEqual(envelope["status"], "error")
         self.assertEqual(envelope["issues"][0]["location"], "ops[0].series[0].values")
 
+    def test_a_doughnut_block_with_one_part_of_its_whole_stops_the_export(self):
+        (self.directory / "report.md").write_text("```chart\ntype: doughnut\nlabels: 완성차 1차 협력사\nvalues: 72\n```\n", encoding="utf-8")
+        envelope = run_office(["create", "report.docx", "report.md"], self.directory)
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["CHART_BLOCK_INVALID"])
+        self.assertIn("reads as 100%", envelope["issues"][0]["message"])
+
     def test_a_malformed_chart_block_stops_the_export(self):
         (self.directory / "report.md").write_text("```chart\ntype: column\nlabels: 가, 나\nvalues: 1, 둘\n```\n", encoding="utf-8")
         envelope = run_office(["create", "report.docx", "report.md"], self.directory)
