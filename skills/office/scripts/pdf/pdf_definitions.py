@@ -52,6 +52,7 @@ REQUIRED_FONT_MISSING = IssueKind("REQUIRED_FONT_MISSING", ERROR, "no font name 
 NO_FONT_RESOURCES = IssueKind("NO_FONT_RESOURCES", WARNING, "no page declares a font resource", "check whether the text was drawn as images")
 KOREAN_FONT_MISSING = IssueKind("KOREAN_FONT_MISSING", ERROR, "Korean text is drawn with a font the PDF neither embeds nor declares as Korean, so a reader shows boxes or wrong glyphs", "rebuild the PDF with office create or office convert, which embed a Korean font")
 KOREAN_FONT_NOT_EMBEDDED = IssueKind("KOREAN_FONT_NOT_EMBEDDED", WARNING, "Korean text is drawn with a declared Korean font the PDF does not embed, so each reader substitutes its own", "rebuild the PDF with office create or office convert, which embed the font")
+TEXT_NOT_DRAWN = IssueKind("TEXT_NOT_DRAWN", ERROR, "characters the PDF's text holds draw nothing on the page: a clip or a mask cut them off, so a reader sees words with their ends missing", "change the styling around the named words, such as a translucent box or a clipped container, then make the PDF again and check that every character draws")
 
 
 PAGE_WITHOUT_TEXT = IssueKind("PAGE_WITHOUT_TEXT", WARNING, "a PDF page has no text layer: it is a scan or a picture", "rerun the command with --ocr to read those pages' text, or draw them with office render --pages and read each PNG with your own image tool")
@@ -73,6 +74,7 @@ CHECK_ISSUE_KINDS = (
     NO_FONT_RESOURCES,
     KOREAN_FONT_MISSING,
     KOREAN_FONT_NOT_EMBEDDED,
+    TEXT_NOT_DRAWN,
 )
 
 GUIDE_INPUTS = (

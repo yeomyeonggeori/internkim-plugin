@@ -22,6 +22,7 @@ from deck.review.visual_review import write_visual_review
 from deck.slide_structure import extract_notes
 from deck.source_preflight import read_checked_source
 from host import script_host
+from pdf.drawn_text import text_not_drawn_issues
 from powerpoint.chart_audit import presentation_chart_issues
 from render.renderer import PIXELS_FILE_NAME, RENDER_FAILED, RENDERER_UNAVAILABLE, RenderFailed, RendererUnavailable, RenderRequest, render_html, render_issues
 
@@ -99,7 +100,7 @@ def deliverable_path(request: ExportRequest) -> str:
 
 
 def write_derived_outputs(request: ExportRequest, html_output_path: pathlib.Path, slide_sources: list[str]) -> DerivedOutputs:
-    issues = render_deck(request, html_output_path)
+    issues = render_deck(request, html_output_path) + pdf_drawing_issues(request)
     pptx_details = None
     if "pptx" in request.formats:
         pptx_details, pptx_issues = write_pptx(request, [extract_notes(slide_source) for slide_source in slide_sources])
@@ -107,6 +108,11 @@ def write_derived_outputs(request: ExportRequest, html_output_path: pathlib.Path
     review = review_deck(request.source_path, request.deck_name, request.review_path)
     issues.extend(review.issues)
     return DerivedOutputs(issues, pptx_details, review)
+
+
+def pdf_drawing_issues(request: ExportRequest) -> list[Issue]:
+    pdf_path = request.output_path(".pdf")
+    return text_not_drawn_issues(pdf_path) if "pdf" in request.formats and pdf_path.exists() else []
 
 
 def output_formats(requested: str) -> set[str]:

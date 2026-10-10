@@ -186,7 +186,7 @@ ROUTES = (
     Route("merge", "form", "paperwork.merge_form", "a form on letterhead to .pdf, or a contract to .docx", outputs=(".pdf", ".docx"), label="<jurisdiction>/<form>"),
     Route("check", "docx", "doc.check_docx", "placeholders, references, contents list, fonts, pictures, comments, layout, required text", TEXT_FLAGS),
     Route("check", "xlsx", "sheet.check_xlsx", "formula errors, broken names, numbers stored as text, wide numbers, frozen headers, filters and required text", TEXT_FLAGS),
-    Route("check", "pdf", "pdf.check_pdf", "pages, extractable text, embedded fonts and required text", TEXT_FLAGS + ("--minimum-pages", "--maximum-pages", "--minimum-text-length", "--required-font", "--password")),
+    Route("check", "pdf", "pdf.check_pdf", "pages, extractable text, text that draws nothing, embedded fonts and required text", TEXT_FLAGS + ("--minimum-pages", "--maximum-pages", "--minimum-text-length", "--required-font", "--password")),
     Route("check", "pptx", "powerpoint.check_pptx", "text overflowing, shapes off the slide and overlaps, slide count and required text, with slide images", ("--slide-count",) + TEXT_FLAGS + ("--pages", "--output-directory", "--no-preview")),
     Route("check", "slides", "deck.check_deck", "one stage of a deck: the style sheet, the outline, one page measured alone, or the whole deck folder", ("--slide-count",) + TEXT_FLAGS),
     Route("check", "form", "paperwork.check_form", "a form's row amounts, totals, tax and amount in words, and a contract's terms and clauses, never rewriting it", label="form values", needs_packages=False),
