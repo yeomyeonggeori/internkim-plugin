@@ -54,6 +54,11 @@ function boxReader(page, tools) {
     return isFilled(element) || (style.backgroundImage && style.backgroundImage !== "none") || borderWidths(style).some((width) => width >= 0.5);
   };
 
+  const readsAsBox = (element) => {
+    const style = styleOf(element);
+    return isFilled(element) || (style.backgroundImage && style.backgroundImage !== "none") || hasFullBorder(style);
+  };
+
   const isCard = (element) => {
     if (element === page || tableParts.has(element.tagName.toUpperCase()) || element.closest("svg, figure, table")) return false;
     const style = styleOf(element);
@@ -65,12 +70,12 @@ function boxReader(page, tools) {
 
   const shownParts = () => tools.elementsOf(page).slice(1).filter((element) => !element.closest("aside"));
 
-  return { styleOf, rectOf, backgroundOf, isPainted, isCard, shownParts };
+  return { styleOf, rectOf, backgroundOf, isPainted, readsAsBox, isCard, shownParts };
 }
 
 export function measureDesignRules(page, rules, tools) {
   const { describe, elementsOf, ownTextRects, descendantTextRects, slideSize, backgroundShareOfSlide } = tools;
-  const { styleOf, rectOf, backgroundOf, isPainted, isCard, shownParts } = boxReader(page, tools);
+  const { styleOf, rectOf, backgroundOf, isPainted, readsAsBox, isCard, shownParts } = boxReader(page, tools);
   const finding = (element, detail) => ({ ...describe(element), detail });
   const fontSize = (element) => pixels(styleOf(element).fontSize);
   const textElements = () => elementsOf(page).filter((element) => ownTextRects(element).length > 0);
@@ -84,23 +89,40 @@ export function measureDesignRules(page, rules, tools) {
     }));
   };
 
-  const drawnBoxes = () => {
+  const drawnBoxes = (isBox = isPainted) => {
     const pageArea = areaOf(rectOf(page));
     return shownParts()
-      .filter((element) => element.matches("img, svg, canvas, video, figure, table") || (isPainted(element) && areaOf(rectOf(element)) < pageArea * backgroundShareOfSlide))
+      .filter((element) => element.matches("img, svg, canvas, video, figure, table") || (isBox(element) && areaOf(rectOf(element)) < pageArea * backgroundShareOfSlide))
       .map(rectOf)
       .filter((rect) => rect.width > 0 && rect.height > 0);
   };
 
-  const drawnRects = () => [...shownParts().flatMap((element) => ownTextRects(element)), ...drawnBoxes()];
+  const isRule = (rect, ruleMaximum) => Math.min(rect.width, rect.height) <= ruleMaximum;
 
-  const widestEmptyBand = (rects, frame) => {
+  const fillingBoxes = (ruleMaximum) => drawnBoxes(readsAsBox).filter((rect) => !isRule(rect, ruleMaximum));
+
+  const fillingRects = (ruleMaximum) => [...shownParts().flatMap((element) => ownTextRects(element)), ...fillingBoxes(ruleMaximum)];
+
+  const contentRects = (container) => [
+    ...descendantTextRects(container),
+    ...Array.from(container.querySelectorAll("img, svg, canvas, video, figure, table")).map(rectOf),
+  ].filter((rect) => rect.width > 0 && rect.height > 0);
+
+  const innerBox = (element) => {
+    const style = styleOf(element);
+    const rect = rectOf(element);
+    const top = rect.top + pixels(style.borderTopWidth) + pixels(style.paddingTop);
+    const bottom = rect.bottom - pixels(style.borderBottomWidth) - pixels(style.paddingBottom);
+    return { top, height: Math.max(0, bottom - top) };
+  };
+
+  const widestEmptyBand = (rects, frame, { fromTopEdge = false } = {}) => {
     const spans = rects
       .map((rect) => ({ top: Math.max(0, rect.top - frame.top), bottom: Math.min(frame.height, rect.bottom - frame.top) }))
       .filter((span) => span.bottom > span.top)
       .sort((first, second) => first.top - second.top);
     if (spans.length === 0) return null;
-    let reached = spans[0].top;
+    let reached = fromTopEdge ? 0 : spans[0].top;
     let widest = { top: reached, bottom: reached };
     for (const span of [...spans, { top: frame.height, bottom: frame.height }]) {
       if (span.top - reached > widest.bottom - widest.top) widest = { top: reached, bottom: span.top };
@@ -185,12 +207,26 @@ export function measureDesignRules(page, rules, tools) {
       return band - top > maximumImbalance && isBandBoxed ? [finding(page, `the last text or picture ends ${Math.round(lowest)}px down the ${Math.round(pageRect.height)}px page, so the ${Math.round(band)}px under it hold nothing to read, against ${Math.round(top)}px above the first`)] : [];
     },
 
-    verticalFill: ({ maximumEmptyShare, pageTypes }) => {
+    verticalFill: ({ maximumEmptyShare, ruleMaximum, pageTypes }) => {
       if (!pageTypes.includes(page.dataset.type || "")) return [];
       const frame = rectOf(page);
-      const band = widestEmptyBand(drawnRects(), frame);
+      const band = widestEmptyBand(fillingRects(ruleMaximum), frame);
       if (!band || band.bottom - band.top <= frame.height * maximumEmptyShare) return [];
       return [finding(page, describeBand(band, frame.height))];
+    },
+
+    cardFill: ({ maximumEmptyShare, minimumEmptyHeight, pageTypes }) => {
+      if (!pageTypes.includes(page.dataset.type || "")) return [];
+      const pageArea = areaOf(rectOf(page));
+      return shownParts()
+        .filter((element) => isCard(element) && !styleOf(element).backgroundImage.includes("url(") && areaOf(rectOf(element)) < pageArea * backgroundShareOfSlide)
+        .flatMap((card) => {
+          const inner = innerBox(card);
+          const gap = inner.height > 0 ? widestEmptyBand(contentRects(card), inner, { fromTopEdge: true }) : null;
+          const empty = gap ? gap.bottom - gap.top : 0;
+          if (empty < minimumEmptyHeight || empty <= inner.height * maximumEmptyShare) return [];
+          return [finding(card, `nothing is drawn across ${Math.round(empty)}px (${Math.round((empty / inner.height) * 100)}%) of its ${Math.round(inner.height)}px inner height, from ${Math.round(gap.top)}px to ${Math.round(gap.bottom)}px down the box`)];
+        });
     },
 
     inkBoxes: (threshold) => measureInkBoxes(page, { describe, elementsOf, ownTextRects, isPainted }, threshold),
@@ -209,7 +245,9 @@ export function measureDesignRules(page, rules, tools) {
     },
   };
 
-  return rules.flatMap((rule) => measures[rule.measure](rule.threshold).map((found) => ({ code: rule.code, ...found })));
+  const findings = rules.flatMap((rule) => measures[rule.measure](rule.threshold).map((found) => ({ code: rule.code, ...found })));
+  const superseded = new Set(rules.filter((rule) => findings.some((found) => found.code === rule.code)).flatMap((rule) => rule.supersedes || []));
+  return findings.filter((found) => !superseded.has(found.code));
 }
 
 const isNear = (first, second, tolerance) => Math.abs(first - second) <= tolerance * Math.max(first, second);

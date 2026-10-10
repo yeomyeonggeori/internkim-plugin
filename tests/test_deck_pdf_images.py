@@ -14,7 +14,7 @@ PHOTO_STYLE = """
 .cover-photo { position: absolute; right: 0; top: 0; width: 800px; height: 900px; object-fit: cover; }
 """
 COVER = '<img class="cover-photo" src="images/shelves.png" alt="진열대"><h1>진열대가 비기 전에 알려 드립니다</h1><p>사업개발팀 최견본</p>'
-STATEMENT = '<h2>재고 확인이 하루 47분 줄어듭니다</h2><div class="fill"></div>'
+STATEMENT = '<h2>재고 확인이 하루 47분 줄어듭니다</h2><table style="flex: 1"><tr><th>매장</th><th>하루 절감</th></tr><tr><td>강남점</td><td>52분</td></tr><tr><td>판교점</td><td>41분</td></tr></table>'
 PHOTO_SIZE = (4000, 2800)
 IMAGE_PATTERN = re.compile(rb"/Subtype\s*/Image(.{0,400}?)stream", re.S)
 
