@@ -21,6 +21,8 @@ const sides = ["Top", "Right", "Bottom", "Left"];
 const tableParts = new Set(["TABLE", "THEAD", "TBODY", "TFOOT", "TR", "TD", "TH", "CAPTION", "COLGROUP", "COL"]);
 
 import { measureInkBoxes } from "./ink_boxes.mjs";
+import { measureBrokenWords, measureLineRunts } from "./inline_text.mjs";
+import { nativeChartOf } from "./native_charts.mjs";
 
 const sameColor = (first, second) => ["red", "green", "blue"].every((channel) => Math.abs(first[channel] - second[channel]) < 2);
 
@@ -193,27 +195,11 @@ export function measureDesignRules(page, rules, tools) {
       return [...bordered, ...strips];
     },
 
-    brokenWord: ({ maximumCharacters }) =>
-      textElements().flatMap((element) =>
-        Array.from(element.childNodes)
-          .filter((node) => node.nodeType === Node.TEXT_NODE)
-          .flatMap((node) =>
-            Array.from(node.textContent.matchAll(/\S+/g))
-              .filter((word) => word[0].length >= 2 && word[0].length <= maximumCharacters && !/[\u3000-\u9fff\uac00-\ud7af]/.test(word[0]))
-              .filter((word) => {
-                const range = document.createRange();
-                range.setStart(node, word.index);
-                range.setEnd(node, word.index + word[0].length);
-                const lines = new Set(Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0).map((rect) => Math.round(rect.top / Math.max(fontSize(element) / 2, 1))));
-                return lines.size > 1;
-              })
-              .map((word) => finding(element, `"${word[0]}" is split across two lines`)),
-          ),
-      ),
+    brokenWord: (threshold) => measureBrokenWords(page, { describe, elementsOf }, threshold),
 
     chartCollapsed: ({ minimumHeight, minimumWidth }) =>
       Array.from(page.querySelectorAll("figure[data-chart]")).flatMap((figure) => {
-        const box = rectOf(figure);
+        const box = rectOf(nativeChartOf(figure));
         return box.height < minimumHeight || box.width < minimumWidth ? [finding(figure, `a chart drawn ${Math.round(box.width)}x${Math.round(box.height)}px, too small to show its marks`)] : [];
       }),
 
@@ -258,6 +244,8 @@ export function measureDesignRules(page, rules, tools) {
     },
 
     inkBoxes: (threshold) => measureInkBoxes(page, { describe, elementsOf, ownTextRects, isPainted }, threshold),
+
+    lineRunt: (threshold) => measureLineRunts(page, { describe, elementsOf }, threshold),
 
     textSize: ({ bodyMinimum, captionMinimum, bodyCharacters, bodyWords }) => {
       const isChartText = (element) => element.closest("svg, figure[data-chart], [data-native-chart]");

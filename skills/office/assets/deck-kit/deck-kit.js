@@ -106,11 +106,21 @@
     return /^\p{Script=Latin}{2,}/u.test(trimmed) ? " " + trimmed : trimmed;
   }
 
+  function unitParts(text) {
+    const trimmed = text.trim();
+    const prefix = (/^\p{Sc}+/u.exec(trimmed) || [""])[0];
+    return { prefix, unit: spacedUnit(trimmed.slice(prefix.length)) };
+  }
+
   function axisUnits(figure, type) {
     const text = figure.getAttribute("data-unit") || "";
-    if (!twoAxisTypes.has(type)) return [spacedUnit(text), spacedUnit(text)];
-    const units = text.split(",").map(spacedUnit);
+    if (!twoAxisTypes.has(type)) return [unitParts(text), unitParts(text)];
+    const units = text.split(",").map(unitParts);
     return [units[0], units.length > 1 ? units[1] : units[0]];
+  }
+
+  function withUnit(text, parts) {
+    return parts.prefix + text + parts.unit;
   }
 
   function seriesFormats(figure, type, series) {
@@ -119,7 +129,7 @@
     const decimals = [0, 1].map((axis) => decimalsOf(series.filter((_, index) => axes[index] === axis)));
     return axes.map((axis) => {
       const formatter = new Intl.NumberFormat(locale(), { maximumFractionDigits: decimals[axis], minimumFractionDigits: decimals[axis] });
-      return { unit: units[axis], decimals: decimals[axis], format: (value) => formatter.format(value) + units[axis] };
+      return { ...units[axis], decimals: decimals[axis], format: (value) => withUnit(formatter.format(value), units[axis]) };
     });
   }
 
@@ -326,6 +336,7 @@
       });
     });
     area.appendChild(element("div", "kit-baseline kit-vertical", { left: percent(zero) }));
+    chart.primaryRange = scaledRange(range.minimum, range.minimum + (range.maximum - range.minimum) / barScaleShare);
   }
 
   function lineX(count) {
@@ -445,13 +456,13 @@
     return [shared, shared];
   }
 
-  function addRightTicks(chart, area, range, unit) {
+  function addRightTicks(chart, area, range, parts) {
     chart.classList.add("kit-right-axis");
     const row = element("div", "kit-axis-row");
     const rail = element("div", "kit-tick-rail");
     area.replaceWith(row);
     row.append(area, rail);
-    axisTicks(range, unit).forEach(({ share, text }) => {
+    axisTicks(range, parts).forEach(({ share, text }) => {
       const tick = element("span", `kit-tick kit-right ${edgeTickClasses[100 - share] || ""}`.trim(), { top: percent(100 - share) });
       tick.textContent = text;
       rail.appendChild(tick);
@@ -464,7 +475,7 @@
     const lineIndex = data.series.length - 1;
     const color = seriesColors(data.series.length)[lineIndex];
     const columnValues = columns.series.flatMap((item) => item.values);
-    const ownAxis = lineNeedsOwnAxis(columnValues, line.values, formats[0].unit !== formats[lineIndex].unit);
+    const ownAxis = lineNeedsOwnAxis(columnValues, line.values, withUnit("", formats[0]) !== withUnit("", formats[lineIndex]));
     const [columnScale, lineScale] = comboRanges(columnValues, line.values, ownAxis);
     const { area, xOf } = renderColumns(figure, columns, chart, formats, "combo", columnScale);
     const position = (index, value) => ({ x: xOf(index), y: (1 - lineScale.share(value)) * 100 });
@@ -473,7 +484,7 @@
     addDots(area, line.values, color, position);
     const inkOver = columnInkOver(figure, columns, columnScale, seriesColors(data.series.length));
     lineLabels(line.values, lineIndex, formats[lineIndex].format, position, data.labels.length <= 8, (index, value) => value < 0, inkOver).forEach((label) => area.appendChild(label));
-    if (ownAxis) addRightTicks(chart, area, lineScale, formats[lineIndex].unit);
+    if (ownAxis) addRightTicks(chart, area, lineScale, formats[lineIndex]);
     chart.primaryRange = columnScale;
     chart.secondaryRange = ownAxis ? lineScale : null;
   }
@@ -495,13 +506,13 @@
     return Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
   }
 
-  function axisTicks(range, unit) {
+  function axisTicks(range, parts) {
     const decimals = stepDecimals(range.step);
     const formatter = new Intl.NumberFormat(locale(), { maximumFractionDigits: decimals, minimumFractionDigits: decimals });
     const count = Math.round((range.maximum - range.minimum) / range.step);
     return Array.from({ length: count + 1 }, (_, index) => {
       const value = range.minimum + index * range.step;
-      return { share: Math.round(range.share(value) * 1000) / 10, text: formatter.format(value) + unit };
+      return { share: Math.round(range.share(value) * 1000) / 10, text: withUnit(formatter.format(value), parts) };
     });
   }
 
@@ -522,13 +533,13 @@
     const horizontalTitle = element("span", "kit-axis-title kit-axis-x");
     horizontalTitle.textContent = horizontal.name;
     chart.appendChild(horizontalTitle);
-    axisTicks(yRange, formats[1].unit).forEach(({ share, text }) => {
+    axisTicks(yRange, formats[1]).forEach(({ share, text }) => {
       area.appendChild(element("div", "kit-gridline", { top: percent(100 - share) }));
       const tick = element("span", `kit-tick ${edgeTickClasses[100 - share] || ""}`.trim(), { top: percent(100 - share) });
       tick.textContent = text;
       area.appendChild(tick);
     });
-    axisTicks(xRange, formats[0].unit).forEach(({ share, text }) => {
+    axisTicks(xRange, formats[0]).forEach(({ share, text }) => {
       area.appendChild(element("div", "kit-gridline kit-vertical", { left: percent(share) }));
       addCategory(categories, text, share).classList.add(edgeTickClasses[share] || "kit-middle");
     });
@@ -585,7 +596,7 @@
       ring.appendChild(center);
     }
     const legend = element("div", "kit-donut-legend");
-    const valuesAreShares = formats[0].unit.trim() === "%";
+    const valuesAreShares = withUnit("", formats[0]).trim() === "%";
     data.labels.forEach((label, index) => {
       const row = element("div");
       const name = element("span");
@@ -679,6 +690,7 @@
       labels: data.labels,
       series: data.series,
       units: formats.map((format) => format.unit),
+      unitPrefixes: formats.map((format) => format.prefix),
       decimals: formats.map((format) => format.decimals),
       startsAtZero: type !== "line" || lineStartsAtZero(figure),
       valueRange: rangeLimits(valueRange(figure, type, data, chart)),

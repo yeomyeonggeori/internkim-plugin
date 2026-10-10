@@ -239,17 +239,18 @@ class BuiltNativeChartTest(unittest.TestCase):
         self.assertIn("svg", preview)
 
     @unittest.skipUnless(can_render(), "needs bun, or node 18 or newer")
-    def test_a_unit_that_is_a_word_stands_apart_from_its_number_and_a_symbol_does_not(self):
+    def test_a_word_unit_stands_apart_a_symbol_follows_and_a_currency_symbol_leads(self):
         sections = [
             "<h2>Paying cafes grew every quarter</h2>" + figure("column", "Q1, Q2, Q3", "3100, 3500, 4200", "cafés"),
             "<h2>Churn fell every quarter</h2>" + figure("column", "Q1, Q2, Q3", "4.1, 3.6, 3.1", "%"),
+            "<h2>Revenue rose every quarter</h2>" + figure("bar", "Q1, Q2, Q3", "11.6, 12.9, 14.2", "$M"),
         ]
         with tempfile.TemporaryDirectory() as directory:
             deck_path = write_free_deck(Path(directory) / "units", sections)
             built = build_pptx(deck_path)
             presentation = Presentation(built["details"]["outputs"]["pptx"])
             formats = [{label.find(qn("c:numFmt")).get("formatCode") for label in chart_frame(slide).chart.plots[0].series[0]._element.iter(qn("c:dLbl"))} for slide in presentation.slides]
-        self.assertEqual(formats, [{'#,##0" cafés"'}, {'#,##0.0"%"'}])
+        self.assertEqual(formats, [{'#,##0" cafés"'}, {'#,##0.0"%"'}, {'"$"#,##0.0"M"'}])
 
     def assert_chart_left_the_background(self, layout: dict, backgrounds: dict) -> None:
         for number, background in backgrounds.items():
