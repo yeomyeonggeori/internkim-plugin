@@ -2,6 +2,8 @@ import { renderedFamilyResolver } from "./text_layout.mjs";
 
 export const nativeChartAttribute = "data-native-chart";
 
+export const nativeChartOf = (figure) => figure.querySelector(`[${nativeChartAttribute}]`) || figure;
+
 export function extractNativeCharts({ pages }) {
   const familyOf = renderedFamilyResolver();
   const round = (value) => Math.round(value * 100) / 100;

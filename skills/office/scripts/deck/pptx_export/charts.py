@@ -220,8 +220,17 @@ def values_xml(layout: dict, index: int, tag: str) -> str:
 def number_format(layout: dict, index: int) -> str:
     decimals = layout["decimals"][index]
     fraction = "." + "0" * decimals if decimals else ""
-    literal = layout["units"][index].replace('"', "")
-    return f'#,##0{fraction}"{literal}"' if literal else f"#,##0{fraction}"
+    return quoted_literal(unit_prefix(layout, index)) + f"#,##0{fraction}" + quoted_literal(layout["units"][index])
+
+
+def unit_prefix(layout: dict, index: int) -> str:
+    prefixes = layout.get("unitPrefixes") or []
+    return prefixes[index] if index < len(prefixes) else ""
+
+
+def quoted_literal(text: str) -> str:
+    literal = text.replace('"', "")
+    return f'"{literal}"' if literal else ""
 
 
 def solid_fill_xml(css_color: str) -> str:
@@ -412,7 +421,7 @@ def major_unit_xml(value_range: dict | None) -> str:
 
 
 def tick_format(layout: dict, index: int, value_range: dict) -> str:
-    return number_format({"decimals": {index: step_decimals(value_range["step"])}, "units": layout["units"]}, index)
+    return number_format({"decimals": {index: step_decimals(value_range["step"])}, "units": layout["units"], "unitPrefixes": layout.get("unitPrefixes")}, index)
 
 
 def step_decimals(step: float) -> int:

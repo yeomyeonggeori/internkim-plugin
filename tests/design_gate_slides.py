@@ -17,6 +17,8 @@ SEEDED_STYLE = """
 .stacked-b { position: absolute; left: 160px; top: 312px; width: 700px; margin: 0; }
 .tall-number { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 28px; background: var(--surface); border-radius: var(--radius); }
 .boxed-lower { flex: 1; padding: 28px; background: var(--surface); border-radius: var(--radius); }
+.amount { width: 330px; margin: 0; font-size: 150px; font-weight: 800; line-height: 1; }
+.amount small { font-size: 48px; margin-left: 10px; }
 """
 
 FOOT = PICTURE
@@ -42,6 +44,7 @@ SEEDED = {name: content if name in UNFOOTED else footed(content) for name, conte
     "CARD_NOT_FILLED": f'{HEADING}<div class="tall-number"><p class="big">18%</p></div>',
     "TEXT_TOO_SMALL": f'{HEADING}<p style="font-size: 16px">The logistics business closed the quarter above its plan in every region.</p>',
     "CHART_COLLAPSED": f'{HEADING}<figure data-chart="bar" data-labels="Q1, Q2" data-values="10, 12" style="width: 600px; height: 120px"></figure>',
+    "TEXT_RUNT": f'{HEADING}<p class="amount">4.5<small>억 원</small></p>',
 }.items()}
 
 CLEAN_STYLE = """
@@ -89,6 +92,8 @@ CLEAN = [
 VARIANT_STYLE = SEEDED_STYLE + """
 .topbar { border-top: 8px solid var(--accent); padding: 28px; background: var(--surface); }
 .clipper { height: 40px; overflow: hidden; }
+.torn-number { width: 340px; margin: 0; font-size: 190px; font-weight: 800; line-height: 1; }
+.torn-number small { font-size: 60px; margin-left: 14px; }
 .icon-over { position: absolute; left: 100px; top: 306px; width: 90px; height: 90px; }
 .low-column { position: absolute; left: 96px; top: 860px; width: 500px; margin: 0; }
 .centered-track { flex: 1; display: flex; flex-direction: column; justify-content: center; }
@@ -103,4 +108,5 @@ SEEDED_VARIANTS = [
     ("CONTENT_OVERLAP", f'{HEADING}<svg class="icon-over" aria-hidden="true" width="90" height="90"></svg><p class="stacked-a">The logistics business closed the quarter above its plan in every region.</p>'),
     ("PAGE_NOT_FILLED", f'{HEADING}<div class="centered-track">{BODY}</div>'),
     ("BROKEN_WORD", f'{HEADING}<table style="width: 160px"><tr><td style="word-break: break-all">$19/month</td></tr></table>'),
+    ("BROKEN_WORD", f'{HEADING}<p class="torn-number">8.4<small>%</small></p>'),
 ]

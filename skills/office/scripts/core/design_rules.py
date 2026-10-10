@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 import pathlib
 
@@ -37,9 +38,10 @@ def deck_rule_requests() -> dict[str, dict]:
 def render_rule_issues(findings: list[dict], location: str) -> list[Issue]:
     issues = []
     for code, kind in DESIGN_RULE_KINDS.items():
-        found = [finding for finding in findings if finding["code"] == code]
-        if found:
-            issues.append(kind.issue(f"{kind.meaning}: {named_findings(found)}", location))
+        for severity in (ERROR, WARNING):
+            found = [finding for finding in findings if finding["code"] == code and finding.get("severity", kind.severity) == severity]
+            if found:
+                issues.append(replace(kind, severity=severity).issue(f"{kind.meaning}: {named_findings(found)}", location))
     return issues
 
 
