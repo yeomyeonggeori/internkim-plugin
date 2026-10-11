@@ -17,6 +17,12 @@
       "nameKO": "설립·등록·정관",
       "parent": "C",
       "description": "Formation, articles, registrations and legal entity records.",
+      "fields": [
+        "jurisdiction",
+        "legalAttributes",
+        "fiscalYearEnd",
+        "address"
+      ],
       "choiceGroup": null
     },
     {
@@ -26,6 +32,9 @@
       "nameKO": "주주·지분",
       "parent": "C",
       "description": "Shareholder registers, capitalization tables and ownership records.",
+      "fields": [
+        "capital"
+      ],
       "choiceGroup": null
     },
     {
@@ -53,6 +62,10 @@
       "nameKO": "조직·인원 현황",
       "parent": "H",
       "description": "Organization charts, job descriptions and aggregate workforce information.",
+      "fields": [
+        "employeeCount",
+        "employees"
+      ],
       "choiceGroup": null
     },
     {
@@ -107,6 +120,11 @@
       "nameKO": "재무제표·감사보고서",
       "parent": "F",
       "description": "Financial statements, financial audit reports and consolidated results. Supporting accounting evidence belongs to FA.",
+      "fields": [
+        "annualRevenue",
+        "operatingProfit",
+        "netIncome"
+      ],
       "choiceGroup": null
     },
     {
@@ -134,6 +152,9 @@
       "nameKO": "은행·자금",
       "parent": "F",
       "description": "Bank statements, payments, treasury and account documentation. Excludes credentials and financing agreements, which belong to RA.",
+      "fields": [
+        "bankAccount"
+      ],
       "choiceGroup": null
     },
     {
@@ -215,6 +236,9 @@
       "nameKO": "제품소개·사용설명",
       "parent": "P",
       "description": "Product and service descriptions, catalogs and user-facing manuals. Persuasive sales materials belong to SS.",
+      "fields": [
+        "mau"
+      ],
       "choiceGroup": null
     },
     {
@@ -296,6 +320,9 @@
       "nameKO": "권리·등록",
       "parent": "I",
       "description": "Patents, trademarks, copyright ownership and intellectual property registrations.",
+      "fields": [
+        "ip"
+      ],
       "choiceGroup": null
     },
     {
@@ -323,6 +350,9 @@
       "nameKO": "인허가·인증·규제",
       "parent": "L",
       "description": "Permits, certifications, regulatory filings and compliance assessments.",
+      "fields": [
+        "certification"
+      ],
       "choiceGroup": null
     },
     {
@@ -368,6 +398,10 @@
       "nameKO": "투자·조달 발표자료",
       "parent": "R",
       "description": "Fundraising decks and investment or financing narratives. Source financial statements remain in FS.",
+      "fields": [
+        "funding",
+        "grant"
+      ],
       "choiceGroup": null
     },
     {
@@ -404,6 +438,24 @@
       "nameKO": "회사소개·연혁·전사 계획",
       "parent": "G",
       "description": "Company introductions, history, mission and general company plans. Financing presentations belong to RP.",
+      "fields": [
+        "name",
+        "brandName",
+        "slogan",
+        "description",
+        "foundedDate",
+        "representative",
+        "representativeTitle",
+        "officeAddress",
+        "website",
+        "email",
+        "phone",
+        "fax",
+        "history",
+        "product",
+        "award",
+        "reference"
+      ],
       "choiceGroup": null
     },
     {
