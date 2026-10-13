@@ -12,11 +12,11 @@ Use the typed operations for the persistent profile, numeric time series, histor
 
 ## Metrics
 
-For a new metric, first call `company_metric_list` for the relevant period. Identical data needs no write; a correction updates the existing period; only a genuinely new fact calls `company_metric_record`. Use one metric key across periods, choose year, quarter, or month deliberately, and never combine quarter and month. Money keeps the stated local `currency` and stated `valueUSD`; never estimate exchange rates. Non-money metrics use `unit` instead.
+For a new metric, first call `company_metric_list` for the relevant period. Identical data needs no write; a correction updates the existing period; only a genuinely new fact calls `company_metric_record`. Use one metric key across periods, choose year, quarter, or month deliberately, and never combine quarter and month. Money goes in `amount` as `{amount, currency}` in the stated currency, with the stated `usdEquivalent`; never estimate exchange rates. Anything else goes in `value` with a `unit`.
 
 ## Records
 
-For history, funding, products, certifications, IP, awards, references, or grants, first call `company_record_list` for the category and period. Identical facts need no write; changed details use `company_record_update` with the observed ID; new facts use `company_record_add`. Delete only on explicit request. Use structured attributes when a category has repeatable details.
+For history, funding, products, certifications, IP, awards, references, or grants, first call `company_record_list` for the category and period. Identical facts need no write; changed details use `company_record_update` with the observed ID; new facts use `company_record_add`. Delete only on explicit request. Put the money a record is about, such as a round or a grant, in `amount`; use structured attributes for other repeatable details.
 
 ## Profile
 
