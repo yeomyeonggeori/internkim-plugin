@@ -33,7 +33,8 @@
       "parent": "C",
       "description": "Shareholder registers, capitalization tables and ownership records.",
       "fields": [
-        "capital"
+        "capital",
+        "ownership"
       ],
       "choiceGroup": null
     },
