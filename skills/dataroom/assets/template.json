@@ -454,7 +454,8 @@
         "history",
         "product",
         "award",
-        "reference"
+        "reference",
+        "activity"
       ],
       "choiceGroup": null
     },
