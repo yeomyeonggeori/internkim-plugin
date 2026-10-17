@@ -3,7 +3,7 @@ name: company-data
 description: Record and look up company master data — metrics time series (연매출, 영업이익, MAU, 직원 수), history and assets (연혁, 투자 유치, 제품 출시, 특허, 인증, 수상, 레퍼런스), and the company document ledger. Use for 매출 기록, 지표 기록, 연혁 추가, 투자 이력, 회사 정보 수정, 우리가 보낸 계약서/견적서 조회, revenue record, funding history, company timeline requests. Do not use for creating documents — the office skill owns document generation.
 compatibility: Requires InternKim's tool server.
 metadata:
-  kim.intern.tool-references: "company_info_get company_info_set company_image_upload company_metric_list company_metric_record company_record_list company_record_add company_record_update company_record_delete company_document_list company_document_search company_document_register"
+  kim.intern.tool-references: "company_info_get company_info_set company_image_upload company_metric_list company_metric_record company_record_list company_record_add company_record_update company_record_delete company_equity_list company_equity_add company_equity_delete company_document_list company_document_search company_document_register"
 ---
 
 # Company Data
@@ -17,6 +17,10 @@ For a new metric, first call `company_metric_list` for the relevant period. Iden
 ## Records
 
 For history, funding, products, certifications, IP, awards, references, or grants, first call `company_record_list` for the category and period. Identical facts need no write; changed details use `company_record_update` with the observed ID; new facts use `company_record_add`. Delete only on explicit request. Put the money a record is about, such as a round or a grant, in `amount`; use structured attributes for other repeatable details.
+
+A round still being raised is a funding record whose `status` is in_progress, with its target in `amount`, dated when it is expected to close; when it closes, set its `status` to completed and its `amount` to what was raised. An investment deal in the CRM names its round with `fundingRoundHint`, and the round's won deals are what it has committed.
+
+The equity ledger holds every issuance, grant, transfer and cancellation as signed lines: `company_equity_list` before writing, `company_equity_add` for each line, two lines for a transfer. To start from a shareholder register, add one opening line per holder dated on the register's day. Take share counts from the register or the issuance documents; never derive them from amounts or percentages.
 
 ## Profile
 

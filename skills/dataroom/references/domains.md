@@ -1,10 +1,10 @@
-File by business function in a category without children or X. A parent without children is a filing destination. A parent grant includes current and future children. Company fields are the company profile keys, metric keys and record categories the company page shows to readers of that category, and `activity`, the company's attendance and work with names masked; a field no category names is shown only to readers of X.
+File by business function in a category without children or X. A parent without children is a filing destination. A parent grant includes current and future children. Company fields are the company profile keys, metric keys and record categories the company page shows to readers of that category, `activity`, the company's attendance and work with names masked, and `ownership`, the equity ledger summed by kind of holder; a field no category names is shown only to readers of X.
 
 | Code | Category | Parent | Scope | Company fields |
 |---|---|---|---|---|
 | `C` | Corporate | — | Legal entity, ownership and corporate decisions. |  |
 | `CR` | Registration | C | Formation, articles, registrations and legal entity records. | `jurisdiction`, `legalAttributes`, `fiscalYearEnd`, `address` |
-| `CO` | Ownership | C | Shareholder registers, capitalization tables and ownership records. | `capital` |
+| `CO` | Ownership | C | Shareholder registers, capitalization tables and ownership records. | `capital`, `ownership` |
 | `CG` | Governance | C | Board and shareholder decisions, minutes and delegated authorities. |  |
 | `H` | Human resources | — | Employment, organization and employee records. |  |
 | `HO` | Organization | H | Organization charts, job descriptions and aggregate workforce information. | `employeeCount`, `employees` |
