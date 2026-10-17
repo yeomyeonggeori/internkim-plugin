@@ -1,4 +1,4 @@
-File by business function in a category without children or X. A parent without children is a filing destination. A parent grant includes current and future children. Company fields are the company profile keys, metric keys and record categories the company page shows to readers of that category; a field no category names is shown only to readers of X.
+File by business function in a category without children or X. A parent without children is a filing destination. A parent grant includes current and future children. Company fields are the company profile keys, metric keys and record categories the company page shows to readers of that category, and `activity`, the company's attendance and work with names masked; a field no category names is shown only to readers of X.
 
 | Code | Category | Parent | Scope | Company fields |
 |---|---|---|---|---|
@@ -46,7 +46,7 @@ File by business function in a category without children or X. A parent without 
 | `RA` | Financing agreements | R | Equity and debt agreements, term sheets and financing negotiations. Resulting ownership registers belong to CO and resolutions to CG. |  |
 | `RR` | Investor reporting | R | Investor and lender updates and correspondence outside agreement negotiations. |  |
 | `G` | General company records | — | Company-wide records outside a specific business function; not miscellaneous storage. |  |
-| `GP` | Company profile | G | Company introductions, history, mission and general company plans. Financing presentations belong to RP. | `name`, `brandName`, `slogan`, `description`, `foundedDate`, `representative`, `representativeTitle`, `officeAddress`, `website`, `email`, `phone`, `fax`, `history`, `product`, `award`, `reference` |
+| `GP` | Company profile | G | Company introductions, history, mission and general company plans. Financing presentations belong to RP. | `name`, `brandName`, `slogan`, `description`, `foundedDate`, `representative`, `representativeTitle`, `officeAddress`, `website`, `email`, `phone`, `fax`, `history`, `product`, `award`, `reference`, `activity` |
 | `GC` | Company communications | G | General company announcements and communication records. |  |
 | `GE` | Company events | G | Company events and culture records, including event photos and recordings. |  |
 | `X` | Inbox | — | Unclassified or ambiguous documents. Choose X when context does not identify a destination. Do not invent missing facts. |  |
