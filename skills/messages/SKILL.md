@@ -1,9 +1,9 @@
 ---
 name: messages
-description: Read, search, post, update, and delete messages in the current conversation, and inspect the conversation a request arrived on. Use for chat, 채팅, 메시지, channel, thread, or team requests, and for leaving, editing, or removing a visible note in the current conversation (대화/스레드에 메모·노트 남기기, posted with message_send).
+description: Read, search, post, update, react to, and delete messages, inspect the conversation a request arrived on, and manage channels and direct conversations. Use for chat, 채팅, 메시지, 채널, 리액션, channel, thread, or team requests, and for leaving, editing, or removing a visible note in the current conversation (대화/스레드에 메모·노트 남기기, posted with message_send).
 compatibility: Requires InternKim's tool server.
 metadata:
-  kim.intern.tool-references: "message_context message_search message_send message_update message_delete"
+  kim.intern.tool-references: "message_context message_search message_send message_update message_delete message_reaction_add message_reaction_delete conversation_hide conversation_reveal channel_add channel_join channel_leave channel_delete channel_member_add channel_member_delete channel_owner_add channel_owner_update"
 ---
 
 # Messages
@@ -17,9 +17,16 @@ Call the typed message operations directly; descriptors define exact fields and 
 
 ## Write
 
-- Use `message_send` for a new message and `message_update` only with an observed message ID. Do not duplicate a successful post.
+- Use `message_send` for a new message and `message_update` only with an observed message ID: `oldText` with `newText` to correct one span, `text` to rewrite the whole message. Do not duplicate a successful post.
+- Use `message_reaction_add` and `message_reaction_delete` with an observed message ID to react as the requester.
 - Use `message_delete` only when the user explicitly requests deletion; approval is handled by the runtime.
 - Addressing a person rather than a conversation is the direct-message workflow.
+
+## Channels and direct conversations
+
+- Channel tools act as the requester, with the permissions their messenger screen has: `channel_add`, `channel_join`, `channel_leave`, `channel_delete`, `channel_member_add`, `channel_member_delete`, `channel_owner_add`, `channel_owner_update`. Name a channel by its exact ID or current name; when the tool asks which channel or person was meant, ask the user rather than guessing.
+- A refusal because the requester is not an owner is the answer, not an error to work around.
+- `conversation_hide` and `conversation_reveal` change only the requester's own list of direct conversations.
 
 ## Reporting
 
