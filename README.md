@@ -90,8 +90,11 @@ the skills install are in [DOCS.md](DOCS.md). Using InternKim itself is at
 ## Contributing
 
 ```sh
-python3 -m unittest discover -s tests
+tests/run
 ```
+
+The tests import the office skill's dependencies, so they run in the Python
+environment `office setup` prepares; `tests/run` prepares it first.
 
 A pull request that changes what an installed copy does also raises `version`
 in `plugin.json`. Clients cache a plugin under its version, so a change
