@@ -79,11 +79,13 @@ as the directory holding that `SKILL.md`. Nothing here names a host layout.
 
 ```bash
 skills-ref validate skills/<name>
-python3 -m unittest discover -s tests
+tests/run
 ```
 
 Every skill passes the [Agent Skills](https://agentskills.io/specification)
-reference validator. The unit tests hold the bundle to what this page
+reference validator. `tests/run` prepares the office environment with
+`office setup`, runs each test file in it at once, and names the files that
+failed; `tests/run test_doc_render` runs one. The unit tests hold the bundle to what this page
 promises: the copies of `scripts/skill_runtime.py` in `office` and `dataroom`
 stay one file, every `office` command runs a bundled script and every command
 a reference names exists, every command answers with the result envelope,
