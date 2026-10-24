@@ -136,7 +136,7 @@ def chart_html(chart: Chart, font_family: str) -> str:
 
 def html_block(block) -> str:
     if isinstance(block, SizedImage):
-        return f"<img src=\"{block.source}\" alt=\"{html.escape(block.alt, quote=True)}\" style=\"width:{block.width}px;height:{block.height}px\">"
+        return f"<div class=\"figure\"><img src=\"{block.source}\" alt=\"{html.escape(block.alt, quote=True)}\" style=\"width:{block.width}px;height:{block.height}px\"></div>"
     if isinstance(block, Heading):
         return f"<h{block.level}>{inline_html(block.text)}</h{block.level}>"
     if isinstance(block, Table):

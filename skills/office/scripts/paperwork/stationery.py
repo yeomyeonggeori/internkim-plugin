@@ -6,12 +6,14 @@ import mimetypes
 from pathlib import Path
 from string import Template
 
+from core.image_fit import sized_style
 from core.skill_paths import ASSETS_PATH
 from paperwork.jurisdictions import Labels
 from paperwork.paperwork_design import COLOR_INK, COLOR_MUTED, COLOR_RULE, SIZE_LETTERHEAD_DETAIL, SIZE_LETTERHEAD_NAME
 from render.office_preview import data_uri
 
 STATIONERY_CSS_PATH = ASSETS_PATH / "paperwork" / "stationery.css"
+PICTURE_BOXES_MILLIMETERS = {"logo": (45.0, 10.0), "stamp": (16.0, 16.0)}
 
 
 @dataclass(frozen=True)
@@ -85,7 +87,8 @@ def image_html(path_value: object, css_class: str) -> str:
     path = existing_file(path_value)
     if not path:
         return ""
-    return f'<img class="{css_class}" src="{data_uri(mimetypes.guess_type(path)[0] or "application/octet-stream", Path(path).read_bytes())}">'
+    style = sized_style(Path(path), *PICTURE_BOXES_MILLIMETERS[css_class], "mm")
+    return f'<img class="{css_class}" src="{data_uri(mimetypes.guess_type(path)[0] or "application/octet-stream", Path(path).read_bytes())}" style="{style}">'
 
 
 def existing_file(path_value: object) -> str:
