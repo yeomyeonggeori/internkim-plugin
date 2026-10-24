@@ -3,6 +3,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from balance.fit import fit_rhythm
+from balance.measure import measure_docx
+from balance.rhythm import Rhythm
 from fonts.docx_embedding import save_document
 from doc.blocks.writers import embedded_image, html_document
 from doc.blocks.docx import DEFAULT_DOCUMENT_FONT, markdown_document
@@ -29,7 +32,12 @@ def main() -> Result:
 
 
 def write_docx(blocks: list, output_path: Path, source_directory: Path, arguments) -> list[Issue]:
-    document, issues = markdown_document(blocks, arguments.font, arguments.font_size, source_directory)
+    def draw_at(rhythm: Rhythm):
+        document, _ = markdown_document(blocks, arguments.font, arguments.font_size, source_directory, rhythm)
+        save_document(document, output_path)
+        return measure_docx(output_path)
+
+    document, issues = markdown_document(blocks, arguments.font, arguments.font_size, source_directory, fit_rhythm(draw_at))
     save_document(document, output_path)
     return issues
 

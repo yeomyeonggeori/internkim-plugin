@@ -16,10 +16,10 @@ TABLE_PROPERTIES_AFTER_MARGINS = ("w:tblLook", "w:tblCaption", "w:tblDescription
 CELL_PROPERTIES_AFTER_SHADING = ("w:noWrap", "w:tcMar", "w:textDirection", "w:tcFitText", "w:vAlign", "w:hideMark")
 
 
-def format_table(table) -> None:
+def format_table(table, space: float = 1.0) -> None:
     properties = table._tbl.tblPr
     properties.insert_element_before(table_borders(), *TABLE_PROPERTIES_AFTER_BORDERS)
-    properties.insert_element_before(cell_margins(), *TABLE_PROPERTIES_AFTER_MARGINS)
+    properties.insert_element_before(cell_margins(space), *TABLE_PROPERTIES_AFTER_MARGINS)
     format_header_row(table.rows[0])
 
 
@@ -44,11 +44,11 @@ def table_borders():
     return borders
 
 
-def cell_margins():
+def cell_margins(space: float = 1.0):
     margins = OxmlElement("w:tblCellMar")
     for side, twips in CELL_MARGIN_TWIPS.items():
         margin = OxmlElement(f"w:{side}")
-        margin.set(qn("w:w"), str(twips))
+        margin.set(qn("w:w"), str(round(twips * space) if side in ("top", "bottom") else twips))
         margin.set(qn("w:type"), "dxa")
         margins.append(margin)
     return margins

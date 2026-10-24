@@ -90,6 +90,20 @@ One small expression language serves schema `derived` fields and workbook views,
 
 A paragraph is still free prose. It is the one place on this path where a fact the request does not state can still enter a document, as the failure modes below record.
 
+## Page balance
+
+A document is fitted to its pages by how it is drawn. The document PDF layout (`document-pdf.css`) and the Word writer take their vertical spacing, type size and line height from one `Rhythm` (`scripts/balance/`). When a document's last page is filled under 30%, it is drawn again with spacing, line height and type tightened within bounds, in the smallest step that removes that page. When no step does, the document is left as drawn and `office check` reports it. A short document stays at the top of its page, as a memo or letter does.
+
+`office check` reports `details` for every PDF and Word file, and raises the codes below for a file `merge` wrote from a schema (the file has its `.source.json`). It measures the rendered geometry of a PDF, or the laid-out pages of a Word file, against the body area set by the skill's margins (16 mm sides and top, 20 mm bottom):
+
+| Code | Fires when | Thresholds |
+| --- | --- | --- |
+| `LAST_PAGE_SPARSE` | the last page is nearly empty, or holds a few lines | under 15%, or under 30% with 3 lines or fewer (Word: under 15%) |
+| `PAGE_ENDS_EARLY` | a page followed by another ends above this share | 70% |
+| `LARGE_EMPTY_BAND` | two blocks of one page are this far apart | 25% of the body |
+
+`details` carries `pageFill`, `lastPageFill` and `largestEmptyBand`. The thresholds sit below what tightening reaches, so a warning means the layout could not balance that document.
+
 ## Workbooks
 
 A new workbook is declared, never hand-written. The model writes `<title>.workbook.json`:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from balance.issues import LAST_PAGE_SPARSE, balance_details, balance_issues, is_schema_document
+from balance.measure import measure_docx
 from core.office_result import Issue
 from doc.doc_definitions import HEADING_STRANDED
 from doc.model.body import body_block_elements, element_text
@@ -24,3 +26,9 @@ def stranded_heading_issue(page_number: int, heading, body: list) -> Issue:
     if index is None:
         return HEADING_STRANDED.issue(message, f"page {page_number}", "the heading sits inside a content control no block operation reaches; turn on keep with next for it in Word")
     return HEADING_STRANDED.issue(message, f"block {index}", fix=[{"op": "set_paragraph_format", "block": index, "keepWithNext": True}])
+
+
+def page_balance(document_path: str) -> tuple[list[Issue], dict]:
+    pages = measure_docx(Path(document_path))
+    issues = [issue for issue in balance_issues(pages) if issue.kind is LAST_PAGE_SPARSE] if is_schema_document(document_path) else []
+    return issues, balance_details(pages)
