@@ -1,9 +1,9 @@
 ---
 name: company-data
-description: Record and look up company master data — metrics time series (연매출, 영업이익, MAU, 직원 수), history and assets (연혁, 투자 유치, 제품 출시, 특허, 인증, 수상, 레퍼런스), and the company document ledger. Use for 매출 기록, 지표 기록, 연혁 추가, 투자 이력, 회사 정보 수정, 우리가 보낸 계약서/견적서 조회, revenue record, funding history, company timeline requests. Do not use for creating documents — the office skill owns document generation.
+description: Record and look up company master data — metrics time series (연매출, 영업이익, MAU), history and assets (연혁, 투자 유치, 제품 출시, 특허, 인증, 수상, 레퍼런스), and the company document ledger. Use for 매출 기록, 지표 기록, 연혁 추가, 투자 이력, 회사 정보 수정, 우리가 보낸 계약서/견적서 조회, revenue record, funding history, company timeline requests. Do not use for creating documents — the office skill owns document generation.
 compatibility: Requires InternKim's tool server.
 metadata:
-  kim.intern.tool-references: "company_info_get company_info_set company_image_upload company_metric_list company_metric_record company_record_list company_record_add company_record_update company_record_delete company_equity_list company_equity_add company_equity_delete company_document_list company_document_search company_document_register"
+  kim.intern.tool-references: "company_info_get company_info_set company_image_upload company_metric_list company_metric_record company_record_list company_record_add company_record_update company_record_delete company_equity_list company_equity_add company_equity_delete company_document_list company_document_search company_document_register person_update"
 ---
 
 # Company Data
@@ -12,7 +12,9 @@ Use the typed operations for the persistent profile, numeric time series, histor
 
 ## Metrics
 
-For a new metric, first call `company_metric_list` for the relevant period. Identical data needs no write; a correction updates the existing period; only a genuinely new fact calls `company_metric_record`. Use one metric key across periods, choose year, quarter, or month deliberately, and never combine quarter and month. Money goes in `amount` as `{amount, currency}` in the stated currency, with the stated `usdEquivalent`; never estimate exchange rates. Anything else goes in `value` with a `unit`.
+For a new metric, first call `company_metric_list` for the relevant period. Identical data needs no write; a correction updates the existing period; only a genuinely new fact calls `company_metric_record`. Use one metric key across periods and name the `period` the way the company reports it: `2026`, `2026-H1`, `2026-Q2` or `2026-05`; a year can sit beside its halves, quarters or months. Record a forecast exactly like a result: a value recorded before its period ends is shown as a projection (전망), and recording that period again after it ends replaces it with the result. Money goes in `amount` as `{amount, currency}` in the stated currency, with the stated `usdEquivalent`; never estimate exchange rates. Anything else goes in `value` with a `unit`.
+
+Headcount is counted from members, never recorded as a metric. When it is wrong, an administrator sets a non-employee account's `kind` to other or a leaver's last day as `departureDate` with `person_update`.
 
 ## Records
 
