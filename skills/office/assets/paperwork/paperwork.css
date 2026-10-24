@@ -1,3 +1,4 @@
+* { word-break: keep-all; }
 .page { font-size: type(9.5pt); line-height: leading(1.55); color: $ink; }
 p { margin: 0; }
 .approval { display: flex; justify-content: flex-end; margin-bottom: space(4mm); }
@@ -37,6 +38,5 @@ h1 { font-size: type($title); font-weight: 700; text-align: center; margin: 0; l
 .signature .date { font-size: type(10pt); margin-bottom: space(3mm); }
 .signature .signer { font-size: type(12pt); font-weight: 700; }
 .closing, .sign-off { break-inside: avoid; }
-.items td, .meta-value, .totals p { word-break: keep-all; }
 .items td.align-right, .totals .value, .unbreakable { white-space: nowrap; }
 .blank { display: inline-block; min-width: 28mm; height: 1.15em; border-bottom: 0.6pt solid $ink; vertical-align: bottom; }
