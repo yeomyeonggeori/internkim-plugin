@@ -25,6 +25,7 @@ from balance.measure import Body, measure_pdf
 from balance.rhythm import Rhythm
 from balance.tokens import BODY_BOTTOM_MARGIN_MILLIMETERS, BODY_SIDE_MARGIN_MILLIMETERS, BODY_TOP_MARGIN_MILLIMETERS
 from core.skill_paths import ASSETS_PATH
+from paperwork.stationery import stationery_css
 
 
 CHOSEN_FAMILY = "Document"
@@ -114,7 +115,7 @@ def render_keeping_headings_with_their_text(blocks: list, output_path: Path, tit
 def render_request(blocks: list, output_path: Path, title: str, fonts: list[FontFile], layout: PageLayout, rhythm: Rhythm, headings_on_new_page: frozenset[int] = frozenset()) -> DocumentPdfRequest:
     return DocumentPdfRequest(
         html="\n".join(html_blocks(blocks, fonts[0].family, headings_on_new_page)),
-        css=rhythm.css(CSS_PATH.read_text(encoding="utf-8")),
+        css=rhythm.css(stationery_css() + CSS_PATH.read_text(encoding="utf-8")),
         output_path=output_path,
         title=title,
         fonts=tuple(fonts),

@@ -3,6 +3,9 @@ from __future__ import annotations
 from decimal import Decimal
 
 from core.office_result import INVALID_VALUE, OfficeFailure
+from doc.blocks.stationery import LetterheadBlock, SignatureBlock
+from paperwork.jurisdictions import JURISDICTIONS, DEFAULT_JURISDICTION
+from paperwork.stationery import Signer, existing_file, letterhead_of
 from schemas.resolution import Instance, render_template
 from schemas.typed_values import BLANK, NUMBER_TYPES, format_value, grouped, numeric_value
 
@@ -36,8 +39,28 @@ class MarkdownDocument:
     def render(self) -> "MarkdownDocument":
         layout = self.instance.schema.layout
         for part in layout.get("parts", []):
-            getattr(self, f"part_{part['type']}")(part)
+            if part.get("for", self.language) == self.language:
+                getattr(self, f"part_{part['type']}")(part)
         return self
+
+    def company(self) -> dict:
+        company = self.instance.known.get("company")
+        return company if isinstance(company, dict) else {}
+
+    def part_letterhead(self, part: dict) -> None:
+        labels = next((jurisdiction for jurisdiction in JURISDICTIONS if jurisdiction.language == self.language), DEFAULT_JURISDICTION).labels
+        self.add(LetterheadBlock(letterhead_of(self.company(), labels)).source(), "")
+
+    def part_signature(self, part: dict) -> None:
+        lines = tuple(line for line in (self.template(template) for template in part["lines"]) if line is not None)
+        seal_mark = localized(part.get("sealMark", ""), self.language)
+        stamp_path = existing_file(self.company().get("stampPath")) if part.get("stamp") else ""
+        self.add(SignatureBlock(Signer(lines, seal_mark, stamp_path), part.get("align", "center")).source(), "")
+
+    def part_enclosures(self, part: dict) -> None:
+        names = [name for name in self.instance.given.get(part["field"]) or [] if name]
+        if names:
+            self.add(f"**{localized(part['label'], self.language)}**  ", *(f"{number}. {name}  " for number, name in enumerate(names, start=1)), "")
 
     def template(self, template, row: dict | None = None) -> str | None:
         return render_template(self.instance, localized(template, self.language), row, whole_blank=BLANK)

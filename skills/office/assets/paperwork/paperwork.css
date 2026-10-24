@@ -1,10 +1,5 @@
 .page { font-size: 9.5pt; line-height: 1.55; color: $ink; }
 p { margin: 0; }
-.letterhead { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 2mm; border-bottom: 1.4pt solid $rule; margin-bottom: 5mm; }
-.letterhead .logo { height: 10mm; }
-.company { display: flex; flex-direction: column; align-items: flex-end; text-align: right; margin-left: auto; }
-.company .name { font-size: $letterhead_name; font-weight: 700; line-height: 1.4; }
-.company .detail { font-size: $letterhead_detail; color: $muted; line-height: 1.45; white-space: pre-wrap; }
 .approval { display: flex; justify-content: flex-end; margin-bottom: 4mm; }
 .approval table { border-collapse: collapse; font-size: 8pt; }
 .approval table { border-collapse: separate; border-spacing: 0; border-top: 0.6pt solid $border; border-left: 0.6pt solid $border; }
@@ -39,9 +34,7 @@ h1 { font-size: $title; font-weight: 700; text-align: center; margin: 0; line-he
 .notes { margin-top: 3mm; text-align: center; font-size: $body; line-height: 1.9; }
 .signature { margin-top: 8mm; text-align: center; }
 .signature .date { font-size: 10pt; margin-bottom: 3mm; }
-.signature .signer { display: flex; justify-content: center; align-items: center; font-size: 12pt; font-weight: 700; }
-.signature .seal { position: relative; display: flex; margin-left: 2mm; }
-.signature .stamp { position: absolute; width: 16mm; height: 16mm; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.signature .signer { font-size: 12pt; font-weight: 700; }
 .closing, .sign-off { break-inside: avoid; }
 .items td, .meta-value, .totals p { word-break: keep-all; }
 .items td.align-right, .totals .value, .unbreakable { white-space: nowrap; }

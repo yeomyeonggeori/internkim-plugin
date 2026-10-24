@@ -13,6 +13,8 @@ from doc.blocks.charts import FENCE, Chart
 from doc.blocks.latex_math import LatexNotReadable, latex_html
 from render.office_preview import data_uri
 from doc.blocks.markdown import CodeBlock, Equation, Heading, Image, ListItem, Quote, Table, ThematicBreak, inline_segments, link_parts, math_latex
+from doc.blocks.stationery import LetterheadBlock, SignatureBlock
+from paperwork.stationery import letterhead_html, signer_html, stationery_css
 
 
 LIST_INDENT = "   "
@@ -69,6 +71,8 @@ def markdown_lines(block) -> list[str]:
         return [block.text]
     if isinstance(block, CodeBlock):
         return [f"{FENCE}{block.language}", *block.text.split("\n"), FENCE]
+    if isinstance(block, (LetterheadBlock, SignatureBlock)):
+        return [f"{line}  " for line in block.text.split("\n")]
     return block.text.split("\n")
 
 
@@ -98,7 +102,7 @@ def html_document(blocks: list, title: str) -> str:
     return (
         "<!doctype html>\n<html lang=\"ko\">\n<head>\n<meta charset=\"utf-8\">\n"
         f"<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>{html.escape(title)}</title>\n"
-        f"<style>\n{HTML_STYLE}\n</style>\n</head>\n<body>\n{body}\n</body>\n</html>\n"
+        f"<style>\n{stationery_css()}{HTML_STYLE}\n</style>\n</head>\n<body>\n{body}\n</body>\n</html>\n"
     )
 
 
@@ -147,6 +151,10 @@ def html_block(block) -> str:
         return f'<div class="equation">{math_html(block.latex, block.text, display=True)}</div>'
     if isinstance(block, CodeBlock):
         return f"<pre><code>{html.escape(block.text)}</code></pre>"
+    if isinstance(block, LetterheadBlock):
+        return letterhead_html(block.letterhead)
+    if isinstance(block, SignatureBlock):
+        return signer_html(block.signer, block.alignment)
     return f"<p>{inline_html(block.text)}</p>"
 
 

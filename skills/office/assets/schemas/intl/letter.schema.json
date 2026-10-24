@@ -1,8 +1,8 @@
 {
-  "name": "letter",
+  "name": "intl/letter",
   "kind": "document",
   "language": "ko",
-  "summary": "a letter or notice from the company on its letterhead; the runtime writes the letterhead, date and signer",
+  "summary": "a letter or notice from the company on its letterhead, as a Korean 공문 or an international letter by its language; the runtime writes the letterhead, date, signer and seal",
   "guidance": "Choose the sections and block kinds the request's content needs. Every item, row and field comes from the request or its attachments; a section, item or paragraph the request gives no content for is left out, never filled in. A letter may open or close with a short courtesy line, such as a greeting, thanks or good wishes, that states no date, number, name, promise, condition or cause.",
   "fields": [
     {
@@ -20,8 +20,21 @@
       "type": "text"
     },
     {
+      "name": "reference",
+      "label": "참조",
+      "type": "text",
+      "optional": true,
+      "description": "who else the letter is addressed to, as the request names them"
+    },
+    {
       "name": "title",
       "type": "text"
+    },
+    {
+      "name": "salutation",
+      "type": "text",
+      "optional": true,
+      "description": "an English letter's greeting line, such as Dear Ms. Park, with the name as the request gives it"
     },
     {
       "name": "sections",
@@ -241,6 +254,14 @@
           ]
         }
       ]
+    },
+    {
+      "name": "enclosures",
+      "label": "붙임",
+      "type": "list",
+      "item": "text",
+      "optional": true,
+      "description": "the name of each document the letter encloses, as the request names it"
     }
   ],
   "known": {
@@ -250,45 +271,83 @@
   "layout": {
     "parts": [
       {
-        "type": "lines",
-        "lines": [
-          "**{company.name}**",
-          "{company.address} · {company.phone} · {company.email}"
-        ]
+        "type": "letterhead"
       },
       {
         "type": "labeled",
+        "for": "ko",
         "rows": [
           {
-            "label": {
-              "ko": "일자",
-              "en": "Date"
-            },
-            "value": "{date}"
+            "label": "수신",
+            "value": "{recipient}"
           },
           {
-            "label": {
-              "ko": "수신",
-              "en": "To"
-            },
-            "value": "{recipient}"
+            "label": "참조",
+            "value": "{reference}"
+          },
+          {
+            "label": "제목",
+            "value": "{title}"
           }
         ]
       },
       {
-        "type": "heading",
-        "text": "{title}",
-        "level": 1
+        "type": "lines",
+        "for": "en",
+        "lines": [
+          "{date}",
+          "",
+          "{recipient}",
+          "",
+          "**{title}**",
+          "",
+          "{salutation}"
+        ]
       },
       {
         "type": "sections",
         "field": "sections"
       },
       {
+        "type": "enclosures",
+        "field": "enclosures",
+        "label": {
+          "ko": "붙임",
+          "en": "Enclosures"
+        }
+      },
+      {
         "type": "lines",
+        "for": "ko",
         "lines": [
+          "끝."
+        ]
+      },
+      {
+        "type": "signature",
+        "for": "ko",
+        "lines": [
+          "{date}",
           "{company.name}",
           "{company.representativeTitle} {company.representative}"
+        ],
+        "sealMark": "(인)",
+        "stamp": true
+      },
+      {
+        "type": "lines",
+        "for": "en",
+        "lines": [
+          "Sincerely,"
+        ]
+      },
+      {
+        "type": "signature",
+        "for": "en",
+        "align": "left",
+        "lines": [
+          "{company.representative}",
+          "{company.representativeTitle}, {company.name}"
         ]
       }
     ]

@@ -1,0 +1,14 @@
+.letterhead { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 2mm; border-bottom: 1.4pt solid $rule; margin-bottom: 5mm; }
+.letterhead p { margin: 0; }
+.letterhead .logo { height: 10mm; }
+.letterhead .company { display: flex; flex-direction: column; align-items: flex-end; text-align: right; margin-left: auto; }
+.letterhead .name { font-size: $letterhead_name; font-weight: 700; line-height: 1.4; color: $ink; }
+.letterhead .detail { font-size: $letterhead_detail; color: $muted; line-height: 1.45; white-space: pre-wrap; }
+.signature { text-align: center; break-inside: avoid; }
+.signature.left { text-align: left; }
+.signature p { margin: 0; }
+.signature .signer { display: flex; justify-content: center; align-items: center; }
+.signature .signer.sealed { font-size: 12pt; font-weight: 700; }
+.signature.left .signer { justify-content: flex-start; }
+.signature .seal { position: relative; display: flex; margin-left: 2mm; }
+.signature .stamp { position: absolute; width: 16mm; height: 16mm; left: 50%; top: 50%; transform: translate(-50%, -50%); }

@@ -114,8 +114,8 @@ class GuideTest(unittest.TestCase):
         return subprocess.run([sys.executable, str(OFFICE_ENTRY), *arguments], capture_output=True, text=True).stdout
 
     def test_a_schema_guide_answers_however_it_is_asked_for(self):
-        for arguments in (["guide", "report"], ["guide", "merge", "report"], ["merge", "report", "--help"]):
-            self.assertIn("office merge report <values.json> <output>", self.guide(arguments), arguments)
+        for arguments in (["guide", "intl/report"], ["guide", "merge", "intl/report"], ["merge", "intl/report", "--help"]):
+            self.assertIn("office merge intl/report <values.json> <output>", self.guide(arguments), arguments)
 
 
 class InputSchemaTest(unittest.TestCase):
@@ -177,7 +177,7 @@ class TableBlankTest(unittest.TestCase):
         report = {"language": "ko", "title": "실적", "sections": [{"heading": "효과", "blocks": [{"type": "table", "columns": [{"name": "항목", "type": "text"}, {"name": None, "type": "percent"}], "rows": [["생산성", None]]}]}]}
         with tempfile.TemporaryDirectory() as directory:
             write_json(Path(directory) / "report.json", report)
-            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "merge", "report", "report.json", "report.docx"], capture_output=True, text=True, cwd=directory, env=environment_with_context(None))
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "merge", "intl/report", "report.json", "report.docx"], capture_output=True, text=True, cwd=directory, env=environment_with_context(None))
         labels = [blank["label"] for blank in json.loads(completed.stdout)["details"]["blanks"]]
         self.assertEqual(labels[0], "생산성")
 
@@ -337,7 +337,7 @@ class ReportMergeTest(unittest.TestCase):
     def merge_report(self, directory, values):
         write_json(Path(directory, "values.json"), values)
         write_json(Path(directory, "context.json"), runtime_context())
-        return run_office_with_context(["merge", "report", "values.json", "status.pdf"], directory, Path(directory, "context.json"))
+        return run_office_with_context(["merge", "intl/report", "values.json", "status.pdf"], directory, Path(directory, "context.json"))
 
     def test_a_period_of_one_day_is_written_once(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -352,7 +352,7 @@ class ReportMergeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             write_json(Path(directory, "values.json"), values)
             write_json(Path(directory, "context.json"), runtime_context())
-            result = run_office_with_context(["merge", "report", "values.json", "status.docx"], directory, Path(directory, "context.json"))
+            result = run_office_with_context(["merge", "intl/report", "values.json", "status.docx"], directory, Path(directory, "context.json"))
             self.assertEqual(result["status"], "ok", result)
             self.assertEqual([blank["label"] for blank in result["details"]["blanks"]], ["B Cost"])
 
@@ -365,7 +365,7 @@ class ReportMergeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             write_json(Path(directory, "values.json"), values)
             write_json(Path(directory, "context.json"), runtime_context())
-            result = run_office_with_context(["merge", "report", "values.json", "memo.docx"], directory, Path(directory, "context.json"))
+            result = run_office_with_context(["merge", "intl/report", "values.json", "memo.docx"], directory, Path(directory, "context.json"))
             self.assertEqual(result["status"], "ok", result)
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "read", "memo.docx"], capture_output=True, text=True, cwd=directory)
             blocks = [(block["kind"], block.get("text") or "") for block in json.loads(completed.stdout)["details"]["blocks"]]
@@ -377,7 +377,7 @@ class ReportMergeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             write_json(Path(directory, "values.json"), values)
             write_json(Path(directory, "context.json"), runtime_context())
-            result = run_office_with_context(["merge", "report", "values.json", "memo.docx", "--blank", "recipient"], directory, Path(directory, "context.json"))
+            result = run_office_with_context(["merge", "intl/report", "values.json", "memo.docx", "--blank", "recipient"], directory, Path(directory, "context.json"))
             self.assertEqual(result["status"], "ok", result)
             completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "read", "memo.docx"], capture_output=True, text=True, cwd=directory)
             text = json.dumps(json.loads(completed.stdout)["details"]["blocks"], ensure_ascii=False)
