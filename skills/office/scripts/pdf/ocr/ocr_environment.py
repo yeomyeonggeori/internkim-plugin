@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -14,6 +15,11 @@ ENGINE_READY_MARKER = "engine-models.ready"
 
 def ocr_environment() -> Path:
     return environment_path(OCR_PATH)
+
+
+def engine_process_environment() -> dict[str, str]:
+    # onnxruntime's POSIX telemetry uploader can abort the process at exit (microsoft/onnxruntime#33251)
+    return {**os.environ, "ORT_DISABLE_TELEMETRY": "1"}
 
 
 def ocr_python() -> Path | None:
@@ -33,6 +39,6 @@ def prepare_ocr_environment() -> str:
 
 def fetch_engine_models(python_path: Path) -> None:
     with tempfile.TemporaryDirectory(prefix="office-ocr-") as directory:
-        completed = subprocess.run([str(python_path), str(HELPER_PATH), str(Path(directory) / "lines.json")], capture_output=True, text=True, check=False)
+        completed = subprocess.run([str(python_path), str(HELPER_PATH), str(Path(directory) / "lines.json")], capture_output=True, text=True, check=False, env=engine_process_environment())
     if completed.returncode != 0:
         raise PreparationFailed(f"the OCR engine could not fetch its models: {completed.stderr.strip()[-400:]}")

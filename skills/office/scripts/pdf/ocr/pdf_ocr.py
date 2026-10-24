@@ -4,13 +4,14 @@ from dataclasses import dataclass
 import io
 import json
 from pathlib import Path
+import signal
 import subprocess
 import tempfile
 
 import pdfplumber
 import pypdfium2
 
-from pdf.ocr.ocr_environment import HELPER_PATH, ocr_environment, ocr_python
+from pdf.ocr.ocr_environment import HELPER_PATH, engine_process_environment, ocr_environment, ocr_python
 from core.office_result import DEPENDENCIES_UNAVAILABLE, OfficeFailure
 
 
@@ -48,9 +49,9 @@ def read_pages_by_ocr(data: bytes, page_numbers: list[int]) -> dict[int, list[Oc
     with tempfile.TemporaryDirectory(prefix="office-ocr-") as directory:
         image_paths = render_pages(data, page_numbers, Path(directory))
         output_path = Path(directory) / "lines.json"
-        completed = subprocess.run([str(python_path), str(HELPER_PATH), str(output_path), *map(str, image_paths)], capture_output=True, text=True, check=False)
+        completed = subprocess.run([str(python_path), str(HELPER_PATH), str(output_path), *map(str, image_paths)], capture_output=True, text=True, check=False, env=engine_process_environment())
         if completed.returncode != 0:
-            raise OcrFailed(f"the OCR engine stopped: {last_line(completed.stderr)}")
+            raise OcrFailed(f"the OCR engine stopped with {exit_status(completed.returncode)}: {last_line(completed.stderr)}")
         pages = json.loads(output_path.read_text(encoding="utf-8"))
     return {number: [line_in_points(line) for line in lines] for number, lines in zip(page_numbers, pages)}
 
@@ -68,6 +69,12 @@ def render_pages(data: bytes, page_numbers: list[int], directory: Path) -> list[
 
 def line_in_points(line: dict) -> OcrLine:
     return OcrLine(line["text"], line["x0"] / RENDER_SCALE, line["x1"] / RENDER_SCALE, line["top"] / RENDER_SCALE, line["bottom"] / RENDER_SCALE)
+
+
+def exit_status(returncode: int) -> str:
+    if returncode >= 0:
+        return f"exit status {returncode}"
+    return f"signal {signal.Signals(-returncode).name}"
 
 
 def last_line(text: str) -> str:
