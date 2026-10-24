@@ -5,11 +5,12 @@ import json
 from pathlib import Path
 from string import Template
 
-import pypdfium2
-
 from core.office_result import Issue
 from core.page_sizes import DEFAULT_PAPER
-from core.units import millimetres_to_pixels
+from core.units import PIXELS_PER_POINT, millimetres_to_pixels
+from balance.fit import fit_rhythm
+from balance.measure import Body, PageMeasure, measure_pdf
+from balance.rhythm import Rhythm
 from doc.blocks.pdf import DocumentFonts, covering_fonts, draw
 from paperwork.paperwork_design import COLOR_BORDER, COLOR_HEADER_FILL, COLOR_INK, COLOR_MUTED, COLOR_RULE, PDF_PAGE_MARGIN_MILLIMETERS, SIZE_BODY, SIZE_FOOTER, SIZE_TITLE
 from paperwork.blanks import is_left_blank
@@ -31,21 +32,37 @@ def render_paperwork_pdf(document: dict, jurisdiction: Jurisdiction, output_path
     font_path = str(document.get("fontPath", "")).strip()
     fonts = covering_fonts(DocumentFonts(Path(font_path) if font_path else None), json.dumps(document, ensure_ascii=False), issues)
     footer_text = text_of(document.get("footer"))
-    draw(output_path, lambda drawn_path: render_numbering_only_when_paged(paperwork_html(document, jurisdiction), drawn_path, text_of(document["title"]), fonts, footer_text))
+    draw(output_path, lambda drawn_path: render_fitted(paperwork_html(document, jurisdiction), drawn_path, text_of(document["title"]), fonts, footer_text))
     return issues
 
 
-def render_numbering_only_when_paged(body: str, output_path: Path, title: str, fonts: list[FontFile], footer_text: str) -> None:
-    render_pdf(pdf_request(body, output_path, title, fonts, footer_html(footer_text, is_numbered=False)))
-    if page_count(output_path) > 1:
-        render_pdf(pdf_request(body, output_path, title, fonts, footer_html(footer_text, is_numbered=True)))
+def render_fitted(body: str, output_path: Path, title: str, fonts: list[FontFile], footer_text: str) -> None:
+    drawings: list[tuple[Rhythm, list[PageMeasure]]] = []
+
+    def draw_at(rhythm: Rhythm, is_numbered: bool = False) -> list[PageMeasure]:
+        render_pdf(pdf_request(body, output_path, title, fonts, rhythm, footer_html(footer_text, is_numbered)))
+        drawings.append((rhythm, measure_pdf(output_path, page_body())))
+        return drawings[-1][1]
+
+    chosen = fit_rhythm(draw_at)
+    last_rhythm, pages = drawings[-1]
+    if last_rhythm != chosen:
+        pages = draw_at(chosen)
+    if len(pages) > 1:
+        draw_at(chosen, is_numbered=True)
 
 
-def pdf_request(body: str, output_path: Path, title: str, fonts: list[FontFile], footer: str | None) -> DocumentPdfRequest:
+def page_body() -> Body:
+    top = millimetres_to_pixels(PDF_PAGE_MARGIN_MILLIMETERS) / PIXELS_PER_POINT
+    bottom = (DEFAULT_PAPER.exact_pixels["height"] - millimetres_to_pixels(BOTTOM_MARGIN_MILLIMETERS)) / PIXELS_PER_POINT
+    return Body(top, bottom)
+
+
+def pdf_request(body: str, output_path: Path, title: str, fonts: list[FontFile], rhythm: Rhythm, footer: str | None) -> DocumentPdfRequest:
     side = millimetres_to_pixels(PDF_PAGE_MARGIN_MILLIMETERS)
     return DocumentPdfRequest(
         html=body,
-        css=paperwork_css(),
+        css=rhythm.css(paperwork_css()),
         output_path=output_path,
         title=title,
         fonts=tuple(fonts),
@@ -53,14 +70,6 @@ def pdf_request(body: str, output_path: Path, title: str, fonts: list[FontFile],
         margin={"top": side, "left": side, "right": side, "bottom": millimetres_to_pixels(BOTTOM_MARGIN_MILLIMETERS)},
         footer=footer,
     )
-
-
-def page_count(pdf_path: Path) -> int:
-    document = pypdfium2.PdfDocument(str(pdf_path))
-    try:
-        return len(document)
-    finally:
-        document.close()
 
 
 def footer_html(footer_text: str, is_numbered: bool) -> str | None:
@@ -95,7 +104,8 @@ def paperwork_html(document: dict, jurisdiction: Jurisdiction) -> str:
         meta_html(document.get("meta") or []),
         lead_html(document.get("lead") or []),
     ]
-    body = [part for part in (*items_html(document.get("items")), *(section_html(section) for section in document.get("sections") or [])) if part]
+    sections = document.get("sections") or []
+    body = [part for part in (*items_html(document.get("items")), *(section_html(section) for section in sections[:-1]), *split_section(sections[-1] if sections else {})) if part]
     sign_off = [notes_html(document.get("notes") or []), signature_html(document.get("signature"), profile, labels)]
     parts = [*heading, *body[:-1], closing_html(body[-1:], sign_off)]
     return f'<div class="page" lang="{jurisdiction.language}">' + "\n".join(part for part in parts if part) + "</div>"
@@ -198,13 +208,27 @@ def totals_html(totals: list) -> str:
 
 
 def section_html(section: dict) -> str:
+    return f'<div class="section">{section_heading_html(section)}{"".join(section_lines_html(section))}</div>'
+
+
+def split_section(section: dict) -> list[str]:
+    lines = section_lines_html(section)
+    if len(lines) < 2:
+        return [section_html(section)] if section else []
+    return [f'<div class="section continued">{section_heading_html(section)}{"".join(lines[:-1])}</div>', f'<div class="section">{lines[-1]}</div>']
+
+
+def section_heading_html(section: dict) -> str:
     title = text_of(section.get("title"))
-    heading = f"<h2>{html.escape(title)}</h2>" if title else ""
+    return f"<h2>{html.escape(title)}</h2>" if title else ""
+
+
+def section_lines_html(section: dict) -> list[str]:
     paragraph_lines = section.get("paragraphs") or []
     bullet_lines = section.get("bullets") or []
-    paragraphs = "".join(f"<p>{filled_or_blank(paragraph_lines, index)}</p>" for index in range(len(paragraph_lines)))
-    bullets = "".join(f'<p class="bullet">• {filled_or_blank(bullet_lines, index)}</p>' for index in range(len(bullet_lines)))
-    return f'<div class="section">{heading}{paragraphs}{bullets}</div>'
+    paragraphs = [f"<p>{filled_or_blank(paragraph_lines, index)}</p>" for index in range(len(paragraph_lines))]
+    bullets = [f'<p class="bullet">• {filled_or_blank(bullet_lines, index)}</p>' for index in range(len(bullet_lines))]
+    return paragraphs + bullets
 
 
 def lead_html(lead: list) -> str:

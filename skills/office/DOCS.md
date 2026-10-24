@@ -96,7 +96,7 @@ A letter is drawn on the company's stationery, the same letterhead and signer th
 
 ## Page balance
 
-A document is fitted to its pages by how it is drawn. The document PDF layout (`document-pdf.css`) and the Word writer take their vertical spacing, type size and line height from one `Rhythm` (`scripts/balance/`). When a document's last page is filled under 30%, it is drawn again with spacing, line height and type tightened within bounds, in the smallest step that removes that page. When no step does, the document is left as drawn and `office check` reports it. A short document stays at the top of its page, as a memo or letter does.
+A document is fitted to its pages by how it is drawn. The document PDF layout (`document-pdf.css`), the company form layout (`paperwork.css`) and the Word writer take their vertical spacing, type size and line height from one `Rhythm` (`scripts/balance/`). When a document's last page is filled under 30%, it is drawn again with spacing, line height and type tightened within bounds, in the smallest step that removes that page. When no step does, the document is left as drawn and `office check` reports it. A short document stays at the top of its page, as a memo or letter does. A form keeps only the last line of its final section with the signature, so a long closing section, such as a meeting's action items, breaks across the page instead of moving to the next page whole.
 
 `office check` reports `details` for every PDF and Word file, and raises the codes below for a file `merge` wrote from a schema (the file has its `.source.json`). It measures the rendered geometry of a PDF, or the laid-out pages of a Word file, against the body area set by the skill's margins (16 mm sides and top, 20 mm bottom):
 
