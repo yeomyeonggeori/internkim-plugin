@@ -50,6 +50,11 @@ def quote_values(row_count: int) -> dict:
             "items": [{"name": f"견본 부품 {index + 1}", "spec": "A형", "quantity": 10, "unit": "개", "unitPrice": 15000} for index in range(row_count)]}
 
 
+def minutes_values(action_count: int) -> dict:
+    return {"meetingName": "예시 주간 회의", "startsAt": "2026-10-02 14:00", "endsAt": "15:00", "place": "본사 회의실", "attendees": ["이샘플", "박예시"], "agenda": ["지난주 진행 확인"],
+            "discussion": [KOREAN_SENTENCE] * 3, "decisions": ["다음 회의는 10월 9일에 연다"], "actions": [{"task": f"예시 과제 {index + 1}", "owner": "박예시", "due": "2026-10-09"} for index in range(action_count)]}
+
+
 class FitRhythmTest(unittest.TestCase):
     def test_a_single_page_keeps_the_neutral_rhythm_however_short(self):
         for fill in (0.2, 0.9):
@@ -125,6 +130,18 @@ class RenderedBalanceTest(unittest.TestCase):
                     details = self.checked("intl/report", report_values(language, paragraph_count, 3))["details"]
                     self.assertGreaterEqual(details["lastPageFill"], 0.3 if len(details["pageFill"]) > 1 else 0.0)
                     self.assertGreater(details["lastPageFill"], 0.15)
+
+    def test_a_long_closing_section_does_not_move_whole_to_the_next_page(self):
+        for action_count in (11, 16, 22, 30):
+            with self.subTest(actions=action_count):
+                details = self.checked("kr/meeting-minutes", minutes_values(action_count))["details"]
+                self.assertTrue(all(fill >= 0.7 for fill in details["pageFill"][:-1]), details["pageFill"])
+
+    def test_a_form_that_just_overflows_never_ends_on_a_nearly_empty_page(self):
+        for row_count in range(8, 15):
+            with self.subTest(rows=row_count):
+                pages = self.checked("kr/quote", quote_values(row_count))["details"]["pageFill"]
+                self.assertTrue(len(pages) == 1 or pages[-1] >= 0.3, pages)
 
     def test_the_check_reports_a_last_page_the_layout_did_not_balance(self):
         subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", FORCED_ORPHAN, "orphan.pdf", "34"], cwd=self.directory, check=True)
