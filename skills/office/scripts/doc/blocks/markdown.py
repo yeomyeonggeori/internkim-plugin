@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 
 from doc.blocks.charts import FENCE, parse_chart_fence
+from doc.blocks.stationery import stationery_block, stationery_fence_kind
 from schemas.typed_values import BLANK
 
 
@@ -97,6 +98,10 @@ def parse_markdown(markdown_text: str) -> list:
             continue
         if stripped.lower() == CHART_FENCE_OPENING:
             block, index = chart_block(lines, index)
+            blocks.append(block)
+            continue
+        if stationery_fence_kind(stripped):
+            block, index = stationery_block(lines, index)
             blocks.append(block)
             continue
         if stripped.startswith(FENCE):

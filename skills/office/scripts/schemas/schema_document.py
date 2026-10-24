@@ -185,7 +185,8 @@ def require_placed_fields(schema: DocumentSchema) -> None:
 
 
 def bundled_schema_path(name: str) -> Path:
-    return SCHEMAS_PATH / f"{name}{SCHEMA_SUFFIX}"
+    answering = [bundled for bundled in bundled_schema_names() if bundled == name or bundled.rsplit("/", 1)[-1] == name]
+    return SCHEMAS_PATH / f"{answering[0] if len(answering) == 1 else name}{SCHEMA_SUFFIX}"
 
 
 def bundled_schema_names() -> list[str]:

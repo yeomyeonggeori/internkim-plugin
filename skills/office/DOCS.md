@@ -25,7 +25,7 @@ Every document the skill generates from a request is drawn from a schema. A sche
 - **derived** fields, expressions over the others (`money(items.quantity * items.unitPrice)`, `sum(items.amount)`, `words(grandTotal)`);
 - the **layout**, which places fields by name (`{recipient}`, `{validDays:number}`) and is never written by the model.
 
-The bundled schemas are `kr/quote`, `intl/invoice`, `kr/meeting-minutes`, `report` and `letter`, under `assets/schemas/`. A company's own form becomes a schema too: `office convert form.docx form.schema.json` reads each empty cell beside or under a label as a field and each table of empty numbered rows as a list. A person then types each field once (`known`, `expression`, `handwritten` or `ignore` where it is not a given value), and the same file fills that form every time.
+The bundled schemas are `kr/quote`, `intl/invoice`, `kr/meeting-minutes`, `intl/report` and `intl/letter`, under `assets/schemas/`, one folder per jurisdiction. `intl/` holds what no country's law shapes; the report and the letter take their language as a value. A bare name that exactly one bundled schema answers to, such as `report`, resolves to it. A company's own form becomes a schema too: `office convert form.docx form.schema.json` reads each empty cell beside or under a label as a field and each table of empty numbered rows as a list. A person then types each field once (`known`, `expression`, `handwritten` or `ignore` where it is not a given value), and the same file fills that form every time.
 
 The model's whole job on this path is one JSON object of given values:
 
@@ -86,9 +86,13 @@ One small expression language serves schema `derived` fields and workbook views,
 
 ## Reports and letters
 
-`report` and `letter` are schemas whose given fields are sections of typed blocks: `paragraph`, `items`, `table`, `fields` and `chart`. An item carries its own typed `date`, `owner`, `due`, `quantity`, `amount`, `percent` and `status`. A table declares typed columns and can add a total row, and a chart names labels and series. Author and date are known fields, so the model has nowhere to type them.
+`intl/report` and `intl/letter` are schemas whose given fields are sections of typed blocks: `paragraph`, `items`, `table`, `fields` and `chart`. An item carries its own typed `date`, `owner`, `due`, `quantity`, `amount`, `percent` and `status`. A table declares typed columns and can add a total row, and a chart names labels and series. Author and date are known fields, so the model has nowhere to type them.
 
 A paragraph is still free prose. It is the one place on this path where a fact the request does not state can still enter a document, as the failure modes below record.
+
+## Letters
+
+A letter is drawn on the company's stationery, the same letterhead and signer the company forms use (`scripts/paperwork/stationery.py`, `assets/paperwork/stationery.css`). The letterhead comes from the profile `company_info_get` read: logo, name, registration and representative, address and contact lines, each line left out when the profile has no value for it. The layout's `language` picks the form. A Korean letter is a 공문 (수신, 참조, 제목, the body, 붙임, 끝., then the date, the company and its representative with the seal over (인)). An English letter has the date, the recipient, the subject, the salutation, the body and `Sincerely,` above the representative's name and title. Word shows the seal beside the name, because office's own Word preview places a floating picture in line, so a seal laid over the text could not be checked there.
 
 ## Page balance
 
@@ -237,7 +241,7 @@ The schema path replaces the model's longest output (a whole document in Markdow
 | Path today | Becomes | What is deleted |
 | --- | --- | --- |
 | `merge <jurisdiction>/<form>` with content JSON per spec (`references/paperwork/*/*.md`) | a schema per form; the three bundled schemas are the pattern | each form's Markdown spec once its schema exists, `paperwork/template_context.py` field mapping, the hand-written company and number fields in content JSON |
-| `create <title>.docx <title>.md` for reports, memos, letters | `merge report` / `merge letter` | the free-Markdown step for those kinds; `--required-text` and `--forbidden-text` in `references/doc.md` |
+| `create <title>.docx <title>.md` for reports, memos, letters | `merge intl/report` / `merge intl/letter` | the free-Markdown step for those kinds; `--required-text` and `--forbidden-text` in `references/doc.md` |
 | `create <title>.xlsx <data>.csv`, then `apply` formulas | `create <title>.xlsx <title>.workbook.json` | formula writing in `references/sheet.md` for new workbooks |
 | a company's own .docx or .xlsx form filled with `merge` placeholders | `convert form.docx form.schema.json` once, then `merge form.schema.json` | nothing until the placeholder path has no users |
 | deck `slides.html` | unchanged in this step | nothing yet |
@@ -251,7 +255,7 @@ Roll out, in this order. Each step ships on its own and deletes what it replaces
 1. **New workbooks through the declaration only.** Keep the routing sentence, delete formula writing for new workbooks from `references/sheet.md`, and make `apply` refuse to overwrite a compiled view or a declared input of a workbook built from a declaration, naming the declaration to change instead. The snapshot beside the file says which ranges were compiled, so the guard reads an identifier and judges nothing.
 2. **The task context, written by the host.** The host writes `SKILL_TASK_CONTEXT` for each task: requester, the company's date, the request, the attachments, and every record tool call with the files it kept, so the paths `company_info_get` writes and each registered document. #64's letterhead, seal and logo drawing lands on that binding in place of a company path in the values. Without the host writing this file, a schema prints its known fields as blanks, so no form moves before this step.
 3. **Catalog forms, one schema each.** Minutes, quotation and invoice first (bundled here), then transaction statement, purchase order, weekly report, business trip report, approval and expense requests, then certificates, then contracts on top of #62's typed terms. Each schema deletes its `references/paperwork/*/<form>.md` spec and its content-JSON mapping.
-4. **Reports, memos and letters through `report` and `letter`.** This deletes the free-Markdown step for those kinds, with `--required-text` and `--forbidden-text`.
+4. **Reports, memos and letters through `intl/report` and `intl/letter`.** This deletes the free-Markdown step for those kinds, with `--required-text` and `--forbidden-text`.
 5. **Decks last**, after deciding whether slide charts draw from typed series the way workbook views do.
 
 Two host defects found here are worth fixing alongside step 2: the palette narrowed to `file_read` after one not-found, and requests with no named format being answered in chat without the skill.

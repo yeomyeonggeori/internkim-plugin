@@ -199,7 +199,7 @@ class DeliveredMadeFileTest(unittest.TestCase):
 
     def merge(self, facts: dict | None = None) -> dict:
         context_path = write_task_context(self.directory, facts or self.facts())
-        subprocess.run([sys.executable, str(OFFICE_ENTRY), "merge", "letter", "notice.json", "notice.pdf"], capture_output=True, text=True, cwd=self.directory, env=environment_with_context(context_path), check=True)
+        subprocess.run([sys.executable, str(OFFICE_ENTRY), "merge", "intl/letter", "notice.json", "notice.pdf"], capture_output=True, text=True, cwd=self.directory, env=environment_with_context(context_path), check=True)
         return deliver(self.directory, "notice.pdf", context_path)
 
     def snapshot(self) -> dict:
@@ -226,7 +226,7 @@ class DeliveredMadeFileTest(unittest.TestCase):
             result = self.merge()
         self.assertEqual(result["details"]["claimCheck"][0]["outcome"], "supported")
         self.assertEqual(self.metadata()["notes"], [])
-        self.assertEqual(self.metadata()["holds"]["schema"], "letter")
+        self.assertEqual(self.metadata()["holds"]["schema"], "intl/letter")
 
     def test_a_value_the_writer_left_blank_is_named_without_saying_the_file_lost_it(self):
         notice = NOTICE | {"recipient": None, "sections": [{"heading": "이전 안내", "blocks": [{"type": "paragraph", "text": "10월 20일 새 사무실로 이전합니다."}]}]}
@@ -318,7 +318,7 @@ class DeliveredMadeFileTest(unittest.TestCase):
         self.assertEqual(len(result["details"]["claimCheck"][0]["blanked"]), 2)
 
     def test_a_file_made_off_any_host_gets_no_check_and_no_metadata(self):
-        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "merge", "letter", "notice.json", "notice.pdf"], capture_output=True, text=True, cwd=self.directory, env=environment_with_context(None))
+        completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "merge", "intl/letter", "notice.json", "notice.pdf"], capture_output=True, text=True, cwd=self.directory, env=environment_with_context(None))
         result = json.loads(completed.stdout)
         self.assertNotIn("claimCheck", result.get("details") or {})
         self.assertFalse((self.directory / "notice.pdf.meta.json").exists())
@@ -367,7 +367,7 @@ class DeliveredFileTextTest(unittest.TestCase):
 
     def test_a_merged_file_rewritten_afterwards_is_judged_by_what_it_now_says(self):
         (self.directory / "notice.json").write_text(json.dumps(NOTICE | {"sections": [{"heading": "이전 안내", "blocks": [{"type": "paragraph", "text": "10월 20일 새 사무실로 이전합니다."}]}]}, ensure_ascii=False), encoding="utf-8")
-        self.office("merge", "letter", "notice.json", "notice.docx")
+        self.office("merge", "intl/letter", "notice.json", "notice.docx")
         from docx import Document
 
         document = Document(self.directory / "notice.docx")
@@ -379,7 +379,7 @@ class DeliveredFileTextTest(unittest.TestCase):
 
     def test_an_invented_percent_in_a_typed_field_is_blanked_when_the_file_is_made_again(self):
         (self.directory / "report.json").write_text(json.dumps(REPORT, ensure_ascii=False), encoding="utf-8")
-        self.office("merge", "report", "report.json", "report.docx")
+        self.office("merge", "intl/report", "report.json", "report.docx")
         with FakeHost(decide=kind_answers({"13%": "claim"})):
             result = deliver(self.directory, "report.docx", self.context_path)
         self.assertNotIn("13%", self.text_of("report.docx"))

@@ -17,6 +17,8 @@ from doc.model.tables import add_space_after_table, format_table
 from doc.model.lists import add_list_paragraph, start_list
 from doc.model.charts import add_chart_part, drawing_run, next_drawing_id, specification
 from doc.blocks.charts import Chart
+from doc.blocks.stationery import LetterheadBlock, SignatureBlock
+from doc.blocks.stationery_docx import add_letterhead, add_signature
 from doc.blocks.latex_math import OMML_NAMESPACE, LatexNotReadable, latex_omml
 from doc.blocks.markdown import CodeBlock, Equation, Heading, Image, ListItem, Paragraph, Quote, Table, ThematicBreak, inline_segments, link_parts, local_image_problem, math_latex
 from core.office_result import Issue
@@ -95,6 +97,10 @@ def add_block(document: Document, block, source_directory: Path, list_ids: dict[
         add_display_equation(document, block)
     elif isinstance(block, CodeBlock):
         add_code_block(document, block)
+    elif isinstance(block, LetterheadBlock):
+        add_letterhead(document, block)
+    elif isinstance(block, SignatureBlock):
+        add_signature(document, block)
     return []
 
 

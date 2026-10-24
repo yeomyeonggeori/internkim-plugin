@@ -108,8 +108,8 @@ class RenderedBalanceTest(unittest.TestCase):
 
     def test_a_short_document_stays_at_the_top_of_its_page_without_a_warning(self):
         cases = {
-            "korean report, one paragraph": ("report", report_values("ko", 1)),
-            "english letter, two paragraphs": ("letter", letter_values("en", 2)),
+            "korean report, one paragraph": ("intl/report", report_values("ko", 1)),
+            "english letter, two paragraphs": ("intl/letter", letter_values("en", 2)),
             "quote, one row": ("kr/quote", quote_values(1)),
         }
         for label, (schema, values) in cases.items():
@@ -122,13 +122,13 @@ class RenderedBalanceTest(unittest.TestCase):
         for language, counts in (("ko", range(12, 21)), ("en", range(12, 21))):
             for paragraph_count in counts:
                 with self.subTest(language=language, paragraphs=paragraph_count):
-                    details = self.checked("report", report_values(language, paragraph_count, 3))["details"]
+                    details = self.checked("intl/report", report_values(language, paragraph_count, 3))["details"]
                     self.assertGreaterEqual(details["lastPageFill"], 0.3 if len(details["pageFill"]) > 1 else 0.0)
                     self.assertGreater(details["lastPageFill"], 0.15)
 
     def test_the_check_reports_a_last_page_the_layout_did_not_balance(self):
         subprocess.run([sys.executable, str(OFFICE_ENTRY), "python", "-c", FORCED_ORPHAN, "orphan.pdf", "34"], cwd=self.directory, check=True)
-        (self.directory / "orphan.pdf.source.json").write_text(json.dumps({"schema": "report"}), encoding="utf-8")
+        (self.directory / "orphan.pdf.source.json").write_text(json.dumps({"schema": "intl/report"}), encoding="utf-8")
         checked = run_office(["check", "orphan.pdf"], self.directory)
         pages = checked["details"]["pageFill"]
         if len(pages) > 1 and pages[-1] < 0.15:
@@ -144,7 +144,7 @@ class RenderedBalanceTest(unittest.TestCase):
     def test_word_documents_are_balanced_by_the_same_rules(self):
         for paragraph_count in (14, 15, 16, 17):
             with self.subTest(paragraphs=paragraph_count):
-                details = self.checked("report", report_values("en", paragraph_count, 3), "long.docx")["details"]
+                details = self.checked("intl/report", report_values("en", paragraph_count, 3), "long.docx")["details"]
                 self.assertGreater(details["lastPageFill"], 0.15)
 
 
