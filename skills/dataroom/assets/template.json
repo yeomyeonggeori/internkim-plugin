@@ -64,8 +64,7 @@
       "parent": "H",
       "description": "Organization charts, job descriptions and aggregate workforce information.",
       "fields": [
-        "employeeCount",
-        "employees"
+        "employeeCount"
       ],
       "choiceGroup": null
     },
