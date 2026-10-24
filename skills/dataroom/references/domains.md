@@ -7,7 +7,7 @@ File by business function in a category without children or X. A parent without 
 | `CO` | Ownership | C | Shareholder registers, capitalization tables and ownership records. | `capital`, `ownership` |
 | `CG` | Governance | C | Board and shareholder decisions, minutes and delegated authorities. |  |
 | `H` | Human resources | — | Employment, organization and employee records. |  |
-| `HO` | Organization | H | Organization charts, job descriptions and aggregate workforce information. | `employeeCount`, `employees` |
+| `HO` | Organization | H | Organization charts, job descriptions and aggregate workforce information. | `employeeCount` |
 | `HP` | Employment policies | H | Employment rules, benefits policies and employee handbooks. |  |
 | `HE` | Employment records | H | Individual employment agreements, onboarding, leave and departure records. Payroll payments belong to FP. |  |
 | `HR` | Recruiting | H | Job postings, applications and hiring records. |  |
