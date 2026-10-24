@@ -8,12 +8,16 @@ import unittest
 
 from openpyxl import load_workbook
 
-from doc_fixture import run_office, run_office_python
+from doc_fixture import OFFICE_ENTRY, office_environment, run_office, run_office_python
 from pdf_fixture import SCANNED_STATEMENT_PDF, copy_pdf_fixture
 from skill_copy_fixture import copy_skill
 
 
 AMOUNTS = ["금액", "1,440,000", "540,000", "1,192,500", "432,000", "420,000", "4,024,500"]
+
+
+def issue_messages(envelope: dict) -> list[str]:
+    return [issue["message"] for issue in envelope["issues"]]
 
 
 class ScannedStatementTest(unittest.TestCase):
@@ -39,7 +43,7 @@ class ScannedStatementTest(unittest.TestCase):
 
     def test_read_with_ocr_gives_the_page_text_and_its_table(self):
         envelope = run_office(["read", "scanned-statement.pdf", "--ocr"], self.directory)
-        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["PAGE_READ_BY_OCR"])
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["PAGE_READ_BY_OCR"], issue_messages(envelope))
         page = envelope["details"]["pages"][0]
         self.assertTrue(page["readByOcr"])
         self.assertFalse(page["hasText"])
@@ -51,9 +55,18 @@ class ScannedStatementTest(unittest.TestCase):
 
     def test_convert_with_ocr_writes_the_scanned_table_as_typed_cells(self):
         envelope = run_office(["convert", "scanned-statement.pdf", "scan.xlsx", "--ocr"], self.directory)
-        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["PAGE_READ_BY_OCR"])
+        self.assertEqual([issue["code"] for issue in envelope["issues"]], ["PAGE_READ_BY_OCR"], issue_messages(envelope))
         sheet = load_workbook(self.directory / "scan.xlsx").active
         self.assertEqual([cell.value for cell in sheet["E"]], ["금액", 1440000, 540000, 1192500, 432000, 420000, 4024500])
+
+    def test_reading_by_ocr_writes_nothing_into_the_requesters_home(self):
+        with tempfile.TemporaryDirectory() as root:
+            home = Path(root) / "home"
+            environment = {**office_environment(self.directory), "HOME": str(home), "XDG_CACHE_HOME": str(home / "cache")}
+            completed = subprocess.run([sys.executable, str(OFFICE_ENTRY), "read", "scanned-statement.pdf", "--ocr"], capture_output=True, text=True, cwd=self.directory, env=environment)
+            envelope = json.loads(completed.stdout)
+            self.assertEqual([issue["code"] for issue in envelope["issues"]], ["PAGE_READ_BY_OCR"], issue_messages(envelope))
+            self.assertEqual([str(path.relative_to(home)) for path in home.rglob("*")], [])
 
     def test_ocr_is_refused_for_a_route_that_cannot_use_it(self):
         envelope = run_office(["convert", "scanned-statement.pdf", "scan.pptx", "--ocr"], self.directory)
