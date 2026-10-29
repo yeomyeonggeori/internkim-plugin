@@ -16,7 +16,7 @@ Call the typed CRM operations directly; their descriptors define fields and resu
 - Build from the bottom. A contact or a deal names an organization the CRM already holds, so add a missing organization first, then the contact, then the deal.
 - Refer to a record with its hint: its exact ID, or its name or current title exactly as the list returned it. A deal's hint is never the new title you are about to give it.
 - Types, pipelines and stages are the company's words. Read `crm_vocabulary_get` before you choose one, and never invent a type, pipeline or stage it does not list.
-- A colleague who owns a relationship or takes part in work is named in `ownerPersonHint` or `participantPersonHints`. When the request names them by a fragment, call `person_list` and pass the exact name it returns. When several people answer to a name, the requester chooses.
+- A colleague who owns a relationship or takes part in work is named in `ownerPersonHint` or `participantPersonHints`. Pass it as the requester wrote it, even a given name alone; the server resolves it, so do not look it up in `person_list` first. When it answers with candidates, the requester chooses, never you.
 
 ## Deals
 
