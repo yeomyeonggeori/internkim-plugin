@@ -31,7 +31,7 @@ Call the typed operations directly; their descriptors define fields and results.
 - To fix a filed leave, read it with `leave_list` and pass its `leaveHint` to `leave_update`. To withdraw a request still waiting, or erase a leave that should never have been filed, use `leave_delete`. To refuse one, decide it rejected.
 - "How many days do I have left" is `leave_balance`. When tracking is unlimited, say there is no fixed entitlement, not zero.
 - `leave_grant_set` writes a total, not an increase. For "three more days", read `leave_balance` first and write the sum.
-- Another person is named in `personHints` or `personHint` by the exact name `person_list` returns. When several people answer to a name, the requester chooses.
+- Another person is named in `personHints` or `personHint`. Pass it as the requester wrote it, even a given name alone; the server resolves it, so do not look it up in `person_list` first. When it answers with candidates, the requester chooses, never you.
 
 ## Policies and holidays
 
