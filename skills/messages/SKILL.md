@@ -17,7 +17,7 @@ Call the typed message operations directly; descriptors define exact fields and 
 
 ## Write
 
-- Use `message_send` for a new message and `message_update` only with an observed message ID: `oldText` with `newText` to correct one span, `text` to rewrite the whole message. Do not duplicate a successful post.
+- Use `message_send` for a new message and `message_update` only with an observed message ID. Do not duplicate a successful post.
 - Use `message_reaction_add` and `message_reaction_delete` with an observed message ID to react as the requester.
 - Use `message_delete` only when the user explicitly requests deletion; approval is handled by the runtime.
 - Addressing a person rather than a conversation is the direct-message workflow.

@@ -17,7 +17,7 @@ Use the typed work capability operations for work items; descriptors define fiel
 - Business, type and size follow the `task_add` and `task_update` descriptors: a label comes from `registeredLabels` (call `task_list` when it is not in context), and whatever is left out of a new task the record decides. In the reply, use the result's `type`; an empty one renders as the localized `기타`.
 - A label the record refuses as unregistered: when it was your own choice, leave it out and write the work without it. When the requester named it, an administrator adds it with `task_vocabulary_set`, sending each current list back whole with the new label, then applies it; for anyone else, do the rest of the request without it and say an administrator must register the label first.
 - Add work directly only to the requester's own list. Work for another person is a `요청`. Include the requester as a participant only when joint work is implied.
-- When a message names someone by a given name alone or by a fragment, call `person_list` and pass the exact name it returns. When the runtime answers with candidates, the user chooses, never you. Never drop an unresolved person and record the work without them: that answers a different request than the one that was made.
+- When the runtime answers a person with candidates, the user chooses, never you. Never drop an unresolved person and record the work without them: that answers a different request than the one that was made.
 
 ## Replies and failures
 
