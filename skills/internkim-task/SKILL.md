@@ -3,7 +3,7 @@ name: internkim-task
 description: Add, find, update, or complete weekly work items when the user asks to add, record, request, find, change, or complete work, todos, 업무, deadlines, or task notes.
 compatibility: Requires InternKim's tool server.
 metadata:
-  kim.intern.tool-references: "task_add task_list task_update task_delete task_vocabulary_set person_list"
+  kim.intern.tool-references: "task_add task_list task_board_get task_update task_delete task_vocabulary_set person_list"
 ---
 
 # 업무 관리
@@ -12,6 +12,7 @@ Use the typed work capability operations for work items; descriptors define fiel
 
 ## Routing and workflow
 
+- "This week's board" or a week's view, carry-over included, is `task_board_get`. History and reports are `task_list`.
 - Decide by intent, not by the noun used. Deliverables, deadlines, todos, requests, handoffs, and completion targets are work. Meetings, appointments, attendance blocks, locations, and time blocks are calendar events.
 - A deadline-driven deliverable uses `task_add` and, when a due time belongs on the calendar, `event_add` too. Completion uses `task_update`, not `event_update`.
 - Business, type and size follow the `task_add` and `task_update` descriptors: a label comes from `registeredLabels` (call `task_list` when it is not in context), and whatever is left out of a new task the record decides. In the reply, use the result's `type`; an empty one renders as the localized `기타`.
