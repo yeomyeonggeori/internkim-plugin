@@ -199,7 +199,7 @@
       "name": "Marketing",
       "nameKO": "브랜드·마케팅·시장조사",
       "parent": "S",
-      "description": "Brand assets, campaigns, advertising and market research, including images and video.",
+      "description": "Campaigns, advertising, marketing creative and market research, including images and video. The company logo and brand identity belong to GP.",
       "choiceGroup": null
     },
     {
@@ -437,7 +437,7 @@
       "name": "Company profile",
       "nameKO": "회사소개·연혁·전사 계획",
       "parent": "G",
-      "description": "Company introductions, history, mission and general company plans. Financing presentations belong to RP.",
+      "description": "Company introductions, history, mission, logo and brand identity, and general company plans. Financing presentations belong to RP.",
       "fields": [
         "name",
         "brandName",
@@ -480,8 +480,8 @@
     {
       "code": "X",
       "slug": "inbox",
-      "name": "Inbox",
-      "nameKO": "분류 대기",
+      "name": "Unclassified",
+      "nameKO": "미분류",
       "parent": null,
       "description": "Unclassified or ambiguous documents. Choose X when context does not identify a destination. Do not invent missing facts.",
       "choiceGroup": null

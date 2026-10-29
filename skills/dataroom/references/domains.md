@@ -21,7 +21,7 @@ File by business function in a category without children or X. A parent without 
 | `FP` | Payroll | F | Payroll registers, payslips, payroll calculations and employee tax withholding. Employment terms belong to HE. |  |
 | `S` | Sales and marketing | — | Customers, commercial partnerships and market-facing work. |  |
 | `SS` | Sales materials | S | Proposals, quotes, sales materials and commercial analysis. Fundraising presentations belong to RP. |  |
-| `SM` | Marketing | S | Brand assets, campaigns, advertising and market research, including images and video. |  |
+| `SM` | Marketing | S | Campaigns, advertising, marketing creative and market research, including images and video. The company logo and brand identity belong to GP. |  |
 | `SC` | Customer records | S | Customer agreements, orders, correspondence and service records. Invoice originals belong to FA. |  |
 | `SP` | Commercial partners | S | Distribution, referral and commercial partnership records. Procurement belongs to OS. |  |
 | `P` | Products and services | — | What the company delivers to customers. |  |
@@ -46,10 +46,10 @@ File by business function in a category without children or X. A parent without 
 | `RA` | Financing agreements | R | Equity and debt agreements, term sheets and financing negotiations. Resulting ownership registers belong to CO and resolutions to CG. |  |
 | `RR` | Investor reporting | R | Investor and lender updates and correspondence outside agreement negotiations. |  |
 | `G` | General company records | — | Company-wide records outside a specific business function; not miscellaneous storage. |  |
-| `GP` | Company profile | G | Company introductions, history, mission and general company plans. Financing presentations belong to RP. | `name`, `brandName`, `slogan`, `description`, `foundedDate`, `representative`, `representativeTitle`, `officeAddress`, `website`, `email`, `phone`, `fax`, `history`, `product`, `award`, `reference`, `activity` |
+| `GP` | Company profile | G | Company introductions, history, mission, logo and brand identity, and general company plans. Financing presentations belong to RP. | `name`, `brandName`, `slogan`, `description`, `foundedDate`, `representative`, `representativeTitle`, `officeAddress`, `website`, `email`, `phone`, `fax`, `history`, `product`, `award`, `reference`, `activity` |
 | `GC` | Company communications | G | General company announcements and communication records. |  |
 | `GE` | Company events | G | Company events and culture records, including event photos and recordings. |  |
-| `X` | Inbox | — | Unclassified or ambiguous documents. Choose X when context does not identify a destination. Do not invent missing facts. |  |
+| `X` | Unclassified | — | Unclassified or ambiguous documents. Choose X when context does not identify a destination. Do not invent missing facts. |  |
 
 ## Default circles
 
