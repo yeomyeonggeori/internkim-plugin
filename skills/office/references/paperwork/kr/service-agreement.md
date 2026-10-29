@@ -66,7 +66,7 @@ A service agreement in standard practice, made from the bundled `service-agreeme
 
 ```json
 {
-  "command": "<skill>/scripts/office merge kr/service-agreement context.json <storageDirectory>/<filename>.docx",
+  "command": "<skill>/scripts/office merge kr/service-agreement context.json ~/documents/<filename>.docx",
   "workingDirectoryPath": "tmp/service-agreement"
 }
 ```

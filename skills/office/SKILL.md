@@ -4,7 +4,7 @@ description: Create, read, edit, validate, and attach office files — Word .doc
 compatibility: Requires python3, uv, and bun or node 18; no browser or office suite. `scripts/office setup` prepares the Python packages, the renderer and the OCR engine once, and InternKim's host install runs it; no other command installs anything. Company forms and reading attached files need InternKim's tool server.
 metadata:
   kim.intern.delivery-check: "scripts/office delivery-check"
-  kim.intern.tool-references: "read company_info_get company_info_set company_image_upload company_document_register company_document_update company_document_list company_document_search"
+  kim.intern.tool-references: "read company_info_get company_info_set company_image_upload company_document_register company_document_update company_document_upload company_document_list company_document_search"
 ---
 
 # Office Files
@@ -38,7 +38,7 @@ A document the catalog has belongs to `merge <jurisdiction>/<form>` in either la
 
 **Earlier files.** For a file from an earlier task, use its workspace copy, not a delivered attachment, and read its exact path before answering about it or changing it. Keep the same filename for every later edit.
 
-**File naming.** Documents, PDFs, and workbooks live at `~/documents/<title>.<ext>`, with any Markdown source beside them. Decks live in `artifacts/<deck-slug>/` and deliver from `artifacts/<deck-slug>/build/`. Company forms go to the storage directory their registration returns.
+**File naming.** Documents, PDFs, and workbooks live at `~/documents/<title>.<ext>`, with any Markdown source beside them. Decks live in `artifacts/<deck-slug>/` and deliver from `artifacts/<deck-slug>/build/`. A company form is written there too, then filed in the data room under its registration.
 
 **Results.** Every command prints one JSON result: `status` is ok, warning, or error, and each issue carries a stable `code`, a `location`, a `suggestion` sentence, and `fix`: operations to pass as they are to `apply` on the same file once any `<value>` is filled in. `<skill>/scripts/office guide <kind>` indexes a kind of file's commands and codes, `guide <verb> <kind>` one command's fields, and `guide <verb> <kind> <operation>` one operation's.
 

@@ -50,7 +50,7 @@ A memorandum of understanding recording that two organizations intend to coopera
 
 ```json
 {
-  "command": "<skill>/scripts/office merge kr/mou context.json <storageDirectory>/<filename>.docx",
+  "command": "<skill>/scripts/office merge kr/mou context.json ~/documents/<filename>.docx",
   "workingDirectoryPath": "tmp/mou"
 }
 ```
