@@ -8,7 +8,7 @@ metadata:
 
 # Workspace Calendar
 
-Call the typed calendar operations directly; their descriptors define fields and results. Calendar apps read the company calendar through its subscription address, an `.ics` feed. `calendar_subscription_get` says whether one exists; only `calendar_subscription_add` shows an address, and it replaces any earlier one. `calendar_subscription_delete` revokes it. Before replacing or revoking, say that every app subscribed to the old address stops updating.
+Call the typed calendar operations directly; their descriptors define fields and results. Calendar apps read the company calendar through its subscription address. Before replacing or revoking it, say that every app subscribed to the old address stops updating.
 
 ## Rules
 
