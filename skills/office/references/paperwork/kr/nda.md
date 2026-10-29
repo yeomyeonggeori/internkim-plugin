@@ -55,7 +55,7 @@ The standard non-disclosure agreement the Ministry of SMEs and Startups recommen
 
 ```json
 {
-  "command": "<skill>/scripts/office merge kr/nda context.json <storageDirectory>/<filename>.docx",
+  "command": "<skill>/scripts/office merge kr/nda context.json ~/documents/<filename>.docx",
   "workingDirectoryPath": "tmp/nda"
 }
 ```

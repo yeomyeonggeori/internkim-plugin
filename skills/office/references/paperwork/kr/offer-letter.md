@@ -44,7 +44,7 @@ An external letter offering a position and its compensation to a candidate the c
 
 ```json
 {
-  "command": "<skill>/scripts/office merge kr/offer-letter context.json <storageDirectory>/<filename>.docx",
+  "command": "<skill>/scripts/office merge kr/offer-letter context.json ~/documents/<filename>.docx",
   "workingDirectoryPath": "tmp/offer-letter"
 }
 ```

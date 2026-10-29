@@ -63,7 +63,7 @@ An employment contract that follows the Ministry of Employment and Labor's stand
 
 ```json
 {
-  "command": "<skill>/scripts/office merge kr/employment-contract context.json <storageDirectory>/<filename>.docx",
+  "command": "<skill>/scripts/office merge kr/employment-contract context.json ~/documents/<filename>.docx",
   "workingDirectoryPath": "tmp/employment-contract"
 }
 ```
