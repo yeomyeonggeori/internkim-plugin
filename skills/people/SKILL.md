@@ -8,36 +8,24 @@ metadata:
 
 # People
 
-Call the typed operations directly; their descriptors define fields and results. The directory holds everybody who works here and the organization chart they sit on. Apart from someone correcting their own phone number and start date, changing it is an administrator's, and the record refuses anybody else. A refusal is the answer, not an error to work around.
+Call the typed operations directly. Their descriptors say what each one takes and does, and this skill covers only how they fit together. The directory holds everybody who works here and the organization chart they sit on. Changing it is mostly an administrator's, and a refusal is the answer, not an error to work around.
 
-## Finding people
+## Routing
 
-`person_list` answers who someone is and who works here. Every other call takes a colleague as the requester wrote them, even a given name alone, and the server resolves it. When it answers with candidates, the requester chooses, never you.
-
-## Directory and chart
-
-- `person_update` changes only the fields it names. Ask the requester first before raising or lowering administrator rights, or marking somebody departed.
-- A team is an organization on the chart. Read `team_list` before naming one. `team_add` puts nobody in it; move people with `person_update` and `teamHint`. A team with teams under it cannot be removed until those are moved or removed.
-- An account that is not a person, such as a test account, is set to kind `other`, so it leaves the headcount and the chart.
+- Who someone is, or who works here, is `person_list`. Every other call takes a colleague as the requester wrote them. When it answers with candidates, the requester chooses, never you.
+- Moving someone to a team is `person_update`, after `team_list`. Creating a team puts nobody in it.
+- A test account or anything else that is not a person is set to kind `other` with `person_update`. It leaves the headcount and the chart, and the account stays.
 
 ## Bringing someone in
 
-1. `person_invite` with their name, email and, when known, job title and team.
-2. `person_update` for what the invite does not take, such as supervisor and start date.
-3. The answer holds a temporary password that is readable only once. Give it to the requester alone and never post it in a shared conversation. `person_password_reset` answers the same way.
+`person_invite`, then `person_update` for what the invite does not take, such as supervisor and start date. A temporary password from an invite or `person_password_reset` goes to the requester alone, never into a shared conversation.
 
 ## Someone leaving
 
-1. Set their last day with `person_update` `departureDate`, which may be ahead. They stay counted until it passes.
-2. Only when the requester asks for their messages to go, call `person_message_delete`, before step 3, while they are still in the directory.
-3. `person_withdraw` ends their sign-in and membership. Their attendance, leave and tasks still read. Set `purge` only when the requester asked to delete the account outright, such as an address added by mistake.
-
-Each of these is irreversible. Name the person and what will happen, and let the runtime take the approval.
-
-## Circle channels
-
-A circle can have one private messenger channel whose members are exactly the circle's. Read `circle_list` for the circle's ID and current `channelName`. Adding and deleting one is an administrator's, and deleting takes that exact name.
+1. `person_update` with their `departureDate`.
+2. `person_message_delete`, only when the requester asked for their messages to go. It must come before step 3.
+3. `person_withdraw`, with `purge` only when the requester asked for the account to be deleted outright.
 
 ## Replies
 
-Confirm each write in one line with the person or team and what changed. Write people by name, never by handle or ID unless asked. Report a refused or ambiguous call with what it returned.
+Confirm each write in one line with the person or team and what changed. Write people by name, never by handle or ID unless asked.

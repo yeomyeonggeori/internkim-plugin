@@ -8,30 +8,14 @@ metadata:
 
 # Settings
 
-Call the typed operations directly; their descriptors define fields and results. Four settings live here. Two are company-wide and an administrator's: the company settings and the agent's identity. Two belong to the requester alone: their notifications and their persona profile.
+Call the typed operations directly. Their descriptors say what each one takes and does, and this skill covers only how they fit together. The company settings and the agent's identity are company-wide and an administrator's. Notifications and the persona profile belong to the requester alone.
 
-Every update changes only the fields it names, but a list replaces the whole list: `workLocations`, `names`, `preferences`. Read the current setting first and send the whole list back with the change.
+## Routing
 
-## Company settings
-
-- `company_settings_get` answers the time zone, language, currency, work locations and annual leave.
-- `company_settings_update` changes what every colleague sees. Put it to the requester first, with the current value and the new one.
-- `name` is the name the app shows. The legal name a document prints is `company_info_set`'s, in the company-data skill.
-- `leaveDays` is the annual leave grant. The rest of the leave policy is the attendance skill's.
-
-## Notifications
-
-- `notification_settings_get` shows which categories the requester is told about and which conversations they muted. `notification_settings_set` turns categories on or off for them alone.
-- A category answered with `isChoosable` false cannot be changed. Say so instead of calling.
-- Muting one conversation is the messages skill's `conversation_mute`. Stopping a reminder the requester set up is the scheduled-task skill's.
-
-## The agent's identity
-
-`persona_identity_get` is who the agent is to the whole company: its names, handle, role and introduction. The first name is the one it introduces itself with. Changing it is an administrator's, and every colleague meets the agent by it, so put the change to the requester first.
-
-## The requester's profile
-
-`persona_profile_get` and `persona_profile_update` hold how the agent works with the requester: what to call them, what to know about them, preferences, tone, reply language and the morning briefing. Only the requester's own profile is reachable. Record what they asked for in their words. Turning the briefing off keeps its time.
+- The company's name in the app, time zone, language, currency, work locations and annual leave are `company_settings_get` and `company_settings_update`. The legal name a document prints is the company-data skill's. The rest of the leave policy is the attendance skill's.
+- Whole categories of notice are `notification_settings_set`. One conversation is the messages skill's `conversation_mute`. A reminder the requester set up is stopped through the scheduled-task skill.
+- The agent's names, handle and introduction for everyone are `persona_identity_update`. How the agent treats the requester, such as what to call them, tone, reply language and the morning briefing, is `persona_profile_update`.
+- A list field replaces the whole list. Read the setting first and send the whole list back with the change.
 
 ## Replies
 
