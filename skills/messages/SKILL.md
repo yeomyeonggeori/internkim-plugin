@@ -3,7 +3,7 @@ name: messages
 description: Read, search, post, update, react to, and delete messages, inspect the conversation a request arrived on, and manage channels and direct conversations. Use for chat, 채팅, 메시지, 채널, 리액션, channel, thread, or team requests, and for leaving, editing, or removing a visible note in the current conversation (대화/스레드에 메모·노트 남기기, posted with message_send).
 compatibility: Requires InternKim's tool server.
 metadata:
-  kim.intern.tool-references: "message_context message_search message_send message_update message_delete message_reaction_add message_reaction_delete conversation_hide conversation_reveal conversation_mute conversation_unmute channel_add channel_join channel_leave channel_delete channel_member_add channel_member_delete channel_owner_add channel_owner_update"
+  kim.intern.tool-references: "message_context message_search message_send message_update message_delete message_reaction_add message_reaction_delete conversation_hide conversation_reveal conversation_mute conversation_unmute channel_list channel_add channel_join channel_leave channel_delete channel_member_add channel_member_delete channel_owner_add channel_owner_update"
 ---
 
 # Messages
@@ -24,7 +24,7 @@ Call the typed message operations directly; descriptors define exact fields and 
 
 ## Channels and direct conversations
 
-- Channel tools act as the requester, with the permissions their messenger screen has: `channel_add`, `channel_join`, `channel_leave`, `channel_delete`, `channel_member_add`, `channel_member_delete`, `channel_owner_add`, `channel_owner_update`. Name a channel by its exact ID or current name; when the tool asks which channel or person was meant, ask the user rather than guessing.
+- Channel tools act as the requester, with the permissions their messenger screen has: `channel_list`, `channel_add`, `channel_join`, `channel_leave`, `channel_delete`, `channel_member_add`, `channel_member_delete`, `channel_owner_add`, `channel_owner_update`. Name a channel by its exact ID or current name; when the tool asks which channel or person was meant, ask the user rather than guessing.
 - A refusal because the requester is not an owner is the answer, not an error to work around.
 - `conversation_hide` and `conversation_reveal` change only the requester's own list of direct conversations.
 - Notifications for one conversation are `conversation_mute` and `conversation_unmute`; whole categories of notice are the settings skill's.
