@@ -4,9 +4,9 @@ A schema says what a document holds. Its given fields are the only values you wr
 
 ## Fill one
 
-1. Pick the schema: `<skill>/scripts/office guide schema` lists them. `intl/report` is for reports, status updates, memos and postmortems, `intl/letter` for a letter or notice on letterhead, and `kr/quote`, `intl/invoice`, `kr/meeting-minutes` are company forms. A company form without a schema still uses `references/paperwork.md`.
+1. Pick the schema: `<skill>/scripts/office guide schema` lists them. `intl/report` is for reports, status updates, memos and postmortems, `intl/letter` for a letter or notice on letterhead, and a company form, such as a quotation, takes the jurisdiction `references/paperwork.md` chooses from the company's language: fill it here when this list has that name, and by its spec there otherwise.
 2. Run `<skill>/scripts/office guide <schema>`. It prints the given fields as JSON Schema.
-3. For a company form or a letter, call `company_info_get` for the document's language and, for a company form, `company_document_register`; `merge` prints the letterhead from the profile the first answers and the number the second returns. Never copy either into the values.
+3. For a company form or a letter, call `company_info_get` with the document's language, or without one to get the company's own, and, for a company form, `company_document_register`; `merge` prints the letterhead from the profile the first answers and the number the second returns. Never copy either into the values.
 4. Write the values as one JSON object at `~/documents/<title>.values.json`. Copy names, figures and dates exactly as the request writes them; dates are `YYYY-MM-DD`, numbers are plain numbers.
 5. A value the document needs that the request and attachments do not state is `null`, never a guess, a placeholder word or a value from an example. Leave out an optional field that does not apply.
 6. Run `<skill>/scripts/office merge <schema> ~/documents/<title>.values.json <output>`, where `<output>` is `~/documents/<title>.<pdf|docx>`. A company form is then filed in the data room as `references/paperwork.md` says. An error names the field path and what it takes; fix that field and run it again. Deliver the file at the path merge wrote; a copy elsewhere is not delivered.
