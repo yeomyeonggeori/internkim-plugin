@@ -23,7 +23,7 @@ One command, `<skill>/scripts/office <verb> <file> [options]`, makes and checks 
 | Change a workbook the person already has | `read`, then `apply` | `references/sheet.md` |
 | Deck, presentation, PPTX | `DESIGN.md`, `outline.json` and `pages/NN.html`, each checked, then `create build/<deck>.pptx .` | `references/deck.md` |
 | Fill a user's .docx, .xlsx or .pptx template | `merge` | `references/doc.md` |
-| Quotation, invoice, meeting minutes or another document the form catalog has, PDF unless another format is named: transaction statement, purchase order, approval request, expense approval, business trip report, leave request, employment certificate, career certificate, power of attorney, offer letter, employment contract, NDA, MOU, service agreement | `merge <jurisdiction>/<form>` | `references/paperwork.md` |
+| Quote, invoice, meeting minutes or another document the form catalog has, PDF unless another format is named: transaction statement, purchase order, approval request, expense approval, business trip report, leave request, employment certificate, career certificate, power of attorney, offer letter, employment contract, NDA, MOU, service agreement | `merge <jurisdiction>/<form>` | `references/paperwork.md` |
 | Another format of a file | `convert` | `office guide convert` |
 | Verify before attaching | `check`, `render` | the format's reference |
 
