@@ -285,7 +285,68 @@ class DeliveredMadeFileTest(unittest.TestCase):
             result = self.merge(facts)
         self.assertEqual(result["details"]["claimCheck"][0]["outcome"], "not_enforced_unread_attachment")
         self.assertIn(INVENTED, self.snapshot()["given"]["sections"][0]["blocks"][0]["text"])
-        self.assertIn("an attachment was not read", self.metadata()["notes"][0])
+        self.assertIn("an attached file could not be read", self.metadata()["notes"][0])
+
+    def test_a_value_judged_without_an_unreadable_attachment_is_never_called_different_from_it(self):
+        facts = self.facts(attachments=[{"name": "plan.hwp", "path": str(self.directory / "plan.hwp"), "text": "", "current": True}])
+        with FakeHost(decide=kind_answers({INVENTED: "mistake"})):
+            self.merge(facts)
+        note = self.metadata()["notes"][0]
+        self.assertIn("confirm them against what they attached", note)
+        self.assertNotIn("it differs from what the person gave", note)
+
+
+ATTACHED_DRAFT_ROWS = [["품목", "수량", "단가", "금액"], ["브랜드 디자인 (로고·컬러·가이드)", 1, 4500000, "=B2*C2"], ["유지보수 (월)", 3, 300000, "=B3*C3"]]
+QUOTE_FROM_THE_DRAFT = {
+    "recipient": "견본상사",
+    "contact": None,
+    "validDays": None,
+    "delivery": None,
+    "deliveryPlace": None,
+    "paymentTerms": None,
+    "items": [{"name": "브랜드 디자인 (로고·컬러·가이드)", "quantity": 1, "unitPrice": 4500000}, {"name": "유지보수 (월)", "quantity": 3, "unitPrice": 300000}],
+}
+
+
+class DeliveredQuoteFromAnAttachedWorkbookTest(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.directory = Path(self.temporary.name)
+        self.draft = self.directory / "inbox" / "견적_초안.xlsx"
+        write_workbook(self.draft, ATTACHED_DRAFT_ROWS)
+        (self.directory / "values.json").write_text(json.dumps(QUOTE_FROM_THE_DRAFT, ensure_ascii=False), encoding="utf-8")
+
+    def deliver_quote(self, attachment: dict) -> dict:
+        context_path = write_task_context(self.directory, {
+            "requester": {"name": "이샘플", "email": "sample@example.com"},
+            "today": "2026-11-05",
+            "company": {"ko": COMPANY},
+            "request": ["견본상사에 보낼 견적서, 이거 회사 양식 PDF로 만들어 줘."],
+            "attachments": [attachment],
+            "registeredDocuments": [{"documentNumber": "Q-2026-004"}],
+        })
+        subprocess.run([sys.executable, str(OFFICE_ENTRY), "merge", "kr/quote", "values.json", "quote.pdf"], capture_output=True, text=True, cwd=self.directory, env=environment_with_context(context_path), check=True)
+        return deliver(self.directory, "quote.pdf", context_path)
+
+    def test_values_copied_from_an_attached_workbook_the_host_gave_no_text_for_are_read_from_the_file(self):
+        with FakeHost(decide=kind_answers({}, default="mistake")) as host:
+            result = self.deliver_quote({"name": self.draft.name, "path": str(self.draft), "text": "", "current": True})
+        check = result["details"]["claimCheck"][0]
+        self.assertEqual(check["outcome"], "supported", check)
+        self.assertEqual(check["asked"], 0)
+        self.assertEqual(host.requests_to("decide"), [])
+        notes = json.loads((self.directory / "quote.pdf.meta.json").read_text(encoding="utf-8"))["notes"]
+        self.assertFalse([note for note in notes if "유지보수 (월)" in note or "300000" in note], notes)
+
+
+def write_workbook(path: Path, rows: list[list]) -> None:
+    from openpyxl import Workbook
+    workbook = Workbook()
+    for row in rows:
+        workbook.active.append(row)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    workbook.save(path)
 
     def test_a_hollow_sentence_is_replaced_by_its_clean_rewrite_when_the_file_is_remade(self):
         with FakeHost(decide=kind_answers({INVENTED: "hollow"}), generate=rewrites({INVENTED: "10월 20일부터 새 사무실에서 응대합니다."})):

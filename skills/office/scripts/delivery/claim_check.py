@@ -8,6 +8,7 @@ import subprocess
 import sys
 
 from core.source_snapshot import SOURCE_SUFFIX, read_source
+from delivery.attachment_text import attachment_text
 from deck.deck_claims import renumbered_path, renumbered_place, slide_index_of
 from deck.page_blanks import slides_a_blanking_removes
 from delivery.claim_kinds import BLANK, REWRITE, AttachmentText, Claim, Sources, Verdict, judge
@@ -211,8 +212,8 @@ def claim_sources(context: TaskContext, snapshot: dict) -> tuple[Sources, bool]:
     if answered:
         facts["recordAnswers"] = answered
     current = [attachment for attachment in context.attachments if attachment.is_current]
-    attachments = tuple(AttachmentText(name=attachment.name, text=attachment.text) for attachment in current if attachment.text.strip())
-    return Sources(request=context.request, attachments=attachments, runtime_facts=facts), len(attachments) == len(current)
+    read = [AttachmentText(name=attachment.name, text=text) for attachment in current if (text := attachment_text(attachment)).strip()]
+    return Sources(request=context.request, attachments=tuple(read), runtime_facts=facts), len(read) == len(current)
 
 
 def company_facts(context: TaskContext) -> dict:
