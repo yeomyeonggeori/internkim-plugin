@@ -129,9 +129,18 @@ def left_in_file_notes(filename: str, checks: list[ClaimCheck]) -> list[str]:
     for check in checks:
         if check.outcome in (BLANKED, SUPPORTED) or not check.flagged:
             continue
+        if check.outcome == UNREAD_SOURCES:
+            notes.append(unread_attachment_note(filename, check))
+            continue
         units = "; ".join(unit_description(verdict) for verdict in check.flagged)
         notes.append(f"{filename}: could not be blanked ({left_in_file_cause(check)}), so these are still in the file and the reply must say so and offer to fix them: {units}")
     return notes
+
+
+def unread_attachment_note(filename: str, check: ClaimCheck) -> str:
+    places = "; ".join(f"{verdict.place} (it says {json.dumps(verdict.claim.text, ensure_ascii=False)})" for verdict in check.flagged)
+    return (f"{filename}: an attached file could not be read, so these values were checked without it and may well come from it; "
+            f"the reply asks the person to confirm them against what they attached, and never says they differ from it: {places}")
 
 
 def unit_description(verdict: Verdict) -> str:
@@ -145,8 +154,6 @@ def left_in_file_cause(check: ClaimCheck) -> str:
         return "the file's snapshot names no command that remakes it"
     if check.outcome == NOT_EDITABLE:
         return "this kind of file cannot be edited in place and no snapshot remakes it as it is"
-    if check.outcome == UNREAD_SOURCES:
-        return "an attachment was not read, so the check was not enforced"
     return check.outcome
 
 
