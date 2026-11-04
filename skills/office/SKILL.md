@@ -27,7 +27,7 @@ One command, `<skill>/scripts/office <verb> <file> [options]`, makes and checks 
 | Another format of a file | `convert` | `office guide convert` |
 | Verify before attaching | `check`, `render` | the format's reference |
 
-A document the catalog has belongs to `merge <jurisdiction>/<form>` in either language and whatever format or wording the request uses: its letterhead, approval boxes, seal, and fixed clauses live there, and `create` is only for documents the catalog lacks. Work no verb covers, such as merging PDFs, goes in a task-local Python file run with `<skill>/scripts/office python <script.py> [arguments]`. That script never writes a new document, form, or workbook: those come only from `merge` or `create` in the table above, which compute every total, formula, and format from the values you give.
+A document the catalog has belongs to `merge <jurisdiction>/<form>` whatever format or wording the request uses: its letterhead, approval boxes, seal, and fixed clauses live there, and `create` is only for documents the catalog lacks. Work no verb covers, such as merging PDFs, goes in a task-local Python file run with `<skill>/scripts/office python <script.py> [arguments]`. That script never writes a new document, form, or workbook: those come only from `merge` or `create` in the table above, which compute every total, formula, and format from the values you give.
 
 ## Rules for every format
 
@@ -48,5 +48,7 @@ A document the catalog has belongs to `merge <jurisdiction>/<form>` in either la
 **Dependencies.** `<skill>/scripts/office setup` prepares everything the commands read, and no other command installs anything. A command that reports `DEPENDENCIES_UNAVAILABLE` or `RENDERER_UNAVAILABLE` names the setup to run; when that setup cannot write into the skill directory, tell the user the skill was not prepared. Never run pip or uv yourself, and keep dependency caches apart from source documents.
 
 **Tool server.** Only company forms (`company_info_*`, `company_image_upload`, `company_document_*`) and reading an attached file (`read`) call InternKim's tool server. Every other command runs locally.
+
+**Company forms.** Every form comes as `kr/` and `intl/`, and the company's working language picks one: call `company_info_get` without a language, and its `language` is that working language. `ko` takes `kr/`, any other `intl/`, and the document is written in that language. Where the company is registered, the profile's `jurisdiction`, its registration numbers and its currency never pick the form, so a company registered in Korea that works in English quotes in won on `intl/quote`. Only a request that names the document's language overrides this; the language the request is written in names none.
 
 **Contracts.** A contract is a draft for review; say so when delivering it, without adding disclaimer text to the document.
