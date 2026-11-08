@@ -3,7 +3,7 @@ name: dataroom
 description: File, find and share the company's document archive. Use for 데이터룸, 자료실, 문서 보관, 실사 자료, 증빙, 계약서 찾기, data room, due diligence, archive, evidence and filing received documents. Office creates documents; company-data records metrics.
 compatibility: Requires python3 and a terminal. In InternKim, use the internkim MCP server declared by this plugin.
 metadata:
-  kim.intern.tool-references: "dataroom_get dataroom_category_update circle_list circle_update circle_member_update dataroom_links_get dataroom_link_add dataroom_link_delete dataroom_share_add dataroom_invitation_send dataroom_invitation_accept dataroom_share_delete company_document_classify company_document_register company_document_update company_document_list company_document_search company_document_upload company_document_download dataroom_field_update bash"
+  kim.intern.tool-references: "dataroom_get dataroom_category_update circle_list circle_update circle_member_update dataroom_links_get dataroom_link_add dataroom_link_delete dataroom_publication_update company_document_classify company_document_register company_document_update company_document_list company_document_search company_document_upload company_document_download dataroom_field_update bash"
 ---
 
 # Data room
@@ -80,19 +80,14 @@ origin and the six digit code displayed once. The recipient enters the code and
 accepts the confidentiality notice without an account. `dataroom_link_delete`
 revokes an exact linkID.
 
-To share with someone outside the company, lend them what one circle reads with
-`dataroom_share_add`: an external email, or an explicitly public audience. An
-external email accepts the invitation using that verified email and remains a
-guest, outside company membership and circles. Return
-`/share/invitations/<shareID>` for an email invitation, or `/share/<companyID>`
-for a published room, using the company's web origin. When asked to email the
-invitation, send it with `dataroom_invitation_send` and the exact `shareID`.
-When the requester received an invitation themselves, accept it with
-`dataroom_invitation_accept`, using the `shareID` at the end of its address.
-Public publication
-requires an explicit request and never includes `X`. Original downloads are
-separately enabled with `canDownload`. Revoke by exact `shareID`; issued signed
-URLs expire within ten minutes.
+Every company has a public page at `/<company address>/room` on the company's
+web origin. Anyone opens it without signing in, and it shows the company name
+and logo and only what an administrator put on it. Put one document or one
+company page field on it, or take it off, with `dataroom_publication_update`
+only when the requester names that document or field. A published document can
+be downloaded by anyone and a downloaded copy cannot be recalled, so confirm
+the exact document first. A document in `X` is classified before it is
+published. To share with one person outside the company, make a code link.
 
 Who sees a company page field, such as capital, a metric or the funding
 records, follows a category too: `dataroom_field_update`.
