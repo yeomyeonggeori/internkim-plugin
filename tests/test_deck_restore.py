@@ -14,6 +14,7 @@ sys.path.insert(0, str(SCRIPTS_PATH))
 sys.path.insert(0, str(TESTS_PATH))
 
 from deck.html_export import deck_html_text  # noqa: E402
+from deck.resource_inlining import PAPERLOGY, restore_authored_source, use_vendored_paperlogy_in_font_family_lists  # noqa: E402
 from png_fixture import write_png  # noqa: E402
 
 
@@ -66,6 +67,12 @@ class RestoreTest(unittest.TestCase):
             restored_path = deck_path / "restored.html"
             subprocess.run([sys.executable, str(OFFICE_ENTRY), "convert", str(delivered_path), str(restored_path)], capture_output=True, text=True)
             self.assertEqual(squeezed(restored_path.read_text(encoding="utf-8")), squeezed(deck))
+
+    def test_a_delivered_deck_draws_paperlogy_from_its_own_copy_and_restores_the_authored_name(self):
+        source = '<style>:root { --font-body: "Paperlogy", sans-serif; --font-display: Paperlogy, sans-serif; }</style>'
+        delivered = use_vendored_paperlogy_in_font_family_lists(source)
+        self.assertIn(f'--font-body: "{PAPERLOGY.web_name}", sans-serif; --font-display: "{PAPERLOGY.web_name}", sans-serif;', delivered)
+        self.assertEqual(restore_authored_source(delivered), source.replace("display: Paperlogy", 'display: "Paperlogy"'))
 
 
 if __name__ == "__main__":
