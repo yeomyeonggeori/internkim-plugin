@@ -8,6 +8,7 @@ import pathlib
 import zipfile
 
 from deck.pptx_export.charts import ChartPart, chart_count, chart_frames_xml, chart_relationships_xml, chart_text_styles, slide_chart_parts, write_chart_parts
+from deck.pptx_export.drawing_fonts import slide_with_drawable_runs
 from deck.pptx_export.tables import cell_blocks, table_count, table_frames_xml
 from fonts.pptx_embedding import run_font
 from deck.pptx_export.notes import noted_slide_numbers, notes_relationship_xml, write_notes_parts
@@ -62,7 +63,8 @@ def read_text_layers(review_path: pathlib.Path, slide_count: int) -> TextLayers 
     background_paths = [layers_path / f"background.{number:03}.png" for number in range(1, slide_count + 1)]
     if len(layout["slides"]) != slide_count or not all(path.exists() for path in background_paths):
         return None
-    return TextLayers(layout.get("language", ""), layout["slides"], background_paths, layers_path)
+    slides = [slide_with_drawable_runs(slide) for slide in layout["slides"]]
+    return TextLayers(layout.get("language", ""), slides, background_paths, layers_path)
 
 
 def write_editable_pptx(layers: TextLayers, notes: list[str], pptx_path: pathlib.Path) -> EditablePptx:

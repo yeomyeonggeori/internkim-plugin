@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import os
 from pathlib import Path
 
@@ -27,3 +28,11 @@ def extract_face(font_path: Path, face_index: int, target_path: Path) -> None:
     partial_path = target_path.with_name(f"{target_path.name}.{os.getpid()}.partial")
     TTFont(str(font_path), fontNumber=face_index).save(str(partial_path))
     partial_path.replace(target_path)
+
+
+@functools.lru_cache(maxsize=None)
+def mapped_code_points(font_path: Path) -> frozenset[int]:
+    from fontTools.ttLib import TTFont
+
+    with TTFont(str(font_path), fontNumber=0, lazy=True) as font:
+        return frozenset(font.getBestCmap())

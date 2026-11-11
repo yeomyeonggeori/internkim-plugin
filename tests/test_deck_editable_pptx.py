@@ -23,6 +23,8 @@ from deck.pptx_export.editable import read_text_layers, write_editable_pptx  # n
 from png_fixture import read_png, write_png  # noqa: E402
 from deck.resource_inlining import PAPERLOGY  # noqa: E402
 from fonts.truetype import read_truetype_face, sfnt_data  # noqa: E402
+from fonts.font_files import mapped_code_points  # noqa: E402
+from fonts.registry import SANS_BODY, default_family  # noqa: E402
 
 
 NAMESPACES = {
@@ -283,6 +285,16 @@ class EditablePptxPackageTest(unittest.TestCase):
         properties = run_properties(ElementTree.fromstring(archive.read("ppt/slides/slide1.xml")))[0]
         self.assertEqual(properties.find("a:latin", NAMESPACES).get("typeface"), "Georgia")
         self.assertEqual(properties.find("a:ea", NAMESPACES).get("typeface"), "Georgia")
+
+    def test_a_character_the_run_font_cannot_draw_is_written_in_the_body_font(self):
+        undrawn = next(chr(code_point) for code_point in range(0xAC00, 0xD7A4) if code_point not in mapped_code_points(PAPERLOGY.path(PAPERLOGY.face(700))))
+        archive, written = self.write([layout_block([layout_run(f"가{undrawn}나", fontWeight=700)], {"left": 100, "top": 100, "right": 900, "bottom": 150})])
+        slide = ElementTree.fromstring(archive.read("ppt/slides/slide1.xml"))
+        runs = [(run.find("a:t", NAMESPACES).text, run.find("a:rPr/a:latin", NAMESPACES).get("typeface")) for run in slide.iter(f"{{{NAMESPACES['a']}}}r")]
+        body_typeface = runs[1][1]
+        self.assertEqual(runs, [("가", "Paperlogy 7 Bold"), (undrawn, body_typeface), ("나", "Paperlogy 7 Bold")])
+        self.assertTrue(body_typeface.startswith(default_family(SANS_BODY).name))
+        self.assertIn(body_typeface, written.embedded_typefaces)
 
 
 class VendoredFontTest(unittest.TestCase):
