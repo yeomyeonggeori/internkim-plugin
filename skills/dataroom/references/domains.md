@@ -1,22 +1,22 @@
-File by business function in a category without children or X. A parent without children is a filing destination. A parent grant includes current and future children. Company fields are the company profile keys, metric keys and record categories the company page shows to readers of that category, `activity`, the company's attendance and work with names masked, and `ownership`, the equity ledger summed by kind of holder; a field no category names is shown only to readers of X.
+File by business function in a category without children or X. A parent without children is a filing destination. A parent grant includes current and future children. Company fields are what the company page shows to readers of that category, by kind: profile is the company profile keys, `activity`, the company's attendance and work with names masked, and `ownership`, the equity ledger summed by kind of holder; metric is the metric keys; record is the record categories; a field no category names is shown only to readers of X.
 
 | Code | Category | Parent | Scope | Company fields |
 |---|---|---|---|---|
 | `C` | Corporate | — | Legal entity, ownership and corporate decisions. |  |
-| `CR` | Registration | C | Formation, articles, registrations and legal entity records. | `jurisdiction`, `legalAttributes`, `fiscalYearEnd`, `address` |
-| `CO` | Ownership | C | Shareholder registers, capitalization tables and ownership records. | `capital`, `ownership` |
+| `CR` | Registration | C | Formation, articles, registrations and legal entity records. | profile: `jurisdiction`, `legalAttributes`, `fiscalYearEnd`, `address` |
+| `CO` | Ownership | C | Shareholder registers, capitalization tables and ownership records. | profile: `capital`, `ownership` |
 | `CG` | Governance | C | Board and shareholder decisions, minutes and delegated authorities. |  |
 | `H` | Human resources | — | Employment, organization and employee records. |  |
-| `HO` | Organization | H | Organization charts, job descriptions and aggregate workforce information. | `employeeCount` |
+| `HO` | Organization | H | Organization charts, job descriptions and aggregate workforce information. | profile: `employeeCount` |
 | `HP` | Employment policies | H | Employment rules, benefits policies and employee handbooks. |  |
 | `HE` | Employment records | H | Individual employment agreements, onboarding, leave and departure records. Payroll payments belong to FP. |  |
 | `HR` | Recruiting | H | Job postings, applications and hiring records. |  |
 | `HA` | Appraisals | H | Individual performance, disciplinary and development records. |  |
 | `F` | Finance | — | Financial position, accounting, tax and payments. |  |
-| `FS` | Financial statements | F | Financial statements, financial audit reports and consolidated results. Supporting accounting evidence belongs to FA. | `annualRevenue`, `operatingProfit`, `netIncome` |
+| `FS` | Financial statements | F | Financial statements, financial audit reports and consolidated results. Supporting accounting evidence belongs to FA. | metric: `annualRevenue`, `operatingProfit`, `netIncome` |
 | `FB` | Budgets | F | Budgets, financial forecasts and financial models. |  |
 | `FT` | Tax | F | Tax returns, assessments and tax authority correspondence. Employee withholding belongs to FP. |  |
-| `FC` | Cash and banking | F | Bank statements, payments, treasury and account documentation. Excludes credentials and financing agreements, which belong to RA. | `bankAccount` |
+| `FC` | Cash and banking | F | Bank statements, payments, treasury and account documentation. Excludes credentials and financing agreements, which belong to RA. | profile: `bankAccount` |
 | `FA` | Accounting evidence | F | Ledgers, invoices, receipts and accounting evidence. Underlying contracts follow the relationship. |  |
 | `FP` | Payroll | F | Payroll registers, payslips, payroll calculations and employee tax withholding. Employment terms belong to HE. |  |
 | `S` | Sales and marketing | — | Customers, commercial partnerships and market-facing work. |  |
@@ -25,7 +25,7 @@ File by business function in a category without children or X. A parent without 
 | `SC` | Customer records | S | Customer agreements, orders, correspondence and service records. Invoice originals belong to FA. |  |
 | `SP` | Commercial partners | S | Distribution, referral and commercial partnership records. Procurement belongs to OS. |  |
 | `P` | Products and services | — | What the company delivers to customers. |  |
-| `PO` | Product overview | P | Product and service descriptions, catalogs and user-facing manuals. Persuasive sales materials belong to SS. | `mau` |
+| `PO` | Product overview | P | Product and service descriptions, catalogs and user-facing manuals. Persuasive sales materials belong to SS. | metric: `mau` |
 | `PD` | Development | P | Specifications, designs, architecture, roadmaps and development records. |  |
 | `PQ` | Quality | P | Testing, quality control, defects and acceptance records. Formal certifications belong to LC. |  |
 | `O` | Operations | — | Operating the company, facilities, procurement and internal systems. |  |
@@ -34,19 +34,19 @@ File by business function in a category without children or X. A parent without 
 | `OS` | Suppliers | O | Procurement, supplier agreements, correspondence and supply-chain records. |  |
 | `OI` | Internal IT | O | Internal IT administration, software subscriptions and routine incidents. Security incidents belong to LS. Never store credentials. |  |
 | `I` | Intellectual property | — | Ownership, registration and licensing of intellectual property. |  |
-| `IR` | IP rights | I | Patents, trademarks, copyright ownership and intellectual property registrations. | `ip` |
+| `IR` | IP rights | I | Patents, trademarks, copyright ownership and intellectual property registrations. | record: `ip` |
 | `IL` | IP licenses | I | Grants, assignments and acquisition of IP rights. Routine software subscriptions belong to OI. |  |
 | `L` | Legal and compliance | — | Legal obligations, regulation and risk. |  |
-| `LC` | Regulatory compliance | L | Permits, certifications, regulatory filings and compliance assessments. | `certification` |
+| `LC` | Regulatory compliance | L | Permits, certifications, regulatory filings and compliance assessments. | record: `certification` |
 | `LS` | Security and privacy | L | Security and privacy policies, assessments and incidents. |  |
 | `LD` | Disputes | L | Claims, litigation, legal opinions and dispute records. |  |
 | `LI` | Insurance | L | Insurance policies, coverage and claims. |  |
 | `R` | Raising capital | — | Raising equity or debt and communicating with capital providers. |  |
-| `RP` | Financing presentations | R | Fundraising decks and investment or financing narratives. Source financial statements remain in FS. | `funding`, `grant` |
+| `RP` | Financing presentations | R | Fundraising decks and investment or financing narratives. Source financial statements remain in FS. | record: `funding`, `grant` |
 | `RA` | Financing agreements | R | Equity and debt agreements, term sheets and financing negotiations. Resulting ownership registers belong to CO and resolutions to CG. |  |
 | `RR` | Investor reporting | R | Investor and lender updates and correspondence outside agreement negotiations. |  |
 | `G` | General company records | — | Company-wide records outside a specific business function; not miscellaneous storage. |  |
-| `GP` | Company profile | G | Company introductions, history, mission, logo and brand identity, and general company plans. Financing presentations belong to RP. | `name`, `brandName`, `slogan`, `description`, `foundedDate`, `representative`, `representativeTitle`, `officeAddress`, `website`, `email`, `phone`, `fax`, `history`, `product`, `award`, `reference`, `activity` |
+| `GP` | Company profile | G | Company introductions, history, mission, logo and brand identity, and general company plans. Financing presentations belong to RP. | profile: `name`, `brandName`, `slogan`, `description`, `foundedDate`, `representative`, `officeAddress`, `website`, `email`, `phone`, `fax`, `activity`; record: `history`, `product`, `award`, `reference` |
 | `GC` | Company communications | G | General company announcements and communication records. |  |
 | `GE` | Company events | G | Company events and culture records, including event photos and recordings. |  |
 | `X` | Unclassified | — | Unclassified or ambiguous documents. Choose X when context does not identify a destination. Do not invent missing facts. |  |

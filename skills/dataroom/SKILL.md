@@ -3,7 +3,7 @@ name: dataroom
 description: File, find and share the company's document archive. Use for 데이터룸, 자료실, 문서 보관, 실사 자료, 증빙, 계약서 찾기, data room, due diligence, archive, evidence and filing received documents. Office creates documents; company-data records metrics.
 compatibility: Requires python3 and a terminal. In InternKim, use the internkim MCP server declared by this plugin.
 metadata:
-  kim.intern.tool-references: "dataroom_get dataroom_category_update circle_list circle_update circle_member_update dataroom_links_get dataroom_link_add dataroom_link_delete dataroom_publication_update company_document_classify company_document_register company_document_update company_document_list company_document_search company_document_upload company_document_download dataroom_field_update bash"
+  kim.intern.tool-references: "dataroom_get dataroom_category_update circle_list circle_update circle_member_update dataroom_links_get dataroom_link_add dataroom_link_delete dataroom_publication_update company_document_classify company_document_register company_document_update company_document_list company_document_search company_document_upload company_document_download dataroom_field_update dataroom_field_name_update bash"
 ---
 
 # Data room
@@ -90,4 +90,6 @@ the exact document first. A document in `X` is classified before it is
 published. To share with one person outside the company, make a code link.
 
 Who sees a company page field, such as capital, a metric or the funding
-records, follows a category too: `dataroom_field_update`.
+records, follows a category too: `dataroom_field_update`, naming its `kind`
+(`profile`, `metric` or `record`) as `dataroom_get` lists it. When the company
+calls a field something of its own, name it with `dataroom_field_name_update`.
