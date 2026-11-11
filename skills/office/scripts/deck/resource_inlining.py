@@ -25,11 +25,10 @@ REMOTE_URL_PREFIXES = ("data:", "http:", "https:")
 VENDORED_FONTS_MARKER = "data-internkim-vendored-fonts"
 SOURCE_ATTRIBUTE = "data-internkim-source"
 SOURCE_COMMENT_PREFIX = "internkim-source:"
-VENDORED_FAMILY_INSERTION = f' "{VENDORED_PAPERLOGY_FAMILY}",'
+VENDORED_FAMILY_REFERENCE = f'"{VENDORED_PAPERLOGY_FAMILY}"'
 
 
 def inject_vendored_paperlogy_fallback(source_text: str) -> str:
-    source_text = add_paperlogy_local_to_font_family_lists(source_text)
     font_style = vendored_paperlogy_fallback_style()
     if VENDORED_FONTS_MARKER in source_text:
         return re.sub(
@@ -52,20 +51,10 @@ def insert_text(source_text: str, insert_index: int, inserted_text: str) -> str:
     return source_text[:insert_index] + inserted_text + source_text[insert_index:]
 
 
-def add_paperlogy_local_to_font_family_lists(source_text: str) -> str:
-    if VENDORED_PAPERLOGY_FAMILY in source_text:
-        return source_text
-    family, local = re.escape(PAPERLOGY_FAMILY), re.escape(VENDORED_PAPERLOGY_FAMILY)
-    source_text = re.sub(
-        rf'(["\']{family}["\']\s*,)(?!\s*["\']{local}["\'])',
-        r'\1' + VENDORED_FAMILY_INSERTION,
-        source_text,
-    )
-    return re.sub(
-        rf'(?<![-\w]){family}\s*,(?!\s*["\']?{local})',
-        f"{PAPERLOGY_FAMILY}," + VENDORED_FAMILY_INSERTION,
-        source_text,
-    )
+def use_vendored_paperlogy_in_font_family_lists(source_text: str) -> str:
+    family = re.escape(PAPERLOGY_FAMILY)
+    source_text = re.sub(rf'(["\']){family}\1(?=\s*,)', VENDORED_FAMILY_REFERENCE, source_text)
+    return re.sub(rf'(?<![-\w"\']){family}(?=\s*,)', VENDORED_FAMILY_REFERENCE, source_text)
 
 
 def vendored_paperlogy_fallback_style() -> str:
@@ -108,7 +97,7 @@ def inline_local_fonts(source_text: str, base_path: pathlib.Path) -> str:
 
 def restore_authored_source(delivered_text: str) -> str:
     restored = re.sub(rf"<style\b[^>]*{VENDORED_FONTS_MARKER}[^>]*>.*?</style>\n?", "", delivered_text, flags=re.IGNORECASE | re.DOTALL)
-    restored = restored.replace(VENDORED_FAMILY_INSERTION, "")
+    restored = restored.replace(VENDORED_FAMILY_REFERENCE, f'"{PAPERLOGY_FAMILY}"')
     restored = re.sub(rf'src="data:[^"]*" {SOURCE_ATTRIBUTE}="([^"]*)"', r'src="\1"', restored)
     return re.sub(rf"url\((['\"]?)data:[^)'\"]*\1\)/\*{SOURCE_COMMENT_PREFIX}([^*]*)\*/", r"url(\1\2\1)", restored)
 

@@ -9,14 +9,13 @@ from PIL import Image as PillowImage, UnidentifiedImageError
 from doc.blocks.writers import SizedImage, html_blocks
 from doc.doc_definitions import GLYPH_NOT_COVERED, IMAGE_UNAVAILABLE
 from doc.blocks.pagination import MAXIMUM_PAGINATION_PASSES, stranded_heading
-from fontTools.ttLib import TTFont
 
 from doc.blocks.latex_math import math_text, text_with_math_drawn
 from doc.blocks.markdown import CodeBlock, Equation, Image, Paragraph, Table, local_image_problem
 from fonts.registry import MONOSPACE, SANS_BODY, BundledFamily, default_family, resolved_face
 from core.office_operations import save_atomically
 from core.office_result import BOLD_FONT_UNAVAILABLE, Issue, OfficeFailure
-from fonts.font_files import bold_sibling
+from fonts.font_files import bold_sibling, mapped_code_points
 from render.renderer import PAGE_NUMBER_FOOTER, RENDER_FAILED, RENDERER_UNAVAILABLE, DocumentPdfRequest, FontFile, RenderFailed, RendererUnavailable, render_document_pdf as render_pdf
 from core.page_sizes import DEFAULT_PAPER, Paper
 from core.units import CSS_PIXELS_PER_INCH, PIXELS_PER_POINT, millimetres_to_pixels
@@ -143,9 +142,7 @@ def family_fonts(family: BundledFamily) -> list[FontFile]:
 
 
 def uncovered_characters(text: str, fonts: list[FontFile]) -> list[str]:
-    covered: set[int] = set()
-    for path in {font.path for font in fonts}:
-        covered.update(TTFont(str(path), fontNumber=0, lazy=True).getBestCmap())
+    covered = frozenset().union(*(mapped_code_points(path) for path in {font.path for font in fonts}))
     return sorted({character for character in text if not character.isspace() and ord(character) not in covered})
 
 

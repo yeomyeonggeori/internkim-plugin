@@ -13,7 +13,7 @@ from deck.deck_photos import focus_photos
 from deck.deck_preparation import kit_additions, prepare_deck
 from deck.design_system import DesignSystem
 from deck.layout_thresholds import gate_thresholds
-from deck.resource_inlining import VENDORED_FONTS_MARKER, inject_vendored_paperlogy_fallback, inline_local_fonts, inline_local_images
+from deck.resource_inlining import VENDORED_FONTS_MARKER, inject_vendored_paperlogy_fallback, inline_local_fonts, inline_local_images, use_vendored_paperlogy_in_font_family_lists
 from deck.slide_source import SPEAKER_NOTES_CLASS
 from deck.slide_viewer import SLIDE_VIEWER_MARKER, inject_screen_slide_viewer
 from render.renderer import RENDER_FAILED, RENDERER_UNAVAILABLE, RenderFailed, RendererUnavailable, RenderRequest, render_html
@@ -51,7 +51,7 @@ def kit_html_text(source_path: pathlib.Path, system: DesignSystem | None) -> str
 
 
 def deck_html_text(source_path: pathlib.Path, system: DesignSystem | None) -> str:
-    return inject_screen_slide_viewer(kit_html_text(source_path, system))
+    return inject_screen_slide_viewer(use_vendored_paperlogy_in_font_family_lists(kit_html_text(source_path, system)))
 
 
 def gate_measurements(source_path: pathlib.Path, system: DesignSystem | None) -> tuple[list[dict], list[Issue]]:
