@@ -38,6 +38,23 @@ def has_no_glyph_data(font: TTFont, glyph_index: int) -> bool:
     return offsets[glyph_index] == offsets[glyph_index + 1]
 
 
+CONJOINING_JAMO_BLOCKS = ((0x1100, 0x11FF), (0xA960, 0xA97F), (0xD7B0, 0xD7FF))
+# OpenType Hangul shaping, Microsoft Typography "Developing OpenType Fonts for Korean Hangul Script"
+JAMO_FEATURES = frozenset({"ljmo", "vjmo", "tjmo"})
+
+
+def maps_jamo_it_cannot_compose(font_path: Path) -> bool:
+    font = TTFont(str(font_path), fontNumber=0)
+    maps_jamo = any(start <= code_point <= end for code_point in font.getBestCmap() for start, end in CONJOINING_JAMO_BLOCKS)
+    return maps_jamo and not JAMO_FEATURES <= substitution_features(font)
+
+
+def substitution_features(font: TTFont) -> set[str]:
+    if "GSUB" not in font:
+        return set()
+    return {record.FeatureTag for record in font["GSUB"].table.FeatureList.FeatureRecord}
+
+
 def bounds(glyph_set, glyph_name: str):
     pen = BoundsPen(glyph_set)
     glyph_set[glyph_name].draw(pen)
@@ -50,6 +67,12 @@ class BundledFontFilesTest(unittest.TestCase):
             for face in family.faces:
                 with self.subTest(face=face.file_name):
                     self.assertEqual(mapped_characters_drawing_nothing(family.path(face))[:20], [])
+
+    def test_every_bundled_face_that_maps_conjoining_jamo_composes_them(self):
+        for family in BUNDLED_FAMILIES:
+            for face in family.faces:
+                with self.subTest(face=face.file_name):
+                    self.assertFalse(maps_jamo_it_cannot_compose(family.path(face)))
 
 
 if __name__ == "__main__":
