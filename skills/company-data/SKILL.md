@@ -12,7 +12,7 @@ Use the typed operations for the persistent profile, numeric time series, histor
 
 ## Metrics
 
-For a new metric, first call `company_metric_list` for the relevant period. Identical data needs no write; a correction updates the existing period; only a genuinely new fact calls `company_metric_record`. Use one metric key across periods and name the `period` the way the company reports it: `2026`, `2026-H1`, `2026-Q2` or `2026-05`; a year can sit beside its halves, quarters or months. Record a forecast exactly like a result: a value recorded before its period ends is shown as a projection (전망), and recording that period again after it ends replaces it with the result. Money goes in `amount` as `{amount, currency}` in the stated currency; never estimate exchange rates. Anything else goes in `value` with a `unit`.
+For a new metric, first call `company_metric_list` for the relevant period. Identical data needs no write; a correction updates the existing period; only a genuinely new fact calls `company_metric_record`. Use one metric key across periods and name the `period` the way the company reports it: `2026`, `2026-H1`, `2026-Q2` or `2026-05`; a year can sit beside its halves, quarters or months. Set `basis` to `expected` for a forecast or plan and `reported` for an actual result; recording the result for a period replaces its forecast. Money goes in `amount` as `{amount, currency}` in the stated currency; never estimate exchange rates. Anything else goes in `value` with a `unit`.
 
 Headcount is counted from members, never recorded as a metric. When it is wrong, an administrator sets a non-employee account's `kind` to other or a leaver's last day as `departureDate` with `person_update`.
 
