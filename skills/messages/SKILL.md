@@ -13,6 +13,7 @@ Call the typed message operations directly; descriptors define exact fields and 
 ## Read and search
 
 - Use `message_context` when the request arrived on a conversation and the channel, thread, or requester is needed. Use `message_search` for channel, person, text, and date clues, then use the observed message IDs for follow-up actions.
+- A direct conversation is read with `scope` `directMessage`, naming the other person in `personHint` or leaving it out for the requester's own conversation with the agent. It has no channel name and `channel_list` does not list it, so do not look for its ID first.
 - Distinguish no result, an ambiguous match, and a provider error. Never infer a message ID or claim unseen content.
 
 ## Write
@@ -21,6 +22,7 @@ Call the typed message operations directly; descriptors define exact fields and 
 - Use `message_reaction_add` and `message_reaction_delete` with an observed message ID to react as the requester.
 - Use `message_delete` only when the user explicitly requests deletion; approval is handled by the runtime.
 - Addressing a person rather than a conversation is the direct-message workflow.
+- When the request arrived on no conversation, as it does from a coding agent, a `message_send` with `targetType` `directMessage` and no `personHint` is the requester writing to the company's agent, which is how work is handed to it. The agent answers in a thread under that message: read it with `message_search`, `scope` `directMessage` and `authoredBy` `assistant`, and allow it time before reading.
 
 ## Channels and direct conversations
 
